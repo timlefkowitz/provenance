@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+@import '../styles/theme.css';
+@import '../styles/theme.utilities.css';
+@import '../styles/shadcn-ui.css';
+@import '../styles/makerkit.css';
+
+@plugin "tailwindcss-animate";
+
+@source "../../../packages/*/src/**/*.{ts,tsx}";
+@source "../../../packages/features/*/src/**/*.{ts,tsx}";
+@source "../../../packages/billing/*/src/**/*.{ts,tsx}";
+@source "../../../packages/plugins/*/src/**/*.{ts,tsx}";
+@source "../../../packages/cms/*/src/**/*.{ts,tsx}";
+@source "../{app,components,config,lib}/**/*.{ts,tsx}";
+@source "../../src/{app,components,config,lib}/**/*.{ts,tsx}";
+
+/* User Custom Theme */
+@theme {
+  --color-parchment: #F5F1E8;
+  --color-ink: #111111;
+  --color-wine: #4A2F25;
+
+  --font-display: var(--font-cinzel), serif;
+  --font-serif: var(--font-cormorant), serif;
+  --font-body: var(--font-caslon), serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-parchment);
+    color: var(--color-ink);
+    font-family: var(--font-serif);
+  }
+}
+
+/* Custom utilities for the specific style */
+.border-double-box {
+  border: 4px double var(--color-wine);
+}
+
+.journal-divider {
+  height: 1px;
+  background-color: var(--color-wine);
+  width: 100%;
+  margin: 1rem 0;
+}

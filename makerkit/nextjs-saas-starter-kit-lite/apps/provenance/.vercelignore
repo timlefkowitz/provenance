@@ -1,0 +1,9 @@
+# Ignore files that shouldn't be deployed
+.env.local
+.env.*.local
+node_modules
+.next
+.turbo
+*.log
+.DS_Store
+
