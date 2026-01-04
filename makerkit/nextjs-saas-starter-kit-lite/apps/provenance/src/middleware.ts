@@ -9,8 +9,15 @@ export const config = {
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  const supabase = createMiddlewareClient(request, response);
-  await supabase.auth.getUser();
+  
+  try {
+    const supabase = createMiddlewareClient(request, response);
+    await supabase.auth.getUser();
+  } catch (error) {
+    // If Supabase connection fails (e.g., invalid env vars), log but don't crash
+    // This allows the app to still function even if Supabase is misconfigured
+    console.error('Middleware Supabase error:', error);
+  }
 
   // Pass pathname to layout via headers for conditional checks
   response.headers.set('x-pathname', request.nextUrl.pathname);

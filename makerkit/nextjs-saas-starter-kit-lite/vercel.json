@@ -1,8 +1,8 @@
 {
-  "buildCommand": "pnpm build",
-  "outputDirectory": ".next",
-  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd apps/provenance && pnpm build",
+  "outputDirectory": "apps/provenance/.next",
+  "installCommand": "pnpm install",
   "framework": "nextjs",
-  "rootDirectory": "apps/provenance"
+  "rootDirectory": "makerkit/nextjs-saas-starter-kit-lite"
 }
 

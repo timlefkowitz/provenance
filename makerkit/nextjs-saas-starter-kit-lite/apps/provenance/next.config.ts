@@ -46,12 +46,23 @@ function getRemotePatterns() {
   const remotePatterns = [];
 
   if (SUPABASE_URL) {
-    const hostname = new URL(SUPABASE_URL).hostname;
+    try {
+      // Ensure URL has protocol
+      const urlString = SUPABASE_URL.startsWith('http://') || SUPABASE_URL.startsWith('https://')
+        ? SUPABASE_URL
+        : `https://${SUPABASE_URL}`;
+      
+      const url = new URL(urlString);
+      const hostname = url.hostname;
 
-    remotePatterns.push({
-      protocol: 'https',
-      hostname,
-    });
+      remotePatterns.push({
+        protocol: url.protocol === 'https:' ? 'https' : 'http',
+        hostname,
+      });
+    } catch (error) {
+      console.warn('Invalid SUPABASE_URL in next.config.ts:', SUPABASE_URL, error);
+      // Don't add invalid URL to remote patterns
+    }
   }
 
   return IS_PRODUCTION
