@@ -1,7 +1,0 @@
-{
-  "buildCommand": "cd makerkit/nextjs-saas-starter-kit-lite/apps/provenance && pnpm build",
-  "outputDirectory": "makerkit/nextjs-saas-starter-kit-lite/apps/provenance/.next",
-  "installCommand": "cd makerkit/nextjs-saas-starter-kit-lite && corepack enable && corepack prepare pnpm@10.19.0 --activate && pnpm install --no-frozen-lockfile",
-  "framework": "nextjs"
-}
-

@@ -21,9 +21,9 @@ If the error persists after setting Node.js to 20.x, update the Install Command:
 cd makerkit/nextjs-saas-starter-kit-lite && npm install -g pnpm@10.19.0 && pnpm install --no-frozen-lockfile
 ```
 
-### 3. Alternative: Use npm (Most Reliable)
+### 3. Alternative: Use npm (Most Reliable) ⭐ RECOMMENDED
 
-If pnpm continues to fail, use npm instead:
+If pnpm continues to fail, use npm instead. This is the most reliable option on Vercel:
 
 | Setting | Value |
 |---------|-------|
@@ -31,6 +31,8 @@ If pnpm continues to fail, use npm instead:
 | **Install Command** | `cd makerkit/nextjs-saas-starter-kit-lite && npm install --legacy-peer-deps` |
 | **Build Command** | `cd makerkit/nextjs-saas-starter-kit-lite/apps/provenance && npm run build` |
 | **Output Directory** | `makerkit/nextjs-saas-starter-kit-lite/apps/provenance/.next` |
+
+**npm works with both Node.js 18.x and 20.x** - no compatibility issues.
 
 ### 4. Clear Cache and Redeploy
 
