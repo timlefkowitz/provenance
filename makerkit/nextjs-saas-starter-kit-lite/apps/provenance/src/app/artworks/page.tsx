@@ -12,13 +12,48 @@ export default async function ArtworksPage() {
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
-  // Fetch recent artworks (public feed - show all verified artworks)
-  const { data: artworks, error } = await client
-    .from('artworks')
-    .select('id, title, artist_name, image_url, created_at, certificate_number')
-    .eq('status', 'verified')
-    .order('created_at', { ascending: false })
-    .limit(50);
+  let artworks = null;
+  let error = null;
+
+  if (!user) {
+    // Not signed in - show all verified artworks as a public feed
+    const result = await client
+      .from('artworks')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .eq('status', 'verified')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    artworks = result.data;
+    error = result.error;
+  } else {
+    // Signed in - show only artworks from:
+    // 1. The current user
+    // 2. Artists the user follows
+    
+    // First, get the list of users this user follows
+    const { data: following } = await client
+      .from('user_follows')
+      .select('following_id')
+      .eq('follower_id', user.id);
+    
+    const followingIds = following?.map(f => f.following_id) || [];
+    
+    // Include the current user's ID to show their own artworks
+    const accountIdsToShow = [user.id, ...followingIds];
+    
+    // Fetch artworks from these accounts
+    const result = await client
+      .from('artworks')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .eq('status', 'verified')
+      .in('account_id', accountIdsToShow)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    artworks = result.data;
+    error = result.error;
+  }
 
   if (error) {
     console.error('Error fetching artworks:', error);
@@ -32,7 +67,7 @@ export default async function ArtworksPage() {
             Artworks
           </h1>
           <p className="text-ink/70 font-serif">
-            Recent uploads and verified artworks
+            {user ? 'Your artworks and artists you follow' : 'Recent uploads and verified artworks'}
           </p>
         </div>
         {user && (
@@ -59,21 +94,36 @@ export default async function ArtworksPage() {
       {artworks && artworks.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {artworks.map((artwork) => (
-            <ArtworkCard key={artwork.id} artwork={artwork} />
+            <ArtworkCard 
+              key={artwork.id} 
+              artwork={artwork}
+              currentUserId={user?.id}
+            />
           ))}
         </div>
       ) : (
         <div className="text-center py-16">
           <p className="text-ink/70 font-serif text-lg mb-4">
-            No artworks yet
+            {user 
+              ? 'No artworks yet. Add an artwork or follow artists to see their work here.' 
+              : 'No artworks yet'}
           </p>
           {user && (
-            <Button
-              asChild
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-            >
-              <Link href="/artworks/add">Add Your First Artwork</Link>
-            </Button>
+            <div className="flex gap-4 justify-center">
+              <Button
+                asChild
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              >
+                <Link href="/artworks/add">Add Your First Artwork</Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="font-serif border-wine/30 hover:bg-wine/10"
+              >
+                <Link href="/artists">Discover Artists</Link>
+              </Button>
+            </div>
           )}
         </div>
       )}

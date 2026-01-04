@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardFooter, CardHeader } from '@kit/ui/card';
+import { FollowButton } from './follow-button';
 
 type Artwork = {
   id: string;
@@ -9,12 +10,20 @@ type Artwork = {
   image_url: string | null;
   created_at: string;
   certificate_number: string;
+  account_id: string;
 };
 
-export function ArtworkCard({ artwork }: { artwork: Artwork }) {
+export function ArtworkCard({ 
+  artwork, 
+  currentUserId 
+}: { 
+  artwork: Artwork;
+  currentUserId?: string;
+}) {
+  const isOwnArtwork = currentUserId === artwork.account_id;
   return (
-    <Link href={`/artworks/${artwork.id}/certificate`}>
-      <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden cursor-pointer h-full flex flex-col">
+    <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden h-full flex flex-col">
+      <Link href={`/artworks/${artwork.id}/certificate`} className="cursor-pointer">
         <div className="relative aspect-square bg-parchment overflow-hidden">
           {artwork.image_url ? (
             <Image
@@ -30,32 +39,42 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
             </div>
           )}
         </div>
-        <CardHeader className="flex-1">
+      </Link>
+      <CardHeader className="flex-1">
+        <Link href={`/artworks/${artwork.id}/certificate`} className="cursor-pointer">
           <h3 className="font-display font-bold text-wine text-lg mb-1 line-clamp-2 group-hover:text-wine/80 transition-colors">
             {artwork.title}
           </h3>
-          {artwork.artist_name && (
+        </Link>
+        {artwork.artist_name && (
+          <div className="flex items-center justify-between gap-2">
             <p className="text-ink/70 font-serif text-sm">
               {artwork.artist_name}
             </p>
-          )}
-        </CardHeader>
-        <CardFooter className="pt-0 pb-4">
-          <div className="flex items-center justify-between w-full text-xs text-ink/50 font-serif">
-            <span className="uppercase tracking-wider">
-              {artwork.certificate_number}
-            </span>
-            <span>
-              {new Date(artwork.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </span>
+            {currentUserId && !isOwnArtwork && (
+              <FollowButton 
+                artistId={artwork.account_id}
+                currentUserId={currentUserId}
+              />
+            )}
           </div>
-        </CardFooter>
-      </Card>
-    </Link>
+        )}
+      </CardHeader>
+      <CardFooter className="pt-0 pb-4">
+        <div className="flex items-center justify-between w-full text-xs text-ink/50 font-serif">
+          <span className="uppercase tracking-wider">
+            {artwork.certificate_number}
+          </span>
+          <span>
+            {new Date(artwork.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </span>
+        </div>
+      </CardFooter>
+    </Card>
   );
 }
 
