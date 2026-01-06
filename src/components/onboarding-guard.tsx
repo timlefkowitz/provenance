@@ -13,7 +13,15 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
 
   try {
     const client = getSupabaseServerClient();
-    const { data: { user }, error: authError } = await client.auth.getUser();
+
+    // Supabase can throw AuthSessionMissingError when no session cookie exists.
+    // We want to allow rendering instead of crashing the app.
+    const { data: { user }, error: authError } = await client.auth
+      .getUser()
+      .catch((error) => {
+        console.error('Auth getUser error in OnboardingGuard:', error);
+        return { data: { user: null }, error };
+      });
 
     // If there's an auth error (e.g., invalid Supabase config), allow access
     // This prevents the app from breaking if env vars are misconfigured
