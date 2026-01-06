@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
+  /** Set output file tracing root for monorepo */
+  outputFileTracingRoot: require('path').join(__dirname, '../..'),
   images: {
     remotePatterns: getRemotePatterns(),
   },
