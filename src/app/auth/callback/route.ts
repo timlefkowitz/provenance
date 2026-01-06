@@ -13,9 +13,21 @@ export async function GET(request: NextRequest) {
     redirectPath: pathsConfig.app.home,
   });
 
-  // Use the request origin to ensure we redirect to the correct domain (Vercel or localhost)
+  // Always use the request origin to ensure we redirect to the correct domain
+  // Extract just the pathname if nextPath contains a full URL (e.g., from Supabase redirect)
   const origin = request.nextUrl.origin;
-  const redirectUrl = new URL(nextPath, origin);
+  let pathToRedirect = nextPath;
+  
+  // If nextPath is a full URL, extract just the pathname
+  try {
+    const url = new URL(nextPath);
+    pathToRedirect = url.pathname + url.search;
+  } catch {
+    // nextPath is already just a path, use it as-is
+    pathToRedirect = nextPath;
+  }
+  
+  const redirectUrl = new URL(pathToRedirect, origin);
 
   return NextResponse.redirect(redirectUrl);
 }
