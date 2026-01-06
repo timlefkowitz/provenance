@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { createAuthCallbackService } from '@kit/supabase/auth';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -13,5 +13,9 @@ export async function GET(request: NextRequest) {
     redirectPath: pathsConfig.app.home,
   });
 
-  return redirect(nextPath);
+  // Use the request origin to ensure we redirect to the correct domain (Vercel or localhost)
+  const origin = request.nextUrl.origin;
+  const redirectUrl = new URL(nextPath, origin);
+
+  return NextResponse.redirect(redirectUrl);
 }
