@@ -11,8 +11,8 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   
   try {
-    const supabase = createMiddlewareClient(request, response);
-    await supabase.auth.getUser();
+  const supabase = createMiddlewareClient(request, response);
+  await supabase.auth.getUser();
   } catch (error) {
     // If Supabase connection fails (e.g., invalid env vars), log but don't crash
     // This allows the app to still function even if Supabase is misconfigured
