@@ -26,20 +26,9 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
       return <>{children}</>;
     }
 
-    // Now safely fetch the user
-    const { data: { user }, error: authError } = await client.auth
-      .getUser()
-      .catch((error) => {
-        console.error('Auth getUser error in OnboardingGuard:', error);
-        return { data: { user: null }, error };
-      });
-
-    // If there's an auth error (e.g., invalid Supabase config), allow access
-    // This prevents the app from breaking if env vars are misconfigured
-    if (authError) {
-      console.error('Auth error in OnboardingGuard:', authError);
-      return <>{children}</>;
-    }
+    // Use the user from the session instead of calling getUser()
+    // This avoids the "Auth session missing!" error that occurs after OAuth login
+    const user = sessionData.session.user;
 
     if (user) {
       const { data: account, error: accountError } = await client
