@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { GoogleSignInButton } from "~/components/google-sign-in-button";
-
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center p-8 sm:p-20 font-serif">
@@ -16,11 +14,6 @@ export default function Home() {
           A Journal of Art, Objects & Their Histories
         </p>
       </header>
-
-      {/* Sign In CTA */}
-      <div className="mb-12 flex flex-col items-center gap-4">
-        <GoogleSignInButton />
-      </div>
 
       {/* Navigation / Sections */}
       <nav className="w-full max-w-3xl mb-16">
