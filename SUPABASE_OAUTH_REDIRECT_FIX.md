@@ -6,14 +6,16 @@ If you're getting redirected to localhost or seeing `{"error":"requested path is
 
 1. Go to your Supabase Dashboard → **Authentication** → **URL Configuration**
 
-2. **Site URL**: Set this to your Vercel domain (MUST include `https://` and NO trailing slash)
+2. **Site URL**: Set this to your Vercel domain (MUST include `https://` and NO trailing slash or leading spaces)
    ```
    https://provenance-khaki.vercel.app
    ```
-   ⚠️ **Important**: 
-   - Must start with `https://`
+   ⚠️ **Critical**: 
+   - Must start with `https://` (no spaces before)
    - Must NOT have a trailing slash
+   - Must NOT have leading or trailing spaces
    - Must match your production domain exactly
+   - **Common mistake**: Copy-pasting can add invisible spaces - delete and retype if needed
 
 3. **Redirect URLs**: Add both your Vercel and localhost URLs (one per line, exact match required):
    ```
@@ -68,6 +70,25 @@ This means Supabase is treating your domain as a path. Fix it by:
 2. **Check Redirect URLs**: Must include exactly `https://provenance-khaki.vercel.app/auth/callback` (one per line, exact match)
 3. **Clear browser cache** and try again
 4. **Verify the redirectTo URL** in your code matches exactly what's in Redirect URLs
+
+### Error: `{"code":500,"error_code":"unexpected_failure"}`
+
+If you see this error after OAuth callback, check:
+
+1. **Site URL has leading/trailing spaces**: 
+   - Decode the JWT state parameter in the URL to see what Supabase received
+   - If you see `"   https://..."` (with spaces), your Site URL has leading spaces
+   - Delete the Site URL field completely and retype it (don't copy-paste)
+   - Must be exactly: `https://provenance-khaki.vercel.app` (no spaces)
+
+2. **Check Supabase Logs**:
+   - Go to Supabase Dashboard → Logs → Postgres Logs or API Logs
+   - Look for the exact error message around the time of the OAuth attempt
+
+3. **Verify Redirect URLs**:
+   - Each URL must be on its own line
+   - No leading/trailing spaces
+   - Exact match to what you pass in `redirectTo`
 
 ### Other Common Issues
 
