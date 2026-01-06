@@ -3,15 +3,15 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 
 export async function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  const headersList = await headers();
-  const pathname = headersList.get('x-pathname') || '';
-
-  // Skip check on onboarding page or auth pages
-  if (pathname.startsWith('/onboarding') || pathname.startsWith('/auth')) {
-    return <>{children}</>;
-  }
-
   try {
+    const headersList = await headers();
+    const pathname = headersList.get('x-pathname') || '';
+
+    // Skip check on onboarding page or auth pages
+    if (pathname.startsWith('/onboarding') || pathname.startsWith('/auth')) {
+      return <>{children}</>;
+    }
+
     const client = getSupabaseServerClient();
 
     // First check if a session exists; if not, allow rendering (no auth).
