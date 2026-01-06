@@ -53,5 +53,10 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3"
   },
-  "prettier": "@kit/prettier-config"
+  "prettier": "@kit/prettier-config",
+  "pnpm": {
+    "overrides": {
+      "react-is": "19.0.0"
+    }
+  }
 }
