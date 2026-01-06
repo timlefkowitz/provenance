@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,7 +19,7 @@ const nextConfig: NextConfig = {
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
   /** Set output file tracing root for monorepo */
-  outputFileTracingRoot: require('path').join(__dirname, '../..'),
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   images: {
     remotePatterns: getRemotePatterns(),
   },
