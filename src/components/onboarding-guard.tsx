@@ -14,27 +14,27 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
 
     const client = getSupabaseServerClient();
 
-    // First check if a session exists; if not, allow rendering (no auth).
-    const { data: sessionData, error: sessionError } = await client.auth
-      .getSession()
+    // Use getClaims() instead of getSession() to avoid "Auth session missing!" errors
+    // This is the same approach used in middleware and other server components
+    const { data: claimsData, error: claimsError } = await client.auth
+      .getClaims()
       .catch((error) => {
-        console.error('Auth getSession error in OnboardingGuard:', error);
-        return { data: { session: null }, error };
+        console.error('Auth getClaims error in OnboardingGuard:', error);
+        return { data: null, error };
       });
 
-    if (sessionError || !sessionData?.session) {
+    if (claimsError || !claimsData?.claims) {
       return <>{children}</>;
     }
 
-    // Use the user from the session instead of calling getUser()
-    // This avoids the "Auth session missing!" error that occurs after OAuth login
-    const user = sessionData.session.user;
+    // Extract user ID from claims
+    const userId = claimsData.claims.sub;
 
-    if (user) {
+    if (userId) {
       const { data: account, error: accountError } = await client
         .from('accounts')
         .select('public_data')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       // If account query fails, allow access (don't block the app)
