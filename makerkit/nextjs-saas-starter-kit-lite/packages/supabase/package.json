@@ -20,18 +20,20 @@
     "./database": "./src/database.types.ts",
     "./auth": "./src/auth.ts"
   },
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "2.75.0",
+    "zod": "^3.25.32"
+  },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/tsconfig": "workspace:*",
-    "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "2.75.0",
     "@tanstack/react-query": "5.90.2",
     "@types/react": "19.2.7",
     "next": "15.5.7",
     "react": "19.2.1",
-    "server-only": "^0.0.1",
-    "zod": "^3.25.32"
+    "server-only": "^0.0.1"
   },
   "typesVersions": {
     "*": {
