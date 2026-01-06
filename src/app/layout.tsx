@@ -33,6 +33,9 @@ export const metadata: Metadata = {
   description: "Verified provenance entries and immutable historical timelines on Avalanche.",
 };
 
+// Ensure this layout is always rendered dynamically since we access headers/cookies
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{
