@@ -14,8 +14,19 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
   try {
     const client = getSupabaseServerClient();
 
-    // Supabase can throw AuthSessionMissingError when no session cookie exists.
-    // We want to allow rendering instead of crashing the app.
+    // First check if a session exists; if not, allow rendering (no auth).
+    const { data: sessionData, error: sessionError } = await client.auth
+      .getSession()
+      .catch((error) => {
+        console.error('Auth getSession error in OnboardingGuard:', error);
+        return { data: { session: null }, error };
+      });
+
+    if (sessionError || !sessionData?.session) {
+      return <>{children}</>;
+    }
+
+    // Now safely fetch the user
     const { data: { user }, error: authError } = await client.auth
       .getUser()
       .catch((error) => {
