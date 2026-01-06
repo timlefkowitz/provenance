@@ -1,0 +1,8 @@
+packages:
+  - makerkit/nextjs-saas-starter-kit-lite/packages/**
+  - makerkit/nextjs-saas-starter-kit-lite/tooling/*
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - supabase
+
