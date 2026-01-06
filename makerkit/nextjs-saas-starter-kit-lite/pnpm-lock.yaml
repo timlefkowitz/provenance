@@ -510,6 +510,16 @@ importers:
         version: 19.2.7
 
   packages/supabase:
+    dependencies:
+      '@supabase/ssr':
+        specifier: ^0.7.0
+        version: 0.7.0(@supabase/supabase-js@2.75.0)
+      '@supabase/supabase-js':
+        specifier: 2.75.0
+        version: 2.75.0
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*
@@ -520,12 +530,6 @@ importers:
       '@kit/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@supabase/ssr':
-        specifier: ^0.7.0
-        version: 0.7.0(@supabase/supabase-js@2.75.0)
-      '@supabase/supabase-js':
-        specifier: 2.75.0
-        version: 2.75.0
       '@tanstack/react-query':
         specifier: 5.90.2
         version: 5.90.2(react@19.2.1)
@@ -541,9 +545,6 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
-      zod:
-        specifier: ^3.25.32
-        version: 3.25.76
 
   packages/ui:
     dependencies:
