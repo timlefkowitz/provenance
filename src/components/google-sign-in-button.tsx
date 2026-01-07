@@ -1,7 +1,5 @@
 'use client';
 
-import Image from 'next/image';
-
 import { Button } from '@kit/ui/button';
 import { useSignInWithProvider } from '@kit/supabase/hooks/use-sign-in-with-provider';
 import { LoadingOverlay } from '@kit/ui/loading-overlay';
@@ -37,19 +35,11 @@ export function GoogleSignInButton() {
         <LoadingOverlay />
       </If>
       <Button
-        className="flex w-full space-x-2 text-center"
+        className="w-full font-serif"
         variant="outline"
         onClick={handleGoogleSignIn}
         disabled={loading}
       >
-        <Image
-          src="/images/oauth/google.webp"
-          alt="Google logo"
-          width={18}
-          height={18}
-          decoding="async"
-          loading="lazy"
-        />
         <span>Sign in with Google</span>
       </Button>
     </>

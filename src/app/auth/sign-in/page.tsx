@@ -32,7 +32,15 @@ function SignInPage() {
 
       <SignInMethodsContainer paths={paths} providers={authConfig.providers} />
 
-      <div className={'flex justify-center'}>
+      <div className={'flex flex-col items-center gap-3'}>
+        <Button 
+          asChild 
+          className="w-full bg-wine text-parchment hover:bg-wine/90 font-serif"
+        >
+          <Link href={pathsConfig.auth.signUp}>
+            Create Account
+          </Link>
+        </Button>
         <Button asChild variant={'link'} size={'sm'}>
           <Link href={pathsConfig.auth.signUp}>
             <Trans i18nKey={'auth:doNotHaveAccountYet'} />
