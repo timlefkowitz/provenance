@@ -7,11 +7,12 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
     const headersList = await headers();
     const pathname = headersList.get('x-pathname') || '';
 
-    // Skip check on onboarding page, auth pages, or pages with server actions
+    // Skip check on onboarding page, auth pages, public pages, or pages with server actions
     // Server actions will fail if we redirect, so we allow access to these pages
     if (
       pathname.startsWith('/onboarding') || 
       pathname.startsWith('/auth') ||
+      pathname.startsWith('/about') || // Public about page
       pathname.startsWith('/artworks/add') // Allow artwork uploads even without role
     ) {
       return <>{children}</>;
