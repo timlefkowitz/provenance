@@ -22,6 +22,8 @@ export default async function RegistryPage() {
   
   // Fetch all accounts (read-only, safe)
   // This uses the new public read policy that only exposes public fields
+  // Note: If you only see one account, the migration 20250107000000_allow_public_account_read.sql
+  // may not have been run. Run it in your Supabase SQL Editor.
   const { data: accounts, error } = await client
     .from('accounts')
     .select('id, name, picture_url, public_data, created_at')
@@ -30,9 +32,15 @@ export default async function RegistryPage() {
 
   if (error) {
     console.error('Error fetching accounts:', error);
+    console.error('If you only see one account, you may need to run the migration: 20250107000000_allow_public_account_read.sql');
   }
 
   const accountsList: Account[] = accounts || [];
+  
+  // Log for debugging
+  if (accountsList.length <= 1) {
+    console.warn('Registry: Only seeing', accountsList.length, 'account(s). The public read policy may not be applied.');
+  }
 
   // Get artwork counts for each account (optional, for display)
   const accountIds = accountsList.map(a => a.id);
