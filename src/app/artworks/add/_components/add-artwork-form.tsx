@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import imageCompression from 'browser-image-compression';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -30,6 +31,7 @@ export function AddArtworkForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
+  const [compressing, setCompressing] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
     artistName: defaultArtistName,
@@ -45,39 +47,64 @@ export function AddArtworkForm({
     }));
   }, [defaultArtistName, defaultMedium]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
 
-    const newPreviews: ImagePreview[] = [];
-    let processedCount = 0;
-    
-    imageFiles.forEach((file, index) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = reader.result as string;
+    setCompressing(true);
+    setError(null);
+
+    try {
+      const newPreviews: ImagePreview[] = [];
+      
+      // Process and compress each image
+      for (let index = 0; index < imageFiles.length; index++) {
+        const file = imageFiles[index];
+        
+        // Compression options optimized for iPhone photos
+        const options = {
+          maxSizeMB: 2, // Compress to max 2MB (good quality, much smaller than original)
+          maxWidthOrHeight: 1920, // Max dimension (good for web display)
+          useWebWorker: true, // Use web worker for better performance
+          fileType: file.type, // Preserve original file type
+        };
+
+        let compressedFile: File;
+        try {
+          compressedFile = await imageCompression(file, options);
+        } catch (compressionError) {
+          console.warn('Compression failed, using original file:', compressionError);
+          compressedFile = file; // Fallback to original if compression fails
+        }
+
+        // Create preview
+        const reader = new FileReader();
+        const preview = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(compressedFile);
+        });
+
         const newPreview: ImagePreview = {
-          file,
+          file: compressedFile,
           preview,
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
         };
         newPreviews.push(newPreview);
-        processedCount++;
-        
-        // Update state when all files are processed
-        if (processedCount === imageFiles.length) {
-          setImagePreviews(prev => [...prev, ...newPreviews]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      }
 
-    // Reset input to allow selecting the same files again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      setImagePreviews(prev => [...prev, ...newPreviews]);
+    } catch (error) {
+      console.error('Error processing images:', error);
+      setError('Failed to process images. Please try again.');
+    } finally {
+      setCompressing(false);
+      // Reset input to allow selecting the same files again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -177,6 +204,7 @@ export function AddArtworkForm({
               }}
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              disabled={compressing}
             >
               <Upload className="mr-2 h-4 w-4" />
               Choose Photos
@@ -192,11 +220,21 @@ export function AddArtworkForm({
               }}
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              disabled={compressing}
             >
               <Camera className="mr-2 h-4 w-4" />
               Take Photo
             </Button>
           </div>
+
+          {/* Compression Status */}
+          {compressing && (
+            <div className="mb-4 p-3 bg-wine/10 border border-wine/20 rounded-lg">
+              <p className="text-sm text-wine font-serif text-center">
+                Compressing images for faster upload...
+              </p>
+            </div>
+          )}
 
           {/* Image Previews */}
           {imagePreviews.length > 0 && (
