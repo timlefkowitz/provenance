@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
+import { isAdmin } from '~/lib/admin';
 
 export const metadata = {
   title: 'Certificate of Authenticity | Provenance',
@@ -50,7 +51,10 @@ export default async function CertificatePage({
 
   // Check if the current user is the owner
   const isOwner = !!(user && artwork.account_id === user.id);
+  
+  // Check if the current user is an admin
+  const userIsAdmin = user ? await isAdmin(user.id) : false;
 
-  return <CertificateOfAuthenticity artwork={artwork} isOwner={isOwner} />;
+  return <CertificateOfAuthenticity artwork={artwork} isOwner={isOwner} isAdmin={userIsAdmin} />;
 }
 

@@ -1,10 +1,14 @@
 'use client';
 
+import { useState, useTransition } from 'react';
 import { Button } from '@kit/ui/button';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
 import { useMemo } from 'react';
+import { Star } from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
+import { featureArtwork } from '../_actions/feature-artwork';
 
 type Artwork = {
   id: string;
@@ -27,12 +31,16 @@ type Artwork = {
 
 export function CertificateOfAuthenticity({ 
   artwork, 
-  isOwner = false 
+  isOwner = false,
+  isAdmin = false
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [featured, setFeatured] = useState(false);
 
   // Generate the certificate URL
   const certificateUrl = useMemo(() => {
@@ -50,6 +58,24 @@ export function CertificateOfAuthenticity({
     // In a real implementation, you might generate a PDF here
     // For now, we'll just trigger print which allows saving as PDF
     window.print();
+  };
+
+  const handleFeature = () => {
+    startTransition(async () => {
+      try {
+        const result = await featureArtwork(artwork.id);
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          setFeatured(true);
+          toast.success('Artwork featured on homepage!');
+          router.refresh(); // Refresh to show updated homepage
+        }
+      } catch (error) {
+        toast.error('Something went wrong. Please try again.');
+        console.error(error);
+      }
+    });
   };
 
   return (
@@ -77,6 +103,17 @@ export function CertificateOfAuthenticity({
               className="font-serif"
             >
               Edit Provenance
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              onClick={handleFeature}
+              disabled={pending || featured}
+              variant="outline"
+              className="font-serif border-wine/30 hover:bg-wine/10"
+            >
+              <Star className="mr-2 h-4 w-4" />
+              {pending ? 'Featuring...' : featured ? 'Featured!' : 'Feature on Homepage'}
             </Button>
           )}
           <Button
