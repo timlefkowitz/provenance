@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { isAdmin } from '~/lib/admin';
-import { FeaturedEntryManager } from './_components/featured-entry-manager';
+import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
 
 export const metadata = {
   title: 'Admin | Provenance',
@@ -34,7 +34,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="space-y-6">
-        <FeaturedEntryManager />
+        <FeaturedArtworksManager />
       </div>
     </div>
   );
