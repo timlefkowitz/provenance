@@ -5,6 +5,7 @@ import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Alert, AlertDescription } from '@kit/ui/alert';
+import { Textarea } from '@kit/ui/textarea';
 import { useUpdateAccountData } from '@kit/accounts/hooks/use-update-account';
 import { useRevalidatePersonalAccountDataQuery } from '@kit/accounts/hooks/use-personal-account-data';
 import { toast } from '@kit/ui/sonner';
@@ -15,11 +16,12 @@ export function UnifiedProfileSettingsForm({
   userId,
   currentName,
   currentMedium,
+  currentLinks,
+  currentGalleries,
 }: {
   userId: string;
   currentName: string;
   currentMedium: string;
-  currentCv?: string;
   currentLinks?: string[];
   currentGalleries?: string[];
 }) {
@@ -33,7 +35,6 @@ export function UnifiedProfileSettingsForm({
   const [formData, setFormData] = useState({
     name: currentName,
     medium: currentMedium,
-    cv: (currentCv ?? '').toString(),
     links: (currentLinks ?? []).slice(0, 3),
     galleriesText: (currentGalleries ?? []).join('\n'),
   });
@@ -43,11 +44,10 @@ export function UnifiedProfileSettingsForm({
     setFormData({
       name: currentName,
       medium: currentMedium,
-      cv: (currentCv ?? '').toString(),
       links: (currentLinks ?? []).slice(0, 3),
       galleriesText: (currentGalleries ?? []).join('\n'),
     });
-  }, [currentName, currentMedium, currentCv, currentLinks, currentGalleries]);
+  }, [currentName, currentMedium, currentLinks, currentGalleries]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +68,6 @@ export function UnifiedProfileSettingsForm({
           }),
           updateMedium({
             medium: formData.medium,
-            cv: formData.cv,
             links: formData.links,
             galleries: galleriesArray,
           }),
@@ -142,24 +141,6 @@ export function UnifiedProfileSettingsForm({
           />
           <p className="text-sm text-ink/60 font-serif">
             This will be automatically filled in when you create new artworks
-          </p>
-        </div>
-
-        {/* CV */}
-        <div className="space-y-2">
-          <Label htmlFor="cv">Artist CV / Bio</Label>
-          <Textarea
-            id="cv"
-            value={formData.cv}
-            onChange={(e) =>
-              setFormData({ ...formData, cv: e.target.value })
-            }
-            placeholder="Share your background, education, exhibitions, or a short CV. You can also paste a link to an external CV here."
-            rows={5}
-            className="font-serif"
-          />
-          <p className="text-sm text-ink/60 font-serif">
-            This appears on your public artist profile.
           </p>
         </div>
 

@@ -5,14 +5,11 @@ import { revalidatePath } from 'next/cache';
 
 type ProfileExtrasPayload = {
   medium?: string;
-  cv?: string;
   links?: string[];
   galleries?: string[];
 };
 
-export async function updateMedium(
-  input: string | ProfileExtrasPayload,
-) {
+export async function updateMedium(input: string | ProfileExtrasPayload) {
   try {
     const client = getSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
@@ -20,15 +17,6 @@ export async function updateMedium(
     if (!user) {
       return { error: 'You must be signed in to update your medium' };
     }
-
-    const medium =
-      typeof input === 'string'
-        ? input
-        : input.medium ?? ((account?.public_data as any)?.medium as string) ?? '';
-
-    const cv = typeof input === 'string' ? undefined : input.cv;
-    const links = typeof input === 'string' ? undefined : input.links;
-    const galleries = typeof input === 'string' ? undefined : input.galleries;
 
     // Get current account data
     const { data: account, error: fetchError } = await client
@@ -42,17 +30,21 @@ export async function updateMedium(
       return { error: 'Failed to fetch account data' };
     }
 
-    // Update public_data with medium
+    const medium =
+      typeof input === 'string'
+        ? input
+        : input.medium ?? ((account?.public_data as any)?.medium as string) ?? '';
+
+    const links = typeof input === 'string' ? undefined : input.links;
+    const galleries = typeof input === 'string' ? undefined : input.galleries;
+
+    // Update public_data with medium and extras
     const currentPublicData =
       (account?.public_data as Record<string, any>) || {};
     const updatedPublicData: Record<string, any> = {
       ...currentPublicData,
       medium: medium.trim() || null,
     };
-
-    if (cv !== undefined) {
-      updatedPublicData.cv = cv.trim() || null;
-    }
 
     if (links !== undefined) {
       const cleanedLinks = links

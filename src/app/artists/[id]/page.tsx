@@ -41,7 +41,6 @@ export default async function ArtistProfilePage({
 
   const isOwner = user?.id === account.id;
   const medium = account.public_data?.medium || '';
-  const cv = account.public_data?.cv as string | null;
   const links = (account.public_data?.links as string[]) || [];
   const galleries = (account.public_data?.galleries as string[]) || [];
 
@@ -127,20 +126,6 @@ export default async function ArtistProfilePage({
           </div>
         )}
       </div>
-
-      {/* CV / Bio */}
-      {cv && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-2">
-              CV / Artist Bio
-            </h2>
-            <p className="text-sm md:text-base font-serif text-ink whitespace-pre-wrap">
-              {cv}
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Links */}
       {links.length > 0 && (

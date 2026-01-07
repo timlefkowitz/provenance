@@ -33,7 +33,6 @@ export default async function ProfilePage() {
   const currentName = account?.name || '';
   const publicData = (account?.public_data as any) || {};
   const currentMedium = publicData.medium || '';
-  const currentCv = publicData.cv || '';
   const currentLinks = (publicData.links as string[]) || [];
   const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
@@ -102,7 +101,6 @@ export default async function ProfilePage() {
               userId={user.id}
               currentName={currentName}
               currentMedium={currentMedium}
-              currentCv={currentCv}
               currentLinks={currentLinks}
               currentGalleries={currentGalleries}
             />
