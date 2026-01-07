@@ -32,6 +32,10 @@ const caslon = Libre_Caslon_Text({
 export const metadata: Metadata = {
   title: "Provenance | A Journal of Art, Objects & Their Histories",
   description: "Verified provenance entries and immutable historical timelines on Avalanche.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 };
 
 // Ensure this layout is always rendered dynamically since we access headers/cookies

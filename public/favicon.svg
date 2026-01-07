@@ -1,0 +1,17 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  role="img"
+  aria-labelledby="title"
+>
+  <title>Provenance</title>
+  <!-- Parchment background -->
+  <rect width="64" height="64" rx="8" fill="#f4efe5" />
+  <!-- Stylized P, matching brand color -->
+  <path
+    fill="#4b3224"
+    d="M24 14h10c7.2 0 12 4.4 12 10.8 0 6.5-4.8 11.1-12 11.1h-5.2V50H24V14Zm9.4 18.1c4 0 6.6-2.4 6.6-6.1 0-3.6-2.6-5.9-6.6-5.9h-4.6v12z"
+  />
+</svg>
+
+
