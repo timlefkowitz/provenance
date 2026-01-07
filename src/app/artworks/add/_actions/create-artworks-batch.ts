@@ -13,6 +13,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     // Get form data
     const images = formData.getAll('images') as File[];
     const titles = formData.getAll('titles') as string[];
+    const locations = formData.getAll('locations') as string[]; // JSON strings
     const description = formData.get('description') as string || '';
     const artistName = formData.get('artistName') as string || '';
     const medium = formData.get('medium') as string || '';
@@ -57,6 +58,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     for (let i = 0; i < images.length; i++) {
       const imageFile = images[i];
       const title = titles[i];
+      const locationStr = locations[i] || '';
 
       if (!title || !title.trim()) {
         errors.push(`Image ${i + 1} is missing a title`);
@@ -74,6 +76,16 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         // Generate certificate number
         const certificateNumber = await generateCertificateNumber(client);
 
+        // Parse location data if available
+        let locationData = null;
+        if (locationStr) {
+          try {
+            locationData = JSON.parse(locationStr);
+          } catch (parseError) {
+            console.warn('Failed to parse location data:', parseError);
+          }
+        }
+
         // Create artwork record
         const insertData: any = {
           account_id: userId,
@@ -86,6 +98,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           status: 'verified',
           created_by: userId,
           updated_by: userId,
+          metadata: locationData ? { certificate_location: locationData } : {},
         };
 
         // Try to include is_public, but handle case where migration hasn't been run yet

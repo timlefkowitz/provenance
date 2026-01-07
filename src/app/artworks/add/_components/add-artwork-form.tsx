@@ -3,19 +3,28 @@
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import imageCompression from 'browser-image-compression';
+import exifr from 'exifr';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
-import { Camera, X, Upload } from 'lucide-react';
+import { Camera, X, Upload, MapPin } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 
 type ImagePreview = {
   file: File;
   preview: string;
   title: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    city?: string;
+    region?: string;
+    country?: string;
+    formatted?: string;
+  } | null;
 };
 
 export function AddArtworkForm({ 
@@ -89,10 +98,48 @@ export function AddArtworkForm({
           reader.readAsDataURL(compressedFile);
         });
 
+        // Extract location from EXIF data (use original file for EXIF, not compressed)
+        let location: ImagePreview['location'] = null;
+        try {
+          const exifData = await exifr.gps(file);
+          if (exifData?.latitude && exifData?.longitude) {
+            // Try to get reverse geocoded location
+            try {
+              const response = await fetch(
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${exifData.latitude}&longitude=${exifData.longitude}&localityLanguage=en`
+              );
+              const geoData = await response.json();
+              
+              location = {
+                latitude: exifData.latitude,
+                longitude: exifData.longitude,
+                city: geoData.city || geoData.locality,
+                region: geoData.principalSubdivision,
+                country: geoData.countryName,
+                formatted: geoData.locality 
+                  ? `${geoData.locality}, ${geoData.principalSubdivision || geoData.countryName}`
+                  : geoData.principalSubdivision 
+                    ? `${geoData.principalSubdivision}, ${geoData.countryName}`
+                    : geoData.countryName || null,
+              };
+            } catch (geoError) {
+              // If reverse geocoding fails, just store coordinates
+              location = {
+                latitude: exifData.latitude,
+                longitude: exifData.longitude,
+              };
+            }
+          }
+        } catch (exifError) {
+          // No location data available, that's okay
+          console.log('No location data in image:', exifError);
+        }
+
         const newPreview: ImagePreview = {
           file: compressedFile,
           preview,
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
+          location,
         };
         newPreviews.push(newPreview);
       }
@@ -144,6 +191,12 @@ export function AddArtworkForm({
         imagePreviews.forEach((img, index) => {
           formDataToSend.append(`images`, img.file);
           formDataToSend.append(`titles`, img.title);
+          // Append location data if available
+          if (img.location) {
+            formDataToSend.append(`locations`, JSON.stringify(img.location));
+          } else {
+            formDataToSend.append(`locations`, '');
+          }
         });
         
         formDataToSend.append('description', formData.description);
@@ -256,18 +309,32 @@ export function AddArtworkForm({
                     >
                       <X className="h-4 w-4" />
                     </button>
-                    <img
-                      src={img.preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg mb-2"
-                    />
-                    <Input
-                      value={img.title}
-                      onChange={(e) => updateImageTitle(index, e.target.value)}
-                      placeholder="Artwork title"
-                      className="font-serif text-sm"
-                      required
-                    />
+                    <div className="relative">
+                      <img
+                        src={img.preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg mb-2"
+                      />
+                      {img.location && (
+                        <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{img.location.formatted || 'Location detected'}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <Label htmlFor={`title-${index}`} className="text-xs font-serif text-ink/70">
+                        Title for this artwork *
+                      </Label>
+                      <Input
+                        id={`title-${index}`}
+                        value={img.title}
+                        onChange={(e) => updateImageTitle(index, e.target.value)}
+                        placeholder="e.g., Dawn over the Valley"
+                        className="font-serif text-sm"
+                        required
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

@@ -27,6 +27,16 @@ type Artwork = {
   exhibition_history: string | null;
   historic_context: string | null;
   celebrity_notes: string | null;
+  metadata?: {
+    certificate_location?: {
+      latitude?: number;
+      longitude?: number;
+      city?: string;
+      region?: string;
+      country?: string;
+      formatted?: string;
+    };
+  } | null;
 };
 
 export function CertificateOfAuthenticity({ 
@@ -269,6 +279,15 @@ export function CertificateOfAuthenticity({
                   })}
                 </p>
               </div>
+
+              {artwork.metadata?.certificate_location?.formatted && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Created In</p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.metadata.certificate_location.formatted}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
