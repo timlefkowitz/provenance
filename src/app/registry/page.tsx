@@ -86,13 +86,22 @@ export default async function RegistryPage() {
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center space-y-4">
                       {/* Avatar */}
-                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-wine/20 group-hover:border-wine/40 transition-colors">
-                        <ProfileAvatar
-                          displayName={account.name}
-                          pictureUrl={account.picture_url}
-                          className="w-full h-full"
-                          fallbackClassName="w-full h-full"
-                        />
+                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-wine/20 group-hover:border-wine/40 transition-colors bg-wine/10">
+                        {account.picture_url ? (
+                          <Image
+                            src={account.picture_url}
+                            alt={account.name}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-wine/10">
+                            <span className="text-2xl font-display font-bold text-wine uppercase">
+                              {account.name?.charAt(0) || '?'}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Name */}

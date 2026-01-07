@@ -19,32 +19,6 @@ export default async function Home() {
         </p>
       </header>
 
-      {/* Navigation / Sections */}
-      <nav className="w-full max-w-3xl mb-16">
-        <ul className="flex flex-wrap justify-center gap-8 sm:gap-12 text-lg sm:text-xl uppercase tracking-wider font-display">
-          <li>
-            <Link href="/artworks" className="hover:text-wine hover:underline underline-offset-4 decoration-1">
-              Artworks
-            </Link>
-          </li>
-          <li>
-            <Link href="/collectibles" className="hover:text-wine hover:underline underline-offset-4 decoration-1">
-              Collectibles
-            </Link>
-          </li>
-          <li>
-            <Link href="/registry" className="hover:text-wine hover:underline underline-offset-4 decoration-1">
-              Registry
-            </Link>
-          </li>
-          <li>
-            <Link href="/articles" className="hover:text-wine hover:underline underline-offset-4 decoration-1">
-              Articles
-            </Link>
-          </li>
-        </ul>
-      </nav>
-
       {/* Featured Section */}
       {featuredEntry ? (
         <section className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-12 items-center border-4 border-double border-wine p-8 md:p-12">

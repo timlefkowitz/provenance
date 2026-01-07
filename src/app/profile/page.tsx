@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
+import { UpdateAccountImageContainer } from '@kit/accounts/update-account-image-container';
 import { UnifiedProfileSettingsForm } from '~/components/unified-profile-settings-form';
 
 export const metadata = {
@@ -38,6 +39,24 @@ export default async function ProfilePage() {
       </div>
 
       <div className="flex w-full flex-1 flex-col space-y-4">
+        {/* Profile Photo */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Picture</CardTitle>
+            <CardDescription>
+              Upload a profile picture that will be displayed on your profile and in the registry.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UpdateAccountImageContainer
+              user={{
+                pictureUrl: currentPictureUrl,
+                id: user.id,
+              }}
+            />
+          </CardContent>
+        </Card>
+
         {/* Profile Settings - Name and Medium */}
         <Card>
           <CardHeader>
