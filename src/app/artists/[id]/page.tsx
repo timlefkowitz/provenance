@@ -41,6 +41,9 @@ export default async function ArtistProfilePage({
 
   const isOwner = user?.id === account.id;
   const medium = account.public_data?.medium || '';
+  const cv = account.public_data?.cv as string | null;
+  const links = (account.public_data?.links as string[]) || [];
+  const galleries = (account.public_data?.galleries as string[]) || [];
 
   // Fetch this artist's artworks
   let artworksQuery = client
@@ -125,14 +128,55 @@ export default async function ArtistProfilePage({
         )}
       </div>
 
-      {/* Bio / About (future: could come from public_data.bio) */}
-      {account.public_data?.bio && (
+      {/* CV / Bio */}
+      {cv && (
         <Card className="mb-10 border-wine/20 bg-parchment/60">
           <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-2">About</h2>
+            <h2 className="font-display text-xl text-wine mb-2">
+              CV / Artist Bio
+            </h2>
             <p className="text-sm md:text-base font-serif text-ink whitespace-pre-wrap">
-              {account.public_data.bio}
+              {cv}
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Links */}
+      {links.length > 0 && (
+        <Card className="mb-10 border-wine/20 bg-parchment/60">
+          <CardContent className="p-5 md:p-6">
+            <h2 className="font-display text-xl text-wine mb-3">Links</h2>
+            <ul className="space-y-2">
+              {links.map((link) => (
+                <li key={link}>
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-wine hover:text-wine/80 hover:underline break-all font-serif text-sm"
+                  >
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Galleries */}
+      {galleries.length > 0 && (
+        <Card className="mb-10 border-wine/20 bg-parchment/60">
+          <CardContent className="p-5 md:p-6">
+            <h2 className="font-display text-xl text-wine mb-3">
+              Galleries
+            </h2>
+            <ul className="list-disc list-inside space-y-1 text-sm md:text-base font-serif text-ink">
+              {galleries.map((gallery) => (
+                <li key={gallery}>{gallery}</li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}

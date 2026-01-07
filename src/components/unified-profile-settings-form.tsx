@@ -19,6 +19,9 @@ export function UnifiedProfileSettingsForm({
   userId: string;
   currentName: string;
   currentMedium: string;
+  currentCv?: string;
+  currentLinks?: string[];
+  currentGalleries?: string[];
 }) {
   const { t } = useTranslation('account');
   const updateAccountMutation = useUpdateAccountData(userId);
@@ -30,6 +33,9 @@ export function UnifiedProfileSettingsForm({
   const [formData, setFormData] = useState({
     name: currentName,
     medium: currentMedium,
+    cv: (currentCv ?? '').toString(),
+    links: (currentLinks ?? []).slice(0, 3),
+    galleriesText: (currentGalleries ?? []).join('\n'),
   });
 
   // Update form data when props change
@@ -37,8 +43,11 @@ export function UnifiedProfileSettingsForm({
     setFormData({
       name: currentName,
       medium: currentMedium,
+      cv: (currentCv ?? '').toString(),
+      links: (currentLinks ?? []).slice(0, 3),
+      galleriesText: (currentGalleries ?? []).join('\n'),
     });
-  }, [currentName, currentMedium]);
+  }, [currentName, currentMedium, currentCv, currentLinks, currentGalleries]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +57,21 @@ export function UnifiedProfileSettingsForm({
     startTransition(async () => {
       try {
         // Update account name and medium in parallel
+        const galleriesArray = formData.galleriesText
+          .split('\n')
+          .map((g) => g.trim())
+          .filter(Boolean);
+
         const [nameResult, mediumResult] = await Promise.allSettled([
           updateAccountMutation.mutateAsync({
             name: formData.name,
           }),
-          updateMedium(formData.medium),
+          updateMedium({
+            medium: formData.medium,
+            cv: formData.cv,
+            links: formData.links,
+            galleries: galleriesArray,
+          }),
         ]);
 
         // Check for errors
@@ -123,6 +142,69 @@ export function UnifiedProfileSettingsForm({
           />
           <p className="text-sm text-ink/60 font-serif">
             This will be automatically filled in when you create new artworks
+          </p>
+        </div>
+
+        {/* CV */}
+        <div className="space-y-2">
+          <Label htmlFor="cv">Artist CV / Bio</Label>
+          <Textarea
+            id="cv"
+            value={formData.cv}
+            onChange={(e) =>
+              setFormData({ ...formData, cv: e.target.value })
+            }
+            placeholder="Share your background, education, exhibitions, or a short CV. You can also paste a link to an external CV here."
+            rows={5}
+            className="font-serif"
+          />
+          <p className="text-sm text-ink/60 font-serif">
+            This appears on your public artist profile.
+          </p>
+        </div>
+
+        {/* Links */}
+        <div className="space-y-2">
+          <Label>Links (up to 3)</Label>
+          <p className="text-xs text-ink/60 font-serif">
+            Add links to your website, portfolio, or social profiles.
+          </p>
+          {[0, 1, 2].map((idx) => (
+            <Input
+              key={idx}
+              value={formData.links[idx] ?? ''}
+              onChange={(e) => {
+                const next = [...formData.links];
+                next[idx] = e.target.value;
+                setFormData({ ...formData, links: next });
+              }}
+              placeholder={
+                idx === 0
+                  ? 'https://your-website.com'
+                  : idx === 1
+                  ? 'https://instagram.com/your-handle'
+                  : 'https://link-three.com'
+              }
+              className="font-serif"
+            />
+          ))}
+        </div>
+
+        {/* Galleries */}
+        <div className="space-y-2">
+          <Label htmlFor="galleries">Galleries (one per line)</Label>
+          <Textarea
+            id="galleries"
+            value={formData.galleriesText}
+            onChange={(e) =>
+              setFormData({ ...formData, galleriesText: e.target.value })
+            }
+            placeholder={'Gallery Name, City\nAnother Gallery, City\nThird Gallery, Country'}
+            rows={4}
+            className="font-serif"
+          />
+          <p className="text-sm text-ink/60 font-serif">
+            List galleries you&apos;ve worked with or that represent you.
           </p>
         </div>
       </div>

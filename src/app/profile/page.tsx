@@ -1,6 +1,14 @@
 import { redirect } from 'next/navigation';
+import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@kit/ui/card';
+import { Button } from '@kit/ui/button';
 import { UnifiedProfileSettingsForm } from '~/components/unified-profile-settings-form';
 
 export const metadata = {
@@ -23,7 +31,11 @@ export default async function ProfilePage() {
     .single();
 
   const currentName = account?.name || '';
-  const currentMedium = (account?.public_data as any)?.medium || '';
+  const publicData = (account?.public_data as any) || {};
+  const currentMedium = publicData.medium || '';
+  const currentCv = publicData.cv || '';
+  const currentLinks = (publicData.links as string[]) || [];
+  const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
 
   return (
@@ -38,13 +50,51 @@ export default async function ProfilePage() {
       </div>
 
       <div className="flex w-full flex-1 flex-col space-y-4">
-        {/* Profile Settings - Name and Medium */}
+        {/* Avatar & Photo Change Shortcut */}
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/30 bg-wine/10">
+                {currentPictureUrl ? (
+                  <Image
+                    src={currentPictureUrl}
+                    alt={currentName || 'Profile photo'}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-wine/10">
+                    <span className="text-2xl font-display font-bold text-wine uppercase">
+                      {currentName?.charAt(0) || '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <CardTitle>Your Profile Photo</CardTitle>
+                <CardDescription>
+                  This photo appears on your artist profile and in the registry.
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif w-full sm:w-auto"
+            >
+              <a href="/settings">Change Photo in Settings</a>
+            </Button>
+          </CardHeader>
+        </Card>
+
+        {/* Profile Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
             <CardDescription>
-              Update your name and default medium. Your medium will be automatically filled in when creating new artworks. 
-              To upload a profile picture, visit the <a href="/settings" className="text-wine hover:underline">Settings page</a>.
+              Update your public profile. These details appear on your artist
+              page and when people view your artworks.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -52,6 +102,9 @@ export default async function ProfilePage() {
               userId={user.id}
               currentName={currentName}
               currentMedium={currentMedium}
+              currentCv={currentCv}
+              currentLinks={currentLinks}
+              currentGalleries={currentGalleries}
             />
           </CardContent>
         </Card>
