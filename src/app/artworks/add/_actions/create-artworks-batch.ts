@@ -75,27 +75,40 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         const certificateNumber = await generateCertificateNumber(client);
 
         // Create artwork record
+        const insertData: any = {
+          account_id: userId,
+          title: title.trim(),
+          description,
+          artist_name: artistName,
+          medium,
+          image_url: imageUrl,
+          certificate_number: certificateNumber,
+          status: 'verified',
+          created_by: userId,
+          updated_by: userId,
+        };
+
+        // Try to include is_public, but handle case where migration hasn't been run yet
+        insertData.is_public = isPublic;
+
         const { data: artwork, error } = await (client as any)
           .from('artworks')
-          .insert({
-            account_id: userId,
-            title: title.trim(),
-            description,
-            artist_name: artistName,
-            medium,
-            image_url: imageUrl,
-            certificate_number: certificateNumber,
-            status: 'verified',
-            is_public: isPublic,
-            created_by: userId,
-            updated_by: userId,
-          })
+          .insert(insertData)
           .select('id')
           .single();
 
         if (error) {
           console.error(`Error creating artwork ${i + 1}:`, error);
-          errors.push(`Failed to create artwork ${i + 1}: ${error.message}`);
+          
+          // Check if error is about missing is_public column
+          if (error.message?.includes('is_public') || error.message?.includes('schema cache')) {
+            errors.push(
+              `Database migration required: Please run the migration to add the is_public column. ` +
+              `Run: cd makerkit/nextjs-saas-starter-kit-lite/apps/web && supabase db push`
+            );
+          } else {
+            errors.push(`Failed to create artwork ${i + 1}: ${error.message}`);
+          }
         } else if (artwork) {
           artworkIds.push(artwork.id);
         }
