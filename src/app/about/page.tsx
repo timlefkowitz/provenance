@@ -104,33 +104,45 @@ export default function AboutPage() {
             Our Founders
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Founder 1 - Update with actual founder information */}
+            {/* Bryson Brooks */}
             <div className="text-center">
               <div className="mb-4">
                 <div className="w-32 h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30">
                   <span className="text-4xl font-display text-wine">[Photo]</span>
                 </div>
               </div>
-              <h3 className="font-display text-2xl mb-2 text-wine">Founder Name</h3>
-              <p className="font-body italic text-lg mb-3 text-wine/80">Co-Founder & Role</p>
+              <h3 className="font-display text-2xl mb-2 text-wine">Bryson Brooks</h3>
+              <p className="font-body italic text-lg mb-3 text-wine/80">Co-Founder & Artist</p>
               <p className="font-body text-base leading-relaxed">
-                Brief bio about the founder's background, expertise, and vision for Provenance.
-                Update this section with actual founder information.
+                Bryson Brooks is an internationally recognized artist originally from North Texas 
+                and now based in San Antonio. Known as both a painter and performance artist, his 
+                unique style blends playful, impressionistic techniques with emotional depth. After 
+                earning his Bachelor of Fine Arts from the University of Texas at Austin, Brooks 
+                spent time in Mexico City developing his visual and performative work. His notable 
+                large-scale landscape paintings "Dawn" and "Dusk," created for Texas A&M 
+                University-San Antonio, showcase his bold use of color, lines, and metallic 
+                elements to evoke dreamlike, surreal landscapes.
               </p>
             </div>
 
-            {/* Founder 2 - Update with actual founder information */}
+            {/* Timothy Lefkowitz */}
             <div className="text-center">
               <div className="mb-4">
                 <div className="w-32 h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30">
                   <span className="text-4xl font-display text-wine">[Photo]</span>
                 </div>
               </div>
-              <h3 className="font-display text-2xl mb-2 text-wine">Founder Name</h3>
-              <p className="font-body italic text-lg mb-3 text-wine/80">Co-Founder & Role</p>
+              <h3 className="font-display text-2xl mb-2 text-wine">Timothy Lefkowitz</h3>
+              <p className="font-body italic text-lg mb-3 text-wine/80">Co-Founder & Developer</p>
               <p className="font-body text-base leading-relaxed">
-                Brief bio about the founder's background, expertise, and vision for Provenance.
-                Update this section with actual founder information.
+                Timothy Lefkowitz is a multifaceted professional based in San Antonio, combining 
+                accomplished software development with creative visual artistry. As a Software 
+                Engineer at Accenture Federal Services, he specializes in Java, Akka, Kafka, and 
+                Openshift, with expertise in full-stack development and web applications. In 
+                addition to his technical background, Lefkowitz is an established photographer 
+                and artist, having exhibited his work at numerous venues in San Antonio. His 
+                artistic practice, which emphasizes light as a powerful motif, uniquely informs 
+                his approach to building technology solutions for artists.
               </p>
             </div>
           </div>
