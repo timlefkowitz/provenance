@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
       ...INTERNAL_PACKAGES,
     ],
   },
+  /** Increase Server Actions body size limit to handle iPhone photos (typically 3-5 MB each) */
+  serverActions: {
+    bodySizeLimit: '50mb', // Allow up to 50 MB for multiple high-quality photos
+  },
   /** We already do linting and typechecking as separate tasks in CI */
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
