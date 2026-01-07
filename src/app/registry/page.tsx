@@ -76,7 +76,7 @@ export default async function RegistryPage() {
           {accountsList.map((account) => {
             const medium = account.public_data?.medium || '';
             const artworkCount = artworkCounts[account.id] || 0;
-
+            
             return (
               <Card 
                 key={account.id}

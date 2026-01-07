@@ -61,37 +61,37 @@ export function Navigation() {
 
         {/* Desktop Auth Buttons */}
         <div className="hidden md:flex items-center gap-3">
-          {user.data ? (
-            <>
-              <Button
-                asChild
-                size="sm"
-                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-              >
-                <Link href="/artworks/add">Add Artwork</Link>
-              </Button>
-              <ProfileAccountDropdownContainer />
-            </>
-          ) : (
-            <>
-              <Button 
-                asChild 
-                variant="ghost" 
-                size="sm"
-                className="text-ink hover:text-wine hover:bg-wine/10 font-serif"
-              >
-                <Link href={pathsConfig.auth.signIn}>Log In</Link>
-              </Button>
-              <Button 
-                asChild 
-                size="sm"
-                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-              >
-                <Link href={pathsConfig.auth.signUp}>Sign Up</Link>
-              </Button>
-            </>
-          )}
-        </div>
+        {user.data ? (
+          <>
+            <Button
+              asChild
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+            >
+              <Link href="/artworks/add">Add Artwork</Link>
+            </Button>
+            <ProfileAccountDropdownContainer />
+          </>
+        ) : (
+          <>
+            <Button 
+              asChild 
+              variant="ghost" 
+              size="sm"
+              className="text-ink hover:text-wine hover:bg-wine/10 font-serif"
+            >
+              <Link href={pathsConfig.auth.signIn}>Log In</Link>
+            </Button>
+            <Button 
+              asChild 
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+            >
+              <Link href={pathsConfig.auth.signUp}>Sign Up</Link>
+            </Button>
+          </>
+        )}
+      </div>
 
         {/* Mobile Auth Buttons (when menu is closed) */}
         {!mobileMenuOpen && (

@@ -343,11 +343,11 @@ export function AddArtworkForm({
                       <X className="h-4 w-4" />
                     </button>
                     <div className="relative">
-                      <img
-                        src={img.preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-48 object-cover rounded-lg mb-2"
-                      />
+                    <img
+                      src={img.preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-48 object-cover rounded-lg mb-2"
+                    />
                       {img.location && (
                         <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -359,14 +359,14 @@ export function AddArtworkForm({
                       <Label htmlFor={`title-${index}`} className="text-xs font-serif text-ink/70">
                         Title for this artwork *
                       </Label>
-                      <Input
+                    <Input
                         id={`title-${index}`}
-                        value={img.title}
-                        onChange={(e) => updateImageTitle(index, e.target.value)}
+                      value={img.title}
+                      onChange={(e) => updateImageTitle(index, e.target.value)}
                         placeholder="e.g., Dawn over the Valley"
-                        className="font-serif text-sm"
-                        required
-                      />
+                      className="font-serif text-sm"
+                      required
+                    />
                     </div>
                   </div>
                 ))}
