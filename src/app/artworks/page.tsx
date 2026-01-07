@@ -75,20 +75,21 @@ export default async function ArtworksPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl font-display font-bold text-wine mb-2">
+    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="flex-1">
+          <h1 className="text-3xl sm:text-4xl font-display font-bold text-wine mb-2">
             Artworks
           </h1>
-          <p className="text-ink/70 font-serif">
+          <p className="text-sm sm:text-base text-ink/70 font-serif">
             {user ? 'Your artworks and recent public works' : 'Recent public artworks'}
           </p>
         </div>
         {user && (
           <Button
             asChild
-            className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+            className="bg-wine text-parchment hover:bg-wine/90 font-serif w-full sm:w-auto"
+            size="sm"
           >
             <Link href="/artworks/add">Add Artwork</Link>
           </Button>
@@ -96,18 +97,18 @@ export default async function ArtworksPage() {
       </div>
 
       {!user && (
-        <div className="mb-8 p-6 bg-parchment/50 border border-wine/20 rounded-lg">
-          <p className="text-ink/70 font-serif mb-4">
+        <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-parchment/50 border border-wine/20 rounded-lg">
+          <p className="text-sm sm:text-base text-ink/70 font-serif mb-4">
             Sign in to add your own artworks and create certificates of authenticity.
           </p>
-          <Button asChild variant="outline" className="font-serif">
+          <Button asChild variant="outline" className="font-serif w-full sm:w-auto" size="sm">
             <Link href="/auth/sign-in">Sign In</Link>
           </Button>
         </div>
       )}
 
       {artworks && artworks.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {artworks.map((artwork) => (
             <ArtworkCard 
               key={artwork.id} 
@@ -117,24 +118,26 @@ export default async function ArtworksPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-16">
-          <p className="text-ink/70 font-serif text-lg mb-4">
+        <div className="text-center py-12 sm:py-16">
+          <p className="text-ink/70 font-serif text-base sm:text-lg mb-4 px-4">
             {user 
               ? 'No artworks yet. Add an artwork or follow artists to see their work here.' 
               : 'No artworks yet'}
           </p>
           {user && (
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <Button
                 asChild
-                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif w-full sm:w-auto"
+                size="sm"
               >
                 <Link href="/artworks/add">Add Your First Artwork</Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
-                className="font-serif border-wine/30 hover:bg-wine/10"
+                className="font-serif border-wine/30 hover:bg-wine/10 w-full sm:w-auto"
+                size="sm"
               >
                 <Link href="/artists">Discover Artists</Link>
               </Button>
