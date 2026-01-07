@@ -42,6 +42,7 @@ export function AddArtworkForm({
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const [primaryTitle, setPrimaryTitle] = useState('');
   const [formData, setFormData] = useState({
     description: '',
     artistName: defaultArtistName,
@@ -57,6 +58,23 @@ export function AddArtworkForm({
       medium: prev.medium || defaultMedium,
     }));
   }, [defaultArtistName, defaultMedium]);
+
+  // Keep primaryTitle in sync with the single image title (common case: one artwork)
+  useEffect(() => {
+    if (imagePreviews.length === 1) {
+      // When a single image is added and no primary title yet, initialize it
+      if (!primaryTitle) {
+        setPrimaryTitle(imagePreviews[0].title);
+      } else if (imagePreviews[0].title !== primaryTitle) {
+        // When primary title changes, update the image title to match
+        setImagePreviews(prev =>
+          prev.map((img, index) =>
+            index === 0 ? { ...img, title: primaryTitle } : img,
+          ),
+        );
+      }
+    }
+  }, [imagePreviews, primaryTitle]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -231,6 +249,21 @@ export function AddArtworkForm({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      {/* Primary Title (for the main artwork) */}
+      <div className="space-y-2">
+        <Label htmlFor="primaryTitle">Artwork Title</Label>
+        <Input
+          id="primaryTitle"
+          value={primaryTitle}
+          onChange={(e) => setPrimaryTitle(e.target.value)}
+          placeholder="e.g., Dawn over the Valley"
+          className="font-serif"
+        />
+        <p className="text-xs text-ink/60 font-serif">
+          This will be applied to the first artwork. You can still edit individual titles under each photo.
+        </p>
+      </div>
 
       {/* Image Upload Section */}
       <div className="space-y-2">
