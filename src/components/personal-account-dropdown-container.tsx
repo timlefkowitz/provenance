@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import type { JwtPayload } from '@supabase/supabase-js';
-import { ChevronsUpDown, Home, LogOut, Settings } from 'lucide-react';
+import { ChevronsUpDown, Home, LogOut, Settings, User } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import {
@@ -25,6 +25,7 @@ import pathsConfig from '~/config/paths.config';
 
 const paths = {
   home: pathsConfig.app.home,
+  profile: pathsConfig.app.profile,
   profileSettings: pathsConfig.app.profileSettings,
 };
 
@@ -117,6 +118,16 @@ export function ProfileAccountDropdownContainer(props: {
             <span>
               <Trans i18nKey={'common:routes.home'} />
             </span>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link
+            className={'flex cursor-pointer items-center space-x-2'}
+            href={paths.profile}
+          >
+            <User className={'h-5'} />
+            <span>Profile</span>
           </Link>
         </DropdownMenuItem>
 
