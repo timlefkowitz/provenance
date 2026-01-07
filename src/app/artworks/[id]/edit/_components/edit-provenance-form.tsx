@@ -29,6 +29,7 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
+    title: artwork.title || '',
     creationDate: artwork.creation_date || '',
     dimensions: artwork.dimensions || '',
     formerOwners: artwork.former_owners || '',
@@ -43,6 +44,12 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+
+    // Validate title is not empty
+    if (!formData.title.trim()) {
+      setError('Title is required');
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -82,6 +89,18 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
       )}
 
       <div className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="title">Title *</Label>
+          <Input
+            id="title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Artwork title"
+            className="font-serif"
+            required
+          />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="creationDate">Creation Date</Label>
           <Input

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 export async function updateProvenance(
   artworkId: string,
   provenance: {
+    title: string;
     creationDate: string;
     dimensions: string;
     formerOwners: string;
@@ -39,8 +40,9 @@ export async function updateProvenance(
       return { error: 'You do not have permission to edit this artwork' };
     }
 
-    // Update provenance fields and privacy
+    // Update title, provenance fields and privacy
     const updateData: any = {
+      title: provenance.title?.trim() || null,
       creation_date: provenance.creationDate || null,
       dimensions: provenance.dimensions || null,
       former_owners: provenance.formerOwners || null,
@@ -68,6 +70,7 @@ export async function updateProvenance(
 
     revalidatePath(`/artworks/${artworkId}`);
     revalidatePath(`/artworks/${artworkId}/certificate`);
+    revalidatePath('/artworks'); // Revalidate the artworks feed
 
     return { success: true };
   } catch (error) {
