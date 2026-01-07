@@ -21,12 +21,6 @@ export function Navigation() {
         
         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link 
-            href="/collections" 
-            className="text-ink hover:text-wine transition-colors font-serif"
-          >
-            Collections
-          </Link>
-          <Link 
             href="/artworks" 
             className="text-ink hover:text-wine transition-colors font-serif"
           >

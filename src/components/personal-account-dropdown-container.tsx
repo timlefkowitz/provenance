@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import type { JwtPayload } from '@supabase/supabase-js';
-import { ChevronsUpDown, Home, LogOut, Settings, User } from 'lucide-react';
+import { ChevronsUpDown, Home, LogOut, Settings, User, Shield } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import {
@@ -19,6 +19,7 @@ import { ProfileAvatar } from '@kit/ui/profile-avatar';
 import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
 import { usePersonalAccountData } from '@kit/accounts/hooks/use-personal-account-data';
+import { AdminMenuItem } from './admin-menu-item';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
@@ -142,6 +143,8 @@ export function ProfileAccountDropdownContainer(props: {
             </span>
           </Link>
         </DropdownMenuItem>
+
+        <AdminMenuItem />
 
         <DropdownMenuSeparator />
 
