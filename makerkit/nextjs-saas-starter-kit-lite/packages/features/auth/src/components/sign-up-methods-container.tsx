@@ -14,6 +14,7 @@ export function SignUpMethodsContainer(props: {
   paths: {
     callback: string;
     appHome: string;
+    confirm?: string;
   };
 
   providers: {
@@ -25,13 +26,14 @@ export function SignUpMethodsContainer(props: {
   displayTermsCheckbox?: boolean;
 }) {
   const redirectUrl = getCallbackUrl(props);
+  const emailConfirmUrl = getEmailConfirmUrl(props);
   const defaultValues = getDefaultValues();
 
   return (
     <>
       <If condition={props.providers.password}>
         <EmailPasswordSignUpContainer
-          emailRedirectTo={redirectUrl}
+          emailRedirectTo={emailConfirmUrl}
           defaultValues={defaultValues}
           displayTermsCheckbox={props.displayTermsCheckbox}
         />
@@ -66,6 +68,7 @@ function getCallbackUrl(props: {
   paths: {
     callback: string;
     appHome: string;
+    confirm?: string;
   };
 
   inviteToken?: string;
@@ -75,6 +78,38 @@ function getCallbackUrl(props: {
   }
 
   const redirectPath = props.paths.callback;
+  const origin = window.location.origin;
+  const url = new URL(redirectPath, origin);
+
+  if (props.inviteToken) {
+    url.searchParams.set('invite_token', props.inviteToken);
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const next = searchParams.get('next');
+
+  if (next) {
+    url.searchParams.set('next', next);
+  }
+
+  return url.href;
+}
+
+function getEmailConfirmUrl(props: {
+  paths: {
+    callback: string;
+    appHome: string;
+    confirm?: string;
+  };
+
+  inviteToken?: string;
+}) {
+  if (!isBrowser()) {
+    return '';
+  }
+
+  // Use confirm path for email confirmations, fallback to callback if not provided
+  const redirectPath = props.paths.confirm || props.paths.callback;
   const origin = window.location.origin;
   const url = new URL(redirectPath, origin);
 

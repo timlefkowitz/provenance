@@ -20,6 +20,7 @@ export const generateMetadata = async () => {
 
 const paths = {
   callback: pathsConfig.auth.callback,
+  confirm: pathsConfig.auth.confirm,
   appHome: pathsConfig.app.home,
 };
 

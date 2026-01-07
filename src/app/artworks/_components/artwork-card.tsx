@@ -68,9 +68,15 @@ export function ArtworkCard({
       </CardHeader>
       <CardFooter className="pt-0 pb-4">
         <div className="flex items-center justify-between w-full text-xs text-ink/50 font-serif">
-          <span className="uppercase tracking-wider">
-            {artwork.certificate_number}
-          </span>
+          {isOwnArtwork ? (
+            <span className="uppercase tracking-wider">
+              {artwork.certificate_number}
+            </span>
+          ) : (
+            <span className="uppercase tracking-wider text-ink/30">
+              Certificate
+            </span>
+          )}
           <span>
             {new Date(artwork.created_at).toLocaleDateString('en-US', {
               month: 'short',

@@ -159,38 +159,40 @@ export function CertificateOfAuthenticity({
             </p>
           </div>
 
-          {/* Certificate Number and QR Code */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div className="flex-1">
-              <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Number</p>
-              <p className="text-lg sm:text-xl font-display font-bold text-wine break-all">
-                {artwork.certificate_number}
-              </p>
-            </div>
-            {certificateUrl && (
-              <div className="flex flex-col items-center sm:items-end">
-                <div className="bg-white p-2 border-2 border-wine/20 rounded">
-                  <QRCodeSVG
-                    value={certificateUrl}
-                    size={80}
-                    level="H"
-                    includeMargin={false}
-                    className="sm:hidden"
-                  />
-                  <QRCodeSVG
-                    value={certificateUrl}
-                    size={120}
-                    level="H"
-                    includeMargin={false}
-                    className="hidden sm:block"
-                  />
-                </div>
-                <p className="text-xs text-ink/50 font-serif mt-2 text-center max-w-[120px]">
-                  Scan to verify certificate
+          {/* Certificate Number and QR Code - Only visible to owner or admin */}
+          {(isOwner || isAdmin) && (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Number</p>
+                <p className="text-lg sm:text-xl font-display font-bold text-wine break-all">
+                  {artwork.certificate_number}
                 </p>
               </div>
-            )}
-          </div>
+              {certificateUrl && (
+                <div className="flex flex-col items-center sm:items-end">
+                  <div className="bg-white p-2 border-2 border-wine/20 rounded">
+                    <QRCodeSVG
+                      value={certificateUrl}
+                      size={80}
+                      level="H"
+                      includeMargin={false}
+                      className="sm:hidden"
+                    />
+                    <QRCodeSVG
+                      value={certificateUrl}
+                      size={120}
+                      level="H"
+                      includeMargin={false}
+                      className="hidden sm:block"
+                    />
+                  </div>
+                  <p className="text-xs text-ink/50 font-serif mt-2 text-center max-w-[120px]">
+                    Scan to verify certificate
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Artwork Image */}
           {artwork.image_url && (
@@ -355,15 +357,23 @@ export function CertificateOfAuthenticity({
           <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
             <p className="text-sm sm:text-base font-serif text-ink leading-relaxed mb-3 sm:mb-4 break-words">
               This certifies that the artwork described above has been registered in the
-              Provenance registry and assigned the certificate number{' '}
-              <span className="font-bold text-wine break-all">{artwork.certificate_number}</span>.
-              This certificate serves as a record of authenticity and provenance for the
+              Provenance registry
+              {(isOwner || isAdmin) ? (
+                <> and assigned the certificate number{' '}
+                <span className="font-bold text-wine break-all">{artwork.certificate_number}</span>.
+                </>
+              ) : (
+                '.'
+              )}
+              {' '}This certificate serves as a record of authenticity and provenance for the
               artwork.
             </p>
-            <p className="text-xs sm:text-sm text-ink/70 font-serif italic break-words">
-              This certificate is issued by Provenance and can be verified using the
-              certificate number above.
-            </p>
+            {(isOwner || isAdmin) && (
+              <p className="text-xs sm:text-sm text-ink/70 font-serif italic break-words">
+                This certificate is issued by Provenance and can be verified using the
+                certificate number above.
+              </p>
+            )}
           </div>
 
           {/* Footer */}
