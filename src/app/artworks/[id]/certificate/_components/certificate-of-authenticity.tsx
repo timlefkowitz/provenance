@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Button } from '@kit/ui/button';
+import { useMemo, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { useMemo } from 'react';
 import { Star } from 'lucide-react';
+import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { featureArtwork } from '../_actions/feature-artwork';
 
@@ -221,10 +221,15 @@ export function CertificateOfAuthenticity({
 
             {artwork.artist_name && (
               <div className="border-b border-wine/20 pb-2">
-                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Artist</p>
-                <p className="text-lg sm:text-xl font-serif text-ink break-words">
-                  {artwork.artist_name}
+                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                  Artist
                 </p>
+                <Link
+                  href={`/artists/${artwork.account_id}`}
+                  className="text-lg sm:text-xl font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                >
+                  {artwork.artist_name}
+                </Link>
               </div>
             )}
 

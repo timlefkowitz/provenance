@@ -76,13 +76,13 @@ export default async function RegistryPage() {
           {accountsList.map((account) => {
             const medium = account.public_data?.medium || '';
             const artworkCount = artworkCounts[account.id] || 0;
-            
+
             return (
               <Card 
                 key={account.id}
                 className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden"
               >
-                <Link href={`/artworks?artist=${account.id}`} className="block">
+                <Link href={`/artists/${account.id}`} className="block">
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center space-y-4">
                       {/* Avatar */}

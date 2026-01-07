@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardFooter, CardHeader } from '@kit/ui/card';
 import { FollowButton } from './follow-button';
 
@@ -41,16 +41,22 @@ export function ArtworkCard({
         </div>
       </Link>
       <CardHeader className="flex-1">
-        <Link href={`/artworks/${artwork.id}/certificate`} className="cursor-pointer">
+        <Link
+          href={`/artworks/${artwork.id}/certificate`}
+          className="cursor-pointer"
+        >
           <h3 className="font-display font-bold text-wine text-lg mb-1 line-clamp-2 group-hover:text-wine/80 transition-colors">
             {artwork.title}
           </h3>
         </Link>
         {artwork.artist_name && (
           <div className="flex items-center justify-between gap-2">
-            <p className="text-ink/70 font-serif text-sm">
+            <Link
+              href={`/artists/${artwork.account_id}`}
+              className="text-ink/70 font-serif text-sm hover:text-wine/80 transition-colors"
+            >
               {artwork.artist_name}
-            </p>
+            </Link>
             {currentUserId && !isOwnArtwork && (
               <FollowButton 
                 artistId={artwork.account_id}
