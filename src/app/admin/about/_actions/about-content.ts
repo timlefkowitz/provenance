@@ -7,6 +7,7 @@ import { isAdmin } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const ABOUT_CONTENT_PATH = path.join(process.cwd(), 'data', 'about-content.json');
+const ABOUT_PHOTOS_DIR = path.join(process.cwd(), 'public', 'data', 'about-photos');
 
 export type AboutContent = {
   header: {
@@ -34,6 +35,7 @@ export type AboutContent = {
       name: string;
       role: string;
       bio: string;
+      photo_url?: string | null;
     }>;
   };
   callToAction: {
@@ -95,12 +97,14 @@ export async function getAboutContent(): Promise<AboutContent> {
             {
               name: "Bryson Brooks",
               role: "Co-Founder & Artist",
-              bio: "Bryson Brooks is an internationally recognized artist originally from North Texas and now based in San Antonio. Known as both a painter and performance artist, his unique style blends playful, impressionistic techniques with emotional depth. After earning his Bachelor of Fine Arts from the University of Texas at Austin, Brooks spent time in Mexico City developing his visual and performative work. His notable large-scale landscape paintings \"Dawn\" and \"Dusk,\" created for Texas A&M University-San Antonio, showcase his bold use of color, lines, and metallic elements to evoke dreamlike, surreal landscapes."
+              bio: "Bryson Brooks is an internationally recognized artist originally from North Texas and now based in San Antonio. Known as both a painter and performance artist, his unique style blends playful, impressionistic techniques with emotional depth. After earning his Bachelor of Fine Arts from the University of Texas at Austin, Brooks spent time in Mexico City developing his visual and performative work. His notable large-scale landscape paintings \"Dawn\" and \"Dusk,\" created for Texas A&M University-San Antonio, showcase his bold use of color, lines, and metallic elements to evoke dreamlike, surreal landscapes.",
+              photo_url: null
             },
             {
               name: "Timothy Lefkowitz",
               role: "Co-Founder & Developer",
-              bio: "Timothy Lefkowitz is a multifaceted professional based in San Antonio, combining accomplished software development with creative visual artistry. As a Software Engineer at Accenture Federal Services, he specializes in Java, Akka, Kafka, and Openshift, with expertise in full-stack development and web applications. In addition to his technical background, Lefkowitz is an established photographer and artist, having exhibited his work at numerous venues in San Antonio. His artistic practice, which emphasizes light as a powerful motif, uniquely informs his approach to building technology solutions for artists."
+              bio: "Timothy Lefkowitz is a multifaceted professional based in San Antonio, combining accomplished software development with creative visual artistry. As a Software Engineer at Accenture Federal Services, he specializes in Java, Akka, Kafka, and Openshift, with expertise in full-stack development and web applications. In addition to his technical background, Lefkowitz is an established photographer and artist, having exhibited his work at numerous venues in San Antonio. His artistic practice, which emphasizes light as a powerful motif, uniquely informs his approach to building technology solutions for artists.",
+              photo_url: null
             }
           ]
         },
@@ -161,6 +165,123 @@ export async function updateAboutContent(content: AboutContent) {
   } catch (error) {
     console.error('Error updating about content:', error);
     return { error: error instanceof Error ? error.message : 'Failed to update about content' };
+  }
+}
+
+/**
+ * Upload founder photo (admin only)
+ */
+export async function uploadFounderPhoto(founderIndex: number, formData: FormData) {
+  try {
+    const client = getSupabaseServerClient();
+    const { data: { user } } = await client.auth.getUser();
+
+    if (!user) {
+      return { error: 'You must be signed in' };
+    }
+
+    // Check if user is admin
+    const userIsAdmin = await isAdmin(user.id);
+    if (!userIsAdmin) {
+      return { error: 'You do not have permission to upload photos' };
+    }
+
+    const file = formData.get('file') as File;
+    if (!file) {
+      return { error: 'No file provided' };
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      return { error: 'File must be an image' };
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return { error: 'File size must be less than 5MB' };
+    }
+
+    // Ensure photos directory exists
+    await fs.mkdir(ABOUT_PHOTOS_DIR, { recursive: true });
+
+    // Generate filename: founder-{index}-{timestamp}.{ext}
+    const extension = file.name.split('.').pop() || 'jpg';
+    const timestamp = Date.now();
+    const fileName = `founder-${founderIndex}-${timestamp}.${extension}`;
+    const filePath = path.join(ABOUT_PHOTOS_DIR, fileName);
+
+    // Convert file to buffer and save
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    await fs.writeFile(filePath, buffer);
+
+    // Return the public URL path
+    const photoUrl = `/data/about-photos/${fileName}`;
+
+    // Update the JSON file with the new photo URL
+    const content = await getAboutContent();
+    if (content.founders.founders[founderIndex]) {
+      content.founders.founders[founderIndex].photo_url = photoUrl;
+      await updateAboutContent(content);
+    }
+
+    revalidatePath('/about');
+    revalidatePath('/admin/about');
+
+    return { success: true, photoUrl };
+  } catch (error) {
+    console.error('Error uploading founder photo:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to upload photo' };
+  }
+}
+
+/**
+ * Delete founder photo (admin only)
+ */
+export async function deleteFounderPhoto(founderIndex: number) {
+  try {
+    const client = getSupabaseServerClient();
+    const { data: { user } } = await client.auth.getUser();
+
+    if (!user) {
+      return { error: 'You must be signed in' };
+    }
+
+    // Check if user is admin
+    const userIsAdmin = await isAdmin(user.id);
+    if (!userIsAdmin) {
+      return { error: 'You do not have permission to delete photos' };
+    }
+
+    // Get current content
+    const content = await getAboutContent();
+    const founder = content.founders.founders[founderIndex];
+    
+    if (founder?.photo_url) {
+      // Extract filename from URL
+      const fileName = founder.photo_url.split('/').pop();
+      if (fileName) {
+        const filePath = path.join(ABOUT_PHOTOS_DIR, fileName);
+        try {
+          await fs.unlink(filePath);
+        } catch (unlinkError) {
+          // File might not exist, continue anyway
+          console.warn('Photo file not found:', filePath);
+        }
+      }
+
+      // Update JSON to remove photo URL
+      content.founders.founders[founderIndex].photo_url = null;
+      await updateAboutContent(content);
+    }
+
+    revalidatePath('/about');
+    revalidatePath('/admin/about');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting founder photo:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to delete photo' };
   }
 }
 

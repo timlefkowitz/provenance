@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getAboutContent } from '../admin/about/_actions/about-content';
 
 export const metadata = {
@@ -73,9 +74,21 @@ export default async function AboutPage() {
             {content.founders.founders.map((founder, idx) => (
               <div key={idx} className="text-center">
                 <div className="mb-4">
-                  <div className="w-32 h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30">
-                    <span className="text-4xl font-display text-wine">[Photo]</span>
-                  </div>
+                  {founder.photo_url ? (
+                    <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-wine/30">
+                      <Image
+                        src={founder.photo_url}
+                        alt={founder.name}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-32 h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30">
+                      <span className="text-4xl font-display text-wine">[Photo]</span>
+                    </div>
+                  )}
                 </div>
                 <h3 className="font-display text-2xl mb-2 text-wine">{founder.name}</h3>
                 <p className="font-body italic text-lg mb-3 text-wine/80">{founder.role}</p>

@@ -40,12 +40,14 @@
       {
         "name": "Bryson Brooks",
         "role": "Co-Founder & Artist",
-        "bio": "Bryson Brooks is an internationally recognized artist originally from North Texas and now based in San Antonio. Known as both a painter and performance artist, his unique style blends playful, impressionistic techniques with emotional depth. After earning his Bachelor of Fine Arts from the University of Texas at Austin, Brooks spent time in Mexico City developing his visual and performative work. His notable large-scale landscape paintings \"Dawn\" and \"Dusk,\" created for Texas A&M University-San Antonio, showcase his bold use of color, lines, and metallic elements to evoke dreamlike, surreal landscapes."
+        "bio": "Bryson Brooks is an internationally recognized artist originally from North Texas and now based in San Antonio. Known as both a painter and performance artist, his unique style blends playful, impressionistic techniques with emotional depth. After earning his Bachelor of Fine Arts from the University of Texas at Austin, Brooks spent time in Mexico City developing his visual and performative work. His notable large-scale landscape paintings \"Dawn\" and \"Dusk,\" created for Texas A&M University-San Antonio, showcase his bold use of color, lines, and metallic elements to evoke dreamlike, surreal landscapes.",
+        "photo_url": "https://live.staticflickr.com/65535/55028483369_8a1687e537_b.jpg"
       },
       {
         "name": "Timothy Lefkowitz",
         "role": "Co-Founder & Developer",
-        "bio": "Timothy Lefkowitz is a multifaceted professional based in San Antonio, combining accomplished software development with creative visual artistry. As a Software Engineer at Accenture Federal Services, he specializes in Java, Akka, Kafka, and Openshift, with expertise in full-stack development and web applications. In addition to his technical background, Lefkowitz is an established photographer and artist, having exhibited his work at numerous venues in San Antonio. His artistic practice, which emphasizes light as a powerful motif, uniquely informs his approach to building technology solutions for artists."
+        "bio": "Timothy Lefkowitz is a multifaceted professional based in San Antonio, combining accomplished software development with creative visual artistry. As a Software Engineer at Accenture Federal Services, he specializes in Java, Akka, Kafka, and Openshift, with expertise in full-stack development and web applications. In addition to his technical background, Lefkowitz is an established photographer and artist, having exhibited his work at numerous venues in San Antonio. His artistic practice, which emphasizes light as a powerful motif, uniquely informs his approach to building technology solutions for artists.",
+        "photo_url": "https://lh3.googleusercontent.com/a/ACg8ocJRLeOGhs21qLLcuBznH-Q1UJwg2lr2ImZ7Y3ewQ43yYdTCXrqxFA=s576-c-no"
       }
     ]
   },
