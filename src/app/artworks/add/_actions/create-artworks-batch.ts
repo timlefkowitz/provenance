@@ -16,6 +16,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const description = formData.get('description') as string || '';
     const artistName = formData.get('artistName') as string || '';
     const medium = formData.get('medium') as string || '';
+    const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
 
     if (!images || images.length === 0) {
       return { error: 'At least one image is required' };
@@ -85,6 +86,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             image_url: imageUrl,
             certificate_number: certificateNumber,
             status: 'verified',
+            is_public: isPublic,
             created_by: userId,
             updated_by: userId,
           })

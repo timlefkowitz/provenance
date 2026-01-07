@@ -7,6 +7,7 @@ import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
+import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Camera, X, Upload } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
@@ -36,6 +37,7 @@ export function AddArtworkForm({
     description: '',
     artistName: defaultArtistName,
     medium: defaultMedium,
+    isPublic: true, // Default to public
   });
 
   // Update form data when defaults change (only if fields are empty)
@@ -147,6 +149,7 @@ export function AddArtworkForm({
         formDataToSend.append('description', formData.description);
         formDataToSend.append('artistName', formData.artistName);
         formDataToSend.append('medium', formData.medium);
+        formDataToSend.append('isPublic', formData.isPublic.toString());
 
         const result = await createArtworksBatch(formDataToSend, userId);
         
@@ -329,6 +332,25 @@ export function AddArtworkForm({
         <p className="text-xs text-ink/60 font-serif">
           This description will be applied to all artworks
         </p>
+      </div>
+
+      {/* Privacy Setting */}
+      <div className="space-y-2 p-4 border border-wine/20 rounded-lg bg-parchment/50">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="isPublic" className="text-base font-serif">
+              Make artworks public
+            </Label>
+            <p className="text-sm text-ink/60 font-serif">
+              Public artworks are visible to everyone. Private artworks are only visible to you.
+            </p>
+          </div>
+          <Switch
+            id="isPublic"
+            checked={formData.isPublic}
+            onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+          />
+        </div>
       </div>
 
       <div className="flex gap-4 pt-4">

@@ -6,6 +6,7 @@ import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
+import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { updateProvenance } from '../_actions/update-provenance';
 
@@ -19,6 +20,7 @@ type Artwork = {
   exhibition_history: string | null;
   historic_context: string | null;
   celebrity_notes: string | null;
+  is_public: boolean | null;
 };
 
 export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
@@ -34,6 +36,7 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
     exhibitionHistory: artwork.exhibition_history || '',
     historicContext: artwork.historic_context || '',
     celebrityNotes: artwork.celebrity_notes || '',
+    isPublic: artwork.is_public ?? true, // Default to true if null
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,6 +162,25 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
             rows={4}
             className="font-serif"
           />
+        </div>
+
+        {/* Privacy Setting */}
+        <div className="space-y-2 p-4 border border-wine/20 rounded-lg bg-parchment/50">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="isPublic" className="text-base font-serif">
+                Make artwork public
+              </Label>
+              <p className="text-sm text-ink/60 font-serif">
+                Public artworks are visible to everyone. Private artworks are only visible to you.
+              </p>
+            </div>
+            <Switch
+              id="isPublic"
+              checked={formData.isPublic}
+              onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+            />
+          </div>
         </div>
       </div>
 

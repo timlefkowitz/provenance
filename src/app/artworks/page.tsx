@@ -16,43 +16,58 @@ export default async function ArtworksPage() {
   let error = null;
 
   if (!user) {
-    // Not signed in - show all verified artworks as a public feed
+    // Not signed in - show only public verified artworks
     const result = await client
       .from('artworks')
       .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
       .eq('status', 'verified')
+      .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(50);
     
     artworks = result.data;
     error = result.error;
   } else {
-    // Signed in - show only artworks from:
-    // 1. The current user
-    // 2. Artists the user follows
+    // Signed in - show:
+    // 1. All artworks from the current user (public and private)
+    // 2. Public artworks from others (including followed artists)
     
     // First, get the list of users this user follows
     const { data: following } = await client
       .from('user_follows')
-      .select('following_id')
-      .eq('follower_id', user.id);
+      .select('followed_user_id')
+      .eq('follower_user_id', user.id);
     
-    const followingIds = following?.map(f => f.following_id) || [];
+    const followingIds = following?.map(f => f.followed_user_id) || [];
     
-    // Include the current user's ID to show their own artworks
-    const accountIdsToShow = [user.id, ...followingIds];
-    
-    // Fetch artworks from these accounts
-    const result = await client
+    // Fetch:
+    // - User's own artworks (all, regardless of privacy)
+    // - Public artworks from others (including followed artists)
+    const { data: ownArtworks } = await client
       .from('artworks')
       .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
       .eq('status', 'verified')
-      .in('account_id', accountIdsToShow)
+      .eq('account_id', user.id);
+    
+    const { data: publicArtworks } = await client
+      .from('artworks')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .eq('status', 'verified')
+      .eq('is_public', true)
+      .neq('account_id', user.id) // Exclude user's own artworks (already fetched)
       .order('created_at', { ascending: false })
       .limit(50);
     
-    artworks = result.data;
-    error = result.error;
+    // Combine and sort by created_at
+    const allArtworks = [
+      ...(ownArtworks || []),
+      ...(publicArtworks || [])
+    ].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ).slice(0, 50); // Limit to 50 total
+    
+    artworks = allArtworks;
+    error = null; // We handle errors per query above
   }
 
   if (error) {
@@ -67,7 +82,7 @@ export default async function ArtworksPage() {
             Artworks
           </h1>
           <p className="text-ink/70 font-serif">
-            {user ? 'Your artworks and artists you follow' : 'Recent uploads and verified artworks'}
+            {user ? 'Your artworks and recent public works' : 'Recent public artworks'}
           </p>
         </div>
         {user && (

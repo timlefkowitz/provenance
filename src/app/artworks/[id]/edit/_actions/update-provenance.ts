@@ -13,6 +13,7 @@ export async function updateProvenance(
     exhibitionHistory: string;
     historicContext: string;
     celebrityNotes: string;
+    isPublic?: boolean;
   }
 ) {
   try {
@@ -38,19 +39,26 @@ export async function updateProvenance(
       return { error: 'You do not have permission to edit this artwork' };
     }
 
-    // Update provenance fields
+    // Update provenance fields and privacy
+    const updateData: any = {
+      creation_date: provenance.creationDate || null,
+      dimensions: provenance.dimensions || null,
+      former_owners: provenance.formerOwners || null,
+      auction_history: provenance.auctionHistory || null,
+      exhibition_history: provenance.exhibitionHistory || null,
+      historic_context: provenance.historicContext || null,
+      celebrity_notes: provenance.celebrityNotes || null,
+      updated_by: user.id,
+    };
+
+    // Only update is_public if it's provided
+    if (provenance.isPublic !== undefined) {
+      updateData.is_public = provenance.isPublic;
+    }
+
     const { error } = await (client as any)
       .from('artworks')
-      .update({
-        creation_date: provenance.creationDate || null,
-        dimensions: provenance.dimensions || null,
-        former_owners: provenance.formerOwners || null,
-        auction_history: provenance.auctionHistory || null,
-        exhibition_history: provenance.exhibitionHistory || null,
-        historic_context: provenance.historicContext || null,
-        celebrity_notes: provenance.celebrityNotes || null,
-        updated_by: user.id,
-      })
+      .update(updateData)
       .eq('id', artworkId);
 
     if (error) {
