@@ -52,13 +52,16 @@ export function CertificateOfAuthenticity({
   const [pending, startTransition] = useTransition();
   const [featured, setFeatured] = useState(false);
 
-  // Generate the certificate URL
+  // Generate the certificate URL - only for owners
   const certificateUrl = useMemo(() => {
+    if (!isOwner) {
+      return '';
+    }
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/artworks/${artwork.id}/certificate`;
     }
     return '';
-  }, [artwork.id]);
+  }, [artwork.id, isOwner]);
 
   const handlePrint = () => {
     window.print();
@@ -159,8 +162,8 @@ export function CertificateOfAuthenticity({
             </p>
           </div>
 
-          {/* Certificate Number and QR Code - Only visible to owner or admin */}
-          {(isOwner || isAdmin) && (
+          {/* Certificate Number and QR Code - Only visible to owner */}
+          {isOwner && (
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div className="flex-1">
                 <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Number</p>
@@ -358,7 +361,7 @@ export function CertificateOfAuthenticity({
             <p className="text-sm sm:text-base font-serif text-ink leading-relaxed mb-3 sm:mb-4 break-words">
               This certifies that the artwork described above has been registered in the
               Provenance registry
-              {(isOwner || isAdmin) ? (
+              {isOwner ? (
                 <> and assigned the certificate number{' '}
                 <span className="font-bold text-wine break-all">{artwork.certificate_number}</span>.
                 </>
@@ -368,7 +371,7 @@ export function CertificateOfAuthenticity({
               {' '}This certificate serves as a record of authenticity and provenance for the
               artwork.
             </p>
-            {(isOwner || isAdmin) && (
+            {isOwner && (
               <p className="text-xs sm:text-sm text-ink/70 font-serif italic break-words">
                 This certificate is issued by Provenance and can be verified using the
                 certificate number above.
