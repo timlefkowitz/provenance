@@ -93,24 +93,28 @@ export function CertificateOfAuthenticity({
 
   return (
     <div className="min-h-screen bg-parchment">
-      {/* Print controls - hidden when printing */}
+      {/* Print controls - hidden when printing, only visible to owner */}
       <div className="container mx-auto px-4 py-4 sm:py-6 print:hidden">
         <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
-          <Button
-            onClick={handleDownload}
-            variant="outline"
-            className="font-serif text-xs sm:text-sm"
-            size="sm"
-          >
-            Download PDF
-          </Button>
-          <Button
-            onClick={handlePrint}
-            className="bg-wine text-parchment hover:bg-wine/90 font-serif text-xs sm:text-sm"
-            size="sm"
-          >
-            Print
-          </Button>
+          {isOwner && (
+            <>
+              <Button
+                onClick={handleDownload}
+                variant="outline"
+                className="font-serif text-xs sm:text-sm"
+                size="sm"
+              >
+                Download PDF
+              </Button>
+              <Button
+                onClick={handlePrint}
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif text-xs sm:text-sm"
+                size="sm"
+              >
+                Print
+              </Button>
+            </>
+          )}
           {isOwner && (
             <Button
               onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
