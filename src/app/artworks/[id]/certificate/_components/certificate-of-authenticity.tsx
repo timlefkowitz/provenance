@@ -73,6 +73,93 @@ export function CertificateOfAuthenticity({
     window.print();
   };
 
+  const handlePrintQR = () => {
+    if (!certificateUrl) return;
+    
+    // Create a new window with just the QR code
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    // Use a QR code image service or generate SVG
+    const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(certificateUrl)}`;
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>QR Code - ${artwork.title}</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 40px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              font-family: serif;
+            }
+            .qr-container {
+              text-align: center;
+              max-width: 400px;
+            }
+            .qr-code {
+              margin: 20px auto;
+              display: block;
+              border: 2px solid #4A2F25;
+              padding: 10px;
+              background: white;
+            }
+            .qr-code img {
+              display: block;
+              width: 100%;
+              height: auto;
+            }
+            .title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 10px;
+              color: #4A2F25;
+            }
+            .certificate-number {
+              font-size: 14px;
+              margin-top: 10px;
+              color: #666;
+            }
+            @media print {
+              body {
+                padding: 20px;
+              }
+              @page {
+                margin: 1cm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="qr-container">
+            <div class="title">${artwork.title}</div>
+            <div class="qr-code">
+              <img src="${qrCodeImageUrl}" alt="QR Code" />
+            </div>
+            <div class="certificate-number">Certificate: ${artwork.certificate_number}</div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.onafterprint = function() {
+                  window.close();
+                };
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleFeature = () => {
     startTransition(async () => {
       try {
@@ -113,6 +200,16 @@ export function CertificateOfAuthenticity({
               >
                 Print
               </Button>
+              {certificateUrl && (
+                <Button
+                  onClick={handlePrintQR}
+                  variant="outline"
+                  className="font-serif text-xs sm:text-sm"
+                  size="sm"
+                >
+                  Print QR
+                </Button>
+              )}
             </>
           )}
           {isOwner && (
