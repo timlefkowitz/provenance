@@ -56,6 +56,26 @@ export default async function AdminPage() {
           </div>
         </div>
 
+        {/* Queued Artworks */}
+        <div className="border-4 border-double border-wine p-6 bg-parchment">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-display font-bold text-wine mb-2">
+                Queued Artworks
+              </h2>
+              <p className="text-ink/70 font-serif text-sm">
+                View verified artworks that are available to be featured on the homepage.
+              </p>
+            </div>
+            <Button
+              asChild
+              className="bg-wine text-parchment hover:bg-wine/90"
+            >
+              <Link href="/admin/queued-artworks">View Queued Artworks</Link>
+            </Button>
+          </div>
+        </div>
+
         <FeaturedArtworksManager />
       </div>
     </div>

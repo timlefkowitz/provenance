@@ -2,6 +2,11 @@
 
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+/**
+ * Get a featured entry for the homepage.
+ * Uses the featured_artworks array system - randomly selects one from the list.
+ * Falls back to the latest verified public artwork if no featured artworks exist.
+ */
 export async function getFeaturedEntry() {
   try {
     const client = getSupabaseServerAdminClient();
@@ -12,13 +17,17 @@ export async function getFeaturedEntry() {
       .select('id, public_data')
       .limit(100);
 
-    // Find featured_artworks array in any account's public_data
+    // Collect ALL featured artwork IDs from ALL accounts (consolidated)
     let featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
       const publicData = account.public_data as Record<string, any>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
-        featuredArtworkIds = publicData.featured_artworks;
-        break; // Use the first one we find
+        // Merge all IDs from all accounts (avoid duplicates)
+        for (const id of publicData.featured_artworks) {
+          if (!featuredArtworkIds.includes(id)) {
+            featuredArtworkIds.push(id);
+          }
+        }
       }
     }
 
@@ -36,6 +45,9 @@ export async function getFeaturedEntry() {
       if (allFeaturedArtworks && allFeaturedArtworks.length > 0) {
         const randomIndex = Math.floor(Math.random() * allFeaturedArtworks.length);
         artwork = allFeaturedArtworks[randomIndex];
+        console.log(`[Featured Entry] Selected artwork ${randomIndex + 1} of ${allFeaturedArtworks.length}: ${artwork.title}`);
+      } else {
+        console.log(`[Featured Entry] Found ${featuredArtworkIds.length} featured IDs, but ${allFeaturedArtworks?.length || 0} artworks matched criteria (verified & public)`);
       }
     }
 
@@ -86,13 +98,17 @@ export async function getFeaturedArtworksList() {
       .select('id, public_data')
       .limit(100);
 
-    // Find featured_artworks array in any account's public_data
+    // Collect ALL featured artwork IDs from ALL accounts (consolidated)
     let featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
       const publicData = account.public_data as Record<string, any>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
-        featuredArtworkIds = publicData.featured_artworks;
-        break; // Use the first one we find
+        // Merge all IDs from all accounts (avoid duplicates)
+        for (const id of publicData.featured_artworks) {
+          if (!featuredArtworkIds.includes(id)) {
+            featuredArtworkIds.push(id);
+          }
+        }
       }
     }
 

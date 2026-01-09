@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -9,6 +9,7 @@ import { Star } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { featureArtwork } from '../_actions/feature-artwork';
+import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 
 type Artwork = {
   id: string;
@@ -51,6 +52,26 @@ export function CertificateOfAuthenticity({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [featured, setFeatured] = useState(false);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
+  // Check if artwork is already featured on mount
+  useEffect(() => {
+    if (isAdmin) {
+      async function checkFeaturedStatus() {
+        try {
+          const isFeatured = await isArtworkFeatured(artwork.id);
+          setFeatured(isFeatured);
+        } catch (error) {
+          console.error('Error checking featured status:', error);
+        } finally {
+          setLoadingFeatured(false);
+        }
+      }
+      checkFeaturedStatus();
+    } else {
+      setLoadingFeatured(false);
+    }
+  }, [artwork.id, isAdmin]);
 
   // Generate the certificate URL - only for owners
   const certificateUrl = useMemo(() => {
@@ -216,15 +237,23 @@ export function CertificateOfAuthenticity({
               Edit
             </Button>
           )}
-          {isAdmin && (
+          {isAdmin && !loadingFeatured && (
             <Button
               onClick={handleFeature}
               disabled={pending || featured}
               variant="outline"
-              className="font-serif border-wine/30 hover:bg-wine/10 text-xs sm:text-sm"
+              className={`font-serif text-xs sm:text-sm ${
+                featured 
+                  ? 'border-wine bg-wine/10 text-wine' 
+                  : 'border-wine/30 hover:bg-wine/10'
+              }`}
               size="sm"
             >
-              <Star className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <Star 
+                className={`mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 ${
+                  featured ? 'fill-wine text-wine' : ''
+                }`} 
+              />
               <span className="hidden sm:inline">
                 {pending ? 'Featuring...' : featured ? 'Featured!' : 'Feature on Homepage'}
               </span>

@@ -30,12 +30,14 @@ export function Navigation() {
           >
             Artworks
           </Link>
-          <Link 
-            href="/registry" 
-            className="text-ink hover:text-wine transition-colors font-serif"
-          >
-            Registry
-          </Link>
+          {user.data && (
+            <Link 
+              href="/registry" 
+              className="text-ink hover:text-wine transition-colors font-serif"
+            >
+              Registry
+            </Link>
+          )}
           <Link 
             href="/about" 
             className="text-ink hover:text-wine transition-colors font-serif"
@@ -132,13 +134,15 @@ export function Navigation() {
             >
               Artworks
             </Link>
-            <Link 
-              href="/registry" 
-              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Registry
-            </Link>
+            {user.data && (
+              <Link 
+                href="/registry" 
+                className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Registry
+              </Link>
+            )}
             <Link 
               href="/about" 
               className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"

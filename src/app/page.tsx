@@ -2,6 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { getFeaturedEntry } from "./admin/_actions/get-featured-entry";
 
+// Force dynamic rendering so featured artwork changes on each page load
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // Get featured entry (read-only, safe)
   const { featuredEntry } = await getFeaturedEntry();
