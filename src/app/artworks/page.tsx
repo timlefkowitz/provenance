@@ -18,20 +18,54 @@ export default async function ArtworksPage() {
   if (!user) {
     // Not signed in - use admin client to bypass RLS safely
     // and still filter to public verified artworks
-    const adminClient = getSupabaseServerAdminClient();
-    const result = await adminClient
-      .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
-      .eq('status', 'verified')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      // Verify service role key is available
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error('SUPABASE_SERVICE_ROLE_KEY is not set!');
+        throw new Error('Service role key not configured');
+      }
 
-    artworks = result.data || [];
-    error = result.error;
+      const adminClient = getSupabaseServerAdminClient();
+      
+      // Test query first to verify admin client works
+      const testResult = await adminClient
+        .from('artworks')
+        .select('id, status, is_public')
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .limit(5);
+      
+      console.log('Admin client test query result:', {
+        count: testResult.data?.length || 0,
+        error: testResult.error,
+        sample: testResult.data?.[0]
+      });
 
-    if (error) {
-      console.error('Error fetching public artworks for anonymous user (admin client):', error);
+      const result = await adminClient
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      artworks = result.data || [];
+      error = result.error;
+
+      console.log('Anonymous artworks query result:', {
+        count: artworks.length,
+        error: error,
+        firstArtwork: artworks[0]?.title || 'none'
+      });
+
+      if (error) {
+        console.error('Error fetching public artworks for anonymous user (admin client):', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+      }
+    } catch (err) {
+      console.error('Exception in anonymous artworks fetch:', err);
+      error = err as any;
+      artworks = [];
     }
   } else {
     // Signed in - show:
