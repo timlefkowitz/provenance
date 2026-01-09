@@ -115,16 +115,11 @@ export function CertificateOfAuthenticity({
               width: 100%;
               height: auto;
             }
-            .title {
+            .artist-name {
               font-size: 18px;
               font-weight: bold;
               margin-bottom: 10px;
               color: #4A2F25;
-            }
-            .certificate-number {
-              font-size: 14px;
-              margin-top: 10px;
-              color: #666;
             }
             @media print {
               body {
@@ -138,11 +133,10 @@ export function CertificateOfAuthenticity({
         </head>
         <body>
           <div class="qr-container">
-            <div class="title">${artwork.title}</div>
+            ${artwork.artist_name ? `<div class="artist-name">${artwork.artist_name}</div>` : ''}
             <div class="qr-code">
               <img src="${qrCodeImageUrl}" alt="QR Code" />
             </div>
-            <div class="certificate-number">Certificate: ${artwork.certificate_number}</div>
           </div>
           <script>
             window.onload = function() {
