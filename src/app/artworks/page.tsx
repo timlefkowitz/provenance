@@ -43,6 +43,18 @@ export default async function ArtworksPage() {
     // Log for debugging
     if (error) {
       console.error('Error fetching public artworks for anonymous user:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
+    } else if (!artworks || artworks.length === 0) {
+      console.log('No artworks returned - checking if any verified artworks exist...');
+      // Diagnostic query to see what's in the database
+      const diagnostic = await client
+        .from('artworks')
+        .select('id, status, is_public')
+        .limit(5);
+      console.log('Diagnostic query result:', diagnostic.data, diagnostic.error);
     }
   } else {
     // Signed in - show:
