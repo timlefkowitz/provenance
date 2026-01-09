@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { redirect } from 'next/navigation';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import Link from 'next/link';
 import { ArtworkCard } from './_components/artwork-card';
 import { Button } from '@kit/ui/button';
@@ -16,45 +16,22 @@ export default async function ArtworksPage() {
   let error = null;
 
   if (!user) {
-    // Not signed in - show only public verified artworks
-    // First try with is_public filter (if migration has been run)
-    let result = await client
+    // Not signed in - use admin client to bypass RLS safely
+    // and still filter to public verified artworks
+    const adminClient = getSupabaseServerAdminClient();
+    const result = await adminClient
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
       .eq('status', 'verified')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(50);
-    
-    // If that fails or returns no results, try without is_public filter
-    // (in case migration hasn't been run or all artworks are public by default)
-    if (result.error || !result.data || result.data.length === 0) {
-      result = await client
-        .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
-        .eq('status', 'verified')
-        .order('created_at', { ascending: false })
-        .limit(50);
-    }
-    
+
     artworks = result.data || [];
     error = result.error;
-    
-    // Log for debugging
+
     if (error) {
-      console.error('Error fetching public artworks for anonymous user:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Error hint:', error.hint);
-    } else if (!artworks || artworks.length === 0) {
-      console.log('No artworks returned - checking if any verified artworks exist...');
-      // Diagnostic query to see what's in the database
-      const diagnostic = await client
-        .from('artworks')
-        .select('id, status, is_public')
-        .limit(5);
-      console.log('Diagnostic query result:', diagnostic.data, diagnostic.error);
+      console.error('Error fetching public artworks for anonymous user (admin client):', error);
     }
   } else {
     // Signed in - show:

@@ -1,10 +1,10 @@
 'use server';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 export async function getFeaturedEntry() {
   try {
-    const client = getSupabaseServerClient();
+    const client = getSupabaseServerAdminClient();
     
     // Check all accounts for featured_artworks array in public_data
     const { data: allAccounts } = await client
@@ -22,32 +22,40 @@ export async function getFeaturedEntry() {
       }
     }
 
-    // If no featured artworks, return null
-    if (featuredArtworkIds.length === 0) {
-      return {
-        featuredEntry: null,
-      };
+    // Try to resolve a featured artwork, falling back to the latest verified public artwork
+    let artwork = null;
+
+    if (featuredArtworkIds.length > 0) {
+      const { data: allFeaturedArtworks } = await client
+        .from('artworks')
+        .select('id, title, description, image_url, artist_name')
+        .in('id', featuredArtworkIds)
+        .eq('status', 'verified')
+        .eq('is_public', true);
+
+      if (allFeaturedArtworks && allFeaturedArtworks.length > 0) {
+        const randomIndex = Math.floor(Math.random() * allFeaturedArtworks.length);
+        artwork = allFeaturedArtworks[randomIndex];
+      }
     }
 
-    // Filter to only public artworks first, then randomly select
-    // Fetch all featured artworks to check which are public
-    const { data: allFeaturedArtworks } = await (client as any)
-      .from('artworks')
-      .select('id, title, description, image_url, artist_name')
-      .in('id', featuredArtworkIds)
-      .eq('status', 'verified')
-      .eq('is_public', true);
+    // Fallback to latest verified public artwork
+    if (!artwork) {
+      const { data: fallbackArtwork } = await client
+        .from('artworks')
+        .select('id, title, description, image_url, artist_name')
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!allFeaturedArtworks || allFeaturedArtworks.length === 0) {
-      // No public featured artworks available
-      return {
-        featuredEntry: null,
-      };
+      artwork = fallbackArtwork ?? null;
     }
 
-    // Randomly select one from the public artworks
-    const randomIndex = Math.floor(Math.random() * allFeaturedArtworks.length);
-    const artwork = allFeaturedArtworks[randomIndex];
+    if (!artwork) {
+      return { featuredEntry: null };
+    }
 
     // Return the artwork as featured entry
     return {
@@ -70,7 +78,7 @@ export async function getFeaturedEntry() {
 
 export async function getFeaturedArtworksList() {
   try {
-    const client = getSupabaseServerClient();
+    const client = getSupabaseServerAdminClient();
     
     // Check all accounts for featured_artworks array in public_data
     const { data: allAccounts } = await client
