@@ -25,8 +25,13 @@ export default async function ArtworksPage() {
       .order('created_at', { ascending: false })
       .limit(50);
     
-    artworks = result.data;
+    artworks = result.data || [];
     error = result.error;
+    
+    // Log for debugging if no artworks found
+    if (!error && (!artworks || artworks.length === 0)) {
+      console.log('No public verified artworks found for anonymous users');
+    }
   } else {
     // Signed in - show:
     // 1. All artworks from the current user (public and private)

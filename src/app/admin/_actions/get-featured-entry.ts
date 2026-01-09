@@ -29,24 +29,25 @@ export async function getFeaturedEntry() {
       };
     }
 
-    // Randomly select one artwork from the list
-    const randomIndex = Math.floor(Math.random() * featuredArtworkIds.length);
-    const selectedArtworkId = featuredArtworkIds[randomIndex];
-
-    // Fetch the selected artwork
-    const { data: artwork, error: artworkError } = await (client as any)
+    // Filter to only public artworks first, then randomly select
+    // Fetch all featured artworks to check which are public
+    const { data: allFeaturedArtworks } = await (client as any)
       .from('artworks')
       .select('id, title, description, image_url, artist_name')
-      .eq('id', selectedArtworkId)
+      .in('id', featuredArtworkIds)
       .eq('status', 'verified')
-      .single();
+      .eq('is_public', true);
 
-    if (artworkError || !artwork) {
-      // If artwork not found or not verified, return null
+    if (!allFeaturedArtworks || allFeaturedArtworks.length === 0) {
+      // No public featured artworks available
       return {
         featuredEntry: null,
       };
     }
+
+    // Randomly select one from the public artworks
+    const randomIndex = Math.floor(Math.random() * allFeaturedArtworks.length);
+    const artwork = allFeaturedArtworks[randomIndex];
 
     // Return the artwork as featured entry
     return {
@@ -98,7 +99,8 @@ export async function getFeaturedArtworksList() {
       .from('artworks')
       .select('id, title, artist_name, image_url')
       .in('id', featuredArtworkIds)
-      .eq('status', 'verified');
+      .eq('status', 'verified')
+      .eq('is_public', true);
 
     if (error) {
       console.error('Error fetching featured artworks:', error);
