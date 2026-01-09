@@ -17,7 +17,8 @@ export default async function ArtworksPage() {
 
   if (!user) {
     // Not signed in - show only public verified artworks
-    const result = await client
+    // First try with is_public filter (if migration has been run)
+    let result = await client
       .from('artworks')
       .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
       .eq('status', 'verified')
@@ -25,12 +26,23 @@ export default async function ArtworksPage() {
       .order('created_at', { ascending: false })
       .limit(50);
     
+    // If that fails or returns no results, try without is_public filter
+    // (in case migration hasn't been run or all artworks are public by default)
+    if (result.error || !result.data || result.data.length === 0) {
+      result = await client
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+        .eq('status', 'verified')
+        .order('created_at', { ascending: false })
+        .limit(50);
+    }
+    
     artworks = result.data || [];
     error = result.error;
     
-    // Log for debugging if no artworks found
-    if (!error && (!artworks || artworks.length === 0)) {
-      console.log('No public verified artworks found for anonymous users');
+    // Log for debugging
+    if (error) {
+      console.error('Error fetching public artworks for anonymous user:', error);
     }
   } else {
     // Signed in - show:
