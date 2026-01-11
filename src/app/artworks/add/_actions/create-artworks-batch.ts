@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { sendCertificationEmail } from '~/lib/email';
 
 const ARTWORKS_BUCKET = 'artworks';
 
@@ -54,6 +55,21 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     // Process all artworks
     const artworkIds: string[] = [];
     const errors: string[] = [];
+    
+    // Fetch user account info once for email sending
+    let accountEmail: string | null = null;
+    let accountName: string | null = null;
+    try {
+      const { data: account } = await client
+        .from('accounts')
+        .select('email, name')
+        .eq('id', userId)
+        .single();
+      accountEmail = account?.email || null;
+      accountName = account?.name || null;
+    } catch (error) {
+      console.error('Error fetching account for email:', error);
+    }
 
     for (let i = 0; i < images.length; i++) {
       const imageFile = images[i];
@@ -124,6 +140,30 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         } else if (artwork) {
           artworkIds.push(artwork.id);
+          
+          // Send certification email for this artwork (non-blocking)
+          if (accountEmail) {
+            try {
+              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+              const artworkUrl = `${siteUrl}/artworks/${artwork.id}`;
+              const userName = accountName || accountEmail.split('@')[0] || 'there';
+
+              // Send email asynchronously (don't wait for it)
+              sendCertificationEmail(
+                accountEmail,
+                userName,
+                title.trim(),
+                certificateNumber,
+                artworkUrl,
+              ).catch((emailError) => {
+                console.error(`Failed to send certification email for artwork ${i + 1}:`, emailError);
+                // Don't fail the artwork creation if email fails
+              });
+            } catch (emailError) {
+              console.error(`Error sending certification email for artwork ${i + 1}:`, emailError);
+              // Don't fail the artwork creation if email fails
+            }
+          }
         }
       } catch (error: any) {
         console.error(`Error processing artwork ${i + 1}:`, error);

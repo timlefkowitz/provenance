@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { sendCertificationEmail } from '~/lib/email';
 
 const ARTWORKS_BUCKET = 'artworks';
 
@@ -86,6 +87,37 @@ export async function createArtwork(formData: FormData, userId: string) {
 
     revalidatePath('/artworks');
     revalidatePath(`/artworks/${artwork.id}`);
+
+    // Send certification email (non-blocking)
+    try {
+      // Get user email and name for the email
+      const { data: account } = await client
+        .from('accounts')
+        .select('email, name')
+        .eq('id', userId)
+        .single();
+
+      if (account?.email) {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const artworkUrl = `${siteUrl}/artworks/${artwork.id}`;
+        const userName = account.name || account.email.split('@')[0] || 'there';
+
+        // Send email asynchronously (don't wait for it)
+        sendCertificationEmail(
+          account.email,
+          userName,
+          title,
+          certificateNumber,
+          artworkUrl,
+        ).catch((emailError) => {
+          console.error('Failed to send certification email:', emailError);
+          // Don't fail the artwork creation if email fails
+        });
+      }
+    } catch (emailError) {
+      console.error('Error sending certification email:', emailError);
+      // Don't fail the artwork creation if email fails
+    }
 
     return { artworkId: artwork.id };
   } catch (error) {

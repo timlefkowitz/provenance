@@ -20,6 +20,7 @@ import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
 import { usePersonalAccountData } from '@kit/accounts/hooks/use-personal-account-data';
 import { AdminMenuItem } from './admin-menu-item';
+import { LanguageSwitcher } from './language-switcher';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
@@ -151,6 +152,8 @@ export function ProfileAccountDropdownContainer(props: {
         <If condition={features.enableThemeToggle}>
           <SubMenuModeToggle />
         </If>
+
+        <LanguageSwitcher />
 
         <DropdownMenuSeparator />
 

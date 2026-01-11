@@ -2,7 +2,7 @@ import { createI18nSettings } from '@kit/i18n';
 
 const defaultLanguage = process.env.NEXT_PUBLIC_DEFAULT_LOCALE ?? 'en';
 
-export const languages: string[] = [defaultLanguage];
+export const languages: string[] = ['en', 'es'];
 
 export const I18N_COOKIE_NAME = 'lang';
 
