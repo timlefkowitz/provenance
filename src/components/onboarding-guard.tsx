@@ -55,8 +55,13 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
         redirect('/onboarding');
       }
     }
-  } catch (error) {
-    // If there's any error (e.g., Supabase connection failure), allow access
+  } catch (error: any) {
+    // Re-throw redirect errors - they're expected and handled by Next.js
+    if (error?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
+    
+    // If there's any other error (e.g., Supabase connection failure), allow access
     // This prevents the entire app from breaking due to configuration issues
     console.error('Error in OnboardingGuard:', error);
     return <>{children}</>;

@@ -45,3 +45,18 @@
   width: 100%;
   margin: 1rem 0;
 }
+
+/* Print styles for artwork tags */
+@media print {
+  @page {
+    margin: 0.5in;
+  }
+  
+  body {
+    background: white !important;
+  }
+  
+  .print\:hidden {
+    display: none !important;
+  }
+}

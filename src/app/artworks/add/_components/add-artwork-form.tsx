@@ -12,6 +12,8 @@ import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Camera, X, Upload, MapPin } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
+import type { UserRole } from '~/lib/user-roles';
+import { USER_ROLES } from '~/lib/user-roles';
 
 type ImagePreview = {
   file: File;
@@ -30,11 +32,13 @@ type ImagePreview = {
 export function AddArtworkForm({ 
   userId, 
   defaultArtistName = '',
-  defaultMedium = ''
+  defaultMedium = '',
+  userRole = null
 }: { 
   userId: string;
   defaultArtistName?: string;
   defaultMedium?: string;
+  userRole?: UserRole | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
