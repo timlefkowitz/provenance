@@ -21,6 +21,12 @@ type Artwork = {
   historic_context: string | null;
   celebrity_notes: string | null;
   is_public: boolean | null;
+  value: string | null;
+  value_is_public: boolean | null;
+  edition: string | null;
+  production_location: string | null;
+  owned_by: string | null;
+  owned_by_is_public: boolean | null;
 };
 
 export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
@@ -38,6 +44,12 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
     historicContext: artwork.historic_context || '',
     celebrityNotes: artwork.celebrity_notes || '',
     isPublic: artwork.is_public ?? true, // Default to true if null
+    value: artwork.value || '',
+    valueIsPublic: artwork.value_is_public ?? false, // Default to false (private)
+    edition: artwork.edition || '',
+    productionLocation: artwork.production_location || '',
+    ownedBy: artwork.owned_by || '',
+    ownedByIsPublic: artwork.owned_by_is_public ?? false, // Default to false (private)
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,6 +145,84 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
             rows={4}
             className="font-serif"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="value">Value</Label>
+          <div className="space-y-2">
+            <Input
+              id="value"
+              value={formData.value}
+              onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+              placeholder="e.g., $50,000 USD"
+              className="font-serif"
+            />
+            <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="valueIsPublic" className="text-sm font-serif">
+                  Make value public
+                </Label>
+                <p className="text-xs text-ink/60 font-serif">
+                  By default, value is private and only visible to you.
+                </p>
+              </div>
+              <Switch
+                id="valueIsPublic"
+                checked={formData.valueIsPublic}
+                onCheckedChange={(checked) => setFormData({ ...formData, valueIsPublic: checked })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edition">Edition</Label>
+          <Input
+            id="edition"
+            value={formData.edition}
+            onChange={(e) => setFormData({ ...formData, edition: e.target.value })}
+            placeholder="e.g., 1/10, Limited Edition, Unique, AP (Artist's Proof)"
+            className="font-serif"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="productionLocation">Production Location</Label>
+          <Input
+            id="productionLocation"
+            value={formData.productionLocation}
+            onChange={(e) => setFormData({ ...formData, productionLocation: e.target.value })}
+            placeholder="e.g., Paris, France or Studio Name, City, Country"
+            className="font-serif"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ownedBy">Owned By</Label>
+          <div className="space-y-2">
+            <Input
+              id="ownedBy"
+              value={formData.ownedBy}
+              onChange={(e) => setFormData({ ...formData, ownedBy: e.target.value })}
+              placeholder="Current owner name or collection"
+              className="font-serif"
+            />
+            <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="ownedByIsPublic" className="text-sm font-serif">
+                  Make ownership public
+                </Label>
+                <p className="text-xs text-ink/60 font-serif">
+                  By default, ownership information is private and only visible to you.
+                </p>
+              </div>
+              <Switch
+                id="ownedByIsPublic"
+                checked={formData.ownedByIsPublic}
+                onCheckedChange={(checked) => setFormData({ ...formData, ownedByIsPublic: checked })}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">

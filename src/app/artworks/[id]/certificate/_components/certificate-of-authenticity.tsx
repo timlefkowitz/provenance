@@ -5,11 +5,24 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star } from 'lucide-react';
+import { Star, Trash2, Scan, MapPin } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@kit/ui/alert-dialog';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
+import { deleteArtwork } from '../../_actions/delete-artwork';
+import { recordScanLocation } from '../../_actions/record-scan-location';
 
 type Artwork = {
   id: string;
@@ -28,6 +41,12 @@ type Artwork = {
   exhibition_history: string | null;
   historic_context: string | null;
   celebrity_notes: string | null;
+  value: string | null;
+  value_is_public: boolean | null;
+  edition: string | null;
+  production_location: string | null;
+  owned_by: string | null;
+  owned_by_is_public: boolean | null;
   metadata?: {
     certificate_location?: {
       latitude?: number;
@@ -51,8 +70,20 @@ export function CertificateOfAuthenticity({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [deletePending, setDeletePending] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
+  // Initialize scan locations from artwork metadata
+  const initialScanLocations = (artwork.metadata as any)?.scan_locations || [];
+  const [scanLocations, setScanLocations] = useState<Array<{
+    latitude: number;
+    longitude: number;
+    city?: string;
+    region?: string;
+    country?: string;
+    formatted?: string;
+    scanned_at: string;
+  }>>(initialScanLocations);
 
   // Check if artwork is already featured on mount
   useEffect(() => {
@@ -73,13 +104,111 @@ export function CertificateOfAuthenticity({
     }
   }, [artwork.id, isAdmin]);
 
+  // Handle QR code scan location tracking
+  useEffect(() => {
+    // Check if this is a QR code scan (has ?scan=true in URL)
+    if (typeof window === 'undefined') return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const isScan = urlParams.get('scan') === 'true';
+    
+    if (!isScan) return;
+
+    // Request geolocation
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Try to get reverse geocoded location
+          try {
+            const response = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            const geoData = await response.json();
+            
+            const location = {
+              latitude,
+              longitude,
+              city: geoData.city || geoData.locality,
+              region: geoData.principalSubdivision,
+              country: geoData.countryName,
+              formatted: geoData.locality 
+                ? `${geoData.locality}, ${geoData.principalSubdivision || geoData.countryName}`
+                : geoData.principalSubdivision 
+                  ? `${geoData.principalSubdivision}, ${geoData.countryName}`
+                  : geoData.countryName || null,
+            };
+
+            // Record the scan location
+            try {
+              await recordScanLocation(artwork.id, location);
+              
+              // Update local state to show the new scan immediately
+              setScanLocations(prev => [...prev, {
+                ...location,
+                scanned_at: new Date().toISOString(),
+              }]);
+              
+              // Refresh page data to sync with server
+              router.refresh();
+              
+              // Remove the scan parameter from URL to avoid re-triggering
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, '', newUrl);
+            } catch (error) {
+              console.error('Error recording scan location:', error);
+            }
+          } catch (geoError) {
+            // If reverse geocoding fails, just store coordinates
+            const location = {
+              latitude,
+              longitude,
+            };
+
+            try {
+              await recordScanLocation(artwork.id, location);
+              setScanLocations(prev => [...prev, {
+                ...location,
+                scanned_at: new Date().toISOString(),
+              }]);
+              router.refresh();
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, '', newUrl);
+            } catch (error) {
+              console.error('Error recording scan location:', error);
+            }
+          }
+        },
+        (error) => {
+          // User denied geolocation or error occurred
+          console.log('Geolocation not available:', error);
+          // Remove scan parameter even if geolocation fails
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, '', newUrl);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0, // Don't use cached location
+        }
+      );
+    } else {
+      // Geolocation not supported
+      console.log('Geolocation is not supported by this browser');
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [artwork.id]);
+
   // Generate the certificate URL - only for owners
+  // Include ?scan=true parameter for QR code scans
   const certificateUrl = useMemo(() => {
     if (!isOwner) {
       return '';
     }
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/artworks/${artwork.id}/certificate`;
+      return `${window.location.origin}/artworks/${artwork.id}/certificate?scan=true`;
     }
     return '';
   }, [artwork.id, isOwner]);
@@ -92,6 +221,22 @@ export function CertificateOfAuthenticity({
     // In a real implementation, you might generate a PDF here
     // For now, we'll just trigger print which allows saving as PDF
     window.print();
+  };
+
+  const handleDelete = () => {
+    setDeletePending(true);
+    startTransition(async () => {
+      try {
+        await deleteArtwork(artwork.id);
+        toast.success('Artwork deleted successfully');
+        router.push('/artworks');
+        router.refresh();
+      } catch (error: any) {
+        console.error('Error deleting artwork:', error);
+        toast.error(error.message || 'Failed to delete artwork');
+        setDeletePending(false);
+      }
+    });
   };
 
   const handlePrintQR = () => {
@@ -228,14 +373,55 @@ export function CertificateOfAuthenticity({
             </>
           )}
           {isOwner && (
-            <Button
-              onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
-              variant="outline"
-              className="font-serif text-xs sm:text-sm"
-              size="sm"
-            >
-              Edit
-            </Button>
+            <>
+              <Button
+                onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
+                variant="outline"
+                className="font-serif text-xs sm:text-sm"
+                size="sm"
+              >
+                Edit
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="font-serif text-xs sm:text-sm border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    size="sm"
+                  >
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Delete</span>
+                    <span className="sm:hidden">Del</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-display text-wine">
+                      Delete Artwork
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="font-serif">
+                      Are you sure you want to delete "{artwork.title}"? This action cannot be undone. 
+                      The certificate and all associated data will be permanently removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel 
+                      disabled={deletePending}
+                      className="font-serif"
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      disabled={deletePending}
+                      className="bg-red-600 hover:bg-red-700 text-white font-serif"
+                    >
+                      {deletePending ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
           {isAdmin && !loadingFeatured && (
             <Button
@@ -422,12 +608,63 @@ export function CertificateOfAuthenticity({
                   </p>
                 </div>
               )}
+
+              {artwork.edition && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Edition</p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.edition}
+                  </p>
+                </div>
+              )}
+
+              {artwork.production_location && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Production Location</p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.production_location}
+                  </p>
+                </div>
+              )}
+
+              {/* Value - show if public OR if owner */}
+              {artwork.value && (artwork.value_is_public || isOwner) && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                    Value
+                    {!artwork.value_is_public && isOwner && (
+                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                    )}
+                  </p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.value}
+                  </p>
+                </div>
+              )}
+
+              {/* Owned By - show if public OR if owner */}
+              {artwork.owned_by && (artwork.owned_by_is_public || isOwner) && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                    Owned By
+                    {!artwork.owned_by_is_public && isOwner && (
+                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                    )}
+                  </p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.owned_by}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Provenance Information */}
           {(artwork.former_owners || artwork.auction_history || artwork.exhibition_history || 
-            artwork.historic_context || artwork.celebrity_notes) && (
+            artwork.historic_context || artwork.celebrity_notes ||
+            (artwork.value && artwork.value_is_public && !isOwner) ||
+            (artwork.owned_by && artwork.owned_by_is_public && !isOwner) ||
+            (scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
                 Provenance
@@ -438,6 +675,26 @@ export function CertificateOfAuthenticity({
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Former Owners</p>
                   <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
                     {artwork.former_owners}
+                  </p>
+                </div>
+              )}
+
+              {/* Value in Provenance section - only show if public (owner already sees it above) */}
+              {artwork.value && artwork.value_is_public && !isOwner && (
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Value</p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.value}
+                  </p>
+                </div>
+              )}
+
+              {/* Owned By in Provenance section - only show if public (owner already sees it above) */}
+              {artwork.owned_by && artwork.owned_by_is_public && !isOwner && (
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Owned By</p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.owned_by}
                   </p>
                 </div>
               )}
@@ -475,6 +732,40 @@ export function CertificateOfAuthenticity({
                   <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
                     {artwork.celebrity_notes}
                   </p>
+                </div>
+              )}
+
+              {/* QR Code Scan Locations */}
+              {scanLocations && scanLocations.length > 0 && (
+                <div className="mb-3 sm:mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Scan className="h-4 w-4 text-wine" />
+                    <p className="text-xs sm:text-sm text-ink/60 font-serif font-semibold">QR Code Scan Locations</p>
+                  </div>
+                  <div className="space-y-2">
+                    {scanLocations.map((scan, index) => (
+                      <div key={index} className="text-sm sm:text-base font-serif text-ink bg-wine/5 p-2 sm:p-3 rounded border border-wine/30">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-wine mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-semibold mb-1 text-wine">
+                              Scanned on {new Date(scan.scanned_at).toLocaleDateString('en-US', {
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                            <p className="text-ink/80">
+                              {scan.formatted || `${scan.city || ''}${scan.city && scan.country ? ', ' : ''}${scan.country || ''}`.trim() || 
+                               `Lat: ${scan.latitude.toFixed(4)}, Lng: ${scan.longitude.toFixed(4)}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

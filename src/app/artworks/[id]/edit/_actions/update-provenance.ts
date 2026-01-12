@@ -15,6 +15,12 @@ export async function updateProvenance(
     historicContext: string;
     celebrityNotes: string;
     isPublic?: boolean;
+    value?: string;
+    valueIsPublic?: boolean;
+    edition?: string;
+    productionLocation?: string;
+    ownedBy?: string;
+    ownedByIsPublic?: boolean;
   }
 ) {
   try {
@@ -56,6 +62,26 @@ export async function updateProvenance(
     // Only update is_public if it's provided
     if (provenance.isPublic !== undefined) {
       updateData.is_public = provenance.isPublic;
+    }
+
+    // Add new fields
+    if (provenance.value !== undefined) {
+      updateData.value = provenance.value || null;
+    }
+    if (provenance.valueIsPublic !== undefined) {
+      updateData.value_is_public = provenance.valueIsPublic;
+    }
+    if (provenance.edition !== undefined) {
+      updateData.edition = provenance.edition || null;
+    }
+    if (provenance.productionLocation !== undefined) {
+      updateData.production_location = provenance.productionLocation || null;
+    }
+    if (provenance.ownedBy !== undefined) {
+      updateData.owned_by = provenance.ownedBy || null;
+    }
+    if (provenance.ownedByIsPublic !== undefined) {
+      updateData.owned_by_is_public = provenance.ownedByIsPublic;
     }
 
     const { error } = await (client as any)
