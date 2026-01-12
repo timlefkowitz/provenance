@@ -73,6 +73,12 @@ alter table public.exhibition_artists enable row level security;
 alter table public.exhibition_artworks enable row level security;
 
 -- RLS Policies for exhibitions
+-- Drop existing policies if they exist (for idempotent migrations)
+drop policy if exists exhibitions_read_public on public.exhibitions;
+drop policy if exists exhibitions_insert_own on public.exhibitions;
+drop policy if exists exhibitions_update_own on public.exhibitions;
+drop policy if exists exhibitions_delete_own on public.exhibitions;
+
 -- Anyone can read exhibitions (public access)
 create policy exhibitions_read_public on public.exhibitions
     for select
@@ -107,6 +113,11 @@ create policy exhibitions_delete_own on public.exhibitions
     );
 
 -- RLS Policies for exhibition_artists
+-- Drop existing policies if they exist
+drop policy if exists exhibition_artists_read_public on public.exhibition_artists;
+drop policy if exists exhibition_artists_insert_own on public.exhibition_artists;
+drop policy if exists exhibition_artists_delete_own on public.exhibition_artists;
+
 -- Anyone can read exhibition artists (public access)
 create policy exhibition_artists_read_public on public.exhibition_artists
     for select
@@ -138,6 +149,11 @@ create policy exhibition_artists_delete_own on public.exhibition_artists
     );
 
 -- RLS Policies for exhibition_artworks
+-- Drop existing policies if they exist
+drop policy if exists exhibition_artworks_read_public on public.exhibition_artworks;
+drop policy if exists exhibition_artworks_insert_own on public.exhibition_artworks;
+drop policy if exists exhibition_artworks_delete_own on public.exhibition_artworks;
+
 -- Anyone can read exhibition artworks (public access)
 create policy exhibition_artworks_read_public on public.exhibition_artworks
     for select
