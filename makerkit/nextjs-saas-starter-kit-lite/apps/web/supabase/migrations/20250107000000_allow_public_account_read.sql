@@ -18,6 +18,9 @@
 -- 3. Email and other sensitive fields remain protected
 -- 4. Write operations (UPDATE/INSERT/DELETE) are still restricted by existing policies
 
+-- Drop policy if it exists, then create it
+drop policy if exists accounts_read_public on public.accounts;
+
 create policy accounts_read_public on public.accounts
     for select
     to authenticated, anon
