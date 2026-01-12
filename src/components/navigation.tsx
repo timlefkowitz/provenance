@@ -9,6 +9,7 @@ import { Trans } from '@kit/ui/trans';
 import pathsConfig from '~/config/paths.config';
 import { ProfileAccountDropdownContainer } from './personal-account-dropdown-container';
 import { NotificationBadge } from './notification-badge';
+import { PerspectiveSwitcher } from './perspective-switcher';
 
 export function Navigation() {
   const user = useUser();
@@ -143,6 +144,11 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-50">
           <div className="flex flex-col px-6 py-4 gap-4">
+            {/* Perspective Switcher */}
+            {user.data && (
+              <PerspectiveSwitcher />
+            )}
+            
             <Link 
               href="/artworks" 
               className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"

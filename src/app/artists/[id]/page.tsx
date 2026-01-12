@@ -5,6 +5,9 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
+import { Calendar, MapPin } from 'lucide-react';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -43,6 +46,11 @@ export default async function ArtistProfilePage({
   const medium = account.public_data?.medium || '';
   const links = (account.public_data?.links as string[]) || [];
   const galleries = (account.public_data?.galleries as string[]) || [];
+  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const isGallery = userRole === USER_ROLES.GALLERY;
+
+  // Fetch exhibitions if this is a gallery
+  const exhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
 
   // Fetch this artist's artworks
   let artworksQuery = client
@@ -115,6 +123,16 @@ export default async function ArtistProfilePage({
             >
               <Link href="/profile">Edit Profile</Link>
             </Button>
+            {isGallery && (
+              <Button
+                asChild
+                variant="outline"
+                className="font-serif border-wine/30 hover:bg-wine/10"
+                size="sm"
+              >
+                <Link href="/exhibitions">Manage Exhibitions</Link>
+              </Button>
+            )}
             <Button
               asChild
               variant="outline"
@@ -162,6 +180,78 @@ export default async function ArtistProfilePage({
                 <li key={gallery}>{gallery}</li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Exhibitions (for galleries) */}
+      {isGallery && exhibitions.length > 0 && (
+        <Card className="mb-10 border-wine/20 bg-parchment/60">
+          <CardContent className="p-5 md:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-xl text-wine">Exhibitions</h2>
+              {isOwner && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                >
+                  <Link href="/exhibitions">Manage</Link>
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {exhibitions.slice(0, 6).map((exhibition) => (
+                <Link
+                  key={exhibition.id}
+                  href={`/exhibitions/${exhibition.id}`}
+                  className="block p-4 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors"
+                >
+                  <h3 className="font-display font-semibold text-wine mb-2">
+                    {exhibition.title}
+                  </h3>
+                  <div className="space-y-1 text-sm text-ink/70 font-serif">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3 w-3" />
+                      <span>
+                        {new Date(exhibition.start_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                        {exhibition.end_date &&
+                          ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}`}
+                      </span>
+                    </div>
+                    {exhibition.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3" />
+                        <span>{exhibition.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {exhibitions.length > 6 && (
+              <div className="mt-4 text-center">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="font-serif"
+                >
+                  <Link href="/exhibitions">
+                    View All Exhibitions ({exhibitions.length})
+                  </Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

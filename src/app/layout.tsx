@@ -7,6 +7,7 @@ import { RootProviders } from "~/components/root-providers";
 import { OnboardingGuard } from "~/components/onboarding-guard";
 import { Navigation } from "~/components/navigation";
 import { RoleSelectionModal } from "~/components/role-selection-modal";
+import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { Analytics } from "@vercel/analytics/next";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 
@@ -60,6 +61,7 @@ export default async function RootLayout({
         <RootProviders lang={currentLang}>
           <OnboardingGuard>
             <Navigation />
+            <GalleryProfileNotification />
             {children}
             <RoleSelectionModal />
           </OnboardingGuard>

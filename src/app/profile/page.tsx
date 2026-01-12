@@ -10,6 +10,7 @@ import {
 } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { UnifiedProfileSettingsForm } from '~/components/unified-profile-settings-form';
+import { ProfileArtworksSection } from './_components/profile-artworks-section';
 
 export const metadata = {
   title: 'Profile | Provenance',
@@ -36,6 +37,16 @@ export default async function ProfilePage() {
   const currentLinks = (publicData.links as string[]) || [];
   const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
+
+  // Fetch user's artworks
+  const { data: artworks } = await client
+    .from('artworks')
+    .select(
+      'id, title, artist_name, image_url, created_at, certificate_number, description, creation_date',
+    )
+    .eq('account_id', user.id)
+    .eq('status', 'verified')
+    .order('created_at', { ascending: false });
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -106,6 +117,9 @@ export default async function ProfilePage() {
             />
           </CardContent>
         </Card>
+
+        {/* Artworks Section with Selection */}
+        <ProfileArtworksSection artworks={artworks || []} />
       </div>
     </div>
   );
