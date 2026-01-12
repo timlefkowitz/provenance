@@ -4,6 +4,8 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { createNotification } from '~/lib/notifications';
 
 const ARTWORKS_BUCKET = 'artworks';
 
@@ -56,17 +58,19 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const artworkIds: string[] = [];
     const errors: string[] = [];
     
-    // Fetch user account info once for email sending
+    // Fetch user account info once for email sending and role checking
     let accountEmail: string | null = null;
     let accountName: string | null = null;
+    let userRole: string | null = null;
     try {
       const { data: account } = await client
         .from('accounts')
-        .select('email, name')
+        .select('email, name, public_data')
         .eq('id', userId)
         .single();
       accountEmail = account?.email || null;
       accountName = account?.name || null;
+      userRole = getUserRole(account?.public_data as Record<string, any>);
     } catch (error) {
       console.error('Error fetching account for email:', error);
     }
@@ -102,6 +106,37 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         }
 
+        // Determine certificate status based on user role
+        // If collector or gallery, certificate needs artist claim
+        // If artist, certificate is verified immediately
+        let certificateStatus = 'verified';
+        let artistAccountId: string | null = null;
+        
+        if (userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY) {
+          certificateStatus = 'pending_artist_claim';
+          
+          // Try to find artist account by name
+          if (artistName) {
+            try {
+              const { data: artistAccount } = await client
+                .from('accounts')
+                .select('id, public_data')
+                .eq('name', artistName)
+                .single();
+              
+              if (artistAccount) {
+                const artistAccountRole = getUserRole(artistAccount.public_data as Record<string, any>);
+                if (artistAccountRole === USER_ROLES.ARTIST) {
+                  artistAccountId = artistAccount.id;
+                }
+              }
+            } catch (error) {
+              // Artist not found by name, that's okay - they can claim later
+              console.log('Artist account not found by name, will need to claim:', artistName);
+            }
+          }
+        }
+
         // Create artwork record
         const insertData: any = {
           account_id: userId,
@@ -111,7 +146,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           medium,
           image_url: imageUrl,
           certificate_number: certificateNumber,
-          status: 'verified',
+          status: 'verified', // Keep status for backward compatibility
+          certificate_status: certificateStatus, // New workflow status
+          artist_account_id: artistAccountId,
           created_by: userId,
           updated_by: userId,
           metadata: locationData ? { certificate_location: locationData } : {},
@@ -140,6 +177,27 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         } else if (artwork) {
           artworkIds.push(artwork.id);
+          
+          // Create notification for artist if collector/gallery posted
+          if (certificateStatus === 'pending_artist_claim' && artistAccountId) {
+            try {
+              await createNotification({
+                userId: artistAccountId,
+                type: 'certificate_claim_request',
+                title: `Certificate Claim Request: ${title.trim()}`,
+                message: `${accountName || 'A collector'} has posted an artwork "${title.trim()}" and is requesting you to claim the certificate.`,
+                artworkId: artwork.id,
+                relatedUserId: userId,
+                metadata: {
+                  certificateNumber,
+                  artistName,
+                },
+              });
+            } catch (notifError) {
+              console.error(`Failed to create notification for artist:`, notifError);
+              // Don't fail artwork creation if notification fails
+            }
+          }
           
           // Send certification email for this artwork (non-blocking)
           if (accountEmail) {

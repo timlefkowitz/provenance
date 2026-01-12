@@ -34,6 +34,11 @@ async function createInstance() {
     selectedLanguage = getLanguageOrFallback(userPreferredLanguage);
   }
 
+  // Default to 'en' if no language is selected
+  if (!selectedLanguage) {
+    selectedLanguage = 'en';
+  }
+
   const settings = getI18nSettings(selectedLanguage);
 
   return initializeServerI18n(settings, i18nResolver);

@@ -13,6 +13,7 @@ export const defaultI18nNamespaces = [
   'teams',
   'billing',
   'marketing',
+  'onboarding',
 ];
 
 export function getI18nSettings(

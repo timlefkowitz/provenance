@@ -65,12 +65,29 @@
     "profile": "Profile",
     "application": "Application"
   },
+  "navigation": {
+    "artworks": "Artworks",
+    "registry": "Registry",
+    "about": "About",
+    "addArtwork": "Add Artwork",
+    "logIn": "Log In",
+    "signUp": "Sign Up"
+  },
   "roles": {
     "owner": {
       "label": "Owner"
     },
     "member": {
       "label": "Member"
+    },
+    "collector": {
+      "label": "Collector"
+    },
+    "artist": {
+      "label": "Artist"
+    },
+    "gallery": {
+      "label": "Gallery"
     }
   },
   "cookieBanner": {

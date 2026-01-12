@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { isValidRole, type UserRole } from '~/lib/user-roles';
 
 export async function updateUserRole(role: string) {
   const client = getSupabaseServerClient();
@@ -9,6 +10,11 @@ export async function updateUserRole(role: string) {
 
   if (!user) {
     throw new Error('Unauthorized');
+  }
+
+  // Validate role
+  if (!isValidRole(role)) {
+    throw new Error('Invalid role. Must be collector, artist, or gallery.');
   }
 
   // Get existing public data
@@ -26,7 +32,7 @@ export async function updateUserRole(role: string) {
     .update({
       public_data: {
         ...currentPublicData,
-        role,
+        role: role as UserRole,
       },
     })
     .eq('id', user.id);

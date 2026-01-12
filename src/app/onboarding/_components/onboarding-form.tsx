@@ -13,15 +13,16 @@ import {
 } from '@kit/ui/select';
 import { Label } from '@kit/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
+import { Trans } from '@kit/ui/trans';
 
 import { updateUserRole } from '../_actions/update-user-role';
+import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 
 const ROLES = [
-  { value: 'collector', label: 'Collector' },
-  { value: 'artist', label: 'Artist' },
-  { value: 'gallery', label: 'Gallery' },
-  { value: 'shop', label: 'Shop' },
-];
+  { value: USER_ROLES.COLLECTOR, label: getRoleLabel(USER_ROLES.COLLECTOR) },
+  { value: USER_ROLES.ARTIST, label: getRoleLabel(USER_ROLES.ARTIST) },
+  { value: USER_ROLES.GALLERY, label: getRoleLabel(USER_ROLES.GALLERY) },
+] as const;
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export function OnboardingForm() {
     e.preventDefault();
     
     if (!role) {
-      setError('Please select a role.');
+      setError('Please select a role.'); // TODO: Translate this
       return;
     }
 
@@ -58,10 +59,12 @@ export function OnboardingForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="role">I am a...</Label>
+        <Label htmlFor="role">
+          <Trans i18nKey="onboarding:iamA" defaults="I am a..." />
+        </Label>
         <Select onValueChange={setRole} value={role}>
           <SelectTrigger>
-            <SelectValue placeholder="Select your role" />
+            <SelectValue placeholder={<Trans i18nKey="onboarding:selectRole" defaults="Select your role" />} />
           </SelectTrigger>
           <SelectContent>
             {ROLES.map((role) => (
@@ -74,7 +77,11 @@ export function OnboardingForm() {
       </div>
 
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? 'Saving...' : 'Continue'}
+        {pending ? (
+          <Trans i18nKey="onboarding:saving" defaults="Saving..." />
+        ) : (
+          <Trans i18nKey="onboarding:continue" defaults="Continue" />
+        )}
       </Button>
     </form>
   );

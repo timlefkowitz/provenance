@@ -12,7 +12,7 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
-import { languages } from '~/lib/i18n/i18n.settings';
+import { languages, I18N_COOKIE_NAME } from '~/lib/i18n/i18n.settings';
 
 export function LanguageSwitcher() {
   const { i18n } = useTranslation();
@@ -32,10 +32,16 @@ export function LanguageSwitcher() {
 
       await i18n.changeLanguage(locale);
       
-      // Set cookie for language preference
-      document.cookie = `lang=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+      // Set cookie for language preference (must match I18N_COOKIE_NAME)
+      const cookieValue = `${I18N_COOKIE_NAME}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = cookieValue;
       
-      // Refresh to apply language change
+      // Also update the HTML lang attribute immediately
+      if (document.documentElement) {
+        document.documentElement.lang = locale;
+      }
+      
+      // Refresh to apply language change on server-side
       window.location.reload();
     },
     [i18n, currentLanguage],

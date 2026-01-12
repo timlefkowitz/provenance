@@ -6,6 +6,7 @@ import { Toaster } from "@kit/ui/sonner";
 import { RootProviders } from "~/components/root-providers";
 import { OnboardingGuard } from "~/components/onboarding-guard";
 import { Navigation } from "~/components/navigation";
+import { RoleSelectionModal } from "~/components/role-selection-modal";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -47,6 +48,7 @@ export default function RootLayout({
           <OnboardingGuard>
             <Navigation />
             {children}
+            <RoleSelectionModal />
           </OnboardingGuard>
         </RootProviders>
         <Toaster richColors position="top-center" />

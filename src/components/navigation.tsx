@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import { Button } from '@kit/ui/button';
+import { Trans } from '@kit/ui/trans';
 import pathsConfig from '~/config/paths.config';
 import { ProfileAccountDropdownContainer } from './personal-account-dropdown-container';
+import { NotificationBadge } from './notification-badge';
 
 export function Navigation() {
   const user = useUser();
@@ -28,21 +30,21 @@ export function Navigation() {
             href="/artworks" 
             className="text-ink hover:text-wine transition-colors font-serif"
           >
-            Artworks
+            <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
           {user.data && (
             <Link 
               href="/registry" 
               className="text-ink hover:text-wine transition-colors font-serif"
             >
-              Registry
+              <Trans i18nKey="common:navigation.registry" defaults="Registry" />
             </Link>
           )}
           <Link 
             href="/about" 
             className="text-ink hover:text-wine transition-colors font-serif"
           >
-            About
+            <Trans i18nKey="common:navigation.about" defaults="About" />
           </Link>
         </div>
       </div>
@@ -65,12 +67,15 @@ export function Navigation() {
         <div className="hidden md:flex items-center gap-3">
         {user.data ? (
           <>
+            <NotificationBadge />
             <Button
               asChild
               size="sm"
               className="bg-wine text-parchment hover:bg-wine/90 font-serif"
             >
-              <Link href="/artworks/add">Add Artwork</Link>
+              <Link href="/artworks/add">
+                <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
+              </Link>
             </Button>
             <ProfileAccountDropdownContainer />
           </>
@@ -82,14 +87,18 @@ export function Navigation() {
               size="sm"
               className="text-ink hover:text-wine hover:bg-wine/10 font-serif"
             >
-              <Link href={pathsConfig.auth.signIn}>Log In</Link>
+              <Link href={pathsConfig.auth.signIn}>
+                <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
+              </Link>
             </Button>
             <Button 
               asChild 
               size="sm"
               className="bg-wine text-parchment hover:bg-wine/90 font-serif"
             >
-              <Link href={pathsConfig.auth.signUp}>Sign Up</Link>
+              <Link href={pathsConfig.auth.signUp}>
+                <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
+              </Link>
             </Button>
           </>
         )}
@@ -99,7 +108,10 @@ export function Navigation() {
         {!mobileMenuOpen && (
           <div className="md:hidden flex items-center gap-2">
             {user.data ? (
-              <ProfileAccountDropdownContainer />
+              <>
+                <NotificationBadge />
+                <ProfileAccountDropdownContainer />
+              </>
             ) : (
               <>
                 <Button 
@@ -108,14 +120,18 @@ export function Navigation() {
                   size="sm"
                   className="text-ink hover:text-wine hover:bg-wine/10 font-serif text-xs px-2"
                 >
-                  <Link href={pathsConfig.auth.signIn}>Log In</Link>
+                  <Link href={pathsConfig.auth.signIn}>
+                    <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
+                  </Link>
                 </Button>
                 <Button 
                   asChild 
                   size="sm"
                   className="bg-wine text-parchment hover:bg-wine/90 font-serif text-xs px-2"
                 >
-                  <Link href={pathsConfig.auth.signUp}>Sign Up</Link>
+                  <Link href={pathsConfig.auth.signUp}>
+                    <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
+                  </Link>
                 </Button>
               </>
             )}
@@ -132,7 +148,7 @@ export function Navigation() {
               className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Artworks
+              <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
             </Link>
             {user.data && (
               <Link 
@@ -140,7 +156,7 @@ export function Navigation() {
                 className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Registry
+                <Trans i18nKey="common:navigation.registry" defaults="Registry" />
               </Link>
             )}
             <Link 
@@ -148,16 +164,25 @@ export function Navigation() {
               className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
-              About
+              <Trans i18nKey="common:navigation.about" defaults="About" />
             </Link>
             {user.data && (
-              <Link 
-                href="/artworks/add" 
-                className="text-ink hover:text-wine transition-colors font-serif py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Add Artwork
-              </Link>
+              <>
+                <Link 
+                  href="/notifications" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Notifications
+                </Link>
+                <Link 
+                  href="/artworks/add" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
+                </Link>
+              </>
             )}
           </div>
         </div>

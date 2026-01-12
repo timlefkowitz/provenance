@@ -6,7 +6,9 @@ import { Toaster } from "@kit/ui/sonner";
 import { RootProviders } from "~/components/root-providers";
 import { OnboardingGuard } from "~/components/onboarding-guard";
 import { Navigation } from "~/components/navigation";
+import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { Analytics } from "@vercel/analytics/next";
+import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -41,20 +43,25 @@ export const metadata: Metadata = {
 // Ensure this layout is always rendered dynamically since we access headers/cookies
 export const dynamic = 'force-dynamic';
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get the current language from server-side i18n (reads from cookie)
+  const i18n = await createI18nServerInstance();
+  const currentLang = i18n.language || 'en';
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={currentLang} suppressHydrationWarning>
       <body
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased bg-parchment text-ink`}
       >
-        <RootProviders lang="en">
+        <RootProviders lang={currentLang}>
           <OnboardingGuard>
             <Navigation />
             {children}
+            <RoleSelectionModal />
           </OnboardingGuard>
         </RootProviders>
         <Toaster richColors position="top-center" />

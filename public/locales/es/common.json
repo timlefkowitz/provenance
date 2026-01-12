@@ -65,6 +65,14 @@
     "profile": "Perfil",
     "application": "Aplicación"
   },
+  "navigation": {
+    "artworks": "Obras de Arte",
+    "registry": "Registro",
+    "about": "Acerca de",
+    "addArtwork": "Agregar Obra",
+    "logIn": "Iniciar Sesión",
+    "signUp": "Registrarse"
+  },
   "roles": {
     "owner": {
       "label": "Propietario"
@@ -79,6 +87,17 @@
     "reject": "Rechazar",
     "accept": "Aceptar"
   },
-  "language": "Idioma"
+  "language": "Idioma",
+  "roles": {
+    "collector": {
+      "label": "Coleccionista"
+    },
+    "artist": {
+      "label": "Artista"
+    },
+    "gallery": {
+      "label": "Galería"
+    }
+  }
 }
 

@@ -1,5 +1,15 @@
 import nodemailer from 'nodemailer';
 
+/**
+ * Check if email is configured
+ */
+export function isEmailConfigured(): boolean {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const password = process.env.SMTP_PASSWORD;
+  return !!(host && user && password);
+}
+
 // Email configuration from environment variables
 const getEmailConfig = () => {
   const host = process.env.SMTP_HOST;
@@ -50,8 +60,15 @@ export interface SendEmailOptions {
 
 /**
  * Send an email using SMTP
+ * Returns silently if SMTP is not configured (email is optional)
  */
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
+  // Check if email is configured before attempting to send
+  if (!isEmailConfigured()) {
+    console.log('Email not configured. Skipping email send. Set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD to enable emails.');
+    return;
+  }
+
   try {
     const config = getEmailConfig();
     const mailTransporter = getTransporter();
@@ -68,7 +85,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     console.log('Email sent successfully:', info.messageId);
   } catch (error) {
     console.error('Error sending email:', error);
-    throw error;
+    // Don't throw - email sending is optional and shouldn't break the app
+    // throw error;
   }
 }
 

@@ -20,7 +20,6 @@ const ROLES = [
   { value: 'collector', label: 'Collector' },
   { value: 'artist', label: 'Artist' },
   { value: 'gallery', label: 'Gallery' },
-  { value: 'shop', label: 'Shop' },
 ];
 
 export function OnboardingForm() {

@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { redirect } from 'next/navigation';
+import { Trans } from '@kit/ui/trans';
 
 import { OnboardingForm } from './_components/onboarding-form';
 
@@ -31,10 +32,10 @@ export default async function OnboardingPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="font-display text-3xl font-bold tracking-tight text-wine">
-            Welcome to Provenance
+            <Trans i18nKey="onboarding:welcomeTitle" defaults="Welcome to Provenance" />
           </h1>
           <p className="mt-2 text-sm text-stone-600 font-body">
-            Select your role to get started.
+            <Trans i18nKey="onboarding:selectRoleDescription" defaults="Select your role to get started." />
           </p>
         </div>
 
