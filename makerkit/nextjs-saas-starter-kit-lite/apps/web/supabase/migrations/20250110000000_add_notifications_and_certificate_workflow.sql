@@ -60,6 +60,11 @@ create index if not exists notifications_type_idx on public.notifications(type);
 alter table public.notifications enable row level security;
 
 -- RLS Policies for notifications
+-- Drop existing policies if they exist (for idempotent migrations)
+drop policy if exists notifications_read_own on public.notifications;
+drop policy if exists notifications_update_own on public.notifications;
+drop policy if exists notifications_insert on public.notifications;
+
 -- Users can read their own notifications
 create policy notifications_read_own on public.notifications
     for select
