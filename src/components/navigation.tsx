@@ -34,12 +34,26 @@ export function Navigation() {
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
           {user.data && (
-            <Link 
-              href="/registry" 
-              className="text-ink hover:text-wine transition-colors font-serif"
-            >
-              <Trans i18nKey="common:navigation.registry" defaults="Registry" />
-            </Link>
+            <>
+              <Link 
+                href="/portal" 
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                Portal
+              </Link>
+              <Link 
+                href="/profiles" 
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                Profiles
+              </Link>
+              <Link 
+                href="/registry" 
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                <Trans i18nKey="common:navigation.registry" defaults="Registry" />
+              </Link>
+            </>
           )}
           <Link 
             href="/about" 
@@ -157,13 +171,29 @@ export function Navigation() {
               <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
             </Link>
             {user.data && (
-              <Link 
-                href="/registry" 
-                className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Trans i18nKey="common:navigation.registry" defaults="Registry" />
-              </Link>
+              <>
+                <Link 
+                  href="/portal" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Portal
+                </Link>
+                <Link 
+                  href="/profiles" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Profiles
+                </Link>
+                <Link 
+                  href="/registry" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Trans i18nKey="common:navigation.registry" defaults="Registry" />
+                </Link>
+              </>
             )}
             <Link 
               href="/about" 

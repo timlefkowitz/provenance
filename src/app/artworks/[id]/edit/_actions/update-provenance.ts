@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { createNotification } from '~/lib/notifications';
 
 export async function updateProvenance(
   artworkId: string,
@@ -34,7 +35,7 @@ export async function updateProvenance(
     // Verify the user owns this artwork
     const { data: artwork, error: fetchError } = await (client as any)
       .from('artworks')
-      .select('account_id')
+      .select('account_id, title')
       .eq('id', artworkId)
       .single();
 
@@ -45,6 +46,9 @@ export async function updateProvenance(
     if (artwork.account_id !== user.id) {
       return { error: 'You do not have permission to edit this artwork' };
     }
+
+    // Store original title to check if it changed
+    const originalTitle = artwork.title;
 
     // Update title, provenance fields and privacy
     const updateData: any = {
@@ -94,9 +98,30 @@ export async function updateProvenance(
       return { error: error.message || 'Failed to update provenance' };
     }
 
+    // Create notification for artwork owner about the update
+    // Only notify if this is not the owner updating (shouldn't happen, but just in case)
+    // Actually, we'll notify the owner that their artwork was updated (for their own records)
+    try {
+      await createNotification({
+        userId: artwork.account_id,
+        type: 'artwork_updated',
+        title: 'Artwork Updated',
+        message: `Your artwork "${provenance.title || originalTitle}" has been updated`,
+        artworkId: artworkId,
+        metadata: {
+          updated_fields: Object.keys(provenance).filter(key => provenance[key as keyof typeof provenance] !== undefined),
+        },
+      });
+    } catch (error) {
+      // Don't fail the update if notification fails
+      console.error('Error creating update notification:', error);
+    }
+
     revalidatePath(`/artworks/${artworkId}`);
     revalidatePath(`/artworks/${artworkId}/certificate`);
     revalidatePath('/artworks'); // Revalidate the artworks feed
+    revalidatePath('/portal');
+    revalidatePath('/notifications');
 
     return { success: true };
   } catch (error) {

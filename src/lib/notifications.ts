@@ -7,6 +7,8 @@ export type NotificationType =
   | 'certificate_claimed'
   | 'certificate_verified'
   | 'certificate_rejected'
+  | 'artwork_updated'
+  | 'qr_code_scanned'
   | 'message';
 
 export interface CreateNotificationParams {

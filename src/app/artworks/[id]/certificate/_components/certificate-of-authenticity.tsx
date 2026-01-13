@@ -5,23 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Trash2, Scan, MapPin } from 'lucide-react';
+import { Star, Scan, MapPin } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@kit/ui/alert-dialog';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
-import { deleteArtwork } from '../../_actions/delete-artwork';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 
 type Artwork = {
@@ -70,7 +58,6 @@ export function CertificateOfAuthenticity({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [deletePending, setDeletePending] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   // Initialize scan locations from artwork metadata
@@ -223,21 +210,6 @@ export function CertificateOfAuthenticity({
     window.print();
   };
 
-  const handleDelete = () => {
-    setDeletePending(true);
-    startTransition(async () => {
-      try {
-        await deleteArtwork(artwork.id);
-        toast.success('Artwork deleted successfully');
-        router.push('/artworks');
-        router.refresh();
-      } catch (error: any) {
-        console.error('Error deleting artwork:', error);
-        toast.error(error.message || 'Failed to delete artwork');
-        setDeletePending(false);
-      }
-    });
-  };
 
   const handlePrintQR = () => {
     if (!certificateUrl) return;
@@ -382,45 +354,6 @@ export function CertificateOfAuthenticity({
               >
                 Edit
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="font-serif text-xs sm:text-sm border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                    size="sm"
-                  >
-                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Delete</span>
-                    <span className="sm:hidden">Del</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-display text-wine">
-                      Delete Artwork
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="font-serif">
-                      Are you sure you want to delete "{artwork.title}"? This action cannot be undone. 
-                      The certificate and all associated data will be permanently removed.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel 
-                      disabled={deletePending}
-                      className="font-serif"
-                    >
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={deletePending}
-                      className="bg-red-600 hover:bg-red-700 text-white font-serif"
-                    >
-                      {deletePending ? 'Deleting...' : 'Delete'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </>
           )}
           {isAdmin && !loadingFeatured && (

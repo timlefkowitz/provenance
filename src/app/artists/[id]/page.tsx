@@ -7,6 +7,7 @@ import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
+import { getUserProfileByRole } from '../../profiles/_actions/get-user-profiles';
 import { Calendar, MapPin } from 'lucide-react';
 
 export const metadata = {
@@ -43,11 +44,21 @@ export default async function ArtistProfilePage({
   }
 
   const isOwner = user?.id === account.id;
-  const medium = account.public_data?.medium || '';
-  const links = (account.public_data?.links as string[]) || [];
-  const galleries = (account.public_data?.galleries as string[]) || [];
   const userRole = getUserRole(account.public_data as Record<string, any>);
   const isGallery = userRole === USER_ROLES.GALLERY;
+
+  // Try to get role-specific profile, fallback to account data
+  const roleProfile = userRole ? await getUserProfileByRole(account.id, userRole) : null;
+  
+  // Use profile data if available, otherwise fall back to account public_data
+  const displayName = roleProfile?.name || account.name;
+  const medium = roleProfile?.medium || account.public_data?.medium || '';
+  const links = roleProfile?.links || (account.public_data?.links as string[]) || [];
+  const galleries = roleProfile?.galleries || (account.public_data?.galleries as string[]) || [];
+  const bio = roleProfile?.bio || '';
+  const location = roleProfile?.location || '';
+  const website = roleProfile?.website || '';
+  const pictureUrl = roleProfile?.picture_url || account.picture_url;
 
   // Fetch exhibitions if this is a gallery
   const exhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
@@ -76,10 +87,10 @@ export default async function ArtistProfilePage({
         <div className="flex items-center gap-6">
           {/* Avatar */}
           <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-2 border-wine/30 bg-wine/10">
-            {account.picture_url ? (
+            {pictureUrl ? (
               <Image
-                src={account.picture_url}
-                alt={account.name}
+                src={pictureUrl}
+                alt={displayName}
                 fill
                 className="object-cover"
                 unoptimized
@@ -87,7 +98,7 @@ export default async function ArtistProfilePage({
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-wine/10">
                 <span className="text-3xl font-display font-bold text-wine uppercase">
-                  {account.name?.charAt(0) || '?'}
+                  {displayName?.charAt(0) || '?'}
                 </span>
               </div>
             )}
@@ -95,11 +106,16 @@ export default async function ArtistProfilePage({
 
           <div>
             <h1 className="text-3xl md:text-4xl font-display font-bold text-wine mb-1">
-              {account.name}
+              {displayName}
             </h1>
             {medium && (
               <p className="text-ink/70 font-serif text-base md:text-lg italic">
                 {medium}
+              </p>
+            )}
+            {location && (
+              <p className="text-sm text-ink/60 font-serif mt-1">
+                {location}
               </p>
             )}
             {account.created_at && (
@@ -145,6 +161,16 @@ export default async function ArtistProfilePage({
         )}
       </div>
 
+      {/* Bio */}
+      {bio && (
+        <Card className="mb-10 border-wine/20 bg-parchment/60">
+          <CardContent className="p-5 md:p-6">
+            <h2 className="font-display text-xl text-wine mb-3">About</h2>
+            <p className="text-ink font-serif whitespace-pre-wrap">{bio}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Links */}
       {links.length > 0 && (
         <Card className="mb-10 border-wine/20 bg-parchment/60">
@@ -164,6 +190,23 @@ export default async function ArtistProfilePage({
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Website */}
+      {website && (
+        <Card className="mb-10 border-wine/20 bg-parchment/60">
+          <CardContent className="p-5 md:p-6">
+            <h2 className="font-display text-xl text-wine mb-3">Website</h2>
+            <a
+              href={website}
+              target="_blank"
+              rel="noreferrer"
+              className="text-wine hover:text-wine/80 hover:underline break-all font-serif text-sm"
+            >
+              {website}
+            </a>
           </CardContent>
         </Card>
       )}

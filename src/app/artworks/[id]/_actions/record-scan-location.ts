@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { createNotification } from '~/lib/notifications';
 
 export interface ScanLocation {
   latitude: number;
@@ -66,7 +67,36 @@ export async function recordScanLocation(
     throw new Error(`Failed to record scan location: ${updateError.message}`);
   }
 
+  // Get artwork owner to notify them
+  const { data: artworkData } = await (client as any)
+    .from('artworks')
+    .select('account_id, title')
+    .eq('id', artworkId)
+    .single();
+
+  // Create notification for artwork owner about QR scan
+  if (artworkData?.account_id) {
+    try {
+      await createNotification({
+        userId: artworkData.account_id,
+        type: 'qr_code_scanned',
+        title: 'QR Code Scanned',
+        message: `Your artwork "${artworkData.title}" was scanned${location.formatted ? ` in ${location.formatted}` : ''}`,
+        artworkId: artworkId,
+        metadata: {
+          scan_location: location,
+          scan_type: 'qr_code',
+        },
+      });
+    } catch (error) {
+      // Don't fail the scan recording if notification fails
+      console.error('Error creating scan notification:', error);
+    }
+  }
+
   revalidatePath(`/artworks/${artworkId}/certificate`);
+  revalidatePath('/portal');
+  revalidatePath('/notifications');
 
   return { success: true };
 }

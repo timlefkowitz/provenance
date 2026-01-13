@@ -1,0 +1,353 @@
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { Button } from '@kit/ui/button';
+import { getUnreadNotificationCount } from '~/lib/notifications';
+import { ArtworkCard } from '../artworks/_components/artwork-card';
+import { User, Image as ImageIcon, Bell, ExternalLink } from 'lucide-react';
+
+export const metadata = {
+  title: 'Portal | Provenance',
+};
+
+export default async function PortalPage() {
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    redirect('/auth/sign-in');
+  }
+
+  // Get account data
+  const { data: account } = await client
+    .from('accounts')
+    .select('id, name, picture_url, public_data')
+    .eq('id', user.id)
+    .single();
+
+  // Get user's artworks count
+  const { count: artworksCount } = await (client as any)
+    .from('artworks')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_id', user.id);
+
+  // Get recent artworks (last 6)
+  const { data: recentArtworks } = await (client as any)
+    .from('artworks')
+    .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
+    .eq('account_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(6);
+
+  // Get users they're following
+  const { data: followingData } = await client
+    .from('user_follows')
+    .select('following_id')
+    .eq('follower_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(12);
+
+  // Get account details for followed users
+  const followingIds = followingData?.map((f: any) => f.following_id) || [];
+  let following: Array<{ following_id: string; accounts: { id: string; name: string; picture_url: string | null } }> = [];
+  
+  if (followingIds.length > 0) {
+    const { data: accounts } = await client
+      .from('accounts')
+      .select('id, name, picture_url')
+      .in('id', followingIds);
+    
+    following = (accounts || []).map(account => ({
+      following_id: account.id,
+      accounts: account,
+    }));
+  }
+
+  // Get recent notifications
+  const { data: notifications } = await client
+    .from('notifications')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  const unreadCount = await getUnreadNotificationCount(user.id);
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-display font-bold text-wine mb-2">
+          Your Portal
+        </h1>
+        <p className="text-ink/70 font-serif">
+          Welcome back, {account?.name || 'User'}
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-ink/60 font-serif mb-1">Your Artworks</p>
+                <p className="text-3xl font-display font-bold text-wine">
+                  {artworksCount || 0}
+                </p>
+              </div>
+              <ImageIcon className="h-8 w-8 text-wine/50" />
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="mt-4 font-serif text-wine hover:text-wine/80"
+            >
+              <Link href="/artworks/add">Add Artwork →</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-ink/60 font-serif mb-1">Following</p>
+                <p className="text-3xl font-display font-bold text-wine">
+                  {following?.length || 0}
+                </p>
+              </div>
+              <User className="h-8 w-8 text-wine/50" />
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="mt-4 font-serif text-wine hover:text-wine/80"
+            >
+              <Link href="/registry">Discover Artists →</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-ink/60 font-serif mb-1">Notifications</p>
+                <p className="text-3xl font-display font-bold text-wine">
+                  {unreadCount}
+                  {unreadCount > 0 && (
+                    <span className="text-sm text-ink/60 font-serif ml-1">unread</span>
+                  )}
+                </p>
+              </div>
+              <Bell className="h-8 w-8 text-wine/50" />
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="mt-4 font-serif text-wine hover:text-wine/80"
+            >
+              <Link href="/notifications">View All →</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Artworks */}
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-display text-xl text-wine">
+                Your Recent Artworks
+              </CardTitle>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif"
+              >
+                <Link href="/artworks/add">
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Add New
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recentArtworks && recentArtworks.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {recentArtworks.map((artwork: any) => (
+                  <ArtworkCard
+                    key={artwork.id}
+                    artwork={artwork}
+                    currentUserId={user.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-ink/60 font-serif mb-4">
+                  You haven't added any artworks yet
+                </p>
+                <Button
+                  asChild
+                  className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+                >
+                  <Link href="/artworks/add">Add Your First Artwork</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Following */}
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-display text-xl text-wine">
+                Artists You Follow
+              </CardTitle>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif"
+              >
+                <Link href="/registry">Discover More →</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {following && following.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {following.map((follow: any) => {
+                  const artist = follow.accounts;
+                  if (!artist) return null;
+                  
+                  return (
+                    <Link
+                      key={follow.following_id}
+                      href={`/artists/${artist.id}`}
+                      className="group"
+                    >
+                      <div className="flex flex-col items-center text-center p-3 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors">
+                        <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/20 bg-wine/10 mb-2">
+                          {artist.picture_url ? (
+                            <Image
+                              src={artist.picture_url}
+                              alt={artist.name}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-xl font-display font-bold text-wine uppercase">
+                                {artist.name?.charAt(0) || '?'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm font-serif text-ink line-clamp-2 group-hover:text-wine transition-colors">
+                          {artist.name}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-ink/60 font-serif mb-4">
+                  You're not following anyone yet
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                >
+                  <Link href="/registry">Discover Artists</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Notifications */}
+      <Card className="mt-8 border-wine/20 bg-parchment/60">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="font-display text-xl text-wine">
+              Recent Notifications
+            </CardTitle>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="font-serif"
+            >
+              <Link href="/notifications">
+                View All
+                <ExternalLink className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {notifications && notifications.length > 0 ? (
+            <div className="space-y-3">
+              {notifications.slice(0, 5).map((notification: any) => (
+                <Link
+                  key={notification.id}
+                  href={notification.artwork_id ? `/artworks/${notification.artwork_id}` : '/notifications'}
+                  className="block p-4 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                      notification.read ? 'bg-wine/20' : 'bg-wine'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-serif text-sm ${
+                        notification.read ? 'text-ink/70' : 'text-ink font-semibold'
+                      }`}>
+                        {notification.title}
+                      </p>
+                      {notification.message && (
+                        <p className="text-xs text-ink/60 font-serif mt-1 line-clamp-2">
+                          {notification.message}
+                        </p>
+                      )}
+                      <p className="text-xs text-ink/40 font-serif mt-2">
+                        {new Date(notification.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-ink/60 font-serif">
+                No notifications yet
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
