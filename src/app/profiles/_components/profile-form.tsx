@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
+import { Upload, X } from 'lucide-react';
 import { createProfile } from '../_actions/create-profile';
 import { updateProfile } from '../_actions/update-profile';
+import { uploadProfilePicture } from '../_actions/upload-profile-picture';
 import { UserProfile } from '../_actions/get-user-profiles';
 import { type UserRole } from '~/lib/user-roles';
 
@@ -21,7 +24,11 @@ export function ProfileForm({
   profile?: UserProfile;
 }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(profile?.picture_url || null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: profile?.name || '',
     picture_url: profile?.picture_url || '',
@@ -36,17 +43,76 @@ export function ProfileForm({
     established_year: profile?.established_year?.toString() || '',
   });
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadingImage(true);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      // Upload the image using FormData
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      const imageUrl = await uploadProfilePicture(uploadFormData);
+      
+      if (imageUrl) {
+        setFormData({ ...formData, picture_url: imageUrl });
+        toast.success('Image uploaded successfully');
+      } else {
+        throw new Error('Failed to upload image');
+      }
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast.error(error.message || 'Failed to upload image');
+      setSelectedFile(null);
+      setImagePreview(formData.picture_url || null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setImagePreview(null);
+    setFormData({ ...formData, picture_url: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     startTransition(async () => {
       try {
+        // Use uploaded image URL if available, otherwise use the URL input
+        const finalPictureUrl = formData.picture_url || undefined;
+
         if (profile) {
           // Update existing profile
           const result = await updateProfile({
             profileId: profile.id,
             name: formData.name,
-            picture_url: formData.picture_url || undefined,
+            picture_url: finalPictureUrl,
             bio: formData.bio || undefined,
             medium: formData.medium || undefined,
             location: formData.location || undefined,
@@ -74,7 +140,7 @@ export function ProfileForm({
           const result = await createProfile({
             role,
             name: formData.name,
-            picture_url: formData.picture_url || undefined,
+            picture_url: finalPictureUrl,
             bio: formData.bio || undefined,
             medium: formData.medium || undefined,
             location: formData.location || undefined,
@@ -129,19 +195,73 @@ export function ProfileForm({
             />
           </div>
 
-          {/* Picture URL */}
+          {/* Profile Picture */}
           <div>
-            <Label htmlFor="picture_url" className="font-serif">
-              Profile Picture URL
+            <Label className="font-serif mb-2 block">
+              Profile Picture
             </Label>
-            <Input
-              id="picture_url"
-              type="url"
-              value={formData.picture_url}
-              onChange={(e) => setFormData({ ...formData, picture_url: e.target.value })}
-              className="font-serif"
-              placeholder="https://example.com/image.jpg"
-            />
+            
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-2 border-wine/20 bg-wine/10">
+                <Image
+                  src={imagePreview}
+                  alt="Profile preview"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  aria-label="Remove image"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Upload Button */}
+            <div className="flex gap-3 mb-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+                className="font-serif border-wine/30 hover:bg-wine/10"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploadingImage ? 'Uploading...' : 'Upload Photo'}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </div>
+
+            {/* URL Input (Alternative) */}
+            <div>
+              <Label htmlFor="picture_url" className="font-serif text-sm text-ink/60">
+                Or enter image URL
+              </Label>
+              <Input
+                id="picture_url"
+                type="url"
+                value={formData.picture_url}
+                onChange={(e) => {
+                  setFormData({ ...formData, picture_url: e.target.value });
+                  if (e.target.value && !selectedFile) {
+                    setImagePreview(e.target.value);
+                  }
+                }}
+                className="font-serif mt-1"
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
           </div>
 
           {/* Bio */}
