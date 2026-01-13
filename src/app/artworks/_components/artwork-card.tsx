@@ -27,6 +27,7 @@ import {
 import { toast } from '@kit/ui/sonner';
 import { FollowButton } from './follow-button';
 import { deleteArtwork } from '../[id]/_actions/delete-artwork';
+import { SignInInvitationDialog } from '~/components/sign-in-invitation-dialog';
 
 type Artwork = {
   id: string;
@@ -48,7 +49,16 @@ export function ArtworkCard({
   const router = useRouter();
   const [deletePending, setDeletePending] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [showSignInDialog, setShowSignInDialog] = useState(false);
   const isOwnArtwork = currentUserId === artwork.account_id;
+  const isAuthenticated = !!currentUserId;
+
+  const handleArtworkClick = (e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      setShowSignInDialog(true);
+    }
+  };
 
   const handleDelete = () => {
     setDeletePending(true);
@@ -66,9 +76,10 @@ export function ArtworkCard({
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden h-full flex flex-col relative">
-      {/* Delete Menu - Only show for owners */}
-      {isOwnArtwork && (
+    <>
+      <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden h-full flex flex-col relative">
+        {/* Delete Menu - Only show for owners */}
+        {isOwnArtwork && (
         <div className="absolute top-2 right-2 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -122,9 +133,13 @@ export function ArtworkCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      )}
-      <Link href={`/artworks/${artwork.id}/certificate`} className="cursor-pointer">
-        <div className="relative aspect-square bg-parchment overflow-hidden">
+        )}
+        <Link 
+          href={`/artworks/${artwork.id}/certificate`} 
+          className="cursor-pointer"
+          onClick={handleArtworkClick}
+        >
+          <div className="relative aspect-square bg-parchment overflow-hidden">
           {artwork.image_url ? (
             <Image
               src={artwork.image_url}
@@ -137,14 +152,15 @@ export function ArtworkCard({
             <div className="w-full h-full flex items-center justify-center text-ink/30 font-serif">
               No Image
             </div>
-          )}
-        </div>
-      </Link>
-      <CardHeader className="flex-1">
-        <Link
-          href={`/artworks/${artwork.id}/certificate`}
-          className="cursor-pointer"
-        >
+            )}
+          </div>
+        </Link>
+        <CardHeader className="flex-1">
+          <Link
+            href={`/artworks/${artwork.id}/certificate`}
+            className="cursor-pointer"
+            onClick={handleArtworkClick}
+          >
           <h3 className="font-display font-bold text-wine text-lg mb-1 line-clamp-2 group-hover:text-wine/80 transition-colors">
             {artwork.title}
           </h3>
@@ -187,6 +203,12 @@ export function ArtworkCard({
         </div>
       </CardFooter>
     </Card>
+    <SignInInvitationDialog
+      open={showSignInDialog}
+      onOpenChange={setShowSignInDialog}
+      artworkTitle={artwork.title}
+    />
+    </>
   );
 }
 
