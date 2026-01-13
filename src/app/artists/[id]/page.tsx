@@ -58,6 +58,7 @@ export default async function ArtistProfilePage({
   const bio = roleProfile?.bio || '';
   const location = roleProfile?.location || '';
   const website = roleProfile?.website || '';
+  const establishedYear = roleProfile?.established_year;
   const pictureUrl = roleProfile?.picture_url || account.picture_url;
 
   // Fetch exhibitions if this is a gallery
@@ -116,9 +117,10 @@ export default async function ArtistProfilePage({
             {location && (
               <p className="text-sm text-ink/60 font-serif mt-1">
                 {location}
+                {isGallery && establishedYear && ` • Established ${establishedYear}`}
               </p>
             )}
-            {account.created_at && (
+            {!isGallery && account.created_at && (
               <p className="text-xs text-ink/50 font-serif mt-2">
                 Member since{' '}
                 {new Date(account.created_at).toLocaleDateString('en-US', {

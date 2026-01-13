@@ -33,6 +33,7 @@ export function ProfileForm({
     galleries: profile?.galleries?.join('\n') || '',
     contact_email: profile?.contact_email || '',
     phone: profile?.phone || '',
+    established_year: profile?.established_year?.toString() || '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -58,6 +59,7 @@ export function ProfileForm({
               : undefined,
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
+            established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
           });
 
           if (result.error) {
@@ -85,6 +87,7 @@ export function ProfileForm({
               : undefined,
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
+            established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
           });
 
           if (result.error) {
@@ -185,6 +188,25 @@ export function ProfileForm({
               placeholder="City, Country"
             />
           </div>
+
+          {/* Established Year (for galleries) */}
+          {(role === 'gallery' || profile?.role === 'gallery') && (
+            <div>
+              <Label htmlFor="established_year" className="font-serif">
+                Established Year
+              </Label>
+              <Input
+                id="established_year"
+                type="number"
+                value={formData.established_year}
+                onChange={(e) => setFormData({ ...formData, established_year: e.target.value })}
+                className="font-serif"
+                placeholder="e.g., 1995"
+                min="1000"
+                max={new Date().getFullYear()}
+              />
+            </div>
+          )}
 
           {/* Website */}
           <div>

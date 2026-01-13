@@ -16,6 +16,7 @@ export interface CreateProfileInput {
   galleries?: string[];
   contact_email?: string;
   phone?: string;
+  established_year?: number;
 }
 
 /**
@@ -62,6 +63,7 @@ export async function createProfile(input: CreateProfileInput) {
         galleries: input.galleries || [],
         contact_email: input.contact_email?.trim() || null,
         phone: input.phone?.trim() || null,
+        established_year: input.established_year || null,
         is_active: true,
       })
       .select()

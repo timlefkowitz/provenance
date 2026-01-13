@@ -16,6 +16,7 @@ export interface UpdateProfileInput {
   galleries?: string[];
   contact_email?: string;
   phone?: string;
+  established_year?: number;
   is_active?: boolean;
 }
 
@@ -58,6 +59,7 @@ export async function updateProfile(input: UpdateProfileInput) {
     if (input.galleries !== undefined) updateData.galleries = input.galleries || [];
     if (input.contact_email !== undefined) updateData.contact_email = input.contact_email?.trim() || null;
     if (input.phone !== undefined) updateData.phone = input.phone?.trim() || null;
+    if (input.established_year !== undefined) updateData.established_year = input.established_year || null;
     if (input.is_active !== undefined) updateData.is_active = input.is_active;
 
     // Update the profile

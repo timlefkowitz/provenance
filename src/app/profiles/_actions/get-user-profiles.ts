@@ -17,6 +17,7 @@ export type UserProfile = {
   galleries: string[] | null;
   contact_email: string | null;
   phone: string | null;
+  established_year: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
