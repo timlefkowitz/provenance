@@ -72,13 +72,19 @@ export function ProfileForm({
       // Upload the image using FormData
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      const imageUrl = await uploadProfilePicture(uploadFormData);
+      const result = await uploadProfilePicture(uploadFormData);
       
-      if (imageUrl) {
-        setFormData({ ...formData, picture_url: imageUrl });
+      if (result.error) {
+        toast.error(result.error);
+        setSelectedFile(null);
+        setImagePreview(formData.picture_url || null);
+      } else if (result.url) {
+        setFormData({ ...formData, picture_url: result.url });
         toast.success('Image uploaded successfully');
       } else {
-        throw new Error('Failed to upload image');
+        toast.error('Failed to upload image');
+        setSelectedFile(null);
+        setImagePreview(formData.picture_url || null);
       }
     } catch (error: any) {
       console.error('Error uploading image:', error);
