@@ -3,17 +3,17 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, Info } from 'lucide-react';
+import { X, Info, Building2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import { getPerspective } from './perspective-switcher';
 import { USER_ROLES } from '~/lib/user-roles';
-import pathsConfig from '~/config/paths.config';
 
 const DISMISSED_KEY = 'gallery_profile_notification_dismissed';
 
 export function GalleryProfileNotification() {
   const [isVisible, setIsVisible] = useState(false);
+  const [hasGalleryProfile, setHasGalleryProfile] = useState<boolean | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -30,8 +30,29 @@ export function GalleryProfileNotification() {
 
     // Check if perspective is Gallery
     const perspective = getPerspective();
-    setIsVisible(perspective === USER_ROLES.GALLERY);
-  }, [pathname]); // Re-check when route changes (which happens when perspective changes via router.refresh())
+    if (perspective !== USER_ROLES.GALLERY) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Check if user has a gallery profile
+    async function checkGalleryProfile() {
+      try {
+        const response = await fetch('/api/check-gallery-profile');
+        if (response.ok) {
+          const data = await response.json();
+          setHasGalleryProfile(data.hasProfile);
+          setIsVisible(true);
+        }
+      } catch (error) {
+        console.error('Error checking gallery profile:', error);
+        // Show notification anyway if check fails
+        setIsVisible(true);
+      }
+    }
+
+    checkGalleryProfile();
+  }, [pathname]);
 
   const handleDismiss = () => {
     if (typeof window !== 'undefined') {
@@ -44,6 +65,14 @@ export function GalleryProfileNotification() {
     return null;
   }
 
+  const profileLink = hasGalleryProfile 
+    ? '/profiles' // Link to profiles page to edit
+    : '/profiles/new?role=gallery'; // Link to create gallery profile
+
+  const actionText = hasGalleryProfile
+    ? 'edit your gallery profile'
+    : 'create your gallery profile';
+
   return (
     <Alert 
       variant="info" 
@@ -51,16 +80,30 @@ export function GalleryProfileNotification() {
     >
       <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
-          <Info className="h-5 w-5 text-wine flex-shrink-0" />
+          <Building2 className="h-5 w-5 text-wine flex-shrink-0" />
           <AlertDescription className="text-ink font-serif text-sm">
-            You should{' '}
-            <Link 
-              href={pathsConfig.app.profileSettings}
-              className="text-wine hover:text-wine/80 underline font-semibold"
-            >
-              edit your gallery profile
-            </Link>
-            {' '}to complete your gallery setup.
+            {hasGalleryProfile ? (
+              <>
+                Complete your gallery setup by{' '}
+                <Link 
+                  href={profileLink}
+                  className="text-wine hover:text-wine/80 underline font-semibold"
+                >
+                  editing your gallery profile
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                Create your gallery profile to showcase your exhibitions and connect with artists.{' '}
+                <Link 
+                  href={profileLink}
+                  className="text-wine hover:text-wine/80 underline font-semibold"
+                >
+                  Create Gallery Profile →
+                </Link>
+              </>
+            )}
           </AlertDescription>
         </div>
         <Button

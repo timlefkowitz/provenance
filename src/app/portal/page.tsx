@@ -5,8 +5,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { getUnreadNotificationCount } from '~/lib/notifications';
+import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
 import { ArtworkCard } from '../artworks/_components/artwork-card';
-import { User, Image as ImageIcon, Bell, ExternalLink } from 'lucide-react';
+import { User, Image as ImageIcon, Bell, ExternalLink, Building2 } from 'lucide-react';
+import { USER_ROLES } from '~/lib/user-roles';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -75,6 +77,12 @@ export default async function PortalPage() {
 
   const unreadCount = await getUnreadNotificationCount(user.id);
 
+  // Check if user has a gallery profile
+  const profiles = await getUserProfiles(user.id);
+  const hasGalleryProfile = profiles.some(p => p.role === USER_ROLES.GALLERY);
+  const userRole = (account?.public_data as any)?.role;
+  const isGallery = userRole === USER_ROLES.GALLERY;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
@@ -86,6 +94,35 @@ export default async function PortalPage() {
           Welcome back, {account?.name || 'User'}
         </p>
       </div>
+
+      {/* Gallery Profile Prompt */}
+      {isGallery && !hasGalleryProfile && (
+        <Card className="mb-8 border-wine/30 bg-wine/10">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Building2 className="h-8 w-8 text-wine" />
+                <div>
+                  <h3 className="font-display font-bold text-wine text-lg mb-1">
+                    Create Your Gallery Profile
+                  </h3>
+                  <p className="text-ink/70 font-serif text-sm">
+                    Set up your gallery profile to showcase exhibitions and connect with artists.
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              >
+                <Link href="/profiles/new?role=gallery">
+                  Create Profile
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
