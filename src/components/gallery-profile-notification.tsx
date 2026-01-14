@@ -21,11 +21,12 @@ export function GalleryProfileNotification() {
       return;
     }
 
-    // Check if already dismissed
+    // FIRST: Check if already dismissed - if so, never show again
     const dismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
     if (dismissed) {
       setIsVisible(false);
-      return;
+      setHasGalleryProfile(null);
+      return; // Exit early - don't do any other checks
     }
 
     // Check if perspective is Gallery
@@ -38,16 +39,25 @@ export function GalleryProfileNotification() {
     // Check if user has a gallery profile
     async function checkGalleryProfile() {
       try {
-        const response = await fetch('/api/check-gallery-profile');
+        // Add cache-busting query param to ensure fresh data
+        const response = await fetch(`/api/check-gallery-profile?t=${Date.now()}`);
         if (response.ok) {
           const data = await response.json();
           setHasGalleryProfile(data.hasProfile);
-          setIsVisible(true);
+          // Only show notification if user doesn't have a gallery profile
+          // But respect dismissal - if dismissed, don't show even if no profile
+          const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
+          if (!stillDismissed) {
+            setIsVisible(!data.hasProfile);
+          }
         }
       } catch (error) {
         console.error('Error checking gallery profile:', error);
-        // Show notification anyway if check fails
-        setIsVisible(true);
+        // Only show notification if check fails AND not dismissed
+        const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
+        if (!stillDismissed) {
+          setIsVisible(true);
+        }
       }
     }
 
@@ -56,8 +66,11 @@ export function GalleryProfileNotification() {
 
   const handleDismiss = () => {
     if (typeof window !== 'undefined') {
+      // Permanently dismiss - store in localStorage
       localStorage.setItem(DISMISSED_KEY, 'true');
       setIsVisible(false);
+      // Also clear any pending state
+      setHasGalleryProfile(null);
     }
   };
 

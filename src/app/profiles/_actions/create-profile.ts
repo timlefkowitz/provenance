@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { isValidRole, type UserRole } from '~/lib/user-roles';
+import { createNotification } from '~/lib/notifications';
 
 export interface CreateProfileInput {
   role: string;
@@ -74,9 +75,25 @@ export async function createProfile(input: CreateProfileInput) {
       return { error: error.message || 'Failed to create profile' };
     }
 
+    // Create a notification for gallery profile creation
+    if (input.role === 'gallery') {
+      try {
+        await createNotification({
+          userId: user.id,
+          type: 'message',
+          title: 'Gallery Profile Created',
+          message: `Your gallery profile "${input.name.trim()}" has been created successfully. You can now showcase exhibitions and connect with artists.`,
+        });
+      } catch (notifError) {
+        // Don't fail profile creation if notification fails
+        console.error('Error creating notification:', notifError);
+      }
+    }
+
     revalidatePath('/profile');
     revalidatePath('/profiles');
     revalidatePath(`/artists/${user.id}`);
+    revalidatePath('/portal');
 
     return { success: true, profile: data };
   } catch (error) {

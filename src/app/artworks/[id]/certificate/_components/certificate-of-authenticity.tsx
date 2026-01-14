@@ -79,10 +79,11 @@ export function CertificateOfAuthenticity({
     scanned_at: string;
   }>>(initialScanLocations);
 
-  // Check if artwork is already featured on mount
+  // Check if artwork is already featured on mount (only for admins, and do it lazily)
   useEffect(() => {
     if (isAdmin) {
-      async function checkFeaturedStatus() {
+      // Use a small delay to not block initial render
+      const timeoutId = setTimeout(async () => {
         try {
           const isFeatured = await isArtworkFeatured(artwork.id);
           setFeatured(isFeatured);
@@ -91,8 +92,9 @@ export function CertificateOfAuthenticity({
         } finally {
           setLoadingFeatured(false);
         }
-      }
-      checkFeaturedStatus();
+      }, 100); // Small delay to allow page to render first
+      
+      return () => clearTimeout(timeoutId);
     } else {
       setLoadingFeatured(false);
     }

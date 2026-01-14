@@ -8,6 +8,9 @@ export const metadata = {
   title: 'Certificate of Authenticity | Provenance',
 };
 
+// Enable dynamic rendering for better performance
+export const dynamic = 'force-dynamic';
+
 export default async function CertificatePage({
   params,
 }: {
@@ -19,6 +22,7 @@ export default async function CertificatePage({
 
   // Fetch artwork - allow public access for verified artworks
   // Authenticated users can also see their own artworks
+  // Only select the columns we need for better performance
   let artwork;
   let error;
 
@@ -26,7 +30,33 @@ export default async function CertificatePage({
     // Authenticated users can see their own artworks or verified artworks
     const { data, error: err } = await (client as any)
       .from('artworks')
-      .select('*')
+      .select(`
+        id,
+        account_id,
+        title,
+        description,
+        artist_name,
+        creation_date,
+        medium,
+        dimensions,
+        image_url,
+        certificate_number,
+        created_at,
+        former_owners,
+        auction_history,
+        exhibition_history,
+        historic_context,
+        celebrity_notes,
+        value,
+        value_is_public,
+        edition,
+        production_location,
+        owned_by,
+        owned_by_is_public,
+        sold_by,
+        sold_by_is_public,
+        metadata
+      `)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
       .single();
@@ -37,7 +67,33 @@ export default async function CertificatePage({
     // Anonymous users can only see verified artworks
     const { data, error: err } = await (client as any)
       .from('artworks')
-      .select('*')
+      .select(`
+        id,
+        account_id,
+        title,
+        description,
+        artist_name,
+        creation_date,
+        medium,
+        dimensions,
+        image_url,
+        certificate_number,
+        created_at,
+        former_owners,
+        auction_history,
+        exhibition_history,
+        historic_context,
+        celebrity_notes,
+        value,
+        value_is_public,
+        edition,
+        production_location,
+        owned_by,
+        owned_by_is_public,
+        sold_by,
+        sold_by_is_public,
+        metadata
+      `)
       .eq('id', id)
       .eq('status', 'verified')
       .single();
@@ -53,27 +109,49 @@ export default async function CertificatePage({
   // Check if the current user is the owner
   const isOwner = !!(user && artwork.account_id === user.id);
   
-  // Check if the current user is an admin
-  const userIsAdmin = user ? await isAdmin(user.id) : false;
-
-  // Get creator account info to display who created the certificate
+  // Get creator account info and check admin status in parallel
   let creatorInfo: { name: string; role: string | null } | null = null;
+  let userIsAdmin = false;
+  
   try {
-    const { data: creatorAccount } = await client
+    // Fetch creator account info (needed for all users)
+    const creatorAccountPromise = client
       .from('accounts')
       .select('name, public_data')
       .eq('id', artwork.account_id)
       .single();
     
-    if (creatorAccount) {
-      const creatorRole = getUserRole(creatorAccount.public_data as Record<string, any>);
+    // Fetch current user's account for admin check (only if user is logged in)
+    const currentUserAccountPromise = user 
+      ? client
+          .from('accounts')
+          .select('public_data')
+          .eq('id', user.id)
+          .single()
+      : Promise.resolve({ data: null, error: null });
+    
+    // Execute both queries in parallel
+    const [creatorAccountResult, currentUserAccountResult] = await Promise.all([
+      creatorAccountPromise,
+      currentUserAccountPromise,
+    ]);
+    
+    // Process creator info
+    if (creatorAccountResult.data) {
+      const creatorRole = getUserRole(creatorAccountResult.data.public_data as Record<string, any>);
       creatorInfo = {
-        name: creatorAccount.name,
+        name: creatorAccountResult.data.name,
         role: creatorRole,
       };
     }
+    
+    // Check admin status
+    if (currentUserAccountResult.data?.public_data) {
+      const publicData = currentUserAccountResult.data.public_data as Record<string, any>;
+      userIsAdmin = publicData.admin === true;
+    }
   } catch (error) {
-    console.error('Error fetching creator info:', error);
+    console.error('Error fetching account info:', error);
   }
 
   return (

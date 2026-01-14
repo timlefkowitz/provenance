@@ -24,10 +24,15 @@ type Account = {
 
 export default async function ArtistProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ role?: string }>;
 }) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const requestedRole = resolvedSearchParams?.role;
+  
   const client = getSupabaseServerClient();
   const {
     data: { user },
@@ -44,11 +49,19 @@ export default async function ArtistProfilePage({
   }
 
   const isOwner = user?.id === account.id;
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  
+  // Use requested role from query param if provided, otherwise get from account
+  let userRole: string | null = null;
+  if (requestedRole && ['artist', 'collector', 'gallery'].includes(requestedRole)) {
+    userRole = requestedRole;
+  } else {
+    userRole = getUserRole(account.public_data as Record<string, any>);
+  }
+  
   const isGallery = userRole === USER_ROLES.GALLERY;
 
   // Try to get role-specific profile, fallback to account data
-  const roleProfile = userRole ? await getUserProfileByRole(account.id, userRole) : null;
+  const roleProfile = userRole ? await getUserProfileByRole(account.id, userRole as any) : null;
   
   // Use profile data if available, otherwise fall back to account public_data
   const displayName = roleProfile?.name || account.name;

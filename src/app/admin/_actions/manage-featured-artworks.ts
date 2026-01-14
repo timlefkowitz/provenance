@@ -7,23 +7,30 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Get all featured artwork IDs across all accounts (consolidated)
+ * Optimized to only fetch accounts that might have featured_artworks
  */
 async function getAllFeaturedArtworkIds(): Promise<string[]> {
   const adminClient = getSupabaseServerAdminClient();
   
+  // Use a more efficient query - only get accounts where public_data contains featured_artworks
+  // Note: This is a simplified approach. For better performance, consider creating a separate table
   const { data: allAccounts } = await adminClient
     .from('accounts')
     .select('id, public_data')
+    .not('public_data', 'is', null)
     .limit(100);
 
   // Collect ALL featured artwork IDs from ALL accounts
   const allFeaturedIds: string[] = [];
+  const seenIds = new Set<string>(); // Use Set for O(1) lookup instead of includes
+  
   for (const account of allAccounts || []) {
     const publicData = account.public_data as Record<string, any>;
     if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
       // Add all IDs from this account (avoid duplicates)
       for (const id of publicData.featured_artworks) {
-        if (!allFeaturedIds.includes(id)) {
+        if (typeof id === 'string' && !seenIds.has(id)) {
+          seenIds.add(id);
           allFeaturedIds.push(id);
         }
       }

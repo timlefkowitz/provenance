@@ -25,11 +25,15 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {profiles.map((profile) => (
-        <Card
+        <Link
           key={profile.id}
-          className="border-wine/20 bg-white hover:shadow-md transition-shadow"
+          href={`/artists/${profile.user_id}?role=${profile.role}`}
+          className="block"
         >
-          <CardContent className="p-6">
+          <Card
+            className="border-wine/20 bg-white hover:shadow-md transition-shadow group cursor-pointer h-full"
+          >
+            <CardContent className="p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/20 bg-wine/10 flex-shrink-0">
                 {profile.picture_url ? (
@@ -79,6 +83,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
                 variant="outline"
                 size="sm"
                 className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+                onClick={(e) => e.stopPropagation()}
               >
                 <Link href={`/profiles/${profile.id}/edit`}>
                   <Edit className="h-3 w-3 mr-1" />
@@ -90,6 +95,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
                 variant="ghost"
                 size="sm"
                 className="font-serif"
+                onClick={(e) => e.stopPropagation()}
               >
                 <Link href={`/artists/${profile.user_id}?role=${profile.role}`}>
                   <ExternalLink className="h-3 w-3" />
@@ -104,6 +110,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
             )}
           </CardContent>
         </Card>
+        </Link>
       ))}
     </div>
   );
