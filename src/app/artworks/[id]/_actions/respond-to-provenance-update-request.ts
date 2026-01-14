@@ -26,7 +26,8 @@ export async function respondToProvenanceUpdateRequest(
         artworks!inner (
           id,
           account_id,
-          title
+          title,
+          artist_name
         )
       `)
       .eq('id', requestId)
@@ -43,37 +44,54 @@ export async function respondToProvenanceUpdateRequest(
     }
 
     if (action === 'approve') {
-      // Format update fields to match updateProvenance function signature
-      const formattedUpdates: any = {};
-      
-      if (request.update_fields.title !== undefined) formattedUpdates.title = request.update_fields.title;
-      if (request.update_fields.description !== undefined) formattedUpdates.description = request.update_fields.description;
-      if (request.update_fields.artist_name !== undefined) formattedUpdates.artist_name = request.update_fields.artist_name;
-      if (request.update_fields.medium !== undefined) formattedUpdates.medium = request.update_fields.medium;
-      if (request.update_fields.creation_date !== undefined) formattedUpdates.creationDate = request.update_fields.creation_date;
-      if (request.update_fields.dimensions !== undefined) formattedUpdates.dimensions = request.update_fields.dimensions;
-      if (request.update_fields.former_owners !== undefined) formattedUpdates.formerOwners = request.update_fields.former_owners;
-      if (request.update_fields.auction_history !== undefined) formattedUpdates.auctionHistory = request.update_fields.auction_history;
-      if (request.update_fields.exhibition_history !== undefined) formattedUpdates.exhibitionHistory = request.update_fields.exhibition_history;
-      if (request.update_fields.historic_context !== undefined) formattedUpdates.historicContext = request.update_fields.historic_context;
-      if (request.update_fields.celebrity_notes !== undefined) formattedUpdates.celebrityNotes = request.update_fields.celebrity_notes;
-      if (request.update_fields.value !== undefined) formattedUpdates.value = request.update_fields.value;
-      if (request.update_fields.edition !== undefined) formattedUpdates.edition = request.update_fields.edition;
-      if (request.update_fields.production_location !== undefined) formattedUpdates.productionLocation = request.update_fields.production_location;
-      if (request.update_fields.owned_by !== undefined) formattedUpdates.ownedBy = request.update_fields.owned_by;
+      // Handle ownership transfer if this is an ownership request
+      if (request.request_type === 'ownership_request') {
+        // Transfer ownership to the requester
+        const { error: transferError } = await (client as any)
+          .from('artworks')
+          .update({
+            account_id: request.requested_by,
+            updated_by: user.id,
+          })
+          .eq('id', request.artworks.id);
 
-      // Apply the updates to the artwork (skip ownership check and notification since we handle those here)
-      const updateResult = await updateProvenance(
-        request.artworks.id,
-        formattedUpdates,
-        {
-          skipOwnershipCheck: true,
-          skipNotification: true,
-        },
-      );
+        if (transferError) {
+          console.error('Error transferring ownership:', transferError);
+          return { success: false, error: 'Failed to transfer ownership' };
+        }
+      } else {
+        // Format update fields to match updateProvenance function signature
+        const formattedUpdates: any = {};
+        
+        if (request.update_fields.title !== undefined) formattedUpdates.title = request.update_fields.title;
+        if (request.update_fields.description !== undefined) formattedUpdates.description = request.update_fields.description;
+        if (request.update_fields.artist_name !== undefined) formattedUpdates.artist_name = request.update_fields.artist_name;
+        if (request.update_fields.medium !== undefined) formattedUpdates.medium = request.update_fields.medium;
+        if (request.update_fields.creation_date !== undefined) formattedUpdates.creationDate = request.update_fields.creation_date;
+        if (request.update_fields.dimensions !== undefined) formattedUpdates.dimensions = request.update_fields.dimensions;
+        if (request.update_fields.former_owners !== undefined) formattedUpdates.formerOwners = request.update_fields.former_owners;
+        if (request.update_fields.auction_history !== undefined) formattedUpdates.auctionHistory = request.update_fields.auction_history;
+        if (request.update_fields.exhibition_history !== undefined) formattedUpdates.exhibitionHistory = request.update_fields.exhibition_history;
+        if (request.update_fields.historic_context !== undefined) formattedUpdates.historicContext = request.update_fields.historic_context;
+        if (request.update_fields.celebrity_notes !== undefined) formattedUpdates.celebrityNotes = request.update_fields.celebrity_notes;
+        if (request.update_fields.value !== undefined) formattedUpdates.value = request.update_fields.value;
+        if (request.update_fields.edition !== undefined) formattedUpdates.edition = request.update_fields.edition;
+        if (request.update_fields.production_location !== undefined) formattedUpdates.productionLocation = request.update_fields.production_location;
+        if (request.update_fields.owned_by !== undefined) formattedUpdates.ownedBy = request.update_fields.owned_by;
 
-      if (updateResult.error) {
-        return { success: false, error: updateResult.error };
+        // Apply the updates to the artwork (skip ownership check and notification since we handle those here)
+        const updateResult = await updateProvenance(
+          request.artworks.id,
+          formattedUpdates,
+          {
+            skipOwnershipCheck: true,
+            skipNotification: true,
+          },
+        );
+
+        if (updateResult.error) {
+          return { success: false, error: updateResult.error };
+        }
       }
 
       // Update the request status
@@ -94,11 +112,19 @@ export async function respondToProvenanceUpdateRequest(
 
       // Create notification for requester
       try {
+        const notificationType = request.request_type === 'ownership_request' ? 'ownership_approved' : 'provenance_update_approved';
+        const notificationTitle = request.request_type === 'ownership_request'
+          ? `Ownership Approved: ${request.artworks.title}`
+          : `Update Approved: ${request.artworks.title}`;
+        const notificationMessage = request.request_type === 'ownership_request'
+          ? `Your ownership request for "${request.artworks.title}" has been approved. You are now the owner of this artwork.`
+          : `Your provenance update request for "${request.artworks.title}" has been approved.`;
+
         await createNotification({
           userId: request.requested_by,
-          type: 'provenance_update_approved',
-          title: `Update Approved: ${request.artworks.title}`,
-          message: `Your provenance update request for "${request.artworks.title}" has been approved.`,
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
           artworkId: request.artworks.id,
           relatedUserId: user.id,
         });
@@ -124,11 +150,19 @@ export async function respondToProvenanceUpdateRequest(
 
       // Create notification for requester
       try {
+        const notificationType = request.request_type === 'ownership_request' ? 'ownership_denied' : 'provenance_update_denied';
+        const notificationTitle = request.request_type === 'ownership_request'
+          ? `Ownership Denied: ${request.artworks.title}`
+          : `Update Denied: ${request.artworks.title}`;
+        const notificationMessage = request.request_type === 'ownership_request'
+          ? `Your ownership request for "${request.artworks.title}" has been denied.`
+          : `Your provenance update request for "${request.artworks.title}" has been denied.`;
+
         await createNotification({
           userId: request.requested_by,
-          type: 'provenance_update_denied',
-          title: `Update Denied: ${request.artworks.title}`,
-          message: `Your provenance update request for "${request.artworks.title}" has been denied.`,
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
           artworkId: request.artworks.id,
           relatedUserId: user.id,
         });

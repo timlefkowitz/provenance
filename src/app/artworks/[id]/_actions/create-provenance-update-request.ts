@@ -25,6 +25,7 @@ export async function createProvenanceUpdateRequest(
   artworkId: string,
   updateFields: ProvenanceUpdateFields,
   requestMessage?: string,
+  requestType: 'provenance_update' | 'ownership_request' = 'provenance_update',
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const client = getSupabaseServerClient();
@@ -37,7 +38,7 @@ export async function createProvenanceUpdateRequest(
     // Verify artwork exists and get owner
     const { data: artwork, error: artworkError } = await (client as any)
       .from('artworks')
-      .select('id, account_id, title')
+      .select('id, account_id, title, artist_name')
       .eq('id', artworkId)
       .single();
 
@@ -45,22 +46,55 @@ export async function createProvenanceUpdateRequest(
       return { success: false, error: 'Artwork not found' };
     }
 
-    // Don't allow requesting updates to your own artwork
-    if (artwork.account_id === user.id) {
-      return { success: false, error: 'You cannot request updates to your own artwork' };
+    // For ownership requests, verify user is an artist and matches the artwork's artist_name
+    if (requestType === 'ownership_request') {
+      const { data: account } = await client
+        .from('accounts')
+        .select('id, name, public_data')
+        .eq('id', user.id)
+        .single();
+
+      if (!account) {
+        return { success: false, error: 'Account not found' };
+      }
+
+      const { getUserRole } = await import('~/lib/user-roles');
+      const { USER_ROLES } = await import('~/lib/user-roles');
+      const userRole = getUserRole(account.public_data as Record<string, any>);
+      
+      if (userRole !== USER_ROLES.ARTIST) {
+        return { success: false, error: 'Only artists can request ownership' };
+      }
+
+      // Check if artist name matches (case-insensitive)
+      if (!artwork.artist_name || account.name.toLowerCase() !== artwork.artist_name.toLowerCase()) {
+        return { success: false, error: 'Your name must match the artist name on the artwork to request ownership' };
+      }
+
+      // Don't allow requesting ownership if already the owner
+      if (artwork.account_id === user.id) {
+        return { success: false, error: 'You already own this artwork' };
+      }
+    } else {
+      // For provenance updates, don't allow requesting updates to your own artwork
+      if (artwork.account_id === user.id) {
+        return { success: false, error: 'You cannot request updates to your own artwork' };
+      }
     }
 
-    // Check if there's already a pending request
+    // Check if there's already a pending request of the same type
     const { data: existingRequest } = await (client as any)
       .from('provenance_update_requests')
       .select('id')
       .eq('artwork_id', artworkId)
       .eq('requested_by', user.id)
       .eq('status', 'pending')
+      .eq('request_type', requestType)
       .single();
 
     if (existingRequest) {
-      return { success: false, error: 'You already have a pending update request for this artwork' };
+      const requestTypeLabel = requestType === 'ownership_request' ? 'ownership' : 'update';
+      return { success: false, error: `You already have a pending ${requestTypeLabel} request for this artwork` };
     }
 
     // Create the request
@@ -72,6 +106,7 @@ export async function createProvenanceUpdateRequest(
         update_fields: updateFields,
         request_message: requestMessage || null,
         status: 'pending',
+        request_type: requestType,
       });
 
     if (insertError) {
@@ -81,11 +116,19 @@ export async function createProvenanceUpdateRequest(
 
     // Create notification for artwork owner
     try {
+      const notificationType: 'ownership_request' | 'provenance_update_request' = requestType === 'ownership_request' ? 'ownership_request' : 'provenance_update_request';
+      const notificationTitle = requestType === 'ownership_request' 
+        ? `Ownership Request: ${artwork.title}`
+        : `Provenance Update Request: ${artwork.title}`;
+      const notificationMessage = requestType === 'ownership_request'
+        ? `An artist has requested ownership of "${artwork.title}". Review the request in your portal.`
+        : `A user has requested to update the provenance information for "${artwork.title}". Review the request in your portal.`;
+
       await createNotification({
         userId: artwork.account_id,
-        type: 'provenance_update_request',
-        title: `Provenance Update Request: ${artwork.title}`,
-        message: `A user has requested to update the provenance information for "${artwork.title}". Review the request in your portal.`,
+        type: notificationType,
+        title: notificationTitle,
+        message: notificationMessage,
         artworkId: artwork.id,
         relatedUserId: user.id,
       });

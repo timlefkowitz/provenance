@@ -13,6 +13,7 @@ export type ProvenanceUpdateRequest = {
   update_fields: Record<string, any>;
   request_message: string | null;
   review_message: string | null;
+  request_type: 'provenance_update' | 'ownership_request';
   artwork: {
     id: string;
     title: string;
@@ -100,6 +101,7 @@ export async function getProvenanceUpdateRequestsForOwner(): Promise<ProvenanceU
       update_fields: req.update_fields,
       request_message: req.request_message,
       review_message: req.review_message,
+      request_type: req.request_type || 'provenance_update',
       artwork: {
         id: req.artworks?.id || req.artwork_id,
         title: req.artworks?.title || 'Unknown Artwork',

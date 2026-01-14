@@ -12,6 +12,9 @@ export type NotificationType =
   | 'provenance_update_request'
   | 'provenance_update_approved'
   | 'provenance_update_denied'
+  | 'ownership_request'
+  | 'ownership_approved'
+  | 'ownership_denied'
   | 'message';
 
 export interface CreateNotificationParams {

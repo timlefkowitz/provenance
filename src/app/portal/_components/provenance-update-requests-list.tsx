@@ -118,16 +118,27 @@ export function ProvenanceUpdateRequestsList({
                         {request.request_message}
                       </p>
                     )}
-                    <div className="mt-2 text-xs text-ink/60 font-serif">
-                      <p className="font-semibold">Proposed changes:</p>
-                      <ul className="list-disc list-inside mt-1 space-y-1">
-                        {Object.keys(request.update_fields).map((key) => (
-                          <li key={key}>
-                            <span className="capitalize">{key.replace(/_/g, ' ')}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {request.request_type === 'ownership_request' ? (
+                      <div className="mt-2 p-3 bg-wine/10 border border-wine/30 rounded-md">
+                        <p className="text-sm font-semibold text-wine font-serif">
+                          Ownership Request
+                        </p>
+                        <p className="text-xs text-ink/70 font-serif mt-1">
+                          This artist is requesting to become the owner of this artwork.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-ink/60 font-serif">
+                        <p className="font-semibold">Proposed changes:</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          {Object.keys(request.update_fields).map((key) => (
+                            <li key={key}>
+                              <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -141,10 +152,14 @@ export function ProvenanceUpdateRequestsList({
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto font-serif">
           <DialogHeader>
             <DialogTitle className="font-display text-wine">
-              Review Update Request
+              {selectedRequest?.request_type === 'ownership_request' 
+                ? 'Review Ownership Request' 
+                : 'Review Update Request'}
             </DialogTitle>
             <DialogDescription>
-              Review the proposed changes for "{selectedRequest?.artwork.title}"
+              {selectedRequest?.request_type === 'ownership_request'
+                ? `Review the ownership request for "${selectedRequest?.artwork.title}". If approved, ownership will be transferred to the artist.`
+                : `Review the proposed changes for "${selectedRequest?.artwork.title}"`}
             </DialogDescription>
           </DialogHeader>
           {selectedRequest && (
@@ -161,21 +176,33 @@ export function ProvenanceUpdateRequestsList({
                   </p>
                 </div>
               )}
-              <div>
-                <Label>Proposed Changes</Label>
-                <div className="mt-2 space-y-3 max-h-96 overflow-y-auto">
-                  {Object.entries(selectedRequest.update_fields).map(([key, value]) => (
-                    <div key={key} className="p-3 bg-wine/5 rounded border border-wine/10">
-                      <p className="text-xs font-semibold text-wine mb-1 capitalize">
-                        {key.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-sm font-serif text-ink whitespace-pre-wrap">
-                        {String(value || '')}
-                      </p>
-                    </div>
-                  ))}
+              {selectedRequest.request_type === 'ownership_request' ? (
+                <div>
+                  <Label>Ownership Request</Label>
+                  <div className="mt-2 p-4 bg-wine/10 border border-wine/30 rounded-md">
+                    <p className="text-sm font-serif text-ink">
+                      This artist is requesting to become the owner of this artwork. 
+                      If you approve this request, ownership will be transferred to the artist.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <Label>Proposed Changes</Label>
+                  <div className="mt-2 space-y-3 max-h-96 overflow-y-auto">
+                    {Object.entries(selectedRequest.update_fields).map(([key, value]) => (
+                      <div key={key} className="p-3 bg-wine/5 rounded border border-wine/10">
+                        <p className="text-xs font-semibold text-wine mb-1 capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </p>
+                        <p className="text-sm font-serif text-ink whitespace-pre-wrap">
+                          {String(value || '')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <Label htmlFor="review_message">Review Message (Optional)</Label>
                 <Textarea

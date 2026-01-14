@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,12 +15,19 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { toast } from '@kit/ui/sonner';
+import { useUser } from '@kit/supabase/hooks/use-user';
+import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import type { Artwork } from './certificate-of-authenticity';
 
 export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const user = useUser();
+  const client = useSupabase();
+  const [canRequestOwnership, setCanRequestOwnership] = useState(false);
+  const [requestType, setRequestType] = useState<'provenance_update' | 'ownership_request'>('provenance_update');
   const [formData, setFormData] = useState({
     title: artwork.title || '',
     description: artwork.description || '',
@@ -40,12 +47,68 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
     request_message: '',
   });
 
+  // Check if user can request ownership (artist with matching name)
+  useEffect(() => {
+    async function checkOwnershipRequestEligibility() {
+      if (!user.data || !artwork.artist_name) {
+        setCanRequestOwnership(false);
+        return;
+      }
+
+      try {
+        const { data: account } = await client
+          .from('accounts')
+          .select('id, name, public_data')
+          .eq('id', user.data.id)
+          .single();
+
+        if (!account) {
+          setCanRequestOwnership(false);
+          return;
+        }
+
+        const userRole = getUserRole(account.public_data as Record<string, any>);
+        const nameMatches = account.name.toLowerCase() === artwork.artist_name!.toLowerCase();
+
+        setCanRequestOwnership(userRole === USER_ROLES.ARTIST && nameMatches);
+      } catch (error) {
+        console.error('Error checking ownership eligibility:', error);
+        setCanRequestOwnership(false);
+      }
+    }
+
+    checkOwnershipRequestEligibility();
+  }, [user.data, artwork.artist_name]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     startTransition(async () => {
       try {
-        // Build update fields object (only include fields that have changed)
+        // For ownership requests, we don't need to check for changes
+        if (requestType === 'ownership_request') {
+          const result = await createProvenanceUpdateRequest(
+            artwork.id,
+            {}, // Empty update fields for ownership requests
+            formData.request_message || undefined,
+            'ownership_request',
+          );
+
+          if (result.error) {
+            toast.error(result.error);
+          } else {
+            toast.success('Ownership request submitted. The certificate owner will be notified.');
+            setOpen(false);
+            setRequestType('provenance_update');
+            setFormData({
+              ...formData,
+              request_message: '',
+            });
+          }
+          return;
+        }
+
+        // For provenance updates, build update fields object (only include fields that have changed)
         const updateFields: Record<string, any> = {};
         
         if (formData.title !== (artwork.title || '')) updateFields.title = formData.title;
@@ -75,6 +138,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
           artwork.id,
           updateFields,
           formData.request_message || undefined,
+          'provenance_update',
         );
 
         if (result.error) {
@@ -82,6 +146,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
         } else {
           toast.success('Update request submitted. The certificate owner will be notified.');
           setOpen(false);
+          setRequestType('provenance_update');
           // Reset form
           setFormData({
             ...formData,
@@ -96,214 +161,268 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="font-serif border-wine/30 hover:bg-wine/10"
-        >
-          Request Update
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto font-serif">
-        <DialogHeader>
-          <DialogTitle className="font-display text-wine">
-            Request Provenance Update
-          </DialogTitle>
-          <DialogDescription>
-            Suggest updates to the provenance information for "{artwork.title}". 
-            The certificate owner will review your request.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="request_message">Message (Optional)</Label>
-            <Textarea
-              id="request_message"
-              value={formData.request_message}
-              onChange={(e) => setFormData({ ...formData, request_message: e.target.value })}
-              placeholder="Explain why you're requesting these updates..."
-              rows={3}
-              className="font-serif"
-            />
-          </div>
-
-          <div className="space-y-4 border-t pt-4">
-            <h3 className="font-display text-wine font-semibold">Proposed Changes</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="artist_name">Artist Name</Label>
-                <Input
-                  id="artist_name"
-                  value={formData.artist_name}
-                  onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="medium">Medium</Label>
-                <Input
-                  id="medium"
-                  value={formData.medium}
-                  onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="dimensions">Dimensions</Label>
-                <Input
-                  id="dimensions"
-                  value={formData.dimensions}
-                  onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="creation_date">Creation Date</Label>
-                <Input
-                  id="creation_date"
-                  type="date"
-                  value={formData.creation_date}
-                  onChange={(e) => setFormData({ ...formData, creation_date: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edition">Edition</Label>
-                <Input
-                  id="edition"
-                  value={formData.edition}
-                  onChange={(e) => setFormData({ ...formData, edition: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="production_location">Production Location</Label>
-                <Input
-                  id="production_location"
-                  value={formData.production_location}
-                  onChange={(e) => setFormData({ ...formData, production_location: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="value">Value</Label>
-                <Input
-                  id="value"
-                  value={formData.value}
-                  onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-              <div>
-                <Label htmlFor="owned_by">Owned By</Label>
-                <Input
-                  id="owned_by"
-                  value={formData.owned_by}
-                  onChange={(e) => setFormData({ ...formData, owned_by: e.target.value })}
-                  className="font-serif"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="font-serif"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="former_owners">Former Owners</Label>
-              <Textarea
-                id="former_owners"
-                value={formData.former_owners}
-                onChange={(e) => setFormData({ ...formData, former_owners: e.target.value })}
-                rows={2}
-                className="font-serif"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="auction_history">Auction History</Label>
-              <Textarea
-                id="auction_history"
-                value={formData.auction_history}
-                onChange={(e) => setFormData({ ...formData, auction_history: e.target.value })}
-                rows={2}
-                className="font-serif"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="exhibition_history">Exhibition History</Label>
-              <Textarea
-                id="exhibition_history"
-                value={formData.exhibition_history}
-                onChange={(e) => setFormData({ ...formData, exhibition_history: e.target.value })}
-                rows={2}
-                className="font-serif"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="historic_context">Historic Context</Label>
-              <Textarea
-                id="historic_context"
-                value={formData.historic_context}
-                onChange={(e) => setFormData({ ...formData, historic_context: e.target.value })}
-                rows={2}
-                className="font-serif"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="celebrity_notes">Celebrity Notes</Label>
-              <Textarea
-                id="celebrity_notes"
-                value={formData.celebrity_notes}
-                onChange={(e) => setFormData({ ...formData, celebrity_notes: e.target.value })}
-                rows={2}
-                className="font-serif"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
+    <div className="flex gap-2 justify-center">
+      <Dialog open={open} onOpenChange={setOpen}>
+        {canRequestOwnership && (
+          <DialogTrigger asChild>
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={pending}
-              className="font-serif"
+              variant="default"
+              className="font-serif bg-wine text-parchment hover:bg-wine/90"
+              onClick={() => setRequestType('ownership_request')}
             >
-              Cancel
+              Request Ownership
             </Button>
-            <Button
-              type="submit"
-              disabled={pending}
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-            >
-              {pending ? 'Submitting...' : 'Submit Request'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </DialogTrigger>
+        )}
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            className="font-serif border-wine/30 hover:bg-wine/10"
+            onClick={() => setRequestType('provenance_update')}
+          >
+            Request Update
+          </Button>
+        </DialogTrigger>
+        <DialogContent className={requestType === 'ownership_request' ? 'sm:max-w-lg font-serif' : 'sm:max-w-2xl max-h-[90vh] overflow-y-auto font-serif'}>
+          <DialogHeader>
+            <DialogTitle className="font-display text-wine">
+              {requestType === 'ownership_request' ? 'Request Ownership' : 'Request Provenance Update'}
+            </DialogTitle>
+            <DialogDescription>
+              {requestType === 'ownership_request' 
+                ? `Request ownership of "${artwork.title}". Since your name matches the artist name, you can request to become the owner of this artwork. The current owner will review your request.`
+                : `Suggest updates to the provenance information for "${artwork.title}". The certificate owner will review your request.`}
+            </DialogDescription>
+          </DialogHeader>
+          {requestType === 'ownership_request' ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="ownership_message">Message (Optional)</Label>
+                <Textarea
+                  id="ownership_message"
+                  value={formData.request_message}
+                  onChange={(e) => setFormData({ ...formData, request_message: e.target.value })}
+                  placeholder="Explain why you're requesting ownership..."
+                  rows={4}
+                  className="font-serif"
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setOpen(false);
+                    setRequestType('provenance_update');
+                  }}
+                  disabled={pending}
+                  className="font-serif"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={pending}
+                  className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+                >
+                  {pending ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="request_message">Message (Optional)</Label>
+                <Textarea
+                  id="request_message"
+                  value={formData.request_message}
+                  onChange={(e) => setFormData({ ...formData, request_message: e.target.value })}
+                  placeholder="Explain why you're requesting these updates..."
+                  rows={3}
+                  className="font-serif"
+                />
+              </div>
+
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-display text-wine font-semibold">Proposed Changes</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="artist_name">Artist Name</Label>
+                    <Input
+                      id="artist_name"
+                      value={formData.artist_name}
+                      onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="medium">Medium</Label>
+                    <Input
+                      id="medium"
+                      value={formData.medium}
+                      onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dimensions">Dimensions</Label>
+                    <Input
+                      id="dimensions"
+                      value={formData.dimensions}
+                      onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="creation_date">Creation Date</Label>
+                    <Input
+                      id="creation_date"
+                      type="date"
+                      value={formData.creation_date}
+                      onChange={(e) => setFormData({ ...formData, creation_date: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edition">Edition</Label>
+                    <Input
+                      id="edition"
+                      value={formData.edition}
+                      onChange={(e) => setFormData({ ...formData, edition: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="production_location">Production Location</Label>
+                    <Input
+                      id="production_location"
+                      value={formData.production_location}
+                      onChange={(e) => setFormData({ ...formData, production_location: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="value">Value</Label>
+                    <Input
+                      id="value"
+                      value={formData.value}
+                      onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="owned_by">Owned By</Label>
+                    <Input
+                      id="owned_by"
+                      value={formData.owned_by}
+                      onChange={(e) => setFormData({ ...formData, owned_by: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
+                    className="font-serif"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="former_owners">Former Owners</Label>
+                  <Textarea
+                    id="former_owners"
+                    value={formData.former_owners}
+                    onChange={(e) => setFormData({ ...formData, former_owners: e.target.value })}
+                    rows={2}
+                    className="font-serif"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="auction_history">Auction History</Label>
+                  <Textarea
+                    id="auction_history"
+                    value={formData.auction_history}
+                    onChange={(e) => setFormData({ ...formData, auction_history: e.target.value })}
+                    rows={2}
+                    className="font-serif"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="exhibition_history">Exhibition History</Label>
+                  <Textarea
+                    id="exhibition_history"
+                    value={formData.exhibition_history}
+                    onChange={(e) => setFormData({ ...formData, exhibition_history: e.target.value })}
+                    rows={2}
+                    className="font-serif"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="historic_context">Historic Context</Label>
+                  <Textarea
+                    id="historic_context"
+                    value={formData.historic_context}
+                    onChange={(e) => setFormData({ ...formData, historic_context: e.target.value })}
+                    rows={2}
+                    className="font-serif"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="celebrity_notes">Celebrity Notes</Label>
+                  <Textarea
+                    id="celebrity_notes"
+                    value={formData.celebrity_notes}
+                    onChange={(e) => setFormData({ ...formData, celebrity_notes: e.target.value })}
+                    rows={2}
+                    className="font-serif"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setOpen(false);
+                    setRequestType('provenance_update');
+                  }}
+                  disabled={pending}
+                  className="font-serif"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={pending}
+                  className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+                >
+                  {pending ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
-
