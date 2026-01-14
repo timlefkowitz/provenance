@@ -57,9 +57,9 @@ export async function createNotification(params: CreateNotificationParams) {
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   const client = getSupabaseServerClient();
 
-  const { data, error } = await client
+  const { count, error } = await client
     .from('notifications')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('read', false);
 
@@ -68,7 +68,7 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
     return 0;
   }
 
-  return data?.length || 0;
+  return count || 0;
 }
 
 /**

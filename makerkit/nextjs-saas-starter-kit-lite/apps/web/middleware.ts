@@ -113,10 +113,10 @@ function getPatterns() {
         const isVerifyMfa = req.nextUrl.pathname === pathsConfig.auth.verifyMfa;
 
         // If user is logged in and does not need to verify MFA,
-        // redirect to home page.
+        // redirect to portal.
         if (!isVerifyMfa) {
           return NextResponse.redirect(
-            new URL(pathsConfig.app.home, req.nextUrl.origin).href,
+            new URL('/portal', req.nextUrl.origin).href,
           );
         }
       },

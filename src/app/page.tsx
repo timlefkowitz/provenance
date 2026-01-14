@@ -1,11 +1,21 @@
 import Link from "next/link";
 import Image from "next/image";
+import { redirect } from "next/navigation";
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getFeaturedEntry } from "./admin/_actions/get-featured-entry";
 
 // Force dynamic rendering so featured artwork changes on each page load
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
+  // Check if user is authenticated and redirect to portal
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+  
+  if (user) {
+    redirect('/portal');
+  }
+
   // Get featured entry (read-only, safe)
   const { featuredEntry } = await getFeaturedEntry();
   return (

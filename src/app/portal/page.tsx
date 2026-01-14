@@ -9,7 +9,8 @@ import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
 import { ArtworkCard } from '../artworks/_components/artwork-card';
 import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
 import { ProvenanceUpdateRequestsList } from './_components/provenance-update-requests-list';
-import { User, Image as ImageIcon, Bell, ExternalLink, Building2 } from 'lucide-react';
+import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
+import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
 
 export const metadata = {
@@ -69,15 +70,24 @@ export default async function PortalPage() {
     }));
   }
 
-  // Get recent notifications
-  const { data: notifications } = await client
+  // Get recent notifications (prioritize unread)
+  const { data: allNotifications } = await client
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(10);
+    .limit(50);
+
+  // Get unread notifications first, then read ones
+  const unreadNotifications = (allNotifications || []).filter((n: any) => !n.read);
+  const readNotifications = (allNotifications || []).filter((n: any) => n.read);
+  const notifications = [...unreadNotifications, ...readNotifications].slice(0, 10);
 
   const unreadCount = await getUnreadNotificationCount(user.id);
+
+  // Get favorites
+  const favoriteArtworks = await getFavoriteArtworks(6);
+  const favoriteCount = await getFavoriteCount();
 
   // Check if user has a gallery profile
   const profiles = await getUserProfiles(user.id);
@@ -130,7 +140,7 @@ export default async function PortalPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="border-wine/20 bg-parchment/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -179,6 +189,28 @@ export default async function PortalPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm text-ink/60 font-serif mb-1">Favorites</p>
+                <p className="text-3xl font-display font-bold text-wine">
+                  {favoriteCount}
+                </p>
+              </div>
+              <Heart className="h-8 w-8 text-wine/50" />
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="mt-4 font-serif text-wine hover:text-wine/80"
+            >
+              <Link href="/artworks">View All →</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm text-ink/60 font-serif mb-1">Notifications</p>
                 <p className="text-3xl font-display font-bold text-wine">
                   {unreadCount}
@@ -202,6 +234,55 @@ export default async function PortalPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Favorites */}
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-display text-xl text-wine">
+                Your Favorites
+              </CardTitle>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif"
+              >
+                <Link href="/artworks">
+                  View All
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {favoriteArtworks && favoriteArtworks.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {favoriteArtworks.map((artwork: any) => (
+                  <ArtworkCard
+                    key={artwork.id}
+                    artwork={artwork}
+                    currentUserId={user.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Heart className="h-12 w-12 text-wine/30 mx-auto mb-4" />
+                <p className="text-ink/60 font-serif mb-4">
+                  You haven't favorited any artworks yet
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                >
+                  <Link href="/artworks">Discover Artworks</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Recent Artworks */}
         <Card className="border-wine/20 bg-parchment/60">
           <CardHeader>

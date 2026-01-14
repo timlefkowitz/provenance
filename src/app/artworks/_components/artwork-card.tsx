@@ -26,6 +26,7 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 import { FollowButton } from './follow-button';
+import { FavoriteButton } from './favorite-button';
 import { deleteArtwork } from '../[id]/_actions/delete-artwork';
 import { SignInInvitationDialog } from '~/components/sign-in-invitation-dialog';
 
@@ -78,62 +79,70 @@ export function ArtworkCard({
   return (
     <>
       <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden h-full flex flex-col relative">
-        {/* Delete Menu - Only show for owners */}
-        {isOwnArtwork && (
-        <div className="absolute top-2 right-2 z-10">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 bg-white/90 hover:bg-white border border-wine/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.preventDefault()}
-              >
-                <MoreVertical className="h-4 w-4 text-ink" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="font-serif">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem
-                    className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Artwork
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-display text-wine">
+        {/* Action Buttons - Top Right */}
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+          {/* Favorite Button - Show for all authenticated users */}
+          {currentUserId && (
+            <FavoriteButton 
+              artworkId={artwork.id}
+              currentUserId={currentUserId}
+            />
+          )}
+          {/* Delete Menu - Only show for owners */}
+          {isOwnArtwork && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 bg-white/90 hover:bg-white border border-wine/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <MoreVertical className="h-4 w-4 text-ink" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="font-serif">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
                       Delete Artwork
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="font-serif">
-                      Are you sure you want to delete "{artwork.title}"? This action cannot be undone. 
-                      The certificate and all associated data will be permanently removed.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel 
-                      disabled={deletePending}
-                      className="font-serif"
-                    >
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={deletePending}
-                      className="bg-red-600 hover:bg-red-700 text-white font-serif"
-                    >
-                      {deletePending ? 'Deleting...' : 'Delete'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display text-wine">
+                        Delete Artwork
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-serif">
+                        Are you sure you want to delete "{artwork.title}"? This action cannot be undone. 
+                        The certificate and all associated data will be permanently removed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel 
+                        disabled={deletePending}
+                        className="font-serif"
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        disabled={deletePending}
+                        className="bg-red-600 hover:bg-red-700 text-white font-serif"
+                      >
+                        {deletePending ? 'Deleting...' : 'Delete'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
-        )}
         <Link 
           href={`/artworks/${artwork.id}/certificate`} 
           className="cursor-pointer"

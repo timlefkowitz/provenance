@@ -15,6 +15,7 @@ export function NotificationBadge() {
     queryFn: async () => {
       if (!user?.sub) return 0;
 
+      // Use the same query as getUnreadNotificationCount for consistency
       const { count, error } = await client
         .from('notifications')
         .select('*', { count: 'exact', head: true })
@@ -30,6 +31,7 @@ export function NotificationBadge() {
     },
     enabled: !!user?.sub,
     refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   if (!user) {

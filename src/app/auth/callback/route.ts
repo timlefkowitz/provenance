@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const client = getSupabaseServerClient();
 
   const { nextPath } = await service.exchangeCodeForSession(request, {
-    redirectPath: pathsConfig.app.home,
+    redirectPath: '/portal', // Redirect authenticated users to portal
   });
 
   // Check if this is a new user and send welcome email
