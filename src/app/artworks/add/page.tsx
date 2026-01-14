@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole } from '~/lib/user-roles';
 import { AddArtworkPageContent } from './_components/add-artwork-page-content';
+import { getUserExhibitions } from './_actions/get-user-exhibitions';
 
 export const metadata = {
   title: 'Add Artwork | Provenance',
@@ -25,6 +26,9 @@ export default async function AddArtworkPage() {
   const artistName = account?.name || '';
   const defaultMedium = (account?.public_data as any)?.medium || '';
   const userRole = getUserRole(account?.public_data as Record<string, any>);
+  
+  // Get exhibitions for galleries
+  const exhibitions = await getUserExhibitions(user.id);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -33,6 +37,7 @@ export default async function AddArtworkPage() {
         defaultArtistName={artistName}
         defaultMedium={defaultMedium}
         userRole={userRole}
+        exhibitions={exhibitions}
       />
     </div>
   );

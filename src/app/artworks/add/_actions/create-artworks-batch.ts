@@ -21,6 +21,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const artistName = formData.get('artistName') as string || '';
     const medium = formData.get('medium') as string || '';
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
+    const exhibitionId = formData.get('exhibitionId') as string || null;
 
     if (!images || images.length === 0) {
       return { error: 'At least one image is required' };
@@ -196,6 +197,37 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             } catch (notifError) {
               console.error(`Failed to create notification for artist:`, notifError);
               // Don't fail artwork creation if notification fails
+            }
+          }
+          
+          // Link artwork to exhibition if provided
+          if (exhibitionId && artwork.id) {
+            try {
+              // Verify user owns this exhibition
+              const { data: exhibition } = await (client as any)
+                .from('exhibitions')
+                .select('gallery_id')
+                .eq('id', exhibitionId)
+                .single();
+
+              if (exhibition && exhibition.gallery_id === userId) {
+                // Add artwork to exhibition
+                await (client as any)
+                  .from('exhibition_artworks')
+                  .insert({
+                    exhibition_id: exhibitionId,
+                    artwork_id: artwork.id,
+                  })
+                  .catch((exhibitionError: any) => {
+                    // Ignore duplicate key errors
+                    if (exhibitionError.code !== '23505') {
+                      console.error('Error adding artwork to exhibition:', exhibitionError);
+                    }
+                  });
+              }
+            } catch (exhibitionError) {
+              console.error('Error linking artwork to exhibition:', exhibitionError);
+              // Don't fail artwork creation if exhibition linking fails
             }
           }
           

@@ -7,6 +7,8 @@ import { Button } from '@kit/ui/button';
 import { getUnreadNotificationCount } from '~/lib/notifications';
 import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
 import { ArtworkCard } from '../artworks/_components/artwork-card';
+import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
+import { ProvenanceUpdateRequestsList } from './_components/provenance-update-requests-list';
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2 } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
 
@@ -82,6 +84,9 @@ export default async function PortalPage() {
   const hasGalleryProfile = profiles.some(p => p.role === USER_ROLES.GALLERY);
   const userRole = (account?.public_data as any)?.role;
   const isGallery = userRole === USER_ROLES.GALLERY;
+
+  // Get provenance update requests for artworks owned by this user
+  const provenanceUpdateRequests = await getProvenanceUpdateRequestsForOwner();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -317,6 +322,9 @@ export default async function PortalPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Provenance Update Requests */}
+      <ProvenanceUpdateRequestsList requests={provenanceUpdateRequests} />
 
       {/* Recent Notifications */}
       <Card className="mt-8 border-wine/20 bg-parchment/60">

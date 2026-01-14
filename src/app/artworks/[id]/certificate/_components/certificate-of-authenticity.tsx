@@ -8,9 +8,11 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Star, Scan, MapPin } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
+import { useUser } from '@kit/supabase/hooks/use-user';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
+import { RequestUpdateDialog } from './request-update-dialog';
 
 type Artwork = {
   id: string;
@@ -50,13 +52,16 @@ type Artwork = {
 export function CertificateOfAuthenticity({ 
   artwork, 
   isOwner = false,
-  isAdmin = false
+  isAdmin = false,
+  creatorInfo = null
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
   isAdmin?: boolean;
+  creatorInfo?: { name: string; role: string | null } | null;
 }) {
   const router = useRouter();
+  const user = useUser();
   const [pending, startTransition] = useTransition();
   const [featured, setFeatured] = useState(false);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
@@ -533,6 +538,21 @@ export function CertificateOfAuthenticity({
                 </p>
               </div>
 
+              {/* Certificate Creator */}
+              {creatorInfo && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                    {creatorInfo.role === 'gallery' ? 'Created by Gallery' : 'Created by'}
+                  </p>
+                  <Link
+                    href={`/artists/${artwork.account_id}`}
+                    className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                  >
+                    {creatorInfo.name}
+                  </Link>
+                </div>
+              )}
+
               {artwork.metadata?.certificate_location?.formatted && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Created In</p>
@@ -726,6 +746,13 @@ export function CertificateOfAuthenticity({
               </p>
             )}
           </div>
+
+          {/* Request Update Button (for non-owners) */}
+          {!isOwner && user.data && (
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
+              <RequestUpdateDialog artwork={artwork} />
+            </div>
+          )}
 
           {/* Footer */}
           <div className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-wine/20 text-center">

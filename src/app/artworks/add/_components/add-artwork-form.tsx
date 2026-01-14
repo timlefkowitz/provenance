@@ -14,6 +14,8 @@ import { Camera, X, Upload, MapPin } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 import type { UserRole } from '~/lib/user-roles';
 import { USER_ROLES } from '~/lib/user-roles';
+import type { UserExhibition } from '../_actions/get-user-exhibitions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 
 type ImagePreview = {
   file: File;
@@ -33,12 +35,14 @@ export function AddArtworkForm({
   userId, 
   defaultArtistName = '',
   defaultMedium = '',
-  userRole = null
+  userRole = null,
+  exhibitions = []
 }: { 
   userId: string;
   defaultArtistName?: string;
   defaultMedium?: string;
   userRole?: UserRole | null;
+  exhibitions?: UserExhibition[];
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +56,7 @@ export function AddArtworkForm({
     artistName: defaultArtistName,
     medium: defaultMedium,
     isPublic: true, // Default to public
+    exhibitionId: '',
   });
 
   // Update form data when defaults change (only if fields are empty)
@@ -225,6 +230,9 @@ export function AddArtworkForm({
         formDataToSend.append('artistName', formData.artistName);
         formDataToSend.append('medium', formData.medium);
         formDataToSend.append('isPublic', formData.isPublic.toString());
+        if (formData.exhibitionId) {
+          formDataToSend.append('exhibitionId', formData.exhibitionId);
+        }
 
         const result = await createArtworksBatch(formDataToSend, userId);
         
@@ -437,6 +445,39 @@ export function AddArtworkForm({
           This description will be applied to all artworks
         </p>
       </div>
+
+      {/* Exhibition Selection (for galleries) */}
+      {exhibitions.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="exhibitionId">Exhibition (Optional)</Label>
+          <Select
+            value={formData.exhibitionId}
+            onValueChange={(value) => setFormData({ ...formData, exhibitionId: value })}
+          >
+            <SelectTrigger id="exhibitionId" className="font-serif">
+              <SelectValue placeholder="Select an exhibition (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="" className="font-serif">
+                None
+              </SelectItem>
+              {exhibitions.map((exhibition) => (
+                <SelectItem key={exhibition.id} value={exhibition.id} className="font-serif">
+                  {exhibition.title}
+                  {exhibition.start_date && (
+                    <span className="text-xs text-ink/60 ml-2">
+                      ({new Date(exhibition.start_date).getFullYear()})
+                    </span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-ink/60 font-serif">
+            Link this artwork to one of your exhibitions
+          </p>
+        </div>
+      )}
 
       {/* Privacy Setting */}
       <div className="space-y-2 p-4 border border-wine/20 rounded-lg bg-parchment/50">

@@ -9,6 +9,9 @@ export type NotificationType =
   | 'certificate_rejected'
   | 'artwork_updated'
   | 'qr_code_scanned'
+  | 'provenance_update_request'
+  | 'provenance_update_approved'
+  | 'provenance_update_denied'
   | 'message';
 
 export interface CreateNotificationParams {

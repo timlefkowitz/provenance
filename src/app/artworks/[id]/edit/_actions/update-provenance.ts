@@ -7,14 +7,17 @@ import { createNotification } from '~/lib/notifications';
 export async function updateProvenance(
   artworkId: string,
   provenance: {
-    title: string;
-    creationDate: string;
-    dimensions: string;
-    formerOwners: string;
-    auctionHistory: string;
-    exhibitionHistory: string;
-    historicContext: string;
-    celebrityNotes: string;
+    title?: string;
+    description?: string;
+    artist_name?: string;
+    medium?: string;
+    creationDate?: string;
+    dimensions?: string;
+    formerOwners?: string;
+    auctionHistory?: string;
+    exhibitionHistory?: string;
+    historicContext?: string;
+    celebrityNotes?: string;
     isPublic?: boolean;
     value?: string;
     valueIsPublic?: boolean;
@@ -22,6 +25,10 @@ export async function updateProvenance(
     productionLocation?: string;
     ownedBy?: string;
     ownedByIsPublic?: boolean;
+  },
+  options?: {
+    skipOwnershipCheck?: boolean;
+    skipNotification?: boolean;
   }
 ) {
   try {
@@ -43,7 +50,7 @@ export async function updateProvenance(
       return { error: 'Artwork not found' };
     }
 
-    if (artwork.account_id !== user.id) {
+    if (!options?.skipOwnershipCheck && artwork.account_id !== user.id) {
       return { error: 'You do not have permission to edit this artwork' };
     }
 
@@ -52,16 +59,43 @@ export async function updateProvenance(
 
     // Update title, provenance fields and privacy
     const updateData: any = {
-      title: provenance.title?.trim() || null,
-      creation_date: provenance.creationDate || null,
-      dimensions: provenance.dimensions || null,
-      former_owners: provenance.formerOwners || null,
-      auction_history: provenance.auctionHistory || null,
-      exhibition_history: provenance.exhibitionHistory || null,
-      historic_context: provenance.historicContext || null,
-      celebrity_notes: provenance.celebrityNotes || null,
       updated_by: user.id,
     };
+
+    // Only update fields that are provided
+    if (provenance.title !== undefined) {
+      updateData.title = provenance.title?.trim() || null;
+    }
+    if (provenance.description !== undefined) {
+      updateData.description = provenance.description || null;
+    }
+    if (provenance.artist_name !== undefined) {
+      updateData.artist_name = provenance.artist_name || null;
+    }
+    if (provenance.medium !== undefined) {
+      updateData.medium = provenance.medium || null;
+    }
+    if (provenance.creationDate !== undefined) {
+      updateData.creation_date = provenance.creationDate || null;
+    }
+    if (provenance.dimensions !== undefined) {
+      updateData.dimensions = provenance.dimensions || null;
+    }
+    if (provenance.formerOwners !== undefined) {
+      updateData.former_owners = provenance.formerOwners || null;
+    }
+    if (provenance.auctionHistory !== undefined) {
+      updateData.auction_history = provenance.auctionHistory || null;
+    }
+    if (provenance.exhibitionHistory !== undefined) {
+      updateData.exhibition_history = provenance.exhibitionHistory || null;
+    }
+    if (provenance.historicContext !== undefined) {
+      updateData.historic_context = provenance.historicContext || null;
+    }
+    if (provenance.celebrityNotes !== undefined) {
+      updateData.celebrity_notes = provenance.celebrityNotes || null;
+    }
 
     // Only update is_public if it's provided
     if (provenance.isPublic !== undefined) {
@@ -98,23 +132,23 @@ export async function updateProvenance(
       return { error: error.message || 'Failed to update provenance' };
     }
 
-    // Create notification for artwork owner about the update
-    // Only notify if this is not the owner updating (shouldn't happen, but just in case)
-    // Actually, we'll notify the owner that their artwork was updated (for their own records)
-    try {
-      await createNotification({
-        userId: artwork.account_id,
-        type: 'artwork_updated',
-        title: 'Artwork Updated',
-        message: `Your artwork "${provenance.title || originalTitle}" has been updated`,
-        artworkId: artworkId,
-        metadata: {
-          updated_fields: Object.keys(provenance).filter(key => provenance[key as keyof typeof provenance] !== undefined),
-        },
-      });
-    } catch (error) {
-      // Don't fail the update if notification fails
-      console.error('Error creating update notification:', error);
+    // Create notification for artwork owner about the update (unless skipped)
+    if (!options?.skipNotification) {
+      try {
+        await createNotification({
+          userId: artwork.account_id,
+          type: 'artwork_updated',
+          title: 'Artwork Updated',
+          message: `Your artwork "${provenance.title || originalTitle}" has been updated`,
+          artworkId: artworkId,
+          metadata: {
+            updated_fields: Object.keys(provenance).filter(key => provenance[key as keyof typeof provenance] !== undefined),
+          },
+        });
+      } catch (error) {
+        // Don't fail the update if notification fails
+        console.error('Error creating update notification:', error);
+      }
     }
 
     revalidatePath(`/artworks/${artworkId}`);

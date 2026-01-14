@@ -7,17 +7,20 @@ import { AddArtworkForm } from './add-artwork-form';
 import { RoleModeSwitcher } from './role-mode-switcher';
 import { Card, CardContent } from '@kit/ui/card';
 import { Info } from 'lucide-react';
+import type { UserExhibition } from '../_actions/get-user-exhibitions';
 
 export function AddArtworkPageContent({
   userId,
   defaultArtistName,
   defaultMedium,
   userRole,
+  exhibitions,
 }: {
   userId: string;
   defaultArtistName: string;
   defaultMedium: string;
   userRole: UserRole | null;
+  exhibitions: UserExhibition[];
 }) {
   const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
 
@@ -93,6 +96,7 @@ export function AddArtworkPageContent({
         defaultArtistName={defaultArtistName}
         defaultMedium={defaultMedium}
         userRole={currentPerspective}
+        exhibitions={exhibitions}
       />
     </>
   );

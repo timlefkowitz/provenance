@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
 import { isAdmin } from '~/lib/admin';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 export const metadata = {
   title: 'Certificate of Authenticity | Provenance',
@@ -55,6 +56,33 @@ export default async function CertificatePage({
   // Check if the current user is an admin
   const userIsAdmin = user ? await isAdmin(user.id) : false;
 
-  return <CertificateOfAuthenticity artwork={artwork} isOwner={isOwner} isAdmin={userIsAdmin} />;
+  // Get creator account info to display who created the certificate
+  let creatorInfo: { name: string; role: string | null } | null = null;
+  try {
+    const { data: creatorAccount } = await client
+      .from('accounts')
+      .select('name, public_data')
+      .eq('id', artwork.account_id)
+      .single();
+    
+    if (creatorAccount) {
+      const creatorRole = getUserRole(creatorAccount.public_data as Record<string, any>);
+      creatorInfo = {
+        name: creatorAccount.name,
+        role: creatorRole,
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching creator info:', error);
+  }
+
+  return (
+    <CertificateOfAuthenticity 
+      artwork={artwork} 
+      isOwner={isOwner} 
+      isAdmin={userIsAdmin}
+      creatorInfo={creatorInfo}
+    />
+  );
 }
 
