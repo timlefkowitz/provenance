@@ -25,6 +25,8 @@ export async function updateProvenance(
     productionLocation?: string;
     ownedBy?: string;
     ownedByIsPublic?: boolean;
+    soldBy?: string;
+    soldByIsPublic?: boolean;
   },
   options?: {
     skipOwnershipCheck?: boolean;
@@ -120,6 +122,12 @@ export async function updateProvenance(
     }
     if (provenance.ownedByIsPublic !== undefined) {
       updateData.owned_by_is_public = provenance.ownedByIsPublic;
+    }
+    if (provenance.soldBy !== undefined) {
+      updateData.sold_by = provenance.soldBy || null;
+    }
+    if (provenance.soldByIsPublic !== undefined) {
+      updateData.sold_by_is_public = provenance.soldByIsPublic;
     }
 
     const { error } = await (client as any)

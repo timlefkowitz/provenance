@@ -37,6 +37,8 @@ type Artwork = {
   production_location: string | null;
   owned_by: string | null;
   owned_by_is_public: boolean | null;
+  sold_by: string | null;
+  sold_by_is_public: boolean | null;
   metadata?: {
     certificate_location?: {
       latitude?: number;
@@ -609,6 +611,20 @@ export function CertificateOfAuthenticity({
                   </p>
                 </div>
               )}
+              {/* Sold By - show if public OR if owner */}
+              {artwork.sold_by && (artwork.sold_by_is_public || isOwner) && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                    Sold By
+                    {!artwork.sold_by_is_public && isOwner && (
+                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                    )}
+                  </p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.sold_by}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -617,6 +633,7 @@ export function CertificateOfAuthenticity({
             artwork.historic_context || artwork.celebrity_notes ||
             (artwork.value && artwork.value_is_public && !isOwner) ||
             (artwork.owned_by && artwork.owned_by_is_public && !isOwner) ||
+            (artwork.sold_by && artwork.sold_by_is_public && !isOwner) ||
             (scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
@@ -648,6 +665,16 @@ export function CertificateOfAuthenticity({
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Owned By</p>
                   <p className="text-sm sm:text-base font-serif text-ink break-words">
                     {artwork.owned_by}
+                  </p>
+                </div>
+              )}
+
+              {/* Sold By in Provenance section - only show if public (owner already sees it above) */}
+              {artwork.sold_by && artwork.sold_by_is_public && !isOwner && (
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Sold By</p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.sold_by}
                   </p>
                 </div>
               )}

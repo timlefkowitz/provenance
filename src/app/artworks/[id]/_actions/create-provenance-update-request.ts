@@ -19,6 +19,7 @@ export type ProvenanceUpdateFields = {
   edition?: string;
   production_location?: string;
   owned_by?: string;
+  sold_by?: string;
 };
 
 export async function createProvenanceUpdateRequest(

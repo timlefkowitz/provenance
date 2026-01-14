@@ -78,6 +78,7 @@ export async function respondToProvenanceUpdateRequest(
         if (request.update_fields.edition !== undefined) formattedUpdates.edition = request.update_fields.edition;
         if (request.update_fields.production_location !== undefined) formattedUpdates.productionLocation = request.update_fields.production_location;
         if (request.update_fields.owned_by !== undefined) formattedUpdates.ownedBy = request.update_fields.owned_by;
+        if (request.update_fields.sold_by !== undefined) formattedUpdates.soldBy = request.update_fields.sold_by;
 
         // Apply the updates to the artwork (skip ownership check and notification since we handle those here)
         const updateResult = await updateProvenance(

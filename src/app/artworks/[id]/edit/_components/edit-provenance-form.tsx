@@ -9,6 +9,7 @@ import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { updateProvenance } from '../_actions/update-provenance';
+import { GallerySelector } from './gallery-selector';
 
 type Artwork = {
   id: string;
@@ -27,6 +28,8 @@ type Artwork = {
   production_location: string | null;
   owned_by: string | null;
   owned_by_is_public: boolean | null;
+  sold_by: string | null;
+  sold_by_is_public: boolean | null;
 };
 
 export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
@@ -50,6 +53,8 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
     productionLocation: artwork.production_location || '',
     ownedBy: artwork.owned_by || '',
     ownedByIsPublic: artwork.owned_by_is_public ?? false, // Default to false (private)
+    soldBy: artwork.sold_by || '',
+    soldByIsPublic: artwork.sold_by_is_public ?? false, // Default to false (private)
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -226,6 +231,34 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="soldBy">Sold By</Label>
+          <div className="space-y-2">
+            <Input
+              id="soldBy"
+              value={formData.soldBy}
+              onChange={(e) => setFormData({ ...formData, soldBy: e.target.value })}
+              placeholder="Gallery, dealer, or seller name"
+              className="font-serif"
+            />
+            <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="soldByIsPublic" className="text-sm font-serif">
+                  Make seller information public
+                </Label>
+                <p className="text-xs text-ink/60 font-serif">
+                  By default, seller information is private and only visible to you.
+                </p>
+              </div>
+              <Switch
+                id="soldByIsPublic"
+                checked={formData.soldByIsPublic}
+                onCheckedChange={(checked) => setFormData({ ...formData, soldByIsPublic: checked })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="auctionHistory">Auction History</Label>
           <Textarea
             id="auctionHistory"
@@ -239,11 +272,15 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
 
         <div className="space-y-2">
           <Label htmlFor="exhibitionHistory">Exhibition History / Literature References</Label>
+          <GallerySelector
+            value={formData.exhibitionHistory}
+            onChange={(value) => setFormData({ ...formData, exhibitionHistory: value })}
+          />
           <Textarea
             id="exhibitionHistory"
             value={formData.exhibitionHistory}
             onChange={(e) => setFormData({ ...formData, exhibitionHistory: e.target.value })}
-            placeholder="List exhibitions where the work has been shown or publications where it has been discussed (e.g., 'Modern Masters', Museum of Art, 2012; Featured in 'Art Today' by Jane Doe, 2015)"
+            placeholder="List exhibitions where the work has been shown or publications where it has been discussed (e.g., 'Modern Masters', Museum of Art, 2012; Featured in 'Art Today' by Jane Doe, 2015). You can also search and select galleries above."
             rows={4}
             className="font-serif"
           />

@@ -44,6 +44,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
     edition: artwork.edition || '',
     production_location: artwork.production_location || '',
     owned_by: artwork.owned_by || '',
+    sold_by: artwork.sold_by || '',
     request_message: '',
   });
 
@@ -128,6 +129,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
         if (formData.edition !== (artwork.edition || '')) updateFields.edition = formData.edition;
         if (formData.production_location !== (artwork.production_location || '')) updateFields.production_location = formData.production_location;
         if (formData.owned_by !== (artwork.owned_by || '')) updateFields.owned_by = formData.owned_by;
+        if (formData.sold_by !== (artwork.sold_by || '')) updateFields.sold_by = formData.sold_by;
 
         if (Object.keys(updateFields).length === 0) {
           toast.error('Please make at least one change to request an update');
@@ -326,6 +328,15 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
                       id="owned_by"
                       value={formData.owned_by}
                       onChange={(e) => setFormData({ ...formData, owned_by: e.target.value })}
+                      className="font-serif"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sold_by">Sold By</Label>
+                    <Input
+                      id="sold_by"
+                      value={formData.sold_by}
+                      onChange={(e) => setFormData({ ...formData, sold_by: e.target.value })}
                       className="font-serif"
                     />
                   </div>
