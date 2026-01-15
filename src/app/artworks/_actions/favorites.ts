@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { createNotification } from '~/lib/notifications';
 
 /**
  * Add an artwork to user's favorites
@@ -13,6 +14,20 @@ export async function addFavorite(artworkId: string) {
   if (!user) {
     throw new Error('You must be logged in to favorite artworks');
   }
+
+  // Get artwork info to find the owner
+  const { data: artwork } = await (client as any)
+    .from('artworks')
+    .select('id, title, account_id')
+    .eq('id', artworkId)
+    .single();
+
+  if (!artwork) {
+    throw new Error('Artwork not found');
+  }
+
+  // Don't notify if user is favoriting their own artwork
+  const shouldNotify = artwork.account_id !== user.id;
 
   const { error } = await client
     .from('artwork_favorites')
@@ -28,6 +43,32 @@ export async function addFavorite(artworkId: string) {
     }
     console.error('Error adding favorite:', error);
     throw new Error(`Failed to add favorite: ${error.message}`);
+  }
+
+  // Notify the artwork owner (if not favoriting own artwork)
+  if (shouldNotify) {
+    try {
+      // Get the favoriter's name for the notification
+      const { data: favoriterAccount } = await client
+        .from('accounts')
+        .select('name')
+        .eq('id', user.id)
+        .single();
+
+      const favoriterName = favoriterAccount?.name || 'Someone';
+
+      await createNotification({
+        userId: artwork.account_id,
+        type: 'artwork_favorited',
+        title: 'Your Artwork Was Favorited',
+        message: `${favoriterName} favorited your artwork "${artwork.title}"`,
+        artworkId: artworkId,
+        relatedUserId: user.id,
+      });
+    } catch (notifError) {
+      // Don't fail favorite if notification fails
+      console.error('Error creating favorite notification:', notifError);
+    }
   }
 
   revalidatePath('/portal');

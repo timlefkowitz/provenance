@@ -15,6 +15,7 @@ export type NotificationType =
   | 'ownership_request'
   | 'ownership_approved'
   | 'ownership_denied'
+  | 'artwork_favorited'
   | 'message';
 
 export interface CreateNotificationParams {
