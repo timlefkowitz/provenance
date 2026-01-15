@@ -8,12 +8,28 @@ export const metadata = {
   title: 'Artworks | Provenance',
 };
 
-export default async function ArtworksPage() {
+// Enable dynamic rendering for real-time data
+export const dynamic = 'force-dynamic';
+// Revalidate every 60 seconds for fresh data
+export const revalidate = 60;
+
+const ARTWORKS_PER_PAGE = 12;
+
+export default async function ArtworksPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const page = parseInt(resolvedSearchParams?.page || '1', 10);
+  const offset = (page - 1) * ARTWORKS_PER_PAGE;
+  
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
   let artworks = null;
   let error = null;
+  let totalCount = 0;
 
   if (!user) {
     // Not signed in - use admin client to bypass RLS safely
@@ -26,42 +42,26 @@ export default async function ArtworksPage() {
       }
 
       const adminClient = getSupabaseServerAdminClient();
-      
-      // Test query first to verify admin client works
-      const testResult = await adminClient
-        .from('artworks')
-        .select('id, status, is_public')
-        .eq('status', 'verified')
-        .eq('is_public', true)
-        .limit(5);
-      
-      console.log('Admin client test query result:', {
-        count: testResult.data?.length || 0,
-        error: testResult.error,
-        sample: testResult.data?.[0]
-      });
 
-      const result = await adminClient
-        .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
-        .eq('status', 'verified')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // Get total count and artworks in parallel for better performance
+      const [countResult, artworksResult] = await Promise.all([
+        adminClient
+          .from('artworks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'verified')
+          .eq('is_public', true),
+        adminClient
+          .from('artworks')
+          .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + ARTWORKS_PER_PAGE - 1)
+      ]);
 
-      artworks = result.data || [];
-      error = result.error;
-
-      console.log('Anonymous artworks query result:', {
-        count: artworks.length,
-        error: error,
-        firstArtwork: artworks[0]?.title || 'none'
-      });
-
-      if (error) {
-        console.error('Error fetching public artworks for anonymous user (admin client):', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-      }
+      totalCount = countResult.count || 0;
+      artworks = artworksResult.data || [];
+      error = artworksResult.error;
     } catch (err) {
       console.error('Exception in anonymous artworks fetch:', err);
       error = err as any;
@@ -80,33 +80,50 @@ export default async function ArtworksPage() {
     
     const followingIds = following?.map(f => f.followed_user_id) || [];
     
-    // Fetch:
-    // - User's own artworks (all, regardless of privacy)
-    // - Public artworks from others (including followed artists)
-    const { data: ownArtworks } = await client
+    // Get total count for pagination
+    const { count: ownCount } = await (client as any)
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .select('*', { count: 'exact', head: true })
       .eq('status', 'verified')
       .eq('account_id', user.id);
     
-    const { data: publicArtworks } = await client
+    const { count: publicCount } = await (client as any)
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .select('*', { count: 'exact', head: true })
       .eq('status', 'verified')
       .eq('is_public', true)
-      .neq('account_id', user.id) // Exclude user's own artworks (already fetched)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .neq('account_id', user.id);
     
-    // Combine and sort by created_at
+    totalCount = (ownCount || 0) + (publicCount || 0);
+    
+    // Fetch:
+    // - User's own artworks (all, regardless of privacy)
+    // - Public artworks from others (including followed artists)
+    const [ownArtworksResult, publicArtworksResult] = await Promise.all([
+      (client as any)
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+        .eq('status', 'verified')
+        .eq('account_id', user.id)
+        .order('created_at', { ascending: false }),
+      (client as any)
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .neq('account_id', user.id)
+        .order('created_at', { ascending: false })
+    ]);
+    
+    // Combine and sort by created_at, then paginate
     const allArtworks = [
-      ...(ownArtworks || []),
-      ...(publicArtworks || [])
+      ...(ownArtworksResult.data || []),
+      ...(publicArtworksResult.data || [])
     ].sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    ).slice(0, 50); // Limit to 50 total
+    );
     
-    artworks = allArtworks;
+    artworks = allArtworks.slice(offset, offset + ARTWORKS_PER_PAGE);
     error = null; // We handle errors per query above
   }
 
@@ -148,15 +165,48 @@ export default async function ArtworksPage() {
       )}
 
       {artworks && artworks.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {artworks.map((artwork) => (
-            <ArtworkCard 
-              key={artwork.id} 
-              artwork={artwork}
-              currentUserId={user?.id}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {artworks.map((artwork) => (
+              <ArtworkCard 
+                key={artwork.id} 
+                artwork={artwork}
+                currentUserId={user?.id}
+              />
+            ))}
+          </div>
+          
+          {/* Pagination */}
+          {totalCount > ARTWORKS_PER_PAGE && (
+            <div className="mt-8 flex items-center justify-center gap-4">
+              {page > 1 && (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                >
+                  <Link href={`/artworks?page=${page - 1}`}>
+                    Previous
+                  </Link>
+                </Button>
+              )}
+              <span className="text-ink/70 font-serif text-sm">
+                Page {page} of {Math.ceil(totalCount / ARTWORKS_PER_PAGE)}
+              </span>
+              {page < Math.ceil(totalCount / ARTWORKS_PER_PAGE) && (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                >
+                  <Link href={`/artworks?page=${page + 1}`}>
+                    Next
+                  </Link>
+                </Button>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-12 sm:py-16">
           <p className="text-ink/70 font-serif text-base sm:text-lg mb-4 px-4">

@@ -74,11 +74,12 @@ export default async function ArtistProfilePage({
   const establishedYear = roleProfile?.established_year;
   const pictureUrl = roleProfile?.picture_url || account.picture_url;
 
-  // Fetch exhibitions if this is a gallery
-  const exhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
+  // Fetch exhibitions if this is a gallery - limit to 6 for initial load
+  const allExhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
+  const exhibitions = allExhibitions.slice(0, 6); // Show only first 6 initially
 
-  // Fetch this artist's artworks
-  let artworksQuery = client
+  // Fetch this artist's artworks - limit to 12 initially for better performance
+  let artworksQuery = (client as any)
     .from('artworks')
     .select(
       'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status',
@@ -86,7 +87,7 @@ export default async function ArtistProfilePage({
     .eq('account_id', account.id)
     .eq('status', 'verified')
     .order('created_at', { ascending: false })
-    .limit(48);
+    .limit(12); // Reduced from 48 to 12 for faster initial load
 
   if (!isOwner) {
     artworksQuery = artworksQuery.eq('is_public', true);
@@ -108,6 +109,8 @@ export default async function ArtistProfilePage({
                 fill
                 className="object-cover"
                 unoptimized
+                loading="eager"
+                priority
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-wine/10">

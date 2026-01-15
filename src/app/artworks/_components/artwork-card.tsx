@@ -147,6 +147,7 @@ export function ArtworkCard({
           href={`/artworks/${artwork.id}/certificate`} 
           className="cursor-pointer"
           onClick={handleArtworkClick}
+          prefetch={true}
         >
           <div className="relative aspect-square bg-parchment overflow-hidden">
           {artwork.image_url ? (
@@ -156,6 +157,8 @@ export function ArtworkCard({
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300"
               unoptimized
+              loading="lazy"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-ink/30 font-serif">
@@ -169,6 +172,7 @@ export function ArtworkCard({
             href={`/artworks/${artwork.id}/certificate`}
             className="cursor-pointer"
             onClick={handleArtworkClick}
+            prefetch={true}
           >
           <h3 className="font-display font-bold text-wine text-lg mb-1 line-clamp-2 group-hover:text-wine/80 transition-colors">
             {artwork.title}

@@ -55,7 +55,8 @@ export default async function CertificatePage({
         owned_by_is_public,
         sold_by,
         sold_by_is_public,
-        metadata
+        metadata,
+        status
       `)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
@@ -92,7 +93,8 @@ export default async function CertificatePage({
         owned_by_is_public,
         sold_by,
         sold_by_is_public,
-        metadata
+        metadata,
+        status
       `)
       .eq('id', id)
       .eq('status', 'verified')
