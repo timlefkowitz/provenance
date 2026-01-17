@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Search, Plus } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@kit/ui/popover';
+import { createArtistByName } from '../_actions/create-artist-by-name';
 
 type Artist = {
   id: string;
@@ -32,6 +33,8 @@ export function ArtistSelector({
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = async (query: string) => {
     if (query.length < 2) {
@@ -60,6 +63,37 @@ export function ArtistSelector({
       onArtistsChange([...selectedArtists, artist]);
       setSearch('');
       setArtists([]);
+      setOpen(false);
+    }
+  };
+
+  const handleCreateNewArtist = async () => {
+    if (!search.trim() || search.length < 2) {
+      return;
+    }
+
+    // Check if artist already exists in search results
+    const existing = artists.find(a => 
+      a.name.toLowerCase() === search.trim().toLowerCase()
+    );
+    if (existing) {
+      handleAddArtist(existing);
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const result = await createArtistByName(search.trim());
+      if (result.success && result.artist) {
+        handleAddArtist(result.artist);
+      } else {
+        alert(result.error || 'Failed to create artist');
+      }
+    } catch (error) {
+      console.error('Error creating artist:', error);
+      alert('Failed to create artist. Please try again.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -71,13 +105,21 @@ export function ArtistSelector({
     if (search && search.length >= 2) {
       const timeoutId = setTimeout(() => {
         handleSearch(search);
+        setOpen(true);
       }, 300);
       return () => clearTimeout(timeoutId);
     } else {
       setArtists([]);
+      if (search.length === 0) {
+        setOpen(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  const showCreateOption = search.trim().length >= 2 && 
+    !artists.some(a => a.name.toLowerCase() === search.trim().toLowerCase()) &&
+    !selectedArtists.some(a => a.name.toLowerCase() === search.trim().toLowerCase());
 
   return (
     <div className="space-y-2">
@@ -106,17 +148,15 @@ export function ArtistSelector({
       )}
 
       {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink/40 z-10" />
-        <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink/40 z-10 pointer-events-none" />
           <PopoverTrigger asChild>
             <Input
+              ref={inputRef}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                if (e.target.value.length >= 2) {
-                  setOpen(true);
-                }
               }}
               onFocus={() => {
                 if (search.length >= 2) {
@@ -127,43 +167,68 @@ export function ArtistSelector({
               className="font-serif pl-10"
             />
           </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
+        </div>
+        <PopoverContent 
+          className="w-[400px] p-0" 
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <div className="p-2">
             {loading ? (
               <p className="text-sm text-ink/60 font-serif p-4 text-center">Searching...</p>
-            ) : artists.length === 0 ? (
-              <p className="text-sm text-ink/60 font-serif p-4 text-center">
-                {search.length < 2
-                  ? 'Type at least 2 characters to search'
-                  : 'No artists found'}
-              </p>
             ) : (
-              <div className="max-h-60 overflow-y-auto space-y-1">
-                {artists.map((artist) => (
-                  <button
-                    key={artist.id}
-                    type="button"
-                    onClick={() => {
-                      handleAddArtist(artist);
-                      setOpen(false);
-                      setSearch('');
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-wine/10 rounded-md transition-colors font-serif text-sm"
-                  >
-                    {artist.name}
-                  </button>
-                ))}
-              </div>
+              <>
+                {artists.length > 0 && (
+                  <div className="max-h-60 overflow-y-auto space-y-1 mb-2">
+                    {artists.map((artist) => (
+                      <button
+                        key={artist.id}
+                        type="button"
+                        onClick={() => {
+                          handleAddArtist(artist);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-wine/10 rounded-md transition-colors font-serif text-sm"
+                      >
+                        {artist.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {showCreateOption && (
+                  <div className="border-t border-wine/20 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateNewArtist}
+                      disabled={creating}
+                      className="w-full text-left px-4 py-2 hover:bg-wine/10 rounded-md transition-colors font-serif text-sm flex items-center gap-2 text-wine"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {creating ? 'Creating...' : `Create new artist: "${search.trim()}"`}
+                    </button>
+                  </div>
+                )}
+                
+                {!loading && artists.length === 0 && search.length >= 2 && !showCreateOption && (
+                  <p className="text-sm text-ink/60 font-serif p-4 text-center">
+                    No artists found
+                  </p>
+                )}
+                
+                {search.length < 2 && (
+                  <p className="text-sm text-ink/60 font-serif p-4 text-center">
+                    Type at least 2 characters to search
+                  </p>
+                )}
+              </>
             )}
           </div>
         </PopoverContent>
-        </Popover>
-      </div>
+      </Popover>
       
       <p className="text-xs text-ink/60 font-serif">
-        Search and select artists participating in this exhibition
+        Search and select artists participating in this exhibition, or create a new artist
       </p>
     </div>
   );
 }
-
