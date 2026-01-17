@@ -10,16 +10,27 @@ import { Alert, AlertDescription } from '@kit/ui/alert';
 import { toast } from '@kit/ui/sonner';
 import { createExhibition } from '../_actions/create-exhibition';
 import { updateExhibition } from '../_actions/update-exhibition';
-import type { Exhibition } from '../_actions/get-exhibitions';
+import { ArtistSelector } from './artist-selector';
+
+type Artist = {
+  id: string;
+  name: string;
+  picture_url: string | null;
+};
 
 export function ExhibitionForm({
   exhibition,
 }: {
-  exhibition?: Exhibition;
+  exhibition?: any;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Initialize selected artists and metadata from exhibition if editing
+  const initialArtists = (exhibition as any)?.artists || [];
+  const initialMetadata = (exhibition as any)?.metadata || {};
+  
+  const [selectedArtists, setSelectedArtists] = useState<Artist[]>(initialArtists);
 
   const [formData, setFormData] = useState({
     title: exhibition?.title || '',
@@ -31,6 +42,8 @@ export function ExhibitionForm({
       ? new Date(exhibition.end_date).toISOString().split('T')[0]
       : '',
     location: exhibition?.location || '',
+    curator: initialMetadata.curator || '',
+    theme: initialMetadata.theme || '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +63,10 @@ export function ExhibitionForm({
         formDataObj.append('startDate', formData.startDate);
         formDataObj.append('endDate', formData.endDate || '');
         formDataObj.append('location', formData.location);
+        formDataObj.append('curator', formData.curator);
+        formDataObj.append('theme', formData.theme);
+        // Append artist IDs as JSON array
+        formDataObj.append('artistIds', JSON.stringify(selectedArtists.map(a => a.id)));
 
         if (exhibition) {
           await updateExhibition(exhibition.id, formDataObj);
@@ -148,6 +165,37 @@ export function ExhibitionForm({
               setFormData({ ...formData, location: e.target.value })
             }
             placeholder="e.g., Gallery Name, City, Country"
+            className="font-serif"
+          />
+        </div>
+
+        <ArtistSelector
+          selectedArtists={selectedArtists}
+          onArtistsChange={setSelectedArtists}
+        />
+
+        <div className="space-y-2">
+          <Label htmlFor="curator">Curator</Label>
+          <Input
+            id="curator"
+            value={formData.curator}
+            onChange={(e) =>
+              setFormData({ ...formData, curator: e.target.value })
+            }
+            placeholder="e.g., Jane Smith"
+            className="font-serif"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="theme">Theme</Label>
+          <Input
+            id="theme"
+            value={formData.theme}
+            onChange={(e) =>
+              setFormData({ ...formData, theme: e.target.value })
+            }
+            placeholder="e.g., Abstract Expressionism, Contemporary Portraits"
             className="font-serif"
           />
         </div>

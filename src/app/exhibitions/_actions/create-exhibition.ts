@@ -33,9 +33,31 @@ export async function createExhibition(formData: FormData) {
   const startDate = formData.get('startDate') as string;
   const endDate = formData.get('endDate') as string | null;
   const location = formData.get('location') as string | null;
+  const curator = formData.get('curator') as string | null;
+  const theme = formData.get('theme') as string | null;
+  const artistIdsJson = formData.get('artistIds') as string | null;
 
   if (!title || !startDate) {
     throw new Error('Title and start date are required');
+  }
+
+  // Parse artist IDs
+  let artistIds: string[] = [];
+  if (artistIdsJson) {
+    try {
+      artistIds = JSON.parse(artistIdsJson);
+    } catch (e) {
+      console.error('Error parsing artist IDs:', e);
+    }
+  }
+
+  // Build metadata object
+  const metadata: Record<string, any> = {};
+  if (curator?.trim()) {
+    metadata.curator = curator.trim();
+  }
+  if (theme?.trim()) {
+    metadata.theme = theme.trim();
   }
 
   // Create exhibition
@@ -48,6 +70,7 @@ export async function createExhibition(formData: FormData) {
       start_date: startDate,
       end_date: endDate || null,
       location: location?.trim() || null,
+      metadata: Object.keys(metadata).length > 0 ? metadata : null,
       created_by: user.id,
       updated_by: user.id,
     })
@@ -57,6 +80,23 @@ export async function createExhibition(formData: FormData) {
   if (error) {
     console.error('Error creating exhibition:', error);
     throw new Error('Failed to create exhibition');
+  }
+
+  // Add artists to exhibition
+  if (artistIds.length > 0) {
+    const artistInserts = artistIds.map((artistId) => ({
+      exhibition_id: exhibition.id,
+      artist_account_id: artistId,
+    }));
+
+    const { error: artistsError } = await (client as any)
+      .from('exhibition_artists')
+      .insert(artistInserts);
+
+    if (artistsError) {
+      console.error('Error adding artists to exhibition:', artistsError);
+      // Don't throw - exhibition was created, artists can be added later
+    }
   }
 
   revalidatePath('/exhibitions');

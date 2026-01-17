@@ -39,9 +39,34 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   const startDate = formData.get('startDate') as string;
   const endDate = formData.get('endDate') as string | null;
   const location = formData.get('location') as string | null;
+  const curator = formData.get('curator') as string | null;
+  const theme = formData.get('theme') as string | null;
+  const artistIdsJson = formData.get('artistIds') as string | null;
 
   if (!title || !startDate) {
     throw new Error('Title and start date are required');
+  }
+
+  // Get existing metadata
+  const { data: existingExhibition } = await (client as any)
+    .from('exhibitions')
+    .select('metadata')
+    .eq('id', exhibitionId)
+    .single();
+
+  const existingMetadata = (existingExhibition?.metadata as Record<string, any>) || {};
+
+  // Build updated metadata object
+  const metadata: Record<string, any> = { ...existingMetadata };
+  if (curator?.trim()) {
+    metadata.curator = curator.trim();
+  } else {
+    delete metadata.curator;
+  }
+  if (theme?.trim()) {
+    metadata.theme = theme.trim();
+  } else {
+    delete metadata.theme;
   }
 
   // Update exhibition
@@ -53,6 +78,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
       start_date: startDate,
       end_date: endDate || null,
       location: location?.trim() || null,
+      metadata: Object.keys(metadata).length > 0 ? metadata : null,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })
@@ -61,6 +87,38 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   if (error) {
     console.error('Error updating exhibition:', error);
     throw new Error('Failed to update exhibition');
+  }
+
+  // Update artists if provided
+  if (artistIdsJson !== null) {
+    try {
+      const artistIds = JSON.parse(artistIdsJson) as string[];
+
+      // Remove all existing artists
+      await (client as any)
+        .from('exhibition_artists')
+        .delete()
+        .eq('exhibition_id', exhibitionId);
+
+      // Add new artists
+      if (artistIds.length > 0) {
+        const artistInserts = artistIds.map((artistId) => ({
+          exhibition_id: exhibitionId,
+          artist_account_id: artistId,
+        }));
+
+        const { error: artistsError } = await (client as any)
+          .from('exhibition_artists')
+          .insert(artistInserts);
+
+        if (artistsError) {
+          console.error('Error updating artists:', artistsError);
+          // Don't throw - exhibition was updated
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing artist IDs:', e);
+    }
   }
 
   revalidatePath('/exhibitions');

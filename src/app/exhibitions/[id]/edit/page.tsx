@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
-import { getExhibitionsForGallery } from '../../_actions/get-exhibitions';
+import { getExhibitionWithDetails } from '../../_actions/get-exhibitions';
 import { ExhibitionForm } from '../../_components/exhibition-form';
 
 export const metadata = {
@@ -37,11 +37,10 @@ export default async function EditExhibitionPage({
     redirect('/registry');
   }
 
-  // Get exhibition
-  const exhibitions = await getExhibitionsForGallery(user.id);
-  const exhibition = exhibitions.find((e) => e.id === id);
+  // Get exhibition with details
+  const exhibition = await getExhibitionWithDetails(id);
 
-  if (!exhibition) {
+  if (!exhibition || exhibition.gallery_id !== user.id) {
     redirect('/exhibitions');
   }
 
