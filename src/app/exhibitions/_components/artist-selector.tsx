@@ -8,7 +8,7 @@ import { Label } from '@kit/ui/label';
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
+  PopoverAnchor,
 } from '@kit/ui/popover';
 import { createArtistByName } from '../_actions/create-artist-by-name';
 
@@ -149,14 +149,19 @@ export function ArtistSelector({
 
       {/* Search Input */}
       <Popover open={open} onOpenChange={setOpen}>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink/40 z-10 pointer-events-none" />
-          <PopoverTrigger asChild>
+        <PopoverAnchor asChild>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink/40 z-10 pointer-events-none" />
             <Input
               ref={inputRef}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
+                if (e.target.value.length >= 2) {
+                  setOpen(true);
+                } else if (e.target.value.length === 0) {
+                  setOpen(false);
+                }
               }}
               onFocus={() => {
                 if (search.length >= 2) {
@@ -166,12 +171,19 @@ export function ArtistSelector({
               placeholder={placeholder}
               className="font-serif pl-10"
             />
-          </PopoverTrigger>
-        </div>
+          </div>
+        </PopoverAnchor>
         <PopoverContent 
           className="w-[400px] p-0" 
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          sideOffset={4}
+          onInteractOutside={(e) => {
+            // Don't close when clicking the input
+            if (inputRef.current?.contains(e.target as Node)) {
+              e.preventDefault();
+            }
+          }}
         >
           <div className="p-2">
             {loading ? (
