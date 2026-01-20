@@ -1,0 +1,231 @@
+{
+  "slides": [
+    {
+      "id": 1,
+      "title": "PROVENANCE",
+      "subtitle": "A Journal of Art, Objects & Their Histories",
+      "tagline": "The system of record for authentic creative works.",
+      "type": "title"
+    },
+    {
+      "id": 2,
+      "title": "The Problem",
+      "content": [
+        "Artists don't have a way to keep track of their work. Did it sell, did it move galleries. 100% of artists I know in our community have not been able to keep track of the provenance of their work accurately.",
+        "The art market runs on trust — but trust is broken.",
+        "• Provenance records are fragmented, private, and fragile",
+        "• Certificates are paper-based, forgeable, and easy to lose",
+        "• Artists enter the market with zero protection",
+        "• Collectors & galleries rely on reputation, not verification",
+        "",
+        "Result:",
+        "• $6B+ lost annually to fraud",
+        "• Authentic works lose value due to missing history"
+      ],
+      "type": "problem"
+    },
+    {
+      "id": 3,
+      "title": "Why Now",
+      "content": [
+        "Why this problem finally gets solved now",
+        "",
+        "• Artists demand ownership & control from day one",
+        "• Digital-native collectors expect verification",
+        "• Institutions are open to shared infrastructure",
+        "• Blockchain enables immutability without gatekeepers",
+        "",
+        "This slide answers \"Why hasn't this existed already?\""
+      ],
+      "type": "why-now"
+    },
+    {
+      "id": 4,
+      "title": "The Solution",
+      "content": [
+        "Provenance is the canonical history of an artwork.",
+        "",
+        "For artists:",
+        "• Create certificates at creation",
+        "• Keep track of their work",
+        "• Give updates to their work",
+        "• Control narrative & visibility",
+        "• Protect legacy permanently",
+        "",
+        "For collectors & galleries:",
+        "• Instantly verify authenticity",
+        "• View full ownership history",
+        "• Reduce risk in secondary sales",
+        "",
+        "Immutable, portable, and artist-first."
+      ],
+      "type": "solution"
+    },
+    {
+      "id": 5,
+      "title": "Product (What Exists Today)",
+      "content": [
+        "Live platform — not a concept",
+        "",
+        "• Artwork registry & COAs",
+        "• Ownership & transfer tracking",
+        "• Artist, gallery, collector profiles",
+        "• Exhibition management",
+        "• Public / private visibility controls",
+        "• Discovery via follow system"
+      ],
+      "type": "product"
+    },
+    {
+      "id": 6,
+      "title": "The Magic (What's Hard to Replicate)",
+      "content": [
+        "• Immutable provenance from creation forward",
+        "• Artist-minted certificates",
+        "• Structured metadata (not PDFs)",
+        "• Chain of custody across owners",
+        "• Blockchain anchoring (Avalanche)",
+        "• Future-proof storage (IPFS)",
+        "",
+        "This is your defensibility slide."
+      ],
+      "type": "magic"
+    },
+    {
+      "id": 7,
+      "title": "Market Opportunity",
+      "content": [
+        "A massive market hiding in plain sight",
+        "",
+        "• Global art market: $65B+",
+        "• Digital art & collectibles: $10B+",
+        "",
+        "Adjacent expansion:",
+        "• Design objects",
+        "• Rare books",
+        "• Coins & memorabilia",
+        "• Luxury collectibles",
+        "",
+        "We start with art. We become provenance infrastructure."
+      ],
+      "type": "market"
+    },
+    {
+      "id": 9,
+      "title": "Traction",
+      "content": [
+        "Early proof this matters",
+        "",
+        "• Platform launched",
+        "• Active artists & galleries onboarded",
+        "• X artworks registered",
+        "• X certificates issued",
+        "• X exhibitions hosted",
+        "",
+        "⚠️ Even small real numbers beat projections."
+      ],
+      "type": "traction"
+    },
+    {
+      "id": 10,
+      "title": "Competitive Landscape",
+      "content": [
+        "Why existing solutions fall short"
+      ],
+      "table": [
+        {
+          "solution": "Solution",
+          "artistFirst": "Artist-first",
+          "immutable": "Immutable",
+          "fullLifecycle": "Full lifecycle"
+        },
+        {
+          "solution": "Paper COAs",
+          "artistFirst": "❌",
+          "immutable": "❌",
+          "fullLifecycle": "❌"
+        },
+        {
+          "solution": "Gallery databases",
+          "artistFirst": "❌",
+          "immutable": "❌",
+          "fullLifecycle": "❌"
+        },
+        {
+          "solution": "NFT platforms",
+          "artistFirst": "❌",
+          "immutable": "⚠️",
+          "fullLifecycle": "❌"
+        },
+        {
+          "solution": "Provenance",
+          "artistFirst": "✅",
+          "immutable": "✅",
+          "fullLifecycle": "✅"
+        }
+      ],
+      "footer": "Clear, calm confidence. No trash talk.",
+      "type": "competitive"
+    },
+    {
+      "id": 11,
+      "title": "Team",
+      "content": [
+        "Unfair advantage: art + engineering"
+      ],
+      "type": "team"
+    },
+    {
+      "id": 12,
+      "title": "Roadmap",
+      "content": [
+        "From product to infrastructure",
+        "",
+        "2025",
+        "• Avalanche integration",
+        "• IPFS storage",
+        "• Mobile apps",
+        "• APIs for institutions",
+        "",
+        "2026",
+        "• International expansion",
+        "• AI-assisted verification",
+        "• Cross-collectible provenance"
+      ],
+      "type": "roadmap"
+    },
+    {
+      "id": 13,
+      "title": "Vision",
+      "content": [
+        "The permanent record of human creativity",
+        "",
+        "• Provenance becomes the default trust layer",
+        "• Artists retain authorship forever",
+        "• Collectors transact with confidence",
+        "• Cultural history is preserved immutably",
+        "",
+        "This is the slide partners remember."
+      ],
+      "type": "vision"
+    },
+    {
+      "id": 14,
+      "title": "The Ask",
+      "content": [
+        "Raising: $X Seed",
+        "",
+        "Use of funds:",
+        "• Core engineering",
+        "• Blockchain & infra",
+        "• Artist & gallery acquisition",
+        "• Strategic partnerships",
+        "",
+        "Goal:",
+        "Become the system of record before incumbents react."
+      ],
+      "type": "ask"
+    }
+  ]
+}
+
