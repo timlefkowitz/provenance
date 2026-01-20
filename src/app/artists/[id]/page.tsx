@@ -7,6 +7,7 @@ import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
+import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
 import { getUserProfileByRole } from '../../profiles/_actions/get-user-profiles';
 import { Calendar, MapPin } from 'lucide-react';
 
@@ -78,22 +79,38 @@ export default async function ArtistProfilePage({
   const allExhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
   const exhibitions = allExhibitions.slice(0, 6); // Show only first 6 initially
 
-  // Fetch this artist's artworks - limit to 12 initially for better performance
-  let artworksQuery = (client as any)
-    .from('artworks')
-    .select(
-      'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status',
-    )
-    .eq('account_id', account.id)
-    .eq('status', 'verified')
-    .order('created_at', { ascending: false })
-    .limit(12); // Reduced from 48 to 12 for faster initial load
+  // For galleries, fetch artworks from their exhibitions
+  // For artists/collectors, fetch their own artworks
+  let artworks = null;
+  if (isGallery) {
+    // Get artworks from gallery's exhibitions
+    const exhibitionArtworks = await getArtworksFromGalleryExhibitions(account.id, 12);
+    
+    // Filter for public artworks if not owner
+    if (!isOwner) {
+      artworks = exhibitionArtworks.filter((artwork: any) => artwork.is_public === true);
+    } else {
+      artworks = exhibitionArtworks;
+    }
+  } else {
+    // For artists/collectors, fetch their own artworks
+    let artworksQuery = (client as any)
+      .from('artworks')
+      .select(
+        'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status',
+      )
+      .eq('account_id', account.id)
+      .eq('status', 'verified')
+      .order('created_at', { ascending: false })
+      .limit(12); // Reduced from 48 to 12 for faster initial load
 
-  if (!isOwner) {
-    artworksQuery = artworksQuery.eq('is_public', true);
+    if (!isOwner) {
+      artworksQuery = artworksQuery.eq('is_public', true);
+    }
+
+    const { data: artworksData } = await artworksQuery;
+    artworks = artworksData;
   }
-
-  const { data: artworks } = await artworksQuery;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -320,9 +337,9 @@ export default async function ArtistProfilePage({
       {/* Artworks Grid */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl md:text-2xl font-display font-bold text-wine">
-          Artworks
+          {isGallery ? 'Exhibition Artworks' : 'Artworks'}
         </h2>
-        {isOwner && (
+        {isOwner && !isGallery && (
           <Button
             asChild
             size="sm"
@@ -346,11 +363,15 @@ export default async function ArtistProfilePage({
       ) : (
         <div className="text-center py-12 border border-dashed border-wine/20 rounded-lg bg-parchment/40">
           <p className="text-ink/70 font-serif text-base md:text-lg mb-2">
-            {isOwner
-              ? 'You have not added any artworks yet.'
-              : 'This artist has not added any artworks yet.'}
+            {isGallery
+              ? isOwner
+                ? 'No artworks have been added to your exhibitions yet.'
+                : 'This gallery has no artworks in their exhibitions yet.'
+              : isOwner
+                ? 'You have not added any artworks yet.'
+                : 'This artist has not added any artworks yet.'}
           </p>
-          {isOwner && (
+          {isOwner && !isGallery && (
             <Button
               asChild
               size="sm"
@@ -358,6 +379,25 @@ export default async function ArtistProfilePage({
             >
               <Link href="/artworks/add">Add Your First Artwork</Link>
             </Button>
+          )}
+          {isOwner && isGallery && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
+              <Button
+                asChild
+                size="sm"
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              >
+                <Link href="/exhibitions">Manage Exhibitions</Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="font-serif border-wine/30 hover:bg-wine/10"
+              >
+                <Link href="/artworks/add">Add Artwork to Exhibition</Link>
+              </Button>
+            </div>
           )}
         </div>
       )}

@@ -17,7 +17,7 @@ const authConfig = AuthConfigSchema.parse({
   captchaTokenSiteKey: process.env.NEXT_PUBLIC_CAPTCHA_SITE_KEY,
   displayTermsCheckbox: false,
   providers: {
-    password: false,
+    password: true,
     magicLink: false,
     oAuth: ['google'],
   },

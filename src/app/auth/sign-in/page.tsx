@@ -31,6 +31,14 @@ function SignInPage() {
       </Heading>
 
       <SignInMethodsContainer paths={paths} providers={authConfig.providers} />
+
+      <div className={'flex justify-center mt-4'}>
+        <Button asChild variant={'link'} size={'sm'}>
+          <Link href={pathsConfig.auth.signUp}>
+            <Trans i18nKey={'auth:doNotHaveAnAccount'} />
+          </Link>
+        </Button>
+      </div>
     </>
   );
 }
