@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { If } from '@kit/ui/if';
 import { Trans } from '@kit/ui/trans';
 
-import { AuthErrorAlert } from '@kit/auth/components/auth-error-alert';
+import { AuthErrorAlert } from '../../../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth/src/components/auth-error-alert';
 import { CustomPasswordSignUpForm } from './custom-password-sign-up-form';
 
 interface CustomEmailPasswordSignUpContainerProps {
