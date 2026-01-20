@@ -96,7 +96,7 @@ export async function getAboutContent(): Promise<AboutContent> {
           founders: [
             {
               name: "Bryson Brooks",
-              role: "Co-Founder & Artist",
+              role: "Founder & Artist",
               bio: "Bryson Brooks is an internationally recognized artist originally from North Texas and now based in San Antonio. Known as both a painter and performance artist, his unique style blends playful, impressionistic techniques with emotional depth. After earning his Bachelor of Fine Arts from the University of Texas at Austin, Brooks spent time in Mexico City developing his visual and performative work. His notable large-scale landscape paintings \"Dawn\" and \"Dusk,\" created for Texas A&M University-San Antonio, showcase his bold use of color, lines, and metallic elements to evoke dreamlike, surreal landscapes.",
               photo_url: null
             },
