@@ -101,27 +101,3 @@ export async function getUserProfileById(
   return data as UserProfile;
 }
 
-/**
- * Get a profile by ID (public access)
- */
-export async function getUserProfileById(profileId: string): Promise<UserProfile | null> {
-  const client = getSupabaseServerClient();
-
-  const { data, error } = await client
-    .from('user_profiles')
-    .select('*')
-    .eq('id', profileId)
-    .eq('is_active', true)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    console.error('Error fetching profile by ID:', error);
-    return null;
-  }
-
-  return data as UserProfile;
-}
-
