@@ -36,16 +36,19 @@ export async function createProfile(input: CreateProfileInput) {
       return { error: 'Invalid role' };
     }
 
-    // Check if profile already exists for this role
-    const { data: existing } = await client
-      .from('user_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('role', input.role)
-      .single();
+    // Check if profile already exists for this role (only for artist and collector)
+    // Gallery profiles can be created multiple times
+    if (input.role !== 'gallery') {
+      const { data: existing } = await client
+        .from('user_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', input.role)
+        .single();
 
-    if (existing) {
-      return { error: `You already have a ${input.role} profile. Please edit it instead.` };
+      if (existing) {
+        return { error: `You already have a ${input.role} profile. Please edit it instead.` };
+      }
     }
 
     // Create the profile

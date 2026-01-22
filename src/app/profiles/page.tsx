@@ -23,10 +23,14 @@ export default async function ProfilesPage() {
   const profiles = await getUserProfiles(user.id);
 
   // Determine which roles don't have profiles yet
+  // Gallery can always be created (multiple galleries allowed)
   const existingRoles = new Set(profiles.map(p => p.role));
   const availableRoles = Object.values(USER_ROLES).filter(
-    role => !existingRoles.has(role)
+    role => role === 'gallery' || !existingRoles.has(role)
   );
+  
+  // Count galleries separately
+  const galleryProfiles = profiles.filter(p => p.role === 'gallery');
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -47,7 +51,9 @@ export default async function ProfilesPage() {
               Create New Profile
             </CardTitle>
             <CardDescription className="font-serif">
-              You can create separate profiles for each role. Each profile has its own name, bio, and settings.
+              {galleryProfiles.length > 0 
+                ? 'You can create multiple gallery profiles. Each profile has its own name, bio, and settings.'
+                : 'You can create separate profiles for each role. Each profile has its own name, bio, and settings.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -56,6 +62,11 @@ export default async function ProfilesPage() {
                 <CreateProfileButton key={role} role={role} />
               ))}
             </div>
+            {galleryProfiles.length > 0 && (
+              <p className="mt-4 text-sm text-ink/60 font-serif italic">
+                You currently have {galleryProfiles.length} gallery profile{galleryProfiles.length !== 1 ? 's' : ''}. You can create additional gallery profiles.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

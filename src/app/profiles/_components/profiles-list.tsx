@@ -27,7 +27,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
       {profiles.map((profile) => (
         <Link
           key={profile.id}
-          href={`/artists/${profile.user_id}?role=${profile.role}`}
+          href={`/artists/${profile.user_id}?role=${profile.role}${profile.role === 'gallery' ? `&profileId=${profile.id}` : ''}`}
           className="block"
         >
           <Card

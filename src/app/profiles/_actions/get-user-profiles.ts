@@ -45,6 +45,8 @@ export async function getUserProfiles(userId: string): Promise<UserProfile[]> {
 
 /**
  * Get a specific profile by user ID and role
+ * For galleries, returns the first active profile (since multiple are allowed)
+ * For artist/collector, returns the single profile
  */
 export async function getUserProfileByRole(
   userId: string,
@@ -52,11 +54,38 @@ export async function getUserProfileByRole(
 ): Promise<UserProfile | null> {
   const client = getSupabaseServerClient();
 
+  // For galleries, we can have multiple, so get the first one
+  // For artist/collector, there should only be one
   const { data, error } = await client
     .from('user_profiles')
     .select('*')
     .eq('user_id', userId)
     .eq('role', role)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+
+  return (data || null) as UserProfile | null;
+}
+
+/**
+ * Get a specific profile by profile ID
+ */
+export async function getUserProfileById(
+  profileId: string
+): Promise<UserProfile | null> {
+  const client = getSupabaseServerClient();
+
+  const { data, error } = await client
+    .from('user_profiles')
+    .select('*')
+    .eq('id', profileId)
     .eq('is_active', true)
     .single();
 
@@ -65,7 +94,7 @@ export async function getUserProfileByRole(
       // No profile found
       return null;
     }
-    console.error('Error fetching user profile:', error);
+    console.error('Error fetching profile by ID:', error);
     return null;
   }
 
