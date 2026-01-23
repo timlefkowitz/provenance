@@ -148,7 +148,34 @@ export default async function CertificatePage({
       let creatorName = creatorAccountResult.data.name;
       let profileId: string | null = null;
       if (creatorRole === USER_ROLES.GALLERY) {
-        const galleryProfile = await getUserProfileByRole(creatorAccountResult.data.id, USER_ROLES.GALLERY);
+        // First, try to find a profile with a specific name (like "FL!GHT")
+        // Search for profiles that might be the primary gallery profile
+        const { data: profilesByName } = await client
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', creatorAccountResult.data.id)
+          .eq('role', USER_ROLES.GALLERY)
+          .eq('is_active', true)
+          .order('name', { ascending: true }); // Order by name to get consistent results
+        
+        let galleryProfile = null;
+        
+        // If there are multiple profiles, prefer one that doesn't match the account name
+        // (this helps find the gallery profile like "FL!GHT" vs account name "Timothy Lefkowitz")
+        if (profilesByName && profilesByName.length > 0) {
+          // First, try to find a profile that doesn't match the account name
+          galleryProfile = profilesByName.find(
+            (p) => p.name.toLowerCase() !== creatorAccountResult.data.name.toLowerCase()
+          );
+          // If not found, use the first one
+          if (!galleryProfile) {
+            galleryProfile = profilesByName[0];
+          }
+        } else {
+          // Fallback to getUserProfileByRole if direct query doesn't work
+          galleryProfile = await getUserProfileByRole(creatorAccountResult.data.id, USER_ROLES.GALLERY);
+        }
+        
         if (galleryProfile) {
           // Always use gallery profile name if profile exists, even if name is same as account
           creatorName = galleryProfile.name || creatorAccountResult.data.name;
