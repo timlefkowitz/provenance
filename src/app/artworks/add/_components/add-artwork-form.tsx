@@ -419,10 +419,12 @@ export function AddArtworkForm({
           {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 ? (
             <div className="space-y-2">
               <Select
-                value={formData.artistName && pastArtists.some(a => a.artist_name === formData.artistName) ? formData.artistName : ''}
+                value={formData.artistName && pastArtists.some(a => a.artist_name === formData.artistName) ? formData.artistName : '__none__'}
                 onValueChange={(value) => {
-                  if (value) {
+                  if (value && value !== '__none__') {
                     setFormData({ ...formData, artistName: value });
+                  } else {
+                    setFormData({ ...formData, artistName: '' });
                   }
                 }}
               >
@@ -430,7 +432,7 @@ export function AddArtworkForm({
                   <SelectValue placeholder="Select a past artist or type below" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" className="font-serif">
+                  <SelectItem value="__none__" className="font-serif">
                     Enter new artist name
                   </SelectItem>
                   {pastArtists.map((artist) => (
@@ -521,14 +523,20 @@ export function AddArtworkForm({
             />
           </div>
           <Select
-            value={formData.exhibitionId}
-            onValueChange={(value) => setFormData({ ...formData, exhibitionId: value })}
+            value={formData.exhibitionId || '__none__'}
+            onValueChange={(value) => {
+              if (value === '__none__') {
+                setFormData({ ...formData, exhibitionId: '' });
+              } else {
+                setFormData({ ...formData, exhibitionId: value });
+              }
+            }}
           >
             <SelectTrigger id="exhibitionId" className="font-serif">
               <SelectValue placeholder="Select an exhibition (optional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="" className="font-serif">
+              <SelectItem value="__none__" className="font-serif">
                 None
               </SelectItem>
               {localExhibitions.length > 0 ? (
@@ -550,7 +558,7 @@ export function AddArtworkForm({
                   );
                 })
               ) : (
-                <SelectItem value="" disabled className="font-serif text-ink/40">
+                <SelectItem value="__placeholder__" disabled className="font-serif text-ink/40">
                   No exhibitions yet. Create one above.
                 </SelectItem>
               )}
