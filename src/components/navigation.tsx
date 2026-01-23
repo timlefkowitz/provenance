@@ -179,6 +179,13 @@ export function Navigation() {
             {user.data && (
               <>
                 <Link 
+                  href="/artworks/add" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Add Artwork
+                </Link>
+                <Link 
                   href="/portal" 
                   className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}

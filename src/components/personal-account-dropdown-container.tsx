@@ -6,12 +6,17 @@ import type { JwtPayload } from '@supabase/supabase-js';
 import { ChevronsUpDown, Home, LogOut, Settings, User, Shield } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
+import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { useQuery } from '@tanstack/react-query';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@kit/ui/dropdown-menu';
 import { If } from '@kit/ui/if';
 import { SubMenuModeToggle } from '@kit/ui/mode-toggle';
@@ -21,6 +26,7 @@ import { cn } from '@kit/ui/utils';
 import { usePersonalAccountData } from '@kit/accounts/hooks/use-personal-account-data';
 import { AdminMenuItem } from './admin-menu-item';
 import { LanguageSwitcher } from './language-switcher';
+import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
@@ -48,7 +54,44 @@ export function ProfileAccountDropdownContainer(props: {
   const signOut = useSignOut();
   const user = useUser(props.user);
   const userData = user.data;
+  const client = useSupabase();
   const personalAccountData = usePersonalAccountData(userData?.id || '', props.account);
+
+  // Fetch all user profiles
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['user-profiles-dropdown', userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return [];
+
+      const { data, error } = await client
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userData.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching profiles:', error);
+        return [];
+      }
+
+      return (data || []) as UserProfile[];
+    },
+    enabled: !!userData?.id,
+  });
+
+  // Separate profiles by role
+  const galleryProfiles = useMemo(() => {
+    return profiles.filter(p => p.role === 'gallery');
+  }, [profiles]);
+
+  const artistProfiles = useMemo(() => {
+    return profiles.filter(p => p.role === 'artist');
+  }, [profiles]);
+
+  const collectorProfiles = useMemo(() => {
+    return profiles.filter(p => p.role === 'collector');
+  }, [profiles]);
 
   if (!userData) {
     return null;
@@ -123,15 +166,91 @@ export function ProfileAccountDropdownContainer(props: {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link
-            className={'flex cursor-pointer items-center space-x-2'}
-            href={paths.profile}
-          >
-            <User className={'h-5'} />
-            <span>Profile</span>
-          </Link>
-        </DropdownMenuItem>
+        {/* Profile menu with submenu for gallery profiles */}
+        {galleryProfiles.length > 0 ? (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex cursor-pointer items-center space-x-2">
+              <User className={'h-5'} />
+              <span>Profile</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {/* Main profile link */}
+              <DropdownMenuItem asChild>
+                <Link
+                  className={'flex cursor-pointer items-center space-x-2'}
+                  href={paths.profile}
+                >
+                  <User className={'h-4'} />
+                  <span>My Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              
+              {/* Gallery profiles */}
+              {galleryProfiles.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {galleryProfiles.map((profile) => (
+                    <DropdownMenuItem key={profile.id} asChild>
+                      <Link
+                        className={'flex cursor-pointer items-center space-x-2'}
+                        href={`/artists/${userData.id}?role=gallery&profileId=${profile.id}`}
+                      >
+                        <User className={'h-4'} />
+                        <span className="truncate">{profile.name}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              
+              {/* Artist profiles */}
+              {artistProfiles.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {artistProfiles.map((profile) => (
+                    <DropdownMenuItem key={profile.id} asChild>
+                      <Link
+                        className={'flex cursor-pointer items-center space-x-2'}
+                        href={`/artists/${userData.id}?role=artist`}
+                      >
+                        <User className={'h-4'} />
+                        <span className="truncate">{profile.name}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              
+              {/* Collector profiles */}
+              {collectorProfiles.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {collectorProfiles.map((profile) => (
+                    <DropdownMenuItem key={profile.id} asChild>
+                      <Link
+                        className={'flex cursor-pointer items-center space-x-2'}
+                        href={`/artists/${userData.id}?role=collector`}
+                      >
+                        <User className={'h-4'} />
+                        <span className="truncate">{profile.name}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        ) : (
+          <DropdownMenuItem asChild>
+            <Link
+              className={'flex cursor-pointer items-center space-x-2'}
+              href={paths.profile}
+            >
+              <User className={'h-5'} />
+              <span>Profile</span>
+            </Link>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuItem asChild>
           <Link
