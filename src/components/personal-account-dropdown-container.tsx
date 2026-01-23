@@ -156,8 +156,6 @@ export function ProfileAccountDropdownContainer(props: {
 
         <LanguageSwitcher />
 
-        <RoleSwitcher />
-
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
