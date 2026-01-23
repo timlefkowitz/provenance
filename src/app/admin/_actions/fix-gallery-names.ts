@@ -3,6 +3,7 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
+import { revalidatePath } from 'next/cache';
 
 /**
  * Fix gallery name display for artworks uploaded today
@@ -114,6 +115,13 @@ export async function fixGalleryNamesForToday(
 
     const artworkCount = artworks?.length || 0;
 
+    // Revalidate certificate pages for all today's artworks to clear Next.js cache
+    if (artworks && artworks.length > 0) {
+      for (const artwork of artworks) {
+        revalidatePath(`/artworks/${artwork.id}/certificate`);
+      }
+    }
+
     return {
       success: true,
       updatedCount: artworkCount,
@@ -121,7 +129,7 @@ export async function fixGalleryNamesForToday(
       galleryAccountId: galleryAccount.id,
       galleryProfileId: galleryProfile.id,
       galleryProfileName: galleryProfile.name,
-      message: `Found ${artworkCount} artwork(s) created today. The certificate page will automatically display "${galleryProfile.name}" instead of "${galleryAccount.name}" for these artworks.`,
+      message: `Found ${artworkCount} artwork(s) created today. Revalidated certificate pages - they will now display "${galleryProfile.name}" instead of "${galleryAccount.name}".`,
     };
   } catch (error) {
     console.error('Error in fixGalleryNamesForToday:', error);

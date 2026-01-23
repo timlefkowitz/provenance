@@ -153,7 +153,7 @@ export default async function CertificatePage({
         const { data: profilesByName } = await client
           .from('user_profiles')
           .select('*')
-          .eq('user_id', creatorAccountResult.data.id)
+          .eq('user_id', artwork.account_id)
           .eq('role', USER_ROLES.GALLERY)
           .eq('is_active', true)
           .order('name', { ascending: true }); // Order by name to get consistent results
@@ -173,7 +173,7 @@ export default async function CertificatePage({
           }
         } else {
           // Fallback to getUserProfileByRole if direct query doesn't work
-          galleryProfile = await getUserProfileByRole(creatorAccountResult.data.id, USER_ROLES.GALLERY);
+          galleryProfile = await getUserProfileByRole(artwork.account_id, USER_ROLES.GALLERY);
         }
         
         if (galleryProfile) {
