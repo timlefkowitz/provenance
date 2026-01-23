@@ -549,7 +549,7 @@ export function CertificateOfAuthenticity({
               {creatorInfo && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
-                    {creatorInfo.role === 'gallery' ? 'Created by Gallery' : 'Created by'}
+                    {creatorInfo.role === 'gallery' ? 'Uploaded by Gallery' : 'Created by'}
                   </p>
                   <Link
                     href={creatorInfo.role === 'gallery' 
