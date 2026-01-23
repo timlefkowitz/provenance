@@ -3,11 +3,12 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Circle, AlertCircle, MessageSquare, FileText } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, MessageSquare, FileText, UserPlus } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { markNotificationAsRead } from '~/lib/notifications';
 import { claimCertificate } from '~/app/artworks/[id]/_actions/claim-certificate';
 import { verifyCertificate } from '~/app/artworks/[id]/_actions/verify-certificate';
+import Link from 'next/link';
 
 type Notification = {
   id: string;
@@ -70,6 +71,10 @@ export function NotificationsList({
       case 'certificate_claimed':
       case 'certificate_verified':
         return <FileText className="h-5 w-5" />;
+      case 'artist_profile_claim_request':
+      case 'artist_profile_claim_approved':
+      case 'artist_profile_claim_rejected':
+        return <UserPlus className="h-5 w-5" />;
       case 'message':
         return <MessageSquare className="h-5 w-5" />;
       default:
@@ -80,11 +85,15 @@ export function NotificationsList({
   const getNotificationColor = (type: string) => {
     switch (type) {
       case 'certificate_verified':
+      case 'artist_profile_claim_approved':
         return 'text-green-600';
       case 'certificate_claimed':
         return 'text-blue-600';
       case 'certificate_claim_request':
+      case 'artist_profile_claim_request':
         return 'text-wine';
+      case 'artist_profile_claim_rejected':
+        return 'text-red-600';
       default:
         return 'text-ink';
     }
@@ -166,6 +175,20 @@ export function NotificationsList({
                       >
                         Verify Certificate
                       </Button>
+                    )}
+                    
+                    {(notification.type === 'artist_profile_claim_request' || 
+                      notification.type === 'artist_profile_claim_approved' || 
+                      notification.type === 'artist_profile_claim_rejected') && (
+                      <Link href="/profiles/claims">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View Claims
+                        </Button>
+                      </Link>
                     )}
                   </div>
                 </div>

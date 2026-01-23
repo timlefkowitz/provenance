@@ -179,6 +179,46 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         } else if (artwork) {
           artworkIds.push(artwork.id);
           
+          // Create unclaimed artist profile in registry if gallery/collector added artwork with artist name
+          // and artist doesn't have an account yet
+          if ((userRole === USER_ROLES.GALLERY || userRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
+            try {
+              // Check if unclaimed profile already exists for this artist name
+              const { data: existingProfile } = await client
+                .from('user_profiles')
+                .select('id')
+                .eq('name', artistName.trim())
+                .eq('role', 'artist')
+                .eq('is_claimed', false)
+                .is('user_id', null)
+                .single();
+              
+              // Only create if it doesn't exist
+              if (!existingProfile) {
+                await client
+                  .from('user_profiles')
+                  .insert({
+                    user_id: null, // Unclaimed profile
+                    role: 'artist',
+                    name: artistName.trim(),
+                    medium: medium?.trim() || null,
+                    is_claimed: false,
+                    created_by_gallery_id: userRole === USER_ROLES.GALLERY ? userId : null,
+                    is_active: true,
+                  })
+                  .catch((profileError: any) => {
+                    // Ignore duplicate errors or other non-critical errors
+                    if (profileError.code !== '23505') {
+                      console.error('Error creating unclaimed artist profile:', profileError);
+                    }
+                  });
+              }
+            } catch (profileError) {
+              // Don't fail artwork creation if profile creation fails
+              console.error('Error creating unclaimed artist profile:', profileError);
+            }
+          }
+          
           // Create notification for artist if collector/gallery posted
           if (certificateStatus === 'pending_artist_claim' && artistAccountId) {
             try {
