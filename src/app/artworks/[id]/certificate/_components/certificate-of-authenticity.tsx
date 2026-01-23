@@ -63,7 +63,14 @@ export function CertificateOfAuthenticity({
   isOwner?: boolean;
   isAdmin?: boolean;
   creatorInfo?: { name: string; role: string | null; profileId?: string } | null;
-  exhibition?: { id: string; title: string; start_date: string; end_date: string | null; location: string | null } | null;
+  exhibition?: { 
+    id: string; 
+    title: string; 
+    start_date: string; 
+    end_date: string | null; 
+    location: string | null;
+    gallery?: { id: string; name: string; profileId?: string } | null;
+  } | null;
 }) {
   const router = useRouter();
   const user = useUser();
@@ -563,34 +570,49 @@ export function CertificateOfAuthenticity({
               )}
 
               {exhibition && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
-                  <Link
-                    href={`/exhibitions/${exhibition.id}`}
-                    className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
-                  >
-                    {exhibition.title}
-                  </Link>
-                  {exhibition.start_date && (
-                    <p className="text-xs text-ink/60 font-serif mt-1">
-                      {new Date(exhibition.start_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                      {exhibition.end_date && ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}`}
-                    </p>
+                <>
+                  <div className="border-b border-wine/20 pb-2">
+                    <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
+                    <Link
+                      href={`/exhibitions/${exhibition.id}`}
+                      className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                    >
+                      {exhibition.title}
+                    </Link>
+                    {exhibition.start_date && (
+                      <p className="text-xs text-ink/60 font-serif mt-1">
+                        {new Date(exhibition.start_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                        {exhibition.end_date && ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}`}
+                      </p>
+                    )}
+                    {exhibition.location && (
+                      <p className="text-xs text-ink/60 font-serif mt-1">
+                        {exhibition.location}
+                      </p>
+                    )}
+                  </div>
+                  {exhibition.gallery && (
+                    <div className="border-b border-wine/20 pb-2">
+                      <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Gallery</p>
+                      <Link
+                        href={exhibition.gallery.profileId 
+                          ? `/artists/${exhibition.gallery.id}?role=gallery&profileId=${exhibition.gallery.profileId}`
+                          : `/artists/${exhibition.gallery.id}`}
+                        className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                      >
+                        {exhibition.gallery.name}
+                      </Link>
+                    </div>
                   )}
-                  {exhibition.location && (
-                    <p className="text-xs text-ink/60 font-serif mt-1">
-                      {exhibition.location}
-                    </p>
-                  )}
-                </div>
+                </>
               )}
 
               {artwork.metadata?.certificate_location?.formatted && (
@@ -666,18 +688,17 @@ export function CertificateOfAuthenticity({
             </div>
           </div>
 
-          {/* Provenance Information */}
+          {/* Provenance Information - Show if ANY provenance data exists */}
           {(artwork.former_owners || artwork.auction_history || artwork.exhibition_history || 
             artwork.historic_context || artwork.celebrity_notes ||
-            (artwork.value && artwork.value_is_public && !isOwner) ||
-            (artwork.owned_by && artwork.owned_by_is_public && !isOwner) ||
-            (artwork.sold_by && artwork.sold_by_is_public && !isOwner) ||
+            artwork.value || artwork.owned_by || artwork.sold_by ||
             (scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
                 Provenance
               </h2>
               
+              {/* Former Owners */}
               {artwork.former_owners && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Former Owners</p>
@@ -687,36 +708,52 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
-              {/* Value in Provenance section - only show if public (owner already sees it above) */}
-              {artwork.value && artwork.value_is_public && !isOwner && (
+              {/* Value - show if it exists and (is public OR user is owner) */}
+              {artwork.value && (artwork.value_is_public || isOwner) && (
                 <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Value</p>
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">
+                    Value
+                    {!artwork.value_is_public && isOwner && (
+                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                    )}
+                  </p>
                   <p className="text-sm sm:text-base font-serif text-ink break-words">
                     {artwork.value}
                   </p>
                 </div>
               )}
 
-              {/* Owned By in Provenance section - only show if public (owner already sees it above) */}
-              {artwork.owned_by && artwork.owned_by_is_public && !isOwner && (
+              {/* Owned By - show if it exists and (is public OR user is owner) */}
+              {artwork.owned_by && (artwork.owned_by_is_public || isOwner) && (
                 <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Owned By</p>
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">
+                    Owned By
+                    {!artwork.owned_by_is_public && isOwner && (
+                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                    )}
+                  </p>
                   <p className="text-sm sm:text-base font-serif text-ink break-words">
                     {artwork.owned_by}
                   </p>
                 </div>
               )}
 
-              {/* Sold By in Provenance section - only show if public (owner already sees it above) */}
-              {artwork.sold_by && artwork.sold_by_is_public && !isOwner && (
+              {/* Sold By - show if it exists and (is public OR user is owner) */}
+              {artwork.sold_by && (artwork.sold_by_is_public || isOwner) && (
                 <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Sold By</p>
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">
+                    Sold By
+                    {!artwork.sold_by_is_public && isOwner && (
+                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                    )}
+                  </p>
                   <p className="text-sm sm:text-base font-serif text-ink break-words">
                     {artwork.sold_by}
                   </p>
                 </div>
               )}
 
+              {/* Auction History */}
               {artwork.auction_history && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Auction History</p>
@@ -726,6 +763,7 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
+              {/* Exhibition History */}
               {artwork.exhibition_history && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Exhibition History / Literature References</p>
@@ -735,6 +773,7 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
+              {/* Historic Context */}
               {artwork.historic_context && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Historic Context / Origin Information</p>
@@ -744,6 +783,7 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
+              {/* Celebrity Notes */}
               {artwork.celebrity_notes && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Special Notes on Celebrity or Notable Ownership</p>
