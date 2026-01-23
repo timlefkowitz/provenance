@@ -5,6 +5,7 @@ import { isAdmin } from '~/lib/admin';
 import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
 import { FixArtistNamesButton } from './_components/fix-artist-names-button';
 import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
+import { LinkArtworksToExhibitionButton } from './_components/link-artworks-to-exhibition-button';
 import { Button } from '@kit/ui/button';
 
 export const metadata = {
@@ -85,6 +86,9 @@ export default async function AdminPage() {
 
         {/* Fix Gallery Names */}
         <FixGalleryNamesButton />
+
+        {/* Link Artworks to Exhibition */}
+        <LinkArtworksToExhibitionButton />
       </div>
     </div>
   );
