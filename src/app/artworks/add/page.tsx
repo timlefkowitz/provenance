@@ -4,6 +4,7 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { AddArtworkPageContent } from './_components/add-artwork-page-content';
 import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
+import { ensureArtistsInRegistry } from './_actions/ensure-artists-in-registry';
 
 export const metadata = {
   title: 'Add Artwork | Provenance',
@@ -33,6 +34,23 @@ export default async function AddArtworkPage() {
   
   // Get past artists for galleries
   const pastArtists = userRole === USER_ROLES.GALLERY ? await getPastArtists(user.id) : [];
+
+  // Ensure past artists are in the registry as unclaimed profiles
+  // This makes sure all past artists are available for claiming
+  if (userRole === USER_ROLES.GALLERY && pastArtists.length > 0) {
+    const artistNames = pastArtists
+      .filter(artist => !artist.artist_account_id) // Only ensure artists without accounts
+      .map(artist => artist.artist_name);
+    
+    if (artistNames.length > 0) {
+      try {
+        await ensureArtistsInRegistry(artistNames, user.id);
+      } catch (error) {
+        // Don't fail page load if this fails - just log the error
+        console.error('Error ensuring artists in registry:', error);
+      }
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
