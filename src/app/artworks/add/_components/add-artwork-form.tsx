@@ -91,6 +91,12 @@ export function AddArtworkForm({
         ...prev,
         galleryProfileId: galleryProfiles[0].id,
       }));
+    } else if (userRole !== USER_ROLES.GALLERY) {
+      // Clear gallery profile selection if not in gallery mode
+      setFormData(prev => ({
+        ...prev,
+        galleryProfileId: '',
+      }));
     }
   }, [userRole, galleryProfiles, formData.galleryProfileId]);
 
