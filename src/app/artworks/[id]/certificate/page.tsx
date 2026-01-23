@@ -4,6 +4,7 @@ import { CertificateOfAuthenticity } from './_components/certificate-of-authenti
 import { isAdmin } from '~/lib/admin';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
+import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 
 export const metadata = {
   title: 'Certificate of Authenticity | Provenance',
@@ -170,12 +171,16 @@ export default async function CertificatePage({
     console.error('Error fetching account info:', error);
   }
 
+  // Fetch exhibition for this artwork
+  const exhibition = await getArtworkExhibition(artwork.id);
+
   return (
     <CertificateOfAuthenticity 
       artwork={artwork} 
       isOwner={isOwner} 
       isAdmin={userIsAdmin}
       creatorInfo={creatorInfo}
+      exhibition={exhibition}
     />
   );
 }

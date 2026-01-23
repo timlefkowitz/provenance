@@ -56,12 +56,14 @@ export function CertificateOfAuthenticity({
   artwork, 
   isOwner = false,
   isAdmin = false,
-  creatorInfo = null
+  creatorInfo = null,
+  exhibition = null
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
   isAdmin?: boolean;
   creatorInfo?: { name: string; role: string | null; profileId?: string } | null;
+  exhibition?: { id: string; title: string; start_date: string; end_date: string | null; location: string | null } | null;
 }) {
   const router = useRouter();
   const user = useUser();
@@ -557,6 +559,37 @@ export function CertificateOfAuthenticity({
                   >
                     {creatorInfo.name}
                   </Link>
+                </div>
+              )}
+
+              {exhibition && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
+                  <Link
+                    href={`/exhibitions/${exhibition.id}`}
+                    className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                  >
+                    {exhibition.title}
+                  </Link>
+                  {exhibition.start_date && (
+                    <p className="text-xs text-ink/60 font-serif mt-1">
+                      {new Date(exhibition.start_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                      {exhibition.end_date && ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}`}
+                    </p>
+                  )}
+                  {exhibition.location && (
+                    <p className="text-xs text-ink/60 font-serif mt-1">
+                      {exhibition.location}
+                    </p>
+                  )}
                 </div>
               )}
 
