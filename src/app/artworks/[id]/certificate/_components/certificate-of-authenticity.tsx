@@ -482,7 +482,7 @@ export function CertificateOfAuthenticity({
             <div className="border-b border-wine/20 pb-2">
               <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Title</p>
               <p className="text-xl sm:text-2xl font-display font-bold text-wine break-words">
-                {artwork.title}
+                {artwork.title || 'Untitled Artwork'}
               </p>
             </div>
 
@@ -553,7 +553,7 @@ export function CertificateOfAuthenticity({
               </div>
 
               {/* Certificate Creator */}
-              {creatorInfo && (
+              {creatorInfo && creatorInfo.name && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
                     {creatorInfo.role === 'gallery' ? 'Uploaded by Gallery' : 'Created by'}
@@ -568,19 +568,19 @@ export function CertificateOfAuthenticity({
                       : `/artists/${artwork.account_id}`}
                     className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
                   >
-                    {creatorInfo.name}
+                    {creatorInfo.name || 'Unknown'}
                   </Link>
                 </div>
               )}
 
-              {exhibition && (
+              {exhibition && exhibition.title && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
                   <Link
                     href={`/exhibitions/${exhibition.id}`}
                     className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
                   >
-                    {exhibition.title}
+                    {exhibition.title || 'Unknown Exhibition'}
                   </Link>
                   {exhibition.start_date && (
                     <p className="text-xs text-ink/60 font-serif mt-1">

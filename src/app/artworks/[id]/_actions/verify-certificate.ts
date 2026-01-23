@@ -69,11 +69,13 @@ export async function verifyCertificate(artworkId: string) {
   // Create notification for the artist
   if (artwork.artist_account_id) {
     try {
+      const artworkTitle = artwork.title || 'Untitled Artwork';
+      const ownerName = account.name || 'The owner';
       await createNotification({
         userId: artwork.artist_account_id,
         type: 'certificate_verified',
-        title: `Certificate Verified: ${artwork.title}`,
-        message: `${account.name || 'The owner'} has verified the certificate for "${artwork.title}".`,
+        title: `Certificate Verified: ${artworkTitle}`,
+        message: `${ownerName} has verified the certificate for "${artworkTitle}".`,
         artworkId: artwork.id,
         relatedUserId: user.id,
         metadata: {
