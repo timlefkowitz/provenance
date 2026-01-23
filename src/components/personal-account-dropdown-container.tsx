@@ -21,7 +21,6 @@ import { cn } from '@kit/ui/utils';
 import { usePersonalAccountData } from '@kit/accounts/hooks/use-personal-account-data';
 import { AdminMenuItem } from './admin-menu-item';
 import { LanguageSwitcher } from './language-switcher';
-import { RoleSwitcher } from './role-switcher';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
