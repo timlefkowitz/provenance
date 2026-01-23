@@ -160,7 +160,7 @@ export default async function ArtistProfilePage({
             <h1 className="text-3xl md:text-4xl font-display font-bold text-wine mb-1">
               {displayName}
             </h1>
-            {medium && (
+            {medium && !isGallery && (
               <p className="text-ink/70 font-serif text-base md:text-lg italic">
                 {medium}
               </p>
