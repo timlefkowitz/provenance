@@ -72,11 +72,12 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
     `)
     .eq('exhibition_id', exhibitionId);
 
-  // Get artworks - fetch all artworks linked to this exhibition
+  // Get artworks - fetch ONLY artworks linked to this specific exhibition
   const { data: artworks, error: artworksError } = await (client as any)
     .from('exhibition_artworks')
     .select(`
       artwork_id,
+      exhibition_id,
       artworks!exhibition_artworks_artwork_id_fkey (
         id,
         title,
@@ -85,11 +86,29 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
         is_public
       )
     `)
-    .eq('exhibition_id', exhibitionId);
+    .eq('exhibition_id', exhibitionId); // Explicitly filter by this exhibition's ID
 
   if (artworksError) {
     console.error('Error fetching exhibition artworks:', artworksError);
   }
+
+  // Double-check: filter out any artworks that don't belong to this exhibition
+  // (defensive programming in case of data inconsistency)
+  const filteredArtworks = (artworks || [])
+    .filter((ea: any) => {
+      // Ensure the exhibition_id matches (should always be true due to query, but double-check)
+      if (ea.exhibition_id !== exhibitionId) {
+        console.warn(`Artwork ${ea.artwork_id} has mismatched exhibition_id: ${ea.exhibition_id} vs ${exhibitionId}`);
+        return false;
+      }
+      // Only include verified artworks with valid artwork data
+      return ea.artworks && ea.artworks.status === 'verified';
+    })
+    .map((ea: any) => ({
+      id: ea.artworks.id,
+      title: ea.artworks.title,
+      image_url: ea.artworks.image_url,
+    }));
 
   return {
     ...exhibition,
@@ -98,13 +117,7 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
       name: ea.accounts.name,
       picture_url: ea.accounts.picture_url,
     })),
-    artworks: (artworks || [])
-      .filter((ea: any) => ea.artworks && ea.artworks.status === 'verified') // Only show verified artworks
-      .map((ea: any) => ({
-        id: ea.artworks.id,
-        title: ea.artworks.title,
-        image_url: ea.artworks.image_url,
-      })),
+    artworks: filteredArtworks,
   };
 }
 
