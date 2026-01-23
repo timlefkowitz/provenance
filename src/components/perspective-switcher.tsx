@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RadioGroup, RadioGroupItem } from '@kit/ui/radio-group';
 import { Label } from '@kit/ui/label';
+import { Button } from '@kit/ui/button';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { cn } from '@kit/ui/utils';
 
 const PERSPECTIVE_KEY = 'user_perspective';
 
-export function PerspectiveSwitcher() {
+export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [perspective, setPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
 
@@ -22,19 +24,71 @@ export function PerspectiveSwitcher() {
     }
   }, []);
 
-  const handlePerspectiveChange = (value: string) => {
-    const newPerspective = value as UserRole;
-    setPerspective(newPerspective);
+  const handlePerspectiveChange = (value: UserRole) => {
+    setPerspective(value);
     
     // Save to localStorage
     if (typeof window !== 'undefined') {
-      localStorage.setItem(PERSPECTIVE_KEY, newPerspective);
+      localStorage.setItem(PERSPECTIVE_KEY, value);
     }
     
     // Refresh to apply perspective changes
     router.refresh();
   };
 
+  // Compact button-based version for mobile menu
+  if (compact) {
+    return (
+      <div className="space-y-2 py-3 border-b border-wine/10">
+        <Label className="text-xs font-serif font-semibold text-ink/80 uppercase tracking-wide">
+          Switch Role
+        </Label>
+        <div className="flex flex-col gap-2">
+          <Button
+            variant={perspective === USER_ROLES.ARTIST ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePerspectiveChange(USER_ROLES.ARTIST)}
+            className={cn(
+              'w-full justify-start font-serif text-sm',
+              perspective === USER_ROLES.ARTIST
+                ? 'bg-wine text-parchment hover:bg-wine/90'
+                : 'border-wine text-ink hover:bg-wine/10'
+            )}
+          >
+            Artist
+          </Button>
+          <Button
+            variant={perspective === USER_ROLES.COLLECTOR ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePerspectiveChange(USER_ROLES.COLLECTOR)}
+            className={cn(
+              'w-full justify-start font-serif text-sm',
+              perspective === USER_ROLES.COLLECTOR
+                ? 'bg-wine text-parchment hover:bg-wine/90'
+                : 'border-wine text-ink hover:bg-wine/10'
+            )}
+          >
+            Collector
+          </Button>
+          <Button
+            variant={perspective === USER_ROLES.GALLERY ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePerspectiveChange(USER_ROLES.GALLERY)}
+            className={cn(
+              'w-full justify-start font-serif text-sm',
+              perspective === USER_ROLES.GALLERY
+                ? 'bg-wine text-parchment hover:bg-wine/90'
+                : 'border-wine text-ink hover:bg-wine/10'
+            )}
+          >
+            Gallery
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Full radio button version for other contexts
   return (
     <div className="space-y-3 py-3 border-b border-wine/10">
       <Label className="text-sm font-serif font-semibold text-ink/80 uppercase tracking-wide">
@@ -42,7 +96,7 @@ export function PerspectiveSwitcher() {
       </Label>
       <RadioGroup
         value={perspective}
-        onValueChange={handlePerspectiveChange}
+        onValueChange={(value) => handlePerspectiveChange(value as UserRole)}
         className="space-y-3"
       >
         <div className="flex items-center space-x-3">

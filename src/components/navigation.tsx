@@ -158,9 +158,9 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-50">
           <div className="flex flex-col px-6 py-4 gap-4">
-            {/* Perspective Switcher */}
+            {/* Role Switcher */}
             {user.data && (
-              <PerspectiveSwitcher />
+              <PerspectiveSwitcher compact />
             )}
             
             <Link 
