@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
 import { isAdmin } from '~/lib/admin';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 
 export const metadata = {
   title: 'Certificate of Authenticity | Provenance',
@@ -141,8 +142,18 @@ export default async function CertificatePage({
     // Process creator info
     if (creatorAccountResult.data) {
       const creatorRole = getUserRole(creatorAccountResult.data.public_data as Record<string, any>);
+      
+      // For galleries, fetch the gallery profile name instead of account name
+      let creatorName = creatorAccountResult.data.name;
+      if (creatorRole === USER_ROLES.GALLERY) {
+        const galleryProfile = await getUserProfileByRole(creatorAccountResult.data.id, USER_ROLES.GALLERY);
+        if (galleryProfile?.name) {
+          creatorName = galleryProfile.name;
+        }
+      }
+      
       creatorInfo = {
-        name: creatorAccountResult.data.name,
+        name: creatorName,
         role: creatorRole,
       };
     }
