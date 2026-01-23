@@ -303,7 +303,7 @@ export default async function ArtistProfilePage({
               {exhibitions.slice(0, 6).map((exhibition) => (
                 <Link
                   key={exhibition.id}
-                  href={`/exhibitions/${exhibition.id}`}
+                  href={`/exhibitions/${exhibition.id}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`}
                   className="block p-4 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors"
                 >
                   <h3 className="font-display font-semibold text-wine mb-2">
