@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@kit/ui/button';
-import { fixGalleryNamesForToday } from '../_actions/fix-gallery-names';
+import { fixGalleryNamesForToday, updateGalleryProfileName } from '../_actions/fix-gallery-names';
 
 const GALLERY_ACCOUNT_NAME = 'Timothy Lefkowitz';
 const EXPECTED_GALLERY_PROFILE_NAME = 'FL!GHT';
@@ -18,7 +18,10 @@ export function FixGalleryNamesButton() {
     galleryProfileId?: string;
     galleryProfileName?: string;
     message?: string;
+    canFix?: boolean;
+    allProfiles?: Array<{ id: string; name: string; user_id: string }>;
   } | null>(null);
+  const [isFixing, setIsFixing] = useState(false);
 
   const handleFix = async () => {
     setIsLoading(true);
@@ -118,6 +121,64 @@ export function FixGalleryNamesButton() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {result && !result.success && result.canFix && result.galleryProfileId && (
+        <div className="mt-4 p-4 rounded bg-yellow-50 border border-yellow-200">
+          <p className="font-serif text-yellow-800 mb-3">
+            The gallery profile name is incorrect. Would you like to update it to &quot;{EXPECTED_GALLERY_PROFILE_NAME}&quot;?
+          </p>
+          {result.allProfiles && result.allProfiles.length > 0 && (
+            <div className="mb-3">
+              <p className="font-serif text-yellow-700 text-sm font-semibold mb-1">
+                All gallery profiles for this account:
+              </p>
+              <ul className="list-disc list-inside text-sm text-yellow-700">
+                {result.allProfiles.map((profile) => (
+                  <li key={profile.id}>
+                    {profile.name} {profile.id === result.galleryProfileId && '(current)'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Button
+            onClick={async () => {
+              if (!result.galleryProfileId) return;
+              setIsFixing(true);
+              try {
+                const fixResult = await updateGalleryProfileName(
+                  result.galleryProfileId,
+                  EXPECTED_GALLERY_PROFILE_NAME
+                );
+                if (fixResult.success) {
+                  // Re-run the verification
+                  const verifyResult = await fixGalleryNamesForToday(
+                    GALLERY_ACCOUNT_NAME,
+                    EXPECTED_GALLERY_PROFILE_NAME
+                  );
+                  setResult(verifyResult);
+                } else {
+                  setResult({
+                    ...result,
+                    error: fixResult.error || 'Failed to update profile name',
+                  });
+                }
+              } catch (error) {
+                setResult({
+                  ...result,
+                  error: error instanceof Error ? error.message : 'An unexpected error occurred',
+                });
+              } finally {
+                setIsFixing(false);
+              }
+            }}
+            disabled={isFixing}
+            className="bg-yellow-600 text-white hover:bg-yellow-700"
+          >
+            {isFixing ? 'Updating...' : `Update Profile Name to "${EXPECTED_GALLERY_PROFILE_NAME}"`}
+          </Button>
         </div>
       )}
     </div>

@@ -40,8 +40,30 @@ export async function fixGalleryNamesForToday(
       };
     }
 
-    // Get the gallery profile
-    const galleryProfile = await getUserProfileByRole(galleryAccount.id, USER_ROLES.GALLERY);
+    // First, try to find the FL!GHT profile by name for this account
+    const { data: profilesByName } = await client
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', galleryAccount.id)
+      .eq('role', USER_ROLES.GALLERY)
+      .eq('is_active', true)
+      .ilike('name', expectedGalleryProfileName.trim());
+
+    let galleryProfile = profilesByName && profilesByName.length > 0 ? profilesByName[0] : null;
+
+    // If not found by name, get the first gallery profile
+    if (!galleryProfile) {
+      galleryProfile = await getUserProfileByRole(galleryAccount.id, USER_ROLES.GALLERY);
+    }
+
+    // Get all gallery profiles for this account
+    const { data: allProfiles } = await client
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', galleryAccount.id)
+      .eq('role', USER_ROLES.GALLERY)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
     
     if (!galleryProfile) {
       return {
@@ -49,6 +71,7 @@ export async function fixGalleryNamesForToday(
         error: `Gallery profile not found for account "${galleryAccountName}". Please create a gallery profile first.`,
         updatedCount: 0,
         galleryAccountId: galleryAccount.id,
+        allProfiles: allProfiles || [],
       };
     }
 
@@ -60,6 +83,8 @@ export async function fixGalleryNamesForToday(
         galleryAccountId: galleryAccount.id,
         profileId: galleryProfile.id,
         actualProfileName: galleryProfile.name,
+        allProfiles: allProfiles || [],
+        canFix: true,
       };
     }
 
@@ -104,6 +129,45 @@ export async function fixGalleryNamesForToday(
       success: false,
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
       updatedCount: 0,
+    };
+  }
+}
+
+/**
+ * Update gallery profile name to the expected name
+ */
+export async function updateGalleryProfileName(
+  profileId: string,
+  newName: string
+) {
+  try {
+    const client = getSupabaseServerAdminClient();
+    
+    const { data: updatedProfile, error } = await client
+      .from('user_profiles')
+      .update({ name: newName.trim() })
+      .eq('id', profileId)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating gallery profile:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to update gallery profile',
+      };
+    }
+
+    return {
+      success: true,
+      profile: updatedProfile,
+      message: `Successfully updated gallery profile name to "${newName}"`,
+    };
+  } catch (error) {
+    console.error('Error in updateGalleryProfileName:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
     };
   }
 }
