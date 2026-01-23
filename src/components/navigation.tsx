@@ -10,6 +10,7 @@ import pathsConfig from '~/config/paths.config';
 import { ProfileAccountDropdownContainer } from './personal-account-dropdown-container';
 import { NotificationBadge } from './notification-badge';
 import { PerspectiveSwitcher } from './perspective-switcher';
+import { ProfileSwitcher } from './profile-switcher';
 
 export function Navigation() {
   const user = useUser();
@@ -161,6 +162,11 @@ export function Navigation() {
             {/* Role Switcher */}
             {user.data && (
               <PerspectiveSwitcher compact />
+            )}
+            
+            {/* Profile Switcher */}
+            {user.data && (
+              <ProfileSwitcher compact />
             )}
             
             <Link 
