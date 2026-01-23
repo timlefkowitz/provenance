@@ -8,6 +8,7 @@ export type UserProfile = {
   user_id: string;
   role: UserRole;
   name: string;
+  slug: string | null;
   picture_url: string | null;
   bio: string | null;
   medium: string | null;

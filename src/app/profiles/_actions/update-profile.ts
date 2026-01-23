@@ -62,6 +62,21 @@ export async function updateProfile(input: UpdateProfileInput) {
     if (input.established_year !== undefined) updateData.established_year = input.established_year || null;
     if (input.is_active !== undefined) updateData.is_active = input.is_active;
 
+    // Regenerate slug for gallery profiles when name changes
+    if (input.name !== undefined && profile.role === 'gallery') {
+      try {
+        const { data: generatedSlug, error: slugError } = await client
+          .rpc('generate_unique_gallery_slug', { base_name: input.name.trim() });
+        
+        if (!slugError && generatedSlug) {
+          updateData.slug = generatedSlug;
+        }
+      } catch (error) {
+        console.error('Error generating slug, will update without changing slug:', error);
+        // Continue without updating slug
+      }
+    }
+
     // Update the profile
     const { data, error } = await client
       .from('user_profiles')

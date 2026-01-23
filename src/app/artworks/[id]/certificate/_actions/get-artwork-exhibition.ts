@@ -14,6 +14,7 @@ export type ArtworkExhibition = {
     id: string;
     name: string;
     profileId?: string;
+    slug?: string;
   } | null;
 } | null;
 
@@ -51,7 +52,7 @@ export async function getArtworkExhibition(artworkId: string): Promise<ArtworkEx
   }
 
   const exhibition = exhibitionArtwork.exhibitions;
-  let galleryInfo: { id: string; name: string; profileId?: string } | null = null;
+  let galleryInfo: { id: string; name: string; profileId?: string; slug?: string } | null = null;
 
   // Fetch gallery information if gallery_id exists
   if (exhibition.gallery_id) {
@@ -71,10 +72,22 @@ export async function getArtworkExhibition(artworkId: string): Promise<ArtworkEx
           // Try to get gallery profile name (preferred)
           const galleryProfile = await getUserProfileByRole(galleryAccount.id, USER_ROLES.GALLERY);
           
+          // If getUserProfileByRole doesn't return slug, fetch it directly
+          let slug: string | undefined = undefined;
+          if (galleryProfile?.id) {
+            const { data: profileWithSlug } = await client
+              .from('user_profiles')
+              .select('slug')
+              .eq('id', galleryProfile.id)
+              .single();
+            slug = profileWithSlug?.slug || undefined;
+          }
+          
           galleryInfo = {
             id: galleryAccount.id,
             name: galleryProfile?.name || galleryAccount.name,
             profileId: galleryProfile?.id,
+            slug: slug,
           };
         } else {
           // Fallback to account name if not a gallery

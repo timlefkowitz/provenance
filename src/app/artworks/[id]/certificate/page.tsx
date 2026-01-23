@@ -147,6 +147,7 @@ export default async function CertificatePage({
       // For galleries, fetch the gallery profile name instead of account name
       let creatorName = creatorAccountResult.data.name;
       let profileId: string | null = null;
+      let slug: string | null = null;
       if (creatorRole === USER_ROLES.GALLERY) {
         // First, try to find a profile with a specific name (like "FL!GHT")
         // Search for profiles that might be the primary gallery profile
@@ -180,6 +181,7 @@ export default async function CertificatePage({
           // Always use gallery profile name if profile exists, even if name is same as account
           creatorName = galleryProfile.name || creatorAccountResult.data.name;
           profileId = galleryProfile.id;
+          slug = galleryProfile.slug || null;
         }
       }
       
@@ -187,6 +189,7 @@ export default async function CertificatePage({
         name: creatorName,
         role: creatorRole,
         profileId: profileId || undefined,
+        slug: slug || undefined,
       };
     }
     

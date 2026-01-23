@@ -51,6 +51,22 @@ export async function createProfile(input: CreateProfileInput) {
       }
     }
 
+    // Generate slug for gallery profiles
+    let slug: string | null = null;
+    if (input.role === 'gallery') {
+      try {
+        const { data: generatedSlug, error: slugError } = await client
+          .rpc('generate_unique_gallery_slug', { base_name: input.name.trim() });
+        
+        if (!slugError && generatedSlug) {
+          slug = generatedSlug;
+        }
+      } catch (error) {
+        console.error('Error generating slug, will create without slug:', error);
+        // Continue without slug - migration will generate it later
+      }
+    }
+
     // Create the profile
     const { data, error } = await client
       .from('user_profiles')
@@ -58,6 +74,7 @@ export async function createProfile(input: CreateProfileInput) {
         user_id: user.id,
         role: input.role as UserRole,
         name: input.name.trim(),
+        slug: slug,
         picture_url: input.picture_url || null,
         bio: input.bio?.trim() || null,
         medium: input.medium?.trim() || null,

@@ -61,14 +61,14 @@ export function CertificateOfAuthenticity({
   artwork: Artwork;
   isOwner?: boolean;
   isAdmin?: boolean;
-  creatorInfo?: { name: string; role: string | null; profileId?: string } | null;
+  creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
   exhibition?: { 
     id: string; 
     title: string; 
     start_date: string; 
     end_date: string | null; 
     location: string | null;
-    gallery?: { id: string; name: string; profileId?: string } | null;
+    gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   } | null;
 }) {
   const router = useRouter();
@@ -558,7 +558,9 @@ export function CertificateOfAuthenticity({
                     {creatorInfo.role === 'gallery' ? 'Uploaded by Gallery' : 'Created by'}
                   </p>
                   <Link
-                    href={creatorInfo.role === 'gallery' && creatorInfo.profileId
+                    href={creatorInfo.role === 'gallery' && creatorInfo.slug
+                      ? `/g/${creatorInfo.slug}`
+                      : creatorInfo.role === 'gallery' && creatorInfo.profileId
                       ? `/artists/${artwork.account_id}?role=gallery&profileId=${creatorInfo.profileId}`
                       : creatorInfo.role === 'gallery'
                       ? `/artists/${artwork.account_id}?role=gallery`
@@ -604,7 +606,9 @@ export function CertificateOfAuthenticity({
                     <div className="border-b border-wine/20 pb-2">
                       <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Gallery</p>
                       <Link
-                        href={exhibition.gallery.profileId 
+                        href={exhibition.gallery.slug
+                          ? `/g/${exhibition.gallery.slug}`
+                          : exhibition.gallery.profileId 
                           ? `/artists/${exhibition.gallery.id}?role=gallery&profileId=${exhibition.gallery.profileId}`
                           : `/artists/${exhibition.gallery.id}`}
                         className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
