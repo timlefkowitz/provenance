@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
+import { USER_ROLES } from '~/lib/user-roles';
 
 export const metadata = {
   title: 'Registry | Provenance',
@@ -12,6 +13,8 @@ type Account = {
   picture_url: string | null;
   public_data: any;
   created_at: string | null;
+  role?: string; // For gallery profiles, this will be set
+  profileId?: string; // For gallery profiles, this is the profile ID
 };
 
 export default async function RegistryPage() {
@@ -19,8 +22,6 @@ export default async function RegistryPage() {
   
   // Fetch all accounts (read-only, safe)
   // This uses the new public read policy that only exposes public fields
-  // Note: If you only see one account, the migration 20250107000000_allow_public_account_read.sql
-  // may not have been run. Run it in your Supabase SQL Editor.
   const { data: accounts, error } = await client
     .from('accounts')
     .select('id, name, picture_url, public_data, created_at')
@@ -29,18 +30,54 @@ export default async function RegistryPage() {
 
   if (error) {
     console.error('Error fetching accounts:', error);
-    console.error('If you only see one account, you may need to run the migration: 20250107000000_allow_public_account_read.sql');
   }
 
   const accountsList: Account[] = accounts || [];
   
-  // Log for debugging
-  if (accountsList.length <= 1) {
-    console.warn('Registry: Only seeing', accountsList.length, 'account(s). The public read policy may not be applied.');
+  // Fetch gallery profiles from user_profiles table
+  const { data: galleryProfiles, error: profilesError } = await client
+    .from('user_profiles')
+    .select('id, user_id, name, picture_url, role, created_at')
+    .eq('role', USER_ROLES.GALLERY)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+    .limit(200);
+
+  if (profilesError) {
+    console.error('Error fetching gallery profiles:', profilesError);
   }
 
-  // Get artwork counts for each account (optional, for display)
-  const accountIds = accountsList.map(a => a.id);
+  // Combine accounts and gallery profiles
+  // For galleries, use the profile data instead of account data
+  const combinedList: Account[] = [];
+  
+  // Add gallery profiles (these take precedence over accounts for gallery role)
+  if (galleryProfiles) {
+    galleryProfiles.forEach((profile) => {
+      combinedList.push({
+        id: profile.user_id, // Use user_id for linking
+        name: profile.name,
+        picture_url: profile.picture_url,
+        public_data: { role: USER_ROLES.GALLERY },
+        created_at: profile.created_at,
+        role: USER_ROLES.GALLERY,
+        profileId: profile.id,
+      });
+    });
+  }
+  
+  // Add accounts that aren't already represented by gallery profiles
+  // (for artists and accounts without gallery profiles)
+  accountsList.forEach((account) => {
+    // Only add if this account doesn't have a gallery profile already in the list
+    const hasGalleryProfile = galleryProfiles?.some(p => p.user_id === account.id);
+    if (!hasGalleryProfile) {
+      combinedList.push(account);
+    }
+  });
+
+  // Get artwork counts for each account/profile
+  const accountIds = combinedList.map(a => a.id);
   const artworkCounts: Record<string, number> = {};
   
   if (accountIds.length > 0) {
@@ -68,7 +105,7 @@ export default async function RegistryPage() {
         </p>
       </div>
 
-      <RegistryContent accounts={accountsList} artworkCounts={artworkCounts} />
+      <RegistryContent accounts={combinedList} artworkCounts={artworkCounts} />
     </div>
   );
 }

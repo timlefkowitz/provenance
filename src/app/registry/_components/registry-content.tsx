@@ -13,6 +13,8 @@ type Account = {
   picture_url: string | null;
   public_data: any;
   created_at: string | null;
+  role?: string; // For gallery profiles, this will be set
+  profileId?: string; // For gallery profiles, this is the profile ID
 };
 
 type FilterType = 'all' | 'artist' | 'gallery';
@@ -31,7 +33,8 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
     }
 
     return accounts.filter((account) => {
-      const role = getUserRole(account.public_data as Record<string, any>);
+      // Check if account has a role property (from gallery profiles) or get from public_data
+      const role = account.role || getUserRole(account.public_data as Record<string, any>);
       if (activeFilter === 'artist') {
         return role === USER_ROLES.ARTIST;
       }
@@ -51,14 +54,20 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
           {filteredAccounts.map((account) => {
             const medium = account.public_data?.medium || '';
             const artworkCount = artworkCounts[account.id] || 0;
-            const role = getUserRole(account.public_data as Record<string, any>);
+            // Check if account has a role property (from gallery profiles) or get from public_data
+            const role = account.role || getUserRole(account.public_data as Record<string, any>);
+            
+            // Build the link URL - for galleries with profileId, include it in the query
+            const linkUrl = account.profileId && role === USER_ROLES.GALLERY
+              ? `/artists/${account.id}?role=gallery&profileId=${account.profileId}`
+              : `/artists/${account.id}${role ? `?role=${role}` : ''}`;
             
             return (
               <Card 
-                key={account.id}
+                key={account.id + (account.profileId || '')}
                 className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden"
               >
-                <Link href={`/artists/${account.id}`} className="block">
+                <Link href={linkUrl} className="block">
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center space-y-4">
                       {/* Avatar */}
