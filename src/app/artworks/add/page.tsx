@@ -5,6 +5,7 @@ import { AddArtworkPageContent } from './_components/add-artwork-page-content';
 import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
 import { ensureArtistsInRegistry } from './_actions/ensure-artists-in-registry';
+import { getUserGalleryProfiles } from './_actions/get-user-gallery-profiles';
 
 export const metadata = {
   title: 'Add Artwork | Provenance',
@@ -35,6 +36,9 @@ export default async function AddArtworkPage() {
   // Get past artists for galleries
   const pastArtists = userRole === USER_ROLES.GALLERY ? await getPastArtists(user.id) : [];
 
+  // Get gallery profiles for galleries (users can have multiple gallery profiles)
+  const galleryProfiles = userRole === USER_ROLES.GALLERY ? await getUserGalleryProfiles(user.id) : [];
+
   // Ensure past artists are in the registry as unclaimed profiles
   // This makes sure all past artists are available for claiming
   if (userRole === USER_ROLES.GALLERY && pastArtists.length > 0) {
@@ -61,6 +65,7 @@ export default async function AddArtworkPage() {
         userRole={userRole}
         exhibitions={exhibitions}
         pastArtists={pastArtists}
+        galleryProfiles={galleryProfiles}
       />
     </div>
   );

@@ -10,6 +10,7 @@ import { Card, CardContent } from '@kit/ui/card';
 import { Info } from 'lucide-react';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import type { PastArtist } from '../_actions/get-past-artists';
+import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 
 export function AddArtworkPageContent({
   userId,
@@ -18,6 +19,7 @@ export function AddArtworkPageContent({
   userRole,
   exhibitions: initialExhibitions,
   pastArtists,
+  galleryProfiles,
 }: {
   userId: string;
   defaultArtistName: string;
@@ -25,6 +27,7 @@ export function AddArtworkPageContent({
   userRole: UserRole | null;
   exhibitions: UserExhibition[];
   pastArtists: PastArtist[];
+  galleryProfiles: UserProfile[];
 }) {
   const router = useRouter();
   const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
@@ -104,6 +107,7 @@ export function AddArtworkPageContent({
         userRole={currentPerspective}
         exhibitions={exhibitions}
         pastArtists={pastArtists}
+        galleryProfiles={galleryProfiles}
         onExhibitionsChange={(updatedExhibitions) => {
           setExhibitions(updatedExhibitions);
         }}

@@ -18,6 +18,7 @@ import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { CreateExhibitionDialog } from './create-exhibition-dialog';
 import type { PastArtist } from '../_actions/get-past-artists';
+import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 
 type ImagePreview = {
   file: File;
@@ -40,6 +41,7 @@ export function AddArtworkForm({
   userRole = null,
   exhibitions = [],
   pastArtists = [],
+  galleryProfiles = [],
   onExhibitionsChange,
 }: { 
   userId: string;
@@ -48,6 +50,7 @@ export function AddArtworkForm({
   userRole?: UserRole | null;
   exhibitions?: UserExhibition[];
   pastArtists?: PastArtist[];
+  galleryProfiles?: UserProfile[];
   onExhibitionsChange?: (exhibitions: UserExhibition[]) => void;
 }) {
   const router = useRouter();
@@ -64,6 +67,7 @@ export function AddArtworkForm({
     medium: defaultMedium,
     isPublic: true, // Default to public
     exhibitionId: '',
+    galleryProfileId: '',
   });
 
   // Update local exhibitions when prop changes
@@ -79,6 +83,16 @@ export function AddArtworkForm({
       medium: prev.medium || defaultMedium,
     }));
   }, [defaultArtistName, defaultMedium]);
+
+  // Auto-select gallery profile if there's only one
+  useEffect(() => {
+    if (userRole === USER_ROLES.GALLERY && galleryProfiles.length === 1 && !formData.galleryProfileId) {
+      setFormData(prev => ({
+        ...prev,
+        galleryProfileId: galleryProfiles[0].id,
+      }));
+    }
+  }, [userRole, galleryProfiles, formData.galleryProfileId]);
 
   // Keep primaryTitle in sync with the single image title (common case: one artwork)
   useEffect(() => {
@@ -222,6 +236,12 @@ export function AddArtworkForm({
       return;
     }
 
+    // Validate gallery profile selection if user is a gallery with multiple profiles
+    if (userRole === USER_ROLES.GALLERY && galleryProfiles.length > 1 && !formData.galleryProfileId) {
+      setError('Please select which gallery you are posting as');
+      return;
+    }
+
     startTransition(async () => {
       try {
         const formDataToSend = new FormData();
@@ -244,6 +264,9 @@ export function AddArtworkForm({
         formDataToSend.append('isPublic', formData.isPublic.toString());
         if (formData.exhibitionId) {
           formDataToSend.append('exhibitionId', formData.exhibitionId);
+        }
+        if (formData.galleryProfileId) {
+          formDataToSend.append('galleryProfileId', formData.galleryProfileId);
         }
 
         const result = await createArtworksBatch(formDataToSend, userId);
@@ -503,6 +526,42 @@ export function AddArtworkForm({
           This description will be applied to all artworks
         </p>
       </div>
+
+      {/* Gallery Profile Selection (for galleries with multiple profiles) */}
+      {userRole === USER_ROLES.GALLERY && galleryProfiles.length > 1 && (
+        <div className="space-y-2">
+          <Label htmlFor="galleryProfileId">Post as Gallery *</Label>
+          <Select
+            value={formData.galleryProfileId || '__none__'}
+            onValueChange={(value) => {
+              if (value === '__none__') {
+                setFormData({ ...formData, galleryProfileId: '' });
+              } else {
+                setFormData({ ...formData, galleryProfileId: value });
+              }
+            }}
+          >
+            <SelectTrigger id="galleryProfileId" className="font-serif">
+              <SelectValue placeholder="Select which gallery to post as" />
+            </SelectTrigger>
+            <SelectContent>
+              {galleryProfiles.map((profile) => (
+                <SelectItem key={profile.id} value={profile.id} className="font-serif">
+                  {profile.name}
+                  {profile.location && (
+                    <span className="text-xs text-ink/60 ml-2">
+                      ({profile.location})
+                    </span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-ink/60 font-serif">
+            Select which gallery profile you are posting this artwork as
+          </p>
+        </div>
+      )}
 
       {/* Exhibition Selection (for galleries) */}
       {userRole === USER_ROLES.GALLERY && (

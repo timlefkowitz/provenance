@@ -22,6 +22,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const medium = formData.get('medium') as string || '';
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
+    const galleryProfileId = formData.get('galleryProfileId') as string || null;
 
     if (!images || images.length === 0) {
       return { error: 'At least one image is required' };
@@ -157,6 +158,26 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
         // Try to include is_public, but handle case where migration hasn't been run yet
         insertData.is_public = isPublic;
+
+        // Add gallery_profile_id if provided (for galleries with multiple profiles)
+        if (galleryProfileId && userRole === USER_ROLES.GALLERY) {
+          // Verify the gallery profile belongs to this user
+          try {
+            const { data: profile } = await client
+              .from('user_profiles')
+              .select('id, user_id, role')
+              .eq('id', galleryProfileId)
+              .eq('user_id', userId)
+              .eq('role', USER_ROLES.GALLERY)
+              .single();
+            
+            if (profile) {
+              insertData.gallery_profile_id = galleryProfileId;
+            }
+          } catch (error) {
+            console.warn('Invalid gallery profile ID provided, continuing without it:', error);
+          }
+        }
 
         const { data: artwork, error } = await (client as any)
           .from('artworks')
