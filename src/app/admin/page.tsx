@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { isAdmin } from '~/lib/admin';
 import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
 import { FixArtistNamesButton } from './_components/fix-artist-names-button';
+import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
 import { Button } from '@kit/ui/button';
 
 export const metadata = {
@@ -81,6 +82,9 @@ export default async function AdminPage() {
 
         {/* Fix Artist Names */}
         <FixArtistNamesButton />
+
+        {/* Fix Gallery Names */}
+        <FixGalleryNamesButton />
       </div>
     </div>
   );
