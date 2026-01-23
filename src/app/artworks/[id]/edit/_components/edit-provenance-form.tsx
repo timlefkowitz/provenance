@@ -8,8 +8,10 @@ import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
+import { useUser } from '@kit/supabase/hooks/use-user';
 import { updateProvenance } from '../_actions/update-provenance';
 import { GallerySelector } from './gallery-selector';
+import { ExhibitionSelector } from './exhibition-selector';
 
 type Artwork = {
   id: string;
@@ -32,8 +34,15 @@ type Artwork = {
   sold_by_is_public: boolean | null;
 };
 
-export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
+export function EditProvenanceForm({ 
+  artwork, 
+  currentExhibitionId 
+}: { 
+  artwork: Artwork;
+  currentExhibitionId?: string | null;
+}) {
   const router = useRouter();
+  const user = useUser();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -55,6 +64,7 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
     ownedByIsPublic: artwork.owned_by_is_public ?? false, // Default to false (private)
     soldBy: artwork.sold_by || '',
     soldByIsPublic: artwork.sold_by_is_public ?? false, // Default to false (private)
+    exhibitionId: currentExhibitionId || null,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,6 +279,18 @@ export function EditProvenanceForm({ artwork }: { artwork: Artwork }) {
             className="font-serif"
           />
         </div>
+
+        {/* Exhibition Link */}
+        {user.data && (
+          <div className="space-y-2">
+            <ExhibitionSelector
+              value={formData.exhibitionId}
+              onChange={(exhibitionId) => setFormData({ ...formData, exhibitionId })}
+              userId={user.data.id}
+              currentExhibitionId={currentExhibitionId}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="exhibitionHistory">Exhibition History / Literature References</Label>

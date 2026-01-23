@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { EditProvenanceForm } from './_components/edit-provenance-form';
+import { getArtworkExhibition } from '../../[id]/certificate/_actions/get-artwork-exhibition';
 
 export const metadata = {
   title: 'Edit Provenance | Provenance',
@@ -31,6 +32,9 @@ export default async function EditProvenancePage({
     redirect('/artworks');
   }
 
+  // Get current exhibition for this artwork
+  const currentExhibition = await getArtworkExhibition(id);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
@@ -42,7 +46,10 @@ export default async function EditProvenancePage({
         </p>
       </div>
 
-      <EditProvenanceForm artwork={artwork} />
+      <EditProvenanceForm 
+        artwork={artwork} 
+        currentExhibitionId={currentExhibition?.id || null}
+      />
     </div>
   );
 }

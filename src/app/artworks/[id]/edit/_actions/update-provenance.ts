@@ -27,6 +27,7 @@ export async function updateProvenance(
     ownedByIsPublic?: boolean;
     soldBy?: string;
     soldByIsPublic?: boolean;
+    exhibitionId?: string | null;
   },
   options?: {
     skipOwnershipCheck?: boolean;
@@ -140,6 +141,64 @@ export async function updateProvenance(
       return { error: error.message || 'Failed to update provenance' };
     }
 
+    // Handle exhibition linking/unlinking if exhibitionId is provided
+    if (provenance.exhibitionId !== undefined) {
+      try {
+        // Get current exhibition link
+        const { data: currentLink } = await (client as any)
+          .from('exhibition_artworks')
+          .select('exhibition_id')
+          .eq('artwork_id', artworkId)
+          .maybeSingle();
+
+        const currentExhibitionId = currentLink?.exhibition_id || null;
+        const newExhibitionId = provenance.exhibitionId || null;
+
+        // Only update if the exhibition has changed
+        if (currentExhibitionId !== newExhibitionId) {
+          // Remove from current exhibition if linked
+          if (currentExhibitionId) {
+            await (client as any)
+              .from('exhibition_artworks')
+              .delete()
+              .eq('artwork_id', artworkId)
+              .eq('exhibition_id', currentExhibitionId);
+          }
+
+          // Add to new exhibition if provided
+          if (newExhibitionId) {
+            // Verify the user owns this exhibition
+            const { data: exhibition } = await (client as any)
+              .from('exhibitions')
+              .select('gallery_id')
+              .eq('id', newExhibitionId)
+              .single();
+
+            if (exhibition && exhibition.gallery_id === user.id) {
+              // Add artwork to exhibition (ignore duplicate errors)
+              await (client as any)
+                .from('exhibition_artworks')
+                .insert({
+                  exhibition_id: newExhibitionId,
+                  artwork_id: artworkId,
+                })
+                .catch((exhibitionError: any) => {
+                  // Ignore duplicate key errors
+                  if (exhibitionError.code !== '23505') {
+                    console.error('Error adding artwork to exhibition:', exhibitionError);
+                  }
+                });
+            } else {
+              console.warn(`User ${user.id} does not own exhibition ${newExhibitionId}`);
+            }
+          }
+        }
+      } catch (exhibitionError) {
+        // Don't fail the entire update if exhibition linking fails
+        console.error('Error updating exhibition link:', exhibitionError);
+      }
+    }
+
     // Create notification for artwork owner about the update (unless skipped)
     if (!options?.skipNotification) {
       try {
@@ -164,6 +223,16 @@ export async function updateProvenance(
     revalidatePath('/artworks'); // Revalidate the artworks feed
     revalidatePath('/portal');
     revalidatePath('/notifications');
+    
+    // Revalidate exhibition pages if exhibition was changed
+    if (provenance.exhibitionId !== undefined) {
+      // Revalidate all exhibitions (the specific one will be updated via the junction table)
+      revalidatePath('/exhibitions');
+      // Also revalidate the gallery profile page
+      if (artwork.account_id) {
+        revalidatePath(`/artists/${artwork.account_id}`);
+      }
+    }
 
     return { success: true };
   } catch (error) {
