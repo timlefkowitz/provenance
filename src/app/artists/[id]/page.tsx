@@ -8,7 +8,7 @@ import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
 import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
-import { getUserProfileByRole } from '../../profiles/_actions/get-user-profiles';
+import { getUserProfileByRole, getUserProfileById } from '../../profiles/_actions/get-user-profiles';
 import { Calendar, MapPin } from 'lucide-react';
 
 export const metadata = {
@@ -28,11 +28,12 @@ export default async function ArtistProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ role?: string }>;
+  searchParams?: Promise<{ role?: string; profileId?: string }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const requestedRole = resolvedSearchParams?.role;
+  const requestedProfileId = resolvedSearchParams?.profileId;
   
   const client = getSupabaseServerClient();
   const {
@@ -62,7 +63,24 @@ export default async function ArtistProfilePage({
   const isGallery = userRole === USER_ROLES.GALLERY;
 
   // Try to get role-specific profile, fallback to account data
-  const roleProfile = userRole ? await getUserProfileByRole(account.id, userRole as any) : null;
+  // For galleries, if profileId is provided, use that specific profile
+  let roleProfile = null;
+  if (userRole) {
+    if (isGallery && requestedProfileId) {
+      // For galleries with a specific profileId, fetch that profile
+      const specificProfile = await getUserProfileById(requestedProfileId);
+      // Verify it belongs to this user and is a gallery profile
+      if (specificProfile && specificProfile.user_id === account.id && specificProfile.role === USER_ROLES.GALLERY) {
+        roleProfile = specificProfile;
+      } else {
+        // If profileId is invalid, fall back to first gallery profile
+        roleProfile = await getUserProfileByRole(account.id, USER_ROLES.GALLERY);
+      }
+    } else {
+      // For other roles or galleries without profileId, get by role
+      roleProfile = await getUserProfileByRole(account.id, userRole as any);
+    }
+  }
   
   // Use profile data if available, otherwise fall back to account public_data
   const displayName = roleProfile?.name || account.name;

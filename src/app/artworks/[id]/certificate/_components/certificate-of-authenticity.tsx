@@ -60,7 +60,7 @@ export function CertificateOfAuthenticity({
   artwork: Artwork;
   isOwner?: boolean;
   isAdmin?: boolean;
-  creatorInfo?: { name: string; role: string | null } | null;
+  creatorInfo?: { name: string; role: string | null; profileId?: string } | null;
 }) {
   const router = useRouter();
   const user = useUser();
@@ -549,7 +549,7 @@ export function CertificateOfAuthenticity({
                     {creatorInfo.role === 'gallery' ? 'Created by Gallery' : 'Created by'}
                   </p>
                   <Link
-                    href={`/artists/${artwork.account_id}`}
+                    href={`/artists/${artwork.account_id}${creatorInfo.role === 'gallery' ? `?role=gallery${creatorInfo.profileId ? `&profileId=${creatorInfo.profileId}` : ''}` : ''}`}
                     className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
                   >
                     {creatorInfo.name}

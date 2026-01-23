@@ -145,16 +145,19 @@ export default async function CertificatePage({
       
       // For galleries, fetch the gallery profile name instead of account name
       let creatorName = creatorAccountResult.data.name;
+      let profileId: string | null = null;
       if (creatorRole === USER_ROLES.GALLERY) {
         const galleryProfile = await getUserProfileByRole(creatorAccountResult.data.id, USER_ROLES.GALLERY);
         if (galleryProfile?.name) {
           creatorName = galleryProfile.name;
+          profileId = galleryProfile.id;
         }
       }
       
       creatorInfo = {
         name: creatorName,
         role: creatorRole,
+        profileId: profileId || undefined,
       };
     }
     
