@@ -574,51 +574,34 @@ export function CertificateOfAuthenticity({
               )}
 
               {exhibition && (
-                <>
-                  <div className="border-b border-wine/20 pb-2">
-                    <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
-                    <Link
-                      href={`/exhibitions/${exhibition.id}`}
-                      className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
-                    >
-                      {exhibition.title}
-                    </Link>
-                    {exhibition.start_date && (
-                      <p className="text-xs text-ink/60 font-serif mt-1">
-                        {new Date(exhibition.start_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                        {exhibition.end_date && ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}`}
-                      </p>
-                    )}
-                    {exhibition.location && (
-                      <p className="text-xs text-ink/60 font-serif mt-1">
-                        {exhibition.location}
-                      </p>
-                    )}
-                  </div>
-                  {exhibition.gallery && (
-                    <div className="border-b border-wine/20 pb-2">
-                      <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Gallery</p>
-                      <Link
-                        href={exhibition.gallery.slug
-                          ? `/g/${exhibition.gallery.slug}`
-                          : exhibition.gallery.profileId 
-                          ? `/artists/${exhibition.gallery.id}?role=gallery&profileId=${exhibition.gallery.profileId}`
-                          : `/artists/${exhibition.gallery.id}`}
-                        className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
-                      >
-                        {exhibition.gallery.name}
-                      </Link>
-                    </div>
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
+                  <Link
+                    href={`/exhibitions/${exhibition.id}`}
+                    className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                  >
+                    {exhibition.title}
+                  </Link>
+                  {exhibition.start_date && (
+                    <p className="text-xs text-ink/60 font-serif mt-1">
+                      {new Date(exhibition.start_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                      {exhibition.end_date && ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}`}
+                    </p>
                   )}
-                </>
+                  {exhibition.location && (
+                    <p className="text-xs text-ink/60 font-serif mt-1">
+                      {exhibition.location}
+                    </p>
+                  )}
+                </div>
               )}
 
               {artwork.metadata?.certificate_location?.formatted && (

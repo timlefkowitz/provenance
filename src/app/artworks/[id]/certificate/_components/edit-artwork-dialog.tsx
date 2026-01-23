@@ -478,11 +478,6 @@ export function EditArtworkDialog({
                       )}
                       {exhibition.location && <span className="ml-1">- {exhibition.location}</span>}
                     </p>
-                    {exhibition.gallery && (
-                      <p className="text-sm text-ink/80 font-serif">
-                        Gallery: {exhibition.gallery.name}
-                      </p>
-                    )}
                     <p className="text-xs text-ink/60 font-serif italic">
                       (Only the exhibition owner can edit these details)
                     </p>
