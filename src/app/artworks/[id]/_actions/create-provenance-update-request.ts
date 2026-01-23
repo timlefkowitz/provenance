@@ -20,6 +20,9 @@ export type ProvenanceUpdateFields = {
   production_location?: string;
   owned_by?: string;
   sold_by?: string;
+  image_url?: string;
+  created_at?: string;
+  exhibitionId?: string | null;
 };
 
 export async function createProvenanceUpdateRequest(

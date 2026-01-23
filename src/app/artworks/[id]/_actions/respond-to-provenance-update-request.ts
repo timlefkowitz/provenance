@@ -60,6 +60,31 @@ export async function respondToProvenanceUpdateRequest(
           return { success: false, error: 'Failed to transfer ownership' };
         }
       } else {
+        // Handle image_url and created_at directly if present
+        if (request.update_fields.image_url !== undefined) {
+          const { error: imageUpdateError } = await (client as any)
+            .from('artworks')
+            .update({ image_url: request.update_fields.image_url })
+            .eq('id', request.artworks.id);
+
+          if (imageUpdateError) {
+            console.error('Error updating image:', imageUpdateError);
+            return { success: false, error: 'Failed to update image' };
+          }
+        }
+
+        if (request.update_fields.created_at !== undefined) {
+          const { error: dateUpdateError } = await (client as any)
+            .from('artworks')
+            .update({ created_at: request.update_fields.created_at })
+            .eq('id', request.artworks.id);
+
+          if (dateUpdateError) {
+            console.error('Error updating date:', dateUpdateError);
+            return { success: false, error: 'Failed to update date' };
+          }
+        }
+
         // Format update fields to match updateProvenance function signature
         const formattedUpdates: any = {};
         
@@ -79,19 +104,65 @@ export async function respondToProvenanceUpdateRequest(
         if (request.update_fields.production_location !== undefined) formattedUpdates.productionLocation = request.update_fields.production_location;
         if (request.update_fields.owned_by !== undefined) formattedUpdates.ownedBy = request.update_fields.owned_by;
         if (request.update_fields.sold_by !== undefined) formattedUpdates.soldBy = request.update_fields.sold_by;
+        if (request.update_fields.exhibitionId !== undefined) formattedUpdates.exhibitionId = request.update_fields.exhibitionId;
+
+        // Handle exhibition updates if present
+        if (request.update_fields.exhibitionId && 
+            request.update_fields.exhibitionId !== '__none__' && 
+            request.update_fields.exhibitionTitle) {
+          // Verify the artwork owner owns this exhibition (or the requester owns it)
+          const { data: exhibition } = await (client as any)
+            .from('exhibitions')
+            .select('gallery_id')
+            .eq('id', request.update_fields.exhibitionId)
+            .single();
+
+          if (exhibition && (exhibition.gallery_id === user.id || exhibition.gallery_id === request.requested_by)) {
+            const exhibitionUpdate: any = {
+              title: request.update_fields.exhibitionTitle.trim(),
+              updated_by: user.id,
+              updated_at: new Date().toISOString(),
+            };
+
+            if (request.update_fields.exhibitionStartDate) {
+              exhibitionUpdate.start_date = request.update_fields.exhibitionStartDate;
+            }
+            if (request.update_fields.exhibitionEndDate) {
+              exhibitionUpdate.end_date = request.update_fields.exhibitionEndDate;
+            }
+            if (request.update_fields.exhibitionLocation) {
+              exhibitionUpdate.location = request.update_fields.exhibitionLocation.trim();
+            }
+            if (request.update_fields.exhibitionGalleryId) {
+              exhibitionUpdate.gallery_id = request.update_fields.exhibitionGalleryId;
+            }
+
+            const { error: exhibitionUpdateError } = await (client as any)
+              .from('exhibitions')
+              .update(exhibitionUpdate)
+              .eq('id', request.update_fields.exhibitionId);
+
+            if (exhibitionUpdateError) {
+              console.error('Error updating exhibition:', exhibitionUpdateError);
+              // Don't fail the entire request if exhibition update fails
+            }
+          }
+        }
 
         // Apply the updates to the artwork (skip ownership check and notification since we handle those here)
-        const updateResult = await updateProvenance(
-          request.artworks.id,
-          formattedUpdates,
-          {
-            skipOwnershipCheck: true,
-            skipNotification: true,
-          },
-        );
+        if (Object.keys(formattedUpdates).length > 0) {
+          const updateResult = await updateProvenance(
+            request.artworks.id,
+            formattedUpdates,
+            {
+              skipOwnershipCheck: true,
+              skipNotification: true,
+            },
+          );
 
-        if (updateResult.error) {
-          return { success: false, error: updateResult.error };
+          if (updateResult.error) {
+            return { success: false, error: updateResult.error };
+          }
         }
       }
 

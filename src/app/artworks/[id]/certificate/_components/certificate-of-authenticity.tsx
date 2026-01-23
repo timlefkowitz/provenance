@@ -13,6 +13,7 @@ import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { RequestUpdateDialog } from './request-update-dialog';
+import { EditArtworkDialog } from './edit-artwork-dialog';
 
 type Artwork = {
   id: string;
@@ -857,10 +858,30 @@ export function CertificateOfAuthenticity({
             )}
           </div>
 
-          {/* Request Update Button (for non-owners) */}
+          {/* Request Update and Edit Buttons (for non-owners) */}
           {!isOwner && user.data && (
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
-              <RequestUpdateDialog artwork={artwork} />
+              <div className="flex gap-2 justify-center">
+                <EditArtworkDialog 
+                  artwork={artwork} 
+                  isCreator={false}
+                  exhibition={exhibition}
+                  creatorInfo={creatorInfo}
+                />
+                <RequestUpdateDialog artwork={artwork} />
+              </div>
+            </div>
+          )}
+
+          {/* Edit Button (for owners) */}
+          {isOwner && user.data && (
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
+              <EditArtworkDialog 
+                artwork={artwork} 
+                isCreator={true}
+                exhibition={exhibition}
+                creatorInfo={creatorInfo}
+              />
             </div>
           )}
 
