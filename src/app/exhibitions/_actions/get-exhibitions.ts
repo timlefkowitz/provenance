@@ -72,18 +72,24 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
     `)
     .eq('exhibition_id', exhibitionId);
 
-  // Get artworks
-  const { data: artworks } = await (client as any)
+  // Get artworks - fetch all artworks linked to this exhibition
+  const { data: artworks, error: artworksError } = await (client as any)
     .from('exhibition_artworks')
     .select(`
       artwork_id,
       artworks!exhibition_artworks_artwork_id_fkey (
         id,
         title,
-        image_url
+        image_url,
+        status,
+        is_public
       )
     `)
     .eq('exhibition_id', exhibitionId);
+
+  if (artworksError) {
+    console.error('Error fetching exhibition artworks:', artworksError);
+  }
 
   return {
     ...exhibition,
@@ -92,11 +98,13 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
       name: ea.accounts.name,
       picture_url: ea.accounts.picture_url,
     })),
-    artworks: (artworks || []).map((ea: any) => ({
-      id: ea.artworks.id,
-      title: ea.artworks.title,
-      image_url: ea.artworks.image_url,
-    })),
+    artworks: (artworks || [])
+      .filter((ea: any) => ea.artworks && ea.artworks.status === 'verified') // Only show verified artworks
+      .map((ea: any) => ({
+        id: ea.artworks.id,
+        title: ea.artworks.title,
+        image_url: ea.artworks.image_url,
+      })),
   };
 }
 
