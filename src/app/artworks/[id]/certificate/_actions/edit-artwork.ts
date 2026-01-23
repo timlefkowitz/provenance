@@ -1,7 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
