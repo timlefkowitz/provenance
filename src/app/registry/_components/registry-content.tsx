@@ -53,9 +53,14 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredAccounts.map((account) => {
             const medium = account.public_data?.medium || '';
-            const artworkCount = artworkCounts[account.id] || 0;
             // Check if account has a role property (from gallery profiles) or get from public_data
             const role = account.role || getUserRole(account.public_data as Record<string, any>);
+            
+            // For gallery profiles, use composite key (accountId-profileId), otherwise use accountId
+            const artworkCountKey = account.profileId && role === USER_ROLES.GALLERY
+              ? `${account.id}-${account.profileId}`
+              : account.id;
+            const artworkCount = artworkCounts[artworkCountKey] || 0;
             
             // Build the link URL - for galleries with profileId, include it in the query
             const linkUrl = account.profileId && role === USER_ROLES.GALLERY

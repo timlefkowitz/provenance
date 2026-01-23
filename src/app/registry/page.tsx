@@ -77,20 +77,56 @@ export default async function RegistryPage() {
   });
 
   // Get artwork counts for each account/profile
-  const accountIds = combinedList.map(a => a.id);
+  // For gallery profiles, count by gallery_profile_id
+  // For artists/accounts, count by account_id
   const artworkCounts: Record<string, number> = {};
   
-  if (accountIds.length > 0) {
-    // Fetch artwork counts per account (read-only)
-    const { data: artworks } = await client
+  // Get all profile IDs for galleries
+  const galleryProfileIds = combinedList
+    .filter(a => a.role === USER_ROLES.GALLERY && a.profileId)
+    .map(a => a.profileId!);
+  
+  // Get account IDs for artists and accounts without gallery profiles
+  const artistAccountIds = combinedList
+    .filter(a => a.role !== USER_ROLES.GALLERY || !a.profileId)
+    .map(a => a.id);
+  
+  // Count artworks for gallery profiles (by gallery_profile_id)
+  if (galleryProfileIds.length > 0) {
+    const { data: galleryArtworks } = await client
       .from('artworks')
-      .select('account_id')
-      .in('account_id', accountIds)
+      .select('gallery_profile_id, account_id')
+      .in('gallery_profile_id', galleryProfileIds)
       .eq('status', 'verified');
     
-    // Count artworks per account
-    artworks?.forEach(artwork => {
-      artworkCounts[artwork.account_id] = (artworkCounts[artwork.account_id] || 0) + 1;
+    galleryArtworks?.forEach(artwork => {
+      if (artwork.gallery_profile_id) {
+        // Use composite key: accountId-profileId for gallery profiles
+        const profile = combinedList.find(
+          a => a.profileId === artwork.gallery_profile_id
+        );
+        if (profile) {
+          const key = `${profile.id}-${profile.profileId}`;
+          artworkCounts[key] = (artworkCounts[key] || 0) + 1;
+        }
+      }
+    });
+  }
+  
+  // Count artworks for artists/accounts (by account_id, excluding those already counted for galleries)
+  if (artistAccountIds.length > 0) {
+    const { data: artistArtworks } = await client
+      .from('artworks')
+      .select('account_id, gallery_profile_id')
+      .in('account_id', artistAccountIds)
+      .eq('status', 'verified');
+    
+    artistArtworks?.forEach(artwork => {
+      // Only count if it's not associated with a gallery profile (or if gallery_profile_id is null)
+      // This ensures we don't double-count artworks
+      if (!artwork.gallery_profile_id) {
+        artworkCounts[artwork.account_id] = (artworkCounts[artwork.account_id] || 0) + 1;
+      }
     });
   }
 
