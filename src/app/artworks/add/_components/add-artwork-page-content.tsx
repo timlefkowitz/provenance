@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { getPerspective } from '~/components/perspective-switcher';
 import { AddArtworkForm } from './add-artwork-form';
@@ -8,21 +9,26 @@ import { RoleModeSwitcher } from './role-mode-switcher';
 import { Card, CardContent } from '@kit/ui/card';
 import { Info } from 'lucide-react';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
+import type { PastArtist } from '../_actions/get-past-artists';
 
 export function AddArtworkPageContent({
   userId,
   defaultArtistName,
   defaultMedium,
   userRole,
-  exhibitions,
+  exhibitions: initialExhibitions,
+  pastArtists,
 }: {
   userId: string;
   defaultArtistName: string;
   defaultMedium: string;
   userRole: UserRole | null;
   exhibitions: UserExhibition[];
+  pastArtists: PastArtist[];
 }) {
+  const router = useRouter();
   const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
+  const [exhibitions, setExhibitions] = useState<UserExhibition[]>(initialExhibitions);
 
   // Load perspective from localStorage on mount
   useEffect(() => {
@@ -97,6 +103,10 @@ export function AddArtworkPageContent({
         defaultMedium={defaultMedium}
         userRole={currentPerspective}
         exhibitions={exhibitions}
+        pastArtists={pastArtists}
+        onExhibitionsChange={(updatedExhibitions) => {
+          setExhibitions(updatedExhibitions);
+        }}
       />
     </>
   );

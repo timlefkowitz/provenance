@@ -16,6 +16,8 @@ import type { UserRole } from '~/lib/user-roles';
 import { USER_ROLES } from '~/lib/user-roles';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
+import { CreateExhibitionDialog } from './create-exhibition-dialog';
+import type { PastArtist } from '../_actions/get-past-artists';
 
 type ImagePreview = {
   file: File;
@@ -36,13 +38,17 @@ export function AddArtworkForm({
   defaultArtistName = '',
   defaultMedium = '',
   userRole = null,
-  exhibitions = []
+  exhibitions = [],
+  pastArtists = [],
+  onExhibitionsChange,
 }: { 
   userId: string;
   defaultArtistName?: string;
   defaultMedium?: string;
   userRole?: UserRole | null;
   exhibitions?: UserExhibition[];
+  pastArtists?: PastArtist[];
+  onExhibitionsChange?: (exhibitions: UserExhibition[]) => void;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +57,7 @@ export function AddArtworkForm({
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
   const [primaryTitle, setPrimaryTitle] = useState('');
+  const [localExhibitions, setLocalExhibitions] = useState<UserExhibition[]>(exhibitions);
   const [formData, setFormData] = useState({
     description: '',
     artistName: defaultArtistName,
@@ -58,6 +65,11 @@ export function AddArtworkForm({
     isPublic: true, // Default to public
     exhibitionId: '',
   });
+
+  // Update local exhibitions when prop changes
+  useEffect(() => {
+    setLocalExhibitions(exhibitions);
+  }, [exhibitions]);
 
   // Update form data when defaults change (only if fields are empty)
   useEffect(() => {
@@ -404,15 +416,59 @@ export function AddArtworkForm({
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="artistName">Artist Name</Label>
-          <Input
-            id="artistName"
-            value={formData.artistName}
-            onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
-            placeholder="Artist or creator name"
-            className="font-serif"
-          />
+          {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 ? (
+            <div className="space-y-2">
+              <Select
+                value={formData.artistName && pastArtists.some(a => a.artist_name === formData.artistName) ? formData.artistName : ''}
+                onValueChange={(value) => {
+                  if (value) {
+                    setFormData({ ...formData, artistName: value });
+                  }
+                }}
+              >
+                <SelectTrigger id="artistNameSelect" className="font-serif">
+                  <SelectValue placeholder="Select a past artist or type below" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" className="font-serif">
+                    Enter new artist name
+                  </SelectItem>
+                  {pastArtists.map((artist) => (
+                    <SelectItem key={artist.artist_name} value={artist.artist_name} className="font-serif">
+                      {artist.artist_name}
+                      {artist.count > 1 && (
+                        <span className="text-xs text-ink/60 ml-2">
+                          ({artist.count} artworks)
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                id="artistName"
+                value={formData.artistName}
+                onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
+                placeholder="Or type artist name here"
+                className="font-serif"
+              />
+            </div>
+          ) : (
+            <Input
+              id="artistName"
+              value={formData.artistName}
+              onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
+              placeholder="Artist or creator name"
+              className="font-serif"
+            />
+          )}
           <p className="text-xs text-ink/60 font-serif">
             This will be applied to all artworks
+            {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 && (
+              <span className="block mt-1">
+                Select from past artists or enter a new name
+              </span>
+            )}
           </p>
         </div>
 
@@ -447,9 +503,23 @@ export function AddArtworkForm({
       </div>
 
       {/* Exhibition Selection (for galleries) */}
-      {exhibitions.length > 0 && (
+      {userRole === USER_ROLES.GALLERY && (
         <div className="space-y-2">
-          <Label htmlFor="exhibitionId">Exhibition (Optional)</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="exhibitionId">Exhibition (Optional)</Label>
+            <CreateExhibitionDialog
+              onExhibitionCreated={(newExhibition) => {
+                // Add the new exhibition to the local list and select it
+                const updatedExhibitions = [newExhibition, ...localExhibitions];
+                setLocalExhibitions(updatedExhibitions);
+                setFormData({ ...formData, exhibitionId: newExhibition.id });
+                // Notify parent if callback provided
+                if (onExhibitionsChange) {
+                  onExhibitionsChange(updatedExhibitions);
+                }
+              }}
+            />
+          </div>
           <Select
             value={formData.exhibitionId}
             onValueChange={(value) => setFormData({ ...formData, exhibitionId: value })}
@@ -461,20 +531,33 @@ export function AddArtworkForm({
               <SelectItem value="" className="font-serif">
                 None
               </SelectItem>
-              {exhibitions.map((exhibition) => (
-                <SelectItem key={exhibition.id} value={exhibition.id} className="font-serif">
-                  {exhibition.title}
-                  {exhibition.start_date && (
-                    <span className="text-xs text-ink/60 ml-2">
-                      ({new Date(exhibition.start_date).getFullYear()})
-                    </span>
-                  )}
+              {localExhibitions.length > 0 ? (
+                localExhibitions.map((exhibition) => {
+                  const startDate = exhibition.start_date ? new Date(exhibition.start_date) : null;
+                  const endDate = exhibition.end_date ? new Date(exhibition.end_date) : null;
+                  const now = new Date();
+                  const isPast = endDate ? endDate < now : startDate ? startDate < now : false;
+                  
+                  return (
+                    <SelectItem key={exhibition.id} value={exhibition.id} className="font-serif">
+                      {exhibition.title}
+                      {startDate && (
+                        <span className="text-xs text-ink/60 ml-2">
+                          ({startDate.getFullYear()}{isPast ? ' - Past' : ''})
+                        </span>
+                      )}
+                    </SelectItem>
+                  );
+                })
+              ) : (
+                <SelectItem value="" disabled className="font-serif text-ink/40">
+                  No exhibitions yet. Create one above.
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
           <p className="text-xs text-ink/60 font-serif">
-            Link this artwork to one of your exhibitions
+            Link this artwork to one of your exhibitions (past or current)
           </p>
         </div>
       )}

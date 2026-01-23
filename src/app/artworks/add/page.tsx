@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { AddArtworkPageContent } from './_components/add-artwork-page-content';
 import { getUserExhibitions } from './_actions/get-user-exhibitions';
+import { getPastArtists } from './_actions/get-past-artists';
 
 export const metadata = {
   title: 'Add Artwork | Provenance',
@@ -29,6 +30,9 @@ export default async function AddArtworkPage() {
   
   // Get exhibitions for galleries
   const exhibitions = await getUserExhibitions(user.id);
+  
+  // Get past artists for galleries
+  const pastArtists = userRole === USER_ROLES.GALLERY ? await getPastArtists(user.id) : [];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -38,6 +42,7 @@ export default async function AddArtworkPage() {
         defaultMedium={defaultMedium}
         userRole={userRole}
         exhibitions={exhibitions}
+        pastArtists={pastArtists}
       />
     </div>
   );
