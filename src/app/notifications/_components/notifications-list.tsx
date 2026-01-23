@@ -8,7 +8,6 @@ import { Button } from '@kit/ui/button';
 import { markNotificationAsRead } from '~/lib/notifications';
 import { claimCertificate } from '~/app/artworks/[id]/_actions/claim-certificate';
 import { verifyCertificate } from '~/app/artworks/[id]/_actions/verify-certificate';
-import Link from 'next/link';
 
 type Notification = {
   id: string;
