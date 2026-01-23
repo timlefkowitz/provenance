@@ -190,7 +190,9 @@ export default async function ArtistProfilePage({
               className="bg-wine text-parchment hover:bg-wine/90 font-serif"
               size="sm"
             >
-              <Link href="/profile">Edit Profile</Link>
+              <Link href={requestedProfileId && roleProfile ? `/profiles/${roleProfile.id}/edit` : '/profile'}>
+                Edit Profile
+              </Link>
             </Button>
             {isGallery && (
               <Button
