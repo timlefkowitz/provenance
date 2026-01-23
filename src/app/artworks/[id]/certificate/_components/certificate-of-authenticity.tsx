@@ -13,7 +13,6 @@ import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { RequestUpdateDialog } from './request-update-dialog';
-import { slugify } from '~/lib/slug';
 
 type Artwork = {
   id: string;
@@ -559,8 +558,10 @@ export function CertificateOfAuthenticity({
                     {creatorInfo.role === 'gallery' ? 'Uploaded by Gallery' : 'Created by'}
                   </p>
                   <Link
-                    href={creatorInfo.role === 'gallery' 
-                      ? `/gallery/${slugify(creatorInfo.name)}`
+                    href={creatorInfo.role === 'gallery' && creatorInfo.profileId
+                      ? `/artists/${artwork.account_id}?role=gallery&profileId=${creatorInfo.profileId}`
+                      : creatorInfo.role === 'gallery'
+                      ? `/artists/${artwork.account_id}?role=gallery`
                       : `/artists/${artwork.account_id}`}
                     className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
                   >

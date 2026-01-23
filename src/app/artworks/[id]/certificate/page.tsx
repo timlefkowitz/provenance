@@ -149,8 +149,9 @@ export default async function CertificatePage({
       let profileId: string | null = null;
       if (creatorRole === USER_ROLES.GALLERY) {
         const galleryProfile = await getUserProfileByRole(creatorAccountResult.data.id, USER_ROLES.GALLERY);
-        if (galleryProfile?.name) {
-          creatorName = galleryProfile.name;
+        if (galleryProfile) {
+          // Always use gallery profile name if profile exists, even if name is same as account
+          creatorName = galleryProfile.name || creatorAccountResult.data.name;
           profileId = galleryProfile.id;
         }
       }
