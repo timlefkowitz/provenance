@@ -454,6 +454,17 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
         <div className="w-full max-w-6xl">
           {slide.type === 'title' && (
             <div className="text-center space-y-8">
+              {slide.image_url && (
+                <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                  <Image
+                    src={slide.image_url}
+                    alt={slide.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
               <h1 className="font-display text-7xl sm:text-9xl tracking-widest text-wine mb-6">
                 {slide.title}
               </h1>
@@ -512,6 +523,17 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
 
           {slide.type === 'team' && (
             <div className="space-y-8">
+              {slide.image_url && (
+                <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                  <Image
+                    src={slide.image_url}
+                    alt={slide.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
               <h2 className="font-display text-5xl sm:text-6xl text-wine text-center mb-12 tracking-wide">
                 {slide.title}
               </h2>
@@ -582,6 +604,17 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
 
           {slide.type === 'competitive' && (
             <div className="border-4 border-double border-wine p-8 md:p-12">
+              {slide.image_url && (
+                <div className="relative w-full h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                  <Image
+                    src={slide.image_url}
+                    alt={slide.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
               <h2 className="font-display text-4xl sm:text-5xl text-wine mb-8 tracking-wide">
                 {slide.title}
               </h2>
@@ -627,6 +660,17 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
 
           {slide.type !== 'title' && slide.type !== 'team' && slide.type !== 'competitive' && (
             <div className="border-4 border-double border-wine p-8 md:p-12">
+              {slide.image_url && (
+                <div className="relative w-full h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                  <Image
+                    src={slide.image_url}
+                    alt={slide.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
               <h2 className="font-display text-4xl sm:text-5xl text-wine mb-8 tracking-wide">
                 {slide.title}
               </h2>
