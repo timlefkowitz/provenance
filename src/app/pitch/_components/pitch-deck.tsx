@@ -448,14 +448,15 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
     <div className="min-h-screen bg-parchment font-serif relative overflow-hidden">
       {/* Slide Content */}
       <div 
-        className="w-full h-screen flex items-center justify-center p-8 sm:p-12 cursor-pointer"
+        className="w-full h-screen flex items-center justify-center p-4 sm:p-8 cursor-pointer"
         onClick={nextSlide}
       >
-        <div className="w-full max-w-6xl">
+        {/* 16:9 Aspect Ratio Container */}
+        <div className="w-full max-w-[90vw] aspect-video bg-parchment border-4 border-double border-wine p-6 sm:p-8 md:p-12 overflow-y-auto">
           {slide.type === 'title' && (
-            <div className="text-center space-y-8">
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 sm:space-y-6">
               {slide.image_url && (
-                <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                <div className="relative w-full max-w-md mx-auto aspect-video mb-4 sm:mb-6 rounded-lg overflow-hidden border-2 border-wine/20 flex-shrink-0">
                   <Image
                     src={slide.image_url}
                     alt={slide.title}
@@ -465,23 +466,23 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                   />
                 </div>
               )}
-              <h1 className="font-display text-7xl sm:text-9xl tracking-widest text-wine mb-6">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-widest text-wine mb-2 sm:mb-4 flex-shrink-0">
                 {slide.title}
               </h1>
-              <div className="w-full h-px bg-wine mb-2 opacity-50" />
-              <div className="w-full h-px bg-wine mb-6" />
-              <p className="font-body italic text-2xl sm:text-3xl text-wine mb-8">
+              <div className="w-full max-w-md h-px bg-wine mb-1 opacity-50" />
+              <div className="w-full max-w-md h-px bg-wine mb-3 sm:mb-4" />
+              <p className="font-body italic text-lg sm:text-xl md:text-2xl text-wine mb-3 sm:mb-4 flex-shrink-0">
                 {slide.subtitle}
               </p>
-              <p className="font-body text-xl sm:text-2xl text-wine/80">
+              <p className="font-body text-base sm:text-lg md:text-xl text-wine/80 flex-shrink-0">
                 {slide.tagline}
               </p>
-              <div className="mt-12 flex justify-center gap-8">
+              <div className="mt-4 sm:mt-6 md:mt-8 flex justify-center gap-4 sm:gap-6 md:gap-8 flex-shrink-0">
                 {founderData && (
                   <>
                     <div className="text-center">
                       {founderData.bryson.photo_url ? (
-                        <div className="relative w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-3">
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-2 sm:mb-3">
                           <Image
                             src={founderData.bryson.photo_url}
                             alt={founderData.bryson.name}
@@ -491,15 +492,15 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                           />
                         </div>
                       ) : (
-                        <div className="w-24 h-24 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-3">
-                          <span className="text-2xl font-display text-wine">BB</span>
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-2 sm:mb-3">
+                          <span className="text-xl sm:text-2xl font-display text-wine">BB</span>
                         </div>
                       )}
-                      <p className="font-display text-sm text-wine">{founderData.bryson.name}</p>
+                      <p className="font-display text-xs sm:text-sm text-wine">{founderData.bryson.name}</p>
                     </div>
                     <div className="text-center">
                       {founderData.timothy.photo_url ? (
-                        <div className="relative w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-3">
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-2 sm:mb-3">
                           <Image
                             src={founderData.timothy.photo_url}
                             alt={founderData.timothy.name}
@@ -509,11 +510,11 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                           />
                         </div>
                       ) : (
-                        <div className="w-24 h-24 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-3">
-                          <span className="text-2xl font-display text-wine">TL</span>
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-2 sm:mb-3">
+                          <span className="text-xl sm:text-2xl font-display text-wine">TL</span>
                         </div>
                       )}
-                      <p className="font-display text-sm text-wine">{founderData.timothy.name}</p>
+                      <p className="font-display text-xs sm:text-sm text-wine">{founderData.timothy.name}</p>
                     </div>
                   </>
                 )}
@@ -544,10 +545,10 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                   </p>
                 )}
                 {founderData && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                    <div className="border-4 border-double border-wine p-8 text-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                    <div className="border-2 sm:border-4 border-double border-wine p-4 sm:p-6 md:p-8 text-center">
                       {founderData.bryson.photo_url ? (
-                        <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-6">
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-3 sm:mb-4 md:mb-6">
                           <Image
                             src={founderData.bryson.photo_url}
                             alt={founderData.bryson.name}
@@ -557,21 +558,21 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                           />
                         </div>
                       ) : (
-                        <div className="w-32 h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-6">
-                          <span className="text-4xl font-display text-wine">BB</span>
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-3 sm:mb-4 md:mb-6">
+                          <span className="text-2xl sm:text-3xl md:text-4xl font-display text-wine">BB</span>
                         </div>
                       )}
-                      <h3 className="font-display text-3xl mb-2 text-wine">{founderData.bryson.name}</h3>
-                      <p className="font-body italic text-lg mb-4 text-wine/80">{founderData.bryson.role}</p>
-                      <div className="space-y-3 text-left">
-                        <p className="font-body text-base leading-relaxed">• Practicing, exhibited artist</p>
-                        <p className="font-body text-base leading-relaxed">• Deep understanding of provenance failures</p>
-                        <p className="font-body text-base leading-relaxed">• Trusted voice in the art community</p>
+                      <h3 className="font-display text-xl sm:text-2xl md:text-3xl mb-1 sm:mb-2 text-wine">{founderData.bryson.name}</h3>
+                      <p className="font-body italic text-sm sm:text-base md:text-lg mb-2 sm:mb-3 md:mb-4 text-wine/80">{founderData.bryson.role}</p>
+                      <div className="space-y-1 sm:space-y-2 text-left">
+                        <p className="font-body text-xs sm:text-sm md:text-base leading-relaxed">• Practicing, exhibited artist</p>
+                        <p className="font-body text-xs sm:text-sm md:text-base leading-relaxed">• Deep understanding of provenance failures</p>
+                        <p className="font-body text-xs sm:text-sm md:text-base leading-relaxed">• Trusted voice in the art community</p>
                       </div>
                     </div>
-                    <div className="border-4 border-double border-wine p-8 text-center">
+                    <div className="border-2 sm:border-4 border-double border-wine p-4 sm:p-6 md:p-8 text-center">
                       {founderData.timothy.photo_url ? (
-                        <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-6">
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 mx-auto rounded-full overflow-hidden border-2 border-wine/30 mb-3 sm:mb-4 md:mb-6">
                           <Image
                             src={founderData.timothy.photo_url}
                             alt={founderData.timothy.name}
@@ -581,21 +582,21 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                           />
                         </div>
                       ) : (
-                        <div className="w-32 h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-6">
-                          <span className="text-4xl font-display text-wine">TL</span>
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 mx-auto bg-wine/20 rounded-full flex items-center justify-center border-2 border-wine/30 mb-3 sm:mb-4 md:mb-6">
+                          <span className="text-2xl sm:text-3xl md:text-4xl font-display text-wine">TL</span>
                         </div>
                       )}
-                      <h3 className="font-display text-3xl mb-2 text-wine">{founderData.timothy.name}</h3>
-                      <p className="font-body italic text-lg mb-4 text-wine/80">{founderData.timothy.role}</p>
-                      <div className="space-y-3 text-left">
-                        <p className="font-body text-base leading-relaxed">• Full-stack engineer (Accenture Federal Services)</p>
-                        <p className="font-body text-base leading-relaxed">• Distributed systems, data integrity</p>
-                        <p className="font-body text-base leading-relaxed">• Practicing artist & photographer</p>
+                      <h3 className="font-display text-xl sm:text-2xl md:text-3xl mb-1 sm:mb-2 text-wine">{founderData.timothy.name}</h3>
+                      <p className="font-body italic text-sm sm:text-base md:text-lg mb-2 sm:mb-3 md:mb-4 text-wine/80">{founderData.timothy.role}</p>
+                      <div className="space-y-1 sm:space-y-2 text-left">
+                        <p className="font-body text-xs sm:text-sm md:text-base leading-relaxed">• Full-stack engineer (Accenture Federal Services)</p>
+                        <p className="font-body text-xs sm:text-sm md:text-base leading-relaxed">• Distributed systems, data integrity</p>
+                        <p className="font-body text-xs sm:text-sm md:text-base leading-relaxed">• Practicing artist & photographer</p>
                       </div>
                     </div>
                   </div>
                 )}
-                <p className="font-body text-lg text-center text-wine/70 mt-8 italic">
+                <p className="font-body text-sm sm:text-base md:text-lg text-center text-wine/70 mt-4 sm:mt-6 md:mt-8 italic">
                   This is a rare founder pairing.
                 </p>
               </div>
@@ -603,9 +604,9 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
           )}
 
           {slide.type === 'competitive' && (
-            <div className="border-4 border-double border-wine p-8 md:p-12">
+            <div className="h-full flex flex-col">
               {slide.image_url && (
-                <div className="relative w-full h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                <div className="relative w-full aspect-video mb-4 sm:mb-6 rounded-lg overflow-hidden border-2 border-wine/20 flex-shrink-0">
                   <Image
                     src={slide.image_url}
                     alt={slide.title}
@@ -615,19 +616,19 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                   />
                 </div>
               )}
-              <h2 className="font-display text-4xl sm:text-5xl text-wine mb-8 tracking-wide">
+              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-wine mb-4 sm:mb-6 tracking-wide flex-shrink-0">
                 {slide.title}
               </h2>
-              <div className="space-y-4 font-body text-lg sm:text-xl leading-relaxed">
+              <div className="space-y-2 sm:space-y-3 font-body text-sm sm:text-base md:text-lg leading-relaxed flex-grow overflow-y-auto">
                 {slide.content?.map((line, idx) => (
                   <p key={idx} className="text-wine">{line}</p>
                 ))}
                 {slide.table && (
-                  <div className="mt-8 space-y-2">
+                  <div className="mt-4 sm:mt-6 space-y-1 sm:space-y-2">
                     {slide.table.map((row, idx) => (
                       <div
                         key={idx}
-                        className={`grid grid-cols-4 gap-4 py-3 ${
+                        className={`grid grid-cols-4 gap-2 sm:gap-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base ${
                           idx === 0
                             ? 'border-b-2 border-wine font-display font-bold'
                             : idx < slide.table!.length - 1
@@ -652,16 +653,16 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                   </div>
                 )}
                 {slide.footer && (
-                  <p className="text-wine/70 italic mt-6">{slide.footer}</p>
+                  <p className="text-wine/70 italic mt-3 sm:mt-4 md:mt-6 text-sm sm:text-base">{slide.footer}</p>
                 )}
               </div>
             </div>
           )}
 
           {slide.type !== 'title' && slide.type !== 'team' && slide.type !== 'competitive' && (
-            <div className="border-4 border-double border-wine p-8 md:p-12">
+            <div className="h-full flex flex-col">
               {slide.image_url && (
-                <div className="relative w-full h-64 md:h-96 mb-8 rounded-lg overflow-hidden border-2 border-wine/20">
+                <div className="relative w-full aspect-video mb-4 sm:mb-6 rounded-lg overflow-hidden border-2 border-wine/20 flex-shrink-0">
                   <Image
                     src={slide.image_url}
                     alt={slide.title}
@@ -671,24 +672,24 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                   />
                 </div>
               )}
-              <h2 className="font-display text-4xl sm:text-5xl text-wine mb-8 tracking-wide">
+              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-wine mb-4 sm:mb-6 tracking-wide flex-shrink-0">
                 {slide.title}
               </h2>
-              <div className="space-y-4 font-body text-lg sm:text-xl leading-relaxed text-wine">
+              <div className="space-y-2 sm:space-y-3 font-body text-sm sm:text-base md:text-lg leading-relaxed text-wine flex-grow overflow-y-auto">
                 {slide.markdown ? (
-                  <div className="prose prose-lg max-w-none">
+                  <div className="prose prose-sm sm:prose-base md:prose-lg max-w-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        p: ({ children }) => <p className="text-wine mb-4">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc pl-6 space-y-2 text-wine/90">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal pl-6 space-y-2 text-wine/90">{children}</ol>,
+                        p: ({ children }) => <p className="text-wine mb-2 sm:mb-3">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc pl-4 sm:pl-6 space-y-1 sm:space-y-2 text-wine/90">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-4 sm:pl-6 space-y-1 sm:space-y-2 text-wine/90">{children}</ol>,
                         li: ({ children }) => <li className="text-wine/90">{children}</li>,
                         strong: ({ children }) => <strong className="font-semibold text-wine">{children}</strong>,
                         em: ({ children }) => <em className="italic text-wine">{children}</em>,
-                        h1: ({ children }) => <h1 className="font-display text-3xl text-wine mb-4">{children}</h1>,
-                        h2: ({ children }) => <h2 className="font-display text-2xl text-wine mb-3">{children}</h2>,
-                        h3: ({ children }) => <h3 className="font-display text-xl text-wine mb-2">{children}</h3>,
+                        h1: ({ children }) => <h1 className="font-display text-2xl sm:text-3xl text-wine mb-2 sm:mb-3">{children}</h1>,
+                        h2: ({ children }) => <h2 className="font-display text-xl sm:text-2xl text-wine mb-2">{children}</h2>,
+                        h3: ({ children }) => <h3 className="font-display text-lg sm:text-xl text-wine mb-1 sm:mb-2">{children}</h3>,
                       }}
                     >
                       {slide.markdown}
@@ -698,7 +699,7 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                   slide.content?.map((line, idx) => {
                     if (line.startsWith('•')) {
                       return (
-                        <p key={idx} className="text-wine/90 pl-4">
+                        <p key={idx} className="text-wine/90 pl-2 sm:pl-4 text-sm sm:text-base">
                           {line}
                         </p>
                       );
@@ -706,7 +707,7 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                       return <br key={idx} />;
                     } else {
                       return (
-                        <p key={idx} className={line.includes('⚠️') ? 'text-wine italic' : 'text-wine'}>
+                        <p key={idx} className={`text-sm sm:text-base ${line.includes('⚠️') ? 'text-wine italic' : 'text-wine'}`}>
                           {line}
                         </p>
                       );
