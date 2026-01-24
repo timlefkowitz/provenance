@@ -1,13 +1,12 @@
 'use server';
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import { revalidatePath } from 'next/cache';
 import { isAdmin } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
-const PITCH_DECK_CONTENT_PATH = path.join(process.cwd(), 'data', 'pitch-deck-content.json');
-const PITCH_DECK_IMAGES_DIR = path.join(process.cwd(), 'public', 'data', 'pitch-deck-images');
+const PITCH_DECK_KEY = 'main';
+const PITCH_DECK_IMAGES_BUCKET = 'pitch-deck-images';
 
 export type PitchDeckSlide = {
   id: number;
@@ -32,34 +31,32 @@ export type PitchDeckContent = {
 };
 
 /**
- * Read pitch deck content from JSON file
+ * Read pitch deck content from database
  */
 export async function getPitchDeckContent(): Promise<PitchDeckContent> {
   try {
-    const fileContents = await fs.readFile(PITCH_DECK_CONTENT_PATH, 'utf8');
-    return JSON.parse(fileContents) as PitchDeckContent;
-  } catch (error) {
-    // If file doesn't exist, return empty content
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      console.log('Pitch deck content file not found, creating default file...');
-      const defaultContent: PitchDeckContent = {
-        slides: [],
-      };
-      
-      // Ensure data directory exists
-      try {
-        await fs.mkdir(path.dirname(PITCH_DECK_CONTENT_PATH), { recursive: true });
-      } catch (mkdirError) {
-        // Directory might already exist, ignore
-      }
-      
-      // Write default content
-      await fs.writeFile(PITCH_DECK_CONTENT_PATH, JSON.stringify(defaultContent, null, 2), 'utf8');
-      return defaultContent;
-    }
+    const client = getSupabaseServerClient();
     
+    const { data, error } = await client
+      .from('pitch_deck_content')
+      .select('content')
+      .eq('key', PITCH_DECK_KEY)
+      .single();
+
+    if (error) {
+      // If not found, return empty content
+      if (error.code === 'PGRST116') {
+        console.log('Pitch deck content not found, returning empty content');
+        return { slides: [] };
+      }
+      throw error;
+    }
+
+    return (data?.content as PitchDeckContent) || { slides: [] };
+  } catch (error) {
     console.error('Error reading pitch deck content:', error);
-    throw new Error('Failed to read pitch deck content');
+    // Return empty content as fallback
+    return { slides: [] };
   }
 }
 
@@ -86,8 +83,20 @@ export async function updatePitchDeckContent(content: PitchDeckContent) {
       return { error: 'Invalid content structure' };
     }
 
-    // Write to file
-    await fs.writeFile(PITCH_DECK_CONTENT_PATH, JSON.stringify(content, null, 2), 'utf8');
+    // Upsert to database
+    const { error: dbError } = await client
+      .from('pitch_deck_content')
+      .upsert({
+        key: PITCH_DECK_KEY,
+        content: content as unknown as Record<string, unknown>,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'key',
+      });
+
+    if (dbError) {
+      throw dbError;
+    }
 
     // Revalidate the pitch page
     revalidatePath('/pitch');
@@ -132,24 +141,50 @@ export async function uploadSlideImage(slideId: number, formData: FormData) {
       return { error: 'File size must be less than 5MB' };
     }
 
-    // Ensure images directory exists
-    await fs.mkdir(PITCH_DECK_IMAGES_DIR, { recursive: true });
+    // Ensure bucket exists
+    const adminClient = getSupabaseServerAdminClient();
+    const { data: buckets } = await adminClient.storage.listBuckets();
+    
+    const bucketExists = buckets?.some(b => b.id === PITCH_DECK_IMAGES_BUCKET);
+    
+    if (!bucketExists) {
+      const { error: createError } = await adminClient.storage.createBucket(PITCH_DECK_IMAGES_BUCKET, {
+        public: true,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        fileSizeLimit: 5242880, // 5MB
+      });
+      
+      if (createError) {
+        console.error('Error creating bucket:', createError);
+      }
+    }
 
-    // Generate filename: slide-{id}-{timestamp}.{ext}
+    // Upload to Supabase Storage
+    const bytes = await file.arrayBuffer();
+    const bucket = client.storage.from(PITCH_DECK_IMAGES_BUCKET);
     const extension = file.name.split('.').pop() || 'jpg';
     const timestamp = Date.now();
     const fileName = `slide-${slideId}-${timestamp}.${extension}`;
-    const filePath = path.join(PITCH_DECK_IMAGES_DIR, fileName);
 
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await fs.writeFile(filePath, buffer);
+    const { error: uploadError } = await bucket.upload(fileName, bytes, {
+      contentType: file.type,
+      upsert: false,
+    });
 
-    // Return the public URL path
-    const imageUrl = `/data/pitch-deck-images/${fileName}`;
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError);
+      return { error: `Upload failed: ${uploadError.message || 'Unknown error'}` };
+    }
 
-    // Update the JSON file with the new image URL
+    // Get public URL
+    const { data: urlData } = bucket.getPublicUrl(fileName);
+    if (!urlData?.publicUrl) {
+      return { error: 'Failed to get public URL for uploaded image' };
+    }
+
+    const imageUrl = urlData.publicUrl;
+
+    // Update the database with the new image URL
     const content = await getPitchDeckContent();
     const slideIndex = content.slides.findIndex(s => s.id === slideId);
     if (slideIndex !== -1) {
@@ -198,17 +233,28 @@ export async function deleteSlideImage(slideId: number) {
       return { error: 'No image to delete' };
     }
 
-    // Extract filename from URL
-    const fileName = slide.image_url.split('/').pop();
+    // Extract filename from URL (handle both storage URLs and old file paths)
+    const imageUrl = slide.image_url;
+    let fileName: string | null = null;
+    
+    if (imageUrl.includes('/storage/v1/object/public/')) {
+      // Supabase Storage URL format
+      const urlParts = imageUrl.split('/');
+      const bucketIndex = urlParts.findIndex(part => part === 'public') + 1;
+      fileName = urlParts.slice(bucketIndex).join('/');
+    } else {
+      // Old file path format
+      fileName = imageUrl.split('/').pop() || null;
+    }
+
+    // Delete from Supabase Storage
     if (fileName) {
-      const filePath = path.join(PITCH_DECK_IMAGES_DIR, fileName);
+      const bucket = client.storage.from(PITCH_DECK_IMAGES_BUCKET);
+      const { error: deleteError } = await bucket.remove([fileName]);
       
-      // Delete the file
-      try {
-        await fs.unlink(filePath);
-      } catch (unlinkError) {
-        // File might not exist, continue anyway
-        console.warn('Could not delete image file:', unlinkError);
+      if (deleteError) {
+        console.warn('Could not delete image from storage:', deleteError);
+        // Continue anyway to remove the reference
       }
     }
 
