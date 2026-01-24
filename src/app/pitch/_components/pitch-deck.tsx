@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { PitchDeckEditor } from './pitch-deck-editor';
 import { updatePitchDeckContent, type PitchDeckSlide } from '../_actions/pitch-deck-content';
 
@@ -392,20 +394,36 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
                 </div>
               `;
             }
+            // Convert markdown to simple HTML for PDF export
+            const contentHtml = slide.markdown 
+              ? slide.markdown
+                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                  .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                  .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                  .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                  .replace(/^\- (.+)$/gm, '<p style="padding-left: 20px;">• $1</p>')
+                  .replace(/^\d+\. (.+)$/gm, '<p style="padding-left: 20px;">$1</p>')
+                  .split('\n')
+                  .filter(line => line.trim())
+                  .map(line => line.startsWith('<') ? line : `<p>${line}</p>`)
+                  .join('')
+              : slide.content?.map(line => {
+                  if (line.startsWith('•')) {
+                    return `<p style="padding-left: 20px;">${line}</p>`;
+                  }
+                  if (line.trim() === '') {
+                    return '<br/>';
+                  }
+                  return `<p>${line}</p>`;
+                }).join('') || '';
+            
             return `
               <div class="slide">
                 <div class="border-box">
                   <h2>${slide.title}</h2>
                   <div class="content">
-                    ${slide.content?.map(line => {
-                      if (line.startsWith('•')) {
-                        return `<p style="padding-left: 20px;">${line}</p>`;
-                      }
-                      if (line.trim() === '') {
-                        return '<br/>';
-                      }
-                      return `<p>${line}</p>`;
-                    }).join('') || ''}
+                    ${contentHtml}
                   </div>
                 </div>
               </div>
@@ -612,24 +630,45 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
               <h2 className="font-display text-4xl sm:text-5xl text-wine mb-8 tracking-wide">
                 {slide.title}
               </h2>
-              <div className="space-y-4 font-body text-lg sm:text-xl leading-relaxed">
-                {slide.content?.map((line, idx) => {
-                  if (line.startsWith('•')) {
-                    return (
-                      <p key={idx} className="text-wine/90 pl-4">
-                        {line}
-                      </p>
-                    );
-                  } else if (line.trim() === '') {
-                    return <br key={idx} />;
-                  } else {
-                    return (
-                      <p key={idx} className={line.includes('⚠️') ? 'text-wine italic' : 'text-wine'}>
-                        {line}
-                      </p>
-                    );
-                  }
-                })}
+              <div className="space-y-4 font-body text-lg sm:text-xl leading-relaxed text-wine">
+                {slide.markdown ? (
+                  <div className="prose prose-lg max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="text-wine mb-4">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc pl-6 space-y-2 text-wine/90">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-6 space-y-2 text-wine/90">{children}</ol>,
+                        li: ({ children }) => <li className="text-wine/90">{children}</li>,
+                        strong: ({ children }) => <strong className="font-semibold text-wine">{children}</strong>,
+                        em: ({ children }) => <em className="italic text-wine">{children}</em>,
+                        h1: ({ children }) => <h1 className="font-display text-3xl text-wine mb-4">{children}</h1>,
+                        h2: ({ children }) => <h2 className="font-display text-2xl text-wine mb-3">{children}</h2>,
+                        h3: ({ children }) => <h3 className="font-display text-xl text-wine mb-2">{children}</h3>,
+                      }}
+                    >
+                      {slide.markdown}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  slide.content?.map((line, idx) => {
+                    if (line.startsWith('•')) {
+                      return (
+                        <p key={idx} className="text-wine/90 pl-4">
+                          {line}
+                        </p>
+                      );
+                    } else if (line.trim() === '') {
+                      return <br key={idx} />;
+                    } else {
+                      return (
+                        <p key={idx} className={line.includes('⚠️') ? 'text-wine italic' : 'text-wine'}>
+                          {line}
+                        </p>
+                      );
+                    }
+                  })
+                )}
               </div>
             </div>
           )}

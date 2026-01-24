@@ -13,7 +13,8 @@ export type PitchDeckSlide = {
   title: string;
   subtitle?: string;
   tagline?: string;
-  content?: string[];
+  content?: string[]; // Legacy format - array of strings
+  markdown?: string; // New format - markdown string
   table?: Array<{
     solution: string;
     artistFirst: string;

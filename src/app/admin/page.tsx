@@ -59,6 +59,26 @@ export default async function AdminPage() {
           </div>
         </div>
 
+        {/* Edit Pitch Deck */}
+        <div className="border-4 border-double border-wine p-6 bg-parchment">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-display font-bold text-wine mb-2">
+                Pitch Deck
+              </h2>
+              <p className="text-ink/70 font-serif text-sm">
+                Edit the pitch deck slides using markdown. Changes are saved to a file and do not affect the database.
+              </p>
+            </div>
+            <Button
+              asChild
+              className="bg-wine text-parchment hover:bg-wine/90"
+            >
+              <Link href="/admin/pitch">Edit Pitch Deck</Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Queued Artworks */}
         <div className="border-4 border-double border-wine p-6 bg-parchment">
           <div className="flex items-center justify-between mb-4">

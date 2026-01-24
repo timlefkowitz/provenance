@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { type PitchDeckSlide } from '../_actions/pitch-deck-content';
+import { MarkdownEditor } from './markdown-editor';
 
 type PitchDeckEditorProps = {
   slide: PitchDeckSlide;
@@ -104,37 +105,51 @@ export function PitchDeckEditor({ slide, onSave, onCancel }: PitchDeckEditorProp
             </div>
           )}
 
-          {editedSlide.content && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block font-display text-wine">Content</label>
-                <button
-                  onClick={addContentLine}
-                  className="px-3 py-1 bg-wine text-parchment text-sm hover:bg-wine/90"
-                >
-                  + Add Line
-                </button>
-              </div>
-              <div className="space-y-2">
-                {editedSlide.content.map((line, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <textarea
-                      value={line}
-                      onChange={(e) => updateContent(idx, e.target.value)}
-                      className="flex-1 px-4 py-2 border-2 border-wine/30 bg-parchment text-wine font-body min-h-[60px]"
-                      rows={2}
-                    />
-                    <button
-                      onClick={() => removeContentLine(idx)}
-                      className="px-3 py-2 bg-red-600 text-white hover:bg-red-700"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
+          <div>
+            <div className="mb-4">
+              <label className="block font-display text-wine mb-2">Content (Markdown)</label>
+              <MarkdownEditor
+                value={editedSlide.markdown || (editedSlide.content ? editedSlide.content.join('\n') : '')}
+                onChange={(value) => setEditedSlide({ ...editedSlide, markdown: value, content: undefined })}
+                placeholder="Enter markdown content for this slide..."
+              />
             </div>
-          )}
+            {editedSlide.content && editedSlide.content.length > 0 && !editedSlide.markdown && (
+              <div className="mt-4 p-4 bg-wine/10 border border-wine/30 rounded">
+                <p className="text-sm text-wine/80 mb-2">
+                  <strong>Legacy format detected:</strong> This slide is using the old array format. 
+                  The markdown editor above will convert it when you save.
+                </p>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block font-display text-wine text-sm">Legacy Content (Array Format)</label>
+                  <button
+                    onClick={addContentLine}
+                    className="px-3 py-1 bg-wine text-parchment text-sm hover:bg-wine/90"
+                  >
+                    + Add Line
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {editedSlide.content.map((line, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <textarea
+                        value={line}
+                        onChange={(e) => updateContent(idx, e.target.value)}
+                        className="flex-1 px-4 py-2 border-2 border-wine/30 bg-parchment text-wine font-body min-h-[60px]"
+                        rows={2}
+                      />
+                      <button
+                        onClick={() => removeContentLine(idx)}
+                        className="px-3 py-2 bg-red-600 text-white hover:bg-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {editedSlide.table && (
             <div>
