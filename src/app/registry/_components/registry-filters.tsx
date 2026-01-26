@@ -51,3 +51,4 @@ export function RegistryFilters({ onFilterChange, activeFilter }: RegistryFilter
   );
 }
 
+
