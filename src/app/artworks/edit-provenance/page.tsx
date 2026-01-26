@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { MassEditProvenanceForm } from './_components/mass-edit-provenance-form';
+import { SpreadsheetEditForm } from './_components/spreadsheet-edit-form';
 
 export const metadata = {
   title: 'Mass Edit Provenance | Provenance',
@@ -32,7 +32,8 @@ export default async function MassEditProvenancePage({
       `id, title, artist_name, description, creation_date, certificate_number, account_id,
        medium, dimensions, former_owners, auction_history, exhibition_history,
        historic_context, celebrity_notes, is_public, value, value_is_public,
-       edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public`
+       edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
+       image_url`
     )
     .in('id', artworkIds)
     .eq('account_id', user.id) // Ensure user can only see their own artworks
@@ -49,12 +50,11 @@ export default async function MassEditProvenancePage({
           Mass Edit Provenance
         </h1>
         <p className="text-ink/70 font-serif mb-4">
-          Edit provenance information for {artworks.length} selected {artworks.length === 1 ? 'artwork' : 'artworks'}. 
-          Changes will be applied to all selected artworks. Leave fields empty to keep existing values.
+          Edit provenance information in the spreadsheet below. Each row represents one artwork. Scroll horizontally to see all fields.
         </p>
       </div>
 
-      <MassEditProvenanceForm artworks={artworks} />
+      <SpreadsheetEditForm artworks={artworks} />
     </div>
   );
 }
