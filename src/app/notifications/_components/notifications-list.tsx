@@ -30,6 +30,8 @@ export function NotificationsList({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [verifyingArtworkId, setVerifyingArtworkId] = useState<string | null>(null);
+  const [claimingArtworkId, setClaimingArtworkId] = useState<string | null>(null);
 
   const handleMarkAsRead = (notificationId: string) => {
     startTransition(async () => {
@@ -43,23 +45,33 @@ export function NotificationsList({
   };
 
   const handleClaimCertificate = (artworkId: string) => {
+    if (claimingArtworkId === artworkId) return; // Prevent duplicate clicks
+    
+    setClaimingArtworkId(artworkId);
     startTransition(async () => {
       try {
         await claimCertificate(artworkId);
         router.refresh();
       } catch (error: any) {
         alert(error.message || 'Failed to claim certificate');
+      } finally {
+        setClaimingArtworkId(null);
       }
     });
   };
 
   const handleVerifyCertificate = (artworkId: string) => {
+    if (verifyingArtworkId === artworkId) return; // Prevent duplicate clicks
+    
+    setVerifyingArtworkId(artworkId);
     startTransition(async () => {
       try {
         await verifyCertificate(artworkId);
         router.refresh();
       } catch (error: any) {
         alert(error.message || 'Failed to verify certificate');
+      } finally {
+        setVerifyingArtworkId(null);
       }
     });
   };
@@ -134,7 +146,30 @@ export function NotificationsList({
                     <p className={`text-sm font-serif mb-2 ${
                       notification.read ? 'text-ink/60' : 'text-ink/80'
                     }`}>
-                      {notification.message}
+                      {notification.type === 'certificate_claimed' && notification.related_user_id ? (() => {
+                        // Extract the artist name from the message
+                        // Format: "{name} has claimed the certificate for..."
+                        const message = notification.message;
+                        const hasClaimedIndex = message.indexOf(' has claimed');
+                        if (hasClaimedIndex > 0) {
+                          const artistName = message.substring(0, hasClaimedIndex);
+                          const restOfMessage = message.substring(hasClaimedIndex);
+                          return (
+                            <>
+                              <Link 
+                                href={`/artists/${notification.related_user_id}`}
+                                className="font-semibold text-wine hover:text-wine/80 underline"
+                              >
+                                {artistName}
+                              </Link>
+                              {restOfMessage}
+                            </>
+                          );
+                        }
+                        return notification.message;
+                      })() : (
+                        notification.message
+                      )}
                     </p>
                   )}
                   
@@ -157,10 +192,10 @@ export function NotificationsList({
                         variant="default"
                         size="sm"
                         onClick={() => handleClaimCertificate(notification.artwork_id!)}
-                        disabled={pending}
+                        disabled={claimingArtworkId === notification.artwork_id || pending}
                         className="font-serif bg-wine text-parchment hover:bg-wine/90"
                       >
-                        Claim Certificate
+                        {claimingArtworkId === notification.artwork_id ? 'Claiming...' : 'Claim Certificate'}
                       </Button>
                     )}
                     
@@ -169,10 +204,10 @@ export function NotificationsList({
                         variant="default"
                         size="sm"
                         onClick={() => handleVerifyCertificate(notification.artwork_id!)}
-                        disabled={pending}
+                        disabled={verifyingArtworkId === notification.artwork_id || pending}
                         className="font-serif bg-wine text-parchment hover:bg-wine/90"
                       >
-                        Verify Certificate
+                        {verifyingArtworkId === notification.artwork_id ? 'Verifying...' : 'Verify Certificate'}
                       </Button>
                     )}
                     
