@@ -143,15 +143,17 @@ export default async function PortalPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="border-wine/20 bg-parchment/60">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-ink/60 font-serif mb-1">Your Artworks</p>
-                <p className="text-3xl font-display font-bold text-wine">
-                  {artworksCount || 0}
-                </p>
+            <Link href="/profile" className="block">
+              <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
+                <div>
+                  <p className="text-sm text-ink/60 font-serif mb-1">Your Artworks</p>
+                  <p className="text-3xl font-display font-bold text-wine">
+                    {artworksCount || 0}
+                  </p>
+                </div>
+                <ImageIcon className="h-8 w-8 text-wine/50" />
               </div>
-              <ImageIcon className="h-8 w-8 text-wine/50" />
-            </div>
+            </Link>
             <Button
               asChild
               variant="ghost"
