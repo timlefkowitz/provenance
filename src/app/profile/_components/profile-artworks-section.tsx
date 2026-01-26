@@ -41,6 +41,14 @@ export function ProfileArtworksSection({ artworks }: { artworks: Artwork[] }) {
     router.push(`/artworks/tags?ids=${ids.join(',')}`);
   };
 
+  const handleEditProvenance = () => {
+    if (selectedArtworkIds.size === 0) {
+      return;
+    }
+    const ids = Array.from(selectedArtworkIds);
+    router.push(`/artworks/edit-provenance?ids=${ids.join(',')}`);
+  };
+
   if (artworks.length === 0) {
     return (
       <Card>
@@ -70,12 +78,21 @@ export function ProfileArtworksSection({ artworks }: { artworks: Artwork[] }) {
             </CardDescription>
           </div>
           {selectedArtworkIds.size > 0 && (
-            <Button
-              onClick={handleCreateTags}
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-            >
-              Create Tags ({selectedArtworkIds.size})
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCreateTags}
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              >
+                Create Tags ({selectedArtworkIds.size})
+              </Button>
+              <Button
+                onClick={handleEditProvenance}
+                variant="outline"
+                className="font-serif border-wine text-wine hover:bg-wine/10"
+              >
+                Edit Provenance ({selectedArtworkIds.size})
+              </Button>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -94,4 +111,5 @@ export function ProfileArtworksSection({ artworks }: { artworks: Artwork[] }) {
     </Card>
   );
 }
+
 
