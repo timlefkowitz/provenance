@@ -50,7 +50,7 @@ export default async function ArtworkTagsPage({
           Artwork Tags
         </h1>
         <p className="text-ink/70 font-serif mb-4">
-          Print this page and cut along the dotted lines to create tags for your artworks.
+          Click "Edit" on any tag to customize fields before printing. You can edit existing fields or add custom fields like Medium, Dimensions, Price, etc. Print this page and cut along the dotted lines to create tags for your artworks.
         </p>
         <PrintButton />
       </div>

@@ -20,13 +20,13 @@ SMTP_PORT=587                     # SMTP port (587 for TLS, 465 for SSL)
 SMTP_SECURE=false                 # true for SSL (port 465), false for TLS (port 587)
 SMTP_USER=your-email@gmail.com     # Your SMTP username/email
 SMTP_PASSWORD=your-app-password    # Your SMTP password or app-specific password
-SMTP_FROM=noreply@provenance.app  # From email address (optional, defaults to SMTP_USER)
+SMTP_FROM=noreply@provenance.guru  # From email address (optional, defaults to SMTP_USER)
 
 # Email API Secret (optional, for securing the API route)
 EMAIL_API_SECRET=your-secret-key-here
 
 # Site URL (for email links)
-NEXT_PUBLIC_SITE_URL=https://provenance.app  # Your production URL
+NEXT_PUBLIC_SITE_URL=https://provenance.guru  # Your production URL
 ```
 
 ## SMTP Provider Options
@@ -134,7 +134,7 @@ await fetch('/api/email/send', {
     userId: 'user-id',
     artworkTitle: 'Artwork Title',
     certificateNumber: 'PROV-ABC123',
-    artworkUrl: 'https://provenance.app/artworks/123'
+    artworkUrl: 'https://provenance.guru/artworks/123'
   })
 });
 ```

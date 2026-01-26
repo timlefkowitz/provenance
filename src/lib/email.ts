@@ -17,7 +17,7 @@ const getEmailConfig = () => {
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
   const user = process.env.SMTP_USER;
   const password = process.env.SMTP_PASSWORD;
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@provenance.app';
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@provenance.guru';
 
   if (!host || !user || !password) {
     throw new Error('SMTP configuration is missing. Please set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD environment variables.');
@@ -129,7 +129,7 @@ export async function sendCertificationEmail(
  */
 function getWelcomeEmailTemplate(name: string): string {
   const displayName = name || 'there';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
 
   return `
 <!DOCTYPE html>
@@ -194,7 +194,7 @@ function getCertificationEmailTemplate(
   artworkUrl: string,
 ): string {
   const displayName = name || 'there';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
 
   return `
 <!DOCTYPE html>
