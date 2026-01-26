@@ -15,17 +15,25 @@ export default async function NotificationsPage() {
     redirect('/auth/sign-in');
   }
 
-  // Fetch notifications
-  const { data: notifications, error } = await client
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(100);
+  // Fetch notifications with error handling
+  let notifications = [];
+  try {
+    const { data, error } = await client
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-  if (error) {
-    console.error('Error fetching notifications:', error);
-    // Return empty array instead of crashing
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      notifications = [];
+    } else {
+      notifications = data || [];
+    }
+  } catch (err) {
+    console.error('Unexpected error fetching notifications:', err);
+    notifications = [];
   }
 
   return (

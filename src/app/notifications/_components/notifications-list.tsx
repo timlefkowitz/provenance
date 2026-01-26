@@ -67,10 +67,14 @@ export function NotificationsList({
         setCompletedArtworkIds((prev) =>
           prev.includes(artworkId) ? prev : [...prev, artworkId],
         );
+        // Use router.push to force a full navigation instead of refresh
+        // This avoids server component render errors
+        setTimeout(() => {
+          router.push('/notifications');
+        }, 300);
       } catch (error: any) {
         console.error('Error claiming certificate:', error);
         alert(error.message || 'Failed to claim certificate');
-      } finally {
         inFlightRequests.current.delete(requestKey);
         setClaimingNotificationId(null);
       }
@@ -94,10 +98,14 @@ export function NotificationsList({
         setCompletedArtworkIds((prev) =>
           prev.includes(artworkId) ? prev : [...prev, artworkId],
         );
+        // Use router.push to force a full navigation instead of refresh
+        // This avoids server component render errors
+        setTimeout(() => {
+          router.push('/notifications');
+        }, 300);
       } catch (error: any) {
         console.error('Error verifying certificate:', error);
         alert(error.message || 'Failed to verify certificate');
-      } finally {
         inFlightRequests.current.delete(requestKey);
         setVerifyingNotificationId(null);
       }

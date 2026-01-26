@@ -89,7 +89,8 @@ export async function verifyCertificate(artworkId: string) {
   }
 
   revalidatePath(`/artworks/${artworkId}`);
-  revalidatePath('/notifications');
+  // Don't revalidate /notifications here - let the client handle the refresh
+  // to avoid server component render errors
 
   return { success: true };
 }
