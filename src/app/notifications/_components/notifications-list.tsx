@@ -30,8 +30,9 @@ export function NotificationsList({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [verifyingArtworkId, setVerifyingArtworkId] = useState<string | null>(null);
-  const [claimingArtworkId, setClaimingArtworkId] = useState<string | null>(null);
+  const [verifyingNotificationId, setVerifyingNotificationId] = useState<string | null>(null);
+  const [claimingNotificationId, setClaimingNotificationId] = useState<string | null>(null);
+  const [completedArtworkIds, setCompletedArtworkIds] = useState<string[]>([]);
   // Use ref to track in-flight requests to prevent duplicates even during re-renders
   const inFlightRequests = useRef<Set<string>>(new Set());
 
@@ -49,55 +50,59 @@ export function NotificationsList({
     });
   }, [userId, router]);
 
-  const handleClaimCertificate = useCallback((artworkId: string) => {
+  const handleClaimCertificate = useCallback((notificationId: string, artworkId: string) => {
     const requestKey = `claim-${artworkId}`;
     
     // Prevent duplicate clicks using both state and ref
-    if (claimingArtworkId === artworkId || inFlightRequests.current.has(requestKey)) {
+    if (inFlightRequests.current.has(requestKey)) {
       return;
     }
     
     inFlightRequests.current.add(requestKey);
-    setClaimingArtworkId(artworkId);
+    setClaimingNotificationId(notificationId);
     
     startTransition(async () => {
       try {
         await claimCertificate(artworkId);
-        // Use full page reload to ensure fresh data and avoid revalidation conflicts
-        window.location.href = '/notifications';
+        setCompletedArtworkIds((prev) =>
+          prev.includes(artworkId) ? prev : [...prev, artworkId],
+        );
       } catch (error: any) {
         console.error('Error claiming certificate:', error);
         alert(error.message || 'Failed to claim certificate');
+      } finally {
         inFlightRequests.current.delete(requestKey);
-        setClaimingArtworkId(null);
+        setClaimingNotificationId(null);
       }
     });
-  }, [claimingArtworkId, router]);
+  }, [router]);
 
-  const handleVerifyCertificate = useCallback((artworkId: string) => {
+  const handleVerifyCertificate = useCallback((notificationId: string, artworkId: string) => {
     const requestKey = `verify-${artworkId}`;
     
     // Prevent duplicate clicks using both state and ref
-    if (verifyingArtworkId === artworkId || inFlightRequests.current.has(requestKey)) {
+    if (inFlightRequests.current.has(requestKey)) {
       return;
     }
     
     inFlightRequests.current.add(requestKey);
-    setVerifyingArtworkId(artworkId);
+    setVerifyingNotificationId(notificationId);
     
     startTransition(async () => {
       try {
         await verifyCertificate(artworkId);
-        // Use full page reload to ensure fresh data and avoid revalidation conflicts
-        window.location.href = '/notifications';
+        setCompletedArtworkIds((prev) =>
+          prev.includes(artworkId) ? prev : [...prev, artworkId],
+        );
       } catch (error: any) {
         console.error('Error verifying certificate:', error);
         alert(error.message || 'Failed to verify certificate');
+      } finally {
         inFlightRequests.current.delete(requestKey);
-        setVerifyingArtworkId(null);
+        setVerifyingNotificationId(null);
       }
     });
-  }, [verifyingArtworkId, router]);
+  }, [router]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -214,11 +219,19 @@ export function NotificationsList({
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleClaimCertificate(notification.artwork_id!)}
-                        disabled={claimingArtworkId === notification.artwork_id || pending}
+                        onClick={() => handleClaimCertificate(notification.id, notification.artwork_id!)}
+                        disabled={
+                          pending ||
+                          claimingNotificationId === notification.id ||
+                          completedArtworkIds.includes(notification.artwork_id)
+                        }
                         className="font-serif bg-wine text-parchment hover:bg-wine/90"
                       >
-                        {claimingArtworkId === notification.artwork_id ? 'Claiming...' : 'Claim Certificate'}
+                        {completedArtworkIds.includes(notification.artwork_id)
+                          ? 'Claimed'
+                          : claimingNotificationId === notification.id
+                            ? 'Claiming...'
+                            : 'Claim Certificate'}
                       </Button>
                     )}
                     
@@ -226,11 +239,19 @@ export function NotificationsList({
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleVerifyCertificate(notification.artwork_id!)}
-                        disabled={verifyingArtworkId === notification.artwork_id || pending}
+                        onClick={() => handleVerifyCertificate(notification.id, notification.artwork_id!)}
+                        disabled={
+                          pending ||
+                          verifyingNotificationId === notification.id ||
+                          completedArtworkIds.includes(notification.artwork_id)
+                        }
                         className="font-serif bg-wine text-parchment hover:bg-wine/90"
                       >
-                        {verifyingArtworkId === notification.artwork_id ? 'Verifying...' : 'Verify Certificate'}
+                        {completedArtworkIds.includes(notification.artwork_id)
+                          ? 'Verified'
+                          : verifyingNotificationId === notification.id
+                            ? 'Verifying...'
+                            : 'Verify Certificate'}
                       </Button>
                     )}
                     
