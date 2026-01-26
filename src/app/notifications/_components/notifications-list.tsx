@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Circle, AlertCircle, MessageSquare, FileText, UserPlus } from 'lucide-react';
@@ -32,49 +32,72 @@ export function NotificationsList({
   const [pending, startTransition] = useTransition();
   const [verifyingArtworkId, setVerifyingArtworkId] = useState<string | null>(null);
   const [claimingArtworkId, setClaimingArtworkId] = useState<string | null>(null);
+  // Use ref to track in-flight requests to prevent duplicates even during re-renders
+  const inFlightRequests = useRef<Set<string>>(new Set());
 
-  const handleMarkAsRead = (notificationId: string) => {
+  const handleMarkAsRead = useCallback((notificationId: string) => {
     startTransition(async () => {
       try {
         await markNotificationAsRead(notificationId, userId);
-        router.refresh();
+        // Only refresh if we're not in the middle of another operation
+        if (inFlightRequests.current.size === 0) {
+          router.refresh();
+        }
       } catch (error) {
         console.error('Error marking notification as read:', error);
       }
     });
-  };
+  }, [userId, router]);
 
-  const handleClaimCertificate = (artworkId: string) => {
-    if (claimingArtworkId === artworkId) return; // Prevent duplicate clicks
+  const handleClaimCertificate = useCallback((artworkId: string) => {
+    const requestKey = `claim-${artworkId}`;
     
+    // Prevent duplicate clicks using both state and ref
+    if (claimingArtworkId === artworkId || inFlightRequests.current.has(requestKey)) {
+      return;
+    }
+    
+    inFlightRequests.current.add(requestKey);
     setClaimingArtworkId(artworkId);
+    
     startTransition(async () => {
       try {
         await claimCertificate(artworkId);
-        router.refresh();
+        // Use full page reload to ensure fresh data and avoid revalidation conflicts
+        window.location.href = '/notifications';
       } catch (error: any) {
+        console.error('Error claiming certificate:', error);
         alert(error.message || 'Failed to claim certificate');
-      } finally {
+        inFlightRequests.current.delete(requestKey);
         setClaimingArtworkId(null);
       }
     });
-  };
+  }, [claimingArtworkId, router]);
 
-  const handleVerifyCertificate = (artworkId: string) => {
-    if (verifyingArtworkId === artworkId) return; // Prevent duplicate clicks
+  const handleVerifyCertificate = useCallback((artworkId: string) => {
+    const requestKey = `verify-${artworkId}`;
     
+    // Prevent duplicate clicks using both state and ref
+    if (verifyingArtworkId === artworkId || inFlightRequests.current.has(requestKey)) {
+      return;
+    }
+    
+    inFlightRequests.current.add(requestKey);
     setVerifyingArtworkId(artworkId);
+    
     startTransition(async () => {
       try {
         await verifyCertificate(artworkId);
-        router.refresh();
+        // Use full page reload to ensure fresh data and avoid revalidation conflicts
+        window.location.href = '/notifications';
       } catch (error: any) {
+        console.error('Error verifying certificate:', error);
         alert(error.message || 'Failed to verify certificate');
-      } finally {
+        inFlightRequests.current.delete(requestKey);
         setVerifyingArtworkId(null);
       }
     });
-  };
+  }, [verifyingArtworkId, router]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {

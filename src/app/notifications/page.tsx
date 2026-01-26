@@ -25,6 +25,7 @@ export default async function NotificationsPage() {
 
   if (error) {
     console.error('Error fetching notifications:', error);
+    // Return empty array instead of crashing
   }
 
   return (
