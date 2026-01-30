@@ -9,7 +9,12 @@ export const config = {
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  
+
+  // Prefer HTTPS in production (Vercel already redirects HTTP→HTTPS; this adds HSTS)
+  if (process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+
   try {
   const supabase = createMiddlewareClient(request, response);
   await supabase.auth.getUser();
