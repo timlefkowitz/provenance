@@ -1,5 +1,22 @@
 # Why /artworks might show no items (170 in DB)
 
+## Root cause after gallery members migrations
+
+If you ran these migrations and then couldn’t see artworks:
+
+- `20250126000000_add_gallery_members.sql`
+- `20250126000001_update_rls_for_gallery_members.sql`
+- `20250126000002_fix_artworks_public_read.sql`
+- `20250126000003_fix_authenticated_public_artworks.sql`
+
+the base schema (`20241219010757_schema.sql`) **never grants `anon` USAGE on schema `public`**. So even with `grant select on table public.artworks to anon`, the `anon` role can’t access the table. The fix is to run the next migration:
+
+- **`20250126000004_ensure_anon_artworks_visibility.sql`** – grants `usage on schema public` to `anon`, grants `select on public.artworks` to `anon`, and ensures the `artworks_read_public` policy exists.
+
+Run it via Supabase (migrations) or apply it manually in the SQL Editor. After that, anon can see verified+public artworks via RLS, and the app can use the regular client for the public feed if you prefer (the app currently uses the admin client as a fallback).
+
+---
+
 The `/artworks` page only shows rows that match **both**:
 
 - `status = 'verified'`
