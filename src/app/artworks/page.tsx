@@ -1,5 +1,4 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import Link from 'next/link';
 import { ArtworkCard } from './_components/artwork-card';
 import { Button } from '@kit/ui/button';
@@ -32,25 +31,16 @@ export default async function ArtworksPage({
   let totalCount = 0;
 
   if (!user) {
-    // Not signed in - use admin client to bypass RLS safely
-    // and still filter to public verified artworks
+    // Not signed in - rely on RLS for public verified artworks
     try {
-      // Verify service role key is available
-      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.error('SUPABASE_SERVICE_ROLE_KEY is not set!');
-        throw new Error('Service role key not configured');
-      }
-
-      const adminClient = getSupabaseServerAdminClient();
-
       // Get total count and artworks in parallel for better performance
       const [countResult, artworksResult] = await Promise.all([
-        adminClient
+        client
           .from('artworks')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'verified')
           .eq('is_public', true),
-        adminClient
+        client
           .from('artworks')
           .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
           .eq('status', 'verified')
@@ -115,6 +105,14 @@ export default async function ArtworksPage({
         .order('created_at', { ascending: false })
     ]);
     
+    // Log errors for debugging
+    if (ownArtworksResult.error) {
+      console.error('Error fetching own artworks:', ownArtworksResult.error);
+    }
+    if (publicArtworksResult.error) {
+      console.error('Error fetching public artworks:', publicArtworksResult.error);
+    }
+    
     // Combine and sort by created_at, then paginate
     const allArtworks = [
       ...(ownArtworksResult.data || []),
@@ -124,7 +122,7 @@ export default async function ArtworksPage({
     );
     
     artworks = allArtworks.slice(offset, offset + ARTWORKS_PER_PAGE);
-    error = null; // We handle errors per query above
+    error = ownArtworksResult.error || publicArtworksResult.error || null;
   }
 
   if (error) {

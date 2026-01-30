@@ -61,6 +61,23 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
     return profiles.filter(p => p.role === currentPerspective);
   }, [profiles, currentPerspective]);
 
+  const currentProfileLabel = useMemo(() => {
+    if (currentPerspective !== USER_ROLES.GALLERY) {
+      return getRoleLabel(currentPerspective as any);
+    }
+
+    if (filteredProfiles.length === 0) {
+      return getRoleLabel(currentPerspective as any);
+    }
+
+    const selected = selectedProfileId
+      ? filteredProfiles.find((profile) => profile.id === selectedProfileId)
+      : null;
+    const profile = selected ?? filteredProfiles[0];
+
+    return profile?.name ?? getRoleLabel(currentPerspective as any);
+  }, [currentPerspective, filteredProfiles, selectedProfileId]);
+
   // Validate and auto-select profile
   useEffect(() => {
     // Check if selected profile is still valid for current perspective
@@ -143,7 +160,7 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
     return (
       <div className="space-y-2 py-3 border-b border-wine/10">
         <Label className="text-xs font-serif font-semibold text-ink/80 uppercase tracking-wide">
-          Select {getRoleLabel(currentPerspective as any)} Profile
+          Select {currentProfileLabel} Profile
         </Label>
         <div className="flex flex-col gap-2">
           {filteredProfiles.map((profile) => (
@@ -171,7 +188,7 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
   return (
     <div className="space-y-2 py-3 border-b border-wine/10">
       <Label className="text-sm font-serif font-semibold text-ink/80 uppercase tracking-wide">
-        Select {getRoleLabel(currentPerspective as any)} Profile
+        Select {currentProfileLabel} Profile
       </Label>
       <div className="flex flex-col gap-2">
         {filteredProfiles.map((profile) => (
