@@ -1,3 +1,4 @@
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import Link from 'next/link';
 import { ArtworkCard } from './_components/artwork-card';
@@ -31,16 +32,17 @@ export default async function ArtworksPage({
   let totalCount = 0;
 
   if (!user) {
-    // Not signed in - rely on RLS for public verified artworks
+    // Not signed in: use admin client so public feed is always readable (bypasses RLS).
+    // We still filter to status=verified and is_public=true, so only public data is exposed.
     try {
-      // Get total count and artworks in parallel for better performance
+      const admin = getSupabaseServerAdminClient();
       const [countResult, artworksResult] = await Promise.all([
-        client
+        admin
           .from('artworks')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'verified')
           .eq('is_public', true),
-        client
+        admin
           .from('artworks')
           .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
           .eq('status', 'verified')
@@ -49,12 +51,12 @@ export default async function ArtworksPage({
           .range(offset, offset + ARTWORKS_PER_PAGE - 1)
       ]);
 
-      totalCount = countResult.count || 0;
-      artworks = artworksResult.data || [];
+      totalCount = countResult.count ?? 0;
+      artworks = artworksResult.data ?? [];
       error = artworksResult.error;
     } catch (err) {
       console.error('Exception in anonymous artworks fetch:', err);
-      error = err as any;
+      error = err as Error;
       artworks = [];
     }
   } else {
