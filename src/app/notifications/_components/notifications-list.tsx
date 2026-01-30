@@ -83,29 +83,38 @@ export function NotificationsList({
 
   const handleVerifyCertificate = useCallback((notificationId: string, artworkId: string) => {
     const requestKey = `verify-${artworkId}`;
-    
+
     // Prevent duplicate clicks using both state and ref
     if (inFlightRequests.current.has(requestKey)) {
       return;
     }
-    
+
     inFlightRequests.current.add(requestKey);
     setVerifyingNotificationId(notificationId);
-    
+
     startTransition(async () => {
       try {
-        await verifyCertificate(artworkId);
-        setCompletedArtworkIds((prev) =>
-          prev.includes(artworkId) ? prev : [...prev, artworkId],
-        );
-        // Use router.push to force a full navigation instead of refresh
-        // This avoids server component render errors
-        setTimeout(() => {
-          router.push('/notifications');
-        }, 300);
-      } catch (error: any) {
+        const result = await verifyCertificate(artworkId);
+        if (result.success) {
+          setCompletedArtworkIds((prev) =>
+            prev.includes(artworkId) ? prev : [...prev, artworkId],
+          );
+          setTimeout(() => {
+            router.push('/notifications');
+          }, 300);
+        } else {
+          alert(result.error || 'Failed to verify certificate');
+        }
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to verify certificate';
         console.error('Error verifying certificate:', error);
-        alert(error.message || 'Failed to verify certificate');
+        alert(
+          message === 'Failed to fetch'
+            ? 'Network error. Please check your connection and try again.'
+            : message,
+        );
+      } finally {
         inFlightRequests.current.delete(requestKey);
         setVerifyingNotificationId(null);
       }
