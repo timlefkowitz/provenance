@@ -23,112 +23,77 @@ export default async function ArtworksPage({
   const resolvedSearchParams = await searchParams;
   const page = parseInt(resolvedSearchParams?.page || '1', 10);
   const offset = (page - 1) * ARTWORKS_PER_PAGE;
-  
+
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
-  let artworks = null;
-  let error = null;
+  let artworks: any[] | null = null;
+  let error: Error | null = null;
   let totalCount = 0;
 
-  if (!user) {
-    // Not signed in: use admin client so public feed is always readable (bypasses RLS).
-    // We still filter to status=verified and is_public=true, so only public data is exposed.
-    try {
-      const admin = getSupabaseServerAdminClient();
-      const [countResult, artworksResult] = await Promise.all([
-        admin
-          .from('artworks')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'verified')
-          .eq('is_public', true),
-        admin
-          .from('artworks')
-          .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
-          .eq('status', 'verified')
-          .eq('is_public', true)
-          .order('created_at', { ascending: false })
-          .range(offset, offset + ARTWORKS_PER_PAGE - 1)
-      ]);
+  // Prefer admin client for artwork reads so RLS/grants don't block. We enforce the same
+  // visibility rules in code. If service role key is missing, fall back to regular client.
+  let admin: ReturnType<typeof getSupabaseServerAdminClient> | null = null;
+  try {
+    admin = getSupabaseServerAdminClient();
+  } catch (e) {
+    // SUPABASE_SERVICE_ROLE_KEY not set or invalid; will use client (RLS applies)
+    console.error('[Artworks] Admin client unavailable, using RLS client:', (e as Error).message);
+  }
 
-      totalCount = countResult.count ?? 0;
-      artworks = artworksResult.data ?? [];
-      error = artworksResult.error;
-    } catch (err) {
-      console.error('Exception in anonymous artworks fetch:', err);
-      error = err as Error;
-      artworks = [];
-    }
+  const db = admin ?? (client as any);
+
+  if (!user) {
+    const [countResult, artworksResult] = await Promise.all([
+      db.from('artworks').select('*', { count: 'exact', head: true }).eq('status', 'verified').eq('is_public', true),
+      db
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + ARTWORKS_PER_PAGE - 1),
+    ]);
+    totalCount = countResult.count ?? 0;
+    artworks = artworksResult.data ?? [];
+    if (artworksResult.error) error = artworksResult.error as unknown as Error;
   } else {
-    // Signed in - show:
-    // 1. All artworks from the current user (public and private)
-    // 2. Public artworks from others (including followed artists)
-    
-    // First, get the list of users this user follows
-    const { data: following } = await client
-      .from('user_follows')
-      .select('followed_user_id')
-      .eq('follower_user_id', user.id);
-    
-    const followingIds = following?.map(f => f.followed_user_id) || [];
-    
-    // Get total count for pagination
-    const { count: ownCount } = await (client as any)
-      .from('artworks')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'verified')
-      .eq('account_id', user.id);
-    
-    const { count: publicCount } = await (client as any)
-      .from('artworks')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'verified')
-      .eq('is_public', true)
-      .neq('account_id', user.id);
-    
-    totalCount = (ownCount || 0) + (publicCount || 0);
-    
-    // Fetch:
-    // - User's own artworks (all, regardless of privacy)
-    // - Public artworks from others (including followed artists)
-    const [ownArtworksResult, publicArtworksResult] = await Promise.all([
-      (client as any)
+    const [ownCountRes, publicCountRes, ownArtworksResult, publicArtworksResult] = await Promise.all([
+      db.from('artworks').select('*', { count: 'exact', head: true }).eq('status', 'verified').eq('account_id', user.id),
+      db
+        .from('artworks')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .neq('account_id', user.id),
+      db
         .from('artworks')
         .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
         .eq('status', 'verified')
         .eq('account_id', user.id)
         .order('created_at', { ascending: false }),
-      (client as any)
+      db
         .from('artworks')
         .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
         .eq('status', 'verified')
         .eq('is_public', true)
         .neq('account_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }),
     ]);
-    
-    // Log errors for debugging
-    if (ownArtworksResult.error) {
-      console.error('Error fetching own artworks:', ownArtworksResult.error);
-    }
-    if (publicArtworksResult.error) {
-      console.error('Error fetching public artworks:', publicArtworksResult.error);
-    }
-    
-    // Combine and sort by created_at, then paginate
+    totalCount = (ownCountRes.count ?? 0) + (publicCountRes.count ?? 0);
     const allArtworks = [
-      ...(ownArtworksResult.data || []),
-      ...(publicArtworksResult.data || [])
-    ].sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    
+      ...(ownArtworksResult.data ?? []),
+      ...(publicArtworksResult.data ?? []),
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     artworks = allArtworks.slice(offset, offset + ARTWORKS_PER_PAGE);
-    error = ownArtworksResult.error || publicArtworksResult.error || null;
+    error =
+      ownArtworksResult.error || publicArtworksResult.error
+        ? (ownArtworksResult.error || publicArtworksResult.error) as unknown as Error
+        : null;
   }
 
   if (error) {
-    console.error('Error fetching artworks:', error);
+    console.error('[Artworks] Supabase error:', error);
   }
 
   return (

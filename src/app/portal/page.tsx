@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
@@ -32,19 +33,35 @@ export default async function PortalPage() {
     .eq('id', user.id)
     .single();
 
-  // Get user's artworks count
-  const { count: artworksCount } = await (client as any)
-    .from('artworks')
-    .select('*', { count: 'exact', head: true })
-    .eq('account_id', user.id);
-
-  // Get recent artworks (last 6)
-  const { data: recentArtworks } = await (client as any)
-    .from('artworks')
-    .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
-    .eq('account_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(6);
+  // Get user's artworks count and recent artworks (admin client bypasses RLS so "Your Artworks" shows correctly)
+  let artworksCount: number | null = null;
+  let recentArtworks: any[] | null = null;
+  try {
+    const admin = getSupabaseServerAdminClient();
+    const [countRes, recentRes] = await Promise.all([
+      admin.from('artworks').select('*', { count: 'exact', head: true }).eq('account_id', user.id),
+      admin
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
+        .eq('account_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(6),
+    ]);
+    artworksCount = countRes.count ?? null;
+    recentArtworks = recentRes.data ?? null;
+  } catch {
+    const [countRes, recentRes] = await Promise.all([
+      (client as any).from('artworks').select('*', { count: 'exact', head: true }).eq('account_id', user.id),
+      (client as any)
+        .from('artworks')
+        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
+        .eq('account_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(6),
+    ]);
+    artworksCount = countRes.count ?? null;
+    recentArtworks = recentRes.data ?? null;
+  }
 
   // Get users they're following
   const { data: followingData } = await client
