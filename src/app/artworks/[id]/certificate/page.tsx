@@ -15,10 +15,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function CertificatePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const showVerifyCta = resolvedSearchParams?.verify === '1';
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
@@ -58,7 +62,8 @@ export default async function CertificatePage({
         sold_by,
         sold_by_is_public,
         metadata,
-        status
+        status,
+        certificate_status
       `)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
@@ -96,7 +101,8 @@ export default async function CertificatePage({
         sold_by,
         sold_by_is_public,
         metadata,
-        status
+        status,
+        certificate_status
       `)
       .eq('id', id)
       .eq('status', 'verified')
@@ -212,6 +218,8 @@ export default async function CertificatePage({
       isAdmin={userIsAdmin}
       creatorInfo={creatorInfo}
       exhibition={exhibition}
+      showVerifyCta={showVerifyCta}
+      certificateStatus={artwork.certificate_status ?? null}
     />
   );
 }

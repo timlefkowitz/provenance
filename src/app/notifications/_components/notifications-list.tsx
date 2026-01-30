@@ -7,7 +7,6 @@ import { CheckCircle2, Circle, AlertCircle, MessageSquare, FileText, UserPlus } 
 import { Button } from '@kit/ui/button';
 import { markNotificationAsRead } from '~/lib/notifications';
 import { claimCertificate } from '~/app/artworks/[id]/_actions/claim-certificate';
-import { verifyCertificate } from '~/app/artworks/[id]/_actions/verify-certificate';
 
 type Notification = {
   id: string;
@@ -30,7 +29,6 @@ export function NotificationsList({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [verifyingNotificationId, setVerifyingNotificationId] = useState<string | null>(null);
   const [claimingNotificationId, setClaimingNotificationId] = useState<string | null>(null);
   const [completedArtworkIds, setCompletedArtworkIds] = useState<string[]>([]);
   // Use ref to track in-flight requests to prevent duplicates even during re-renders
@@ -77,46 +75,6 @@ export function NotificationsList({
         alert(error.message || 'Failed to claim certificate');
         inFlightRequests.current.delete(requestKey);
         setClaimingNotificationId(null);
-      }
-    });
-  }, [router]);
-
-  const handleVerifyCertificate = useCallback((notificationId: string, artworkId: string) => {
-    const requestKey = `verify-${artworkId}`;
-
-    // Prevent duplicate clicks using both state and ref
-    if (inFlightRequests.current.has(requestKey)) {
-      return;
-    }
-
-    inFlightRequests.current.add(requestKey);
-    setVerifyingNotificationId(notificationId);
-
-    startTransition(async () => {
-      try {
-        const result = await verifyCertificate(artworkId);
-        if (result.success) {
-          setCompletedArtworkIds((prev) =>
-            prev.includes(artworkId) ? prev : [...prev, artworkId],
-          );
-          setTimeout(() => {
-            router.push('/notifications');
-          }, 300);
-        } else {
-          alert(result.error || 'Failed to verify certificate');
-        }
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : 'Failed to verify certificate';
-        console.error('Error verifying certificate:', error);
-        alert(
-          message === 'Failed to fetch'
-            ? 'Network error. Please check your connection and try again.'
-            : message,
-        );
-      } finally {
-        inFlightRequests.current.delete(requestKey);
-        setVerifyingNotificationId(null);
       }
     });
   }, [router]);
@@ -253,23 +211,15 @@ export function NotificationsList({
                     )}
                     
                     {notification.type === 'certificate_claimed' && notification.artwork_id && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleVerifyCertificate(notification.id, notification.artwork_id!)}
-                        disabled={
-                          pending ||
-                          verifyingNotificationId === notification.id ||
-                          completedArtworkIds.includes(notification.artwork_id)
-                        }
-                        className="font-serif bg-wine text-parchment hover:bg-wine/90"
-                      >
-                        {completedArtworkIds.includes(notification.artwork_id)
-                          ? 'Verified'
-                          : verifyingNotificationId === notification.id
-                            ? 'Verifying...'
-                            : 'Verify Certificate'}
-                      </Button>
+                      <Link href={`/artworks/${notification.artwork_id}/certificate?verify=1`}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          Verify Certificate
+                        </Button>
+                      </Link>
                     )}
                     
                     {(notification.type === 'artist_profile_claim_request' || 

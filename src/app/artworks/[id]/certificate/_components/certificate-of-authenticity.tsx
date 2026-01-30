@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
+import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
 
@@ -57,7 +58,9 @@ export function CertificateOfAuthenticity({
   isOwner = false,
   isAdmin = false,
   creatorInfo = null,
-  exhibition = null
+  exhibition = null,
+  showVerifyCta = false,
+  certificateStatus = null
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -71,10 +74,13 @@ export function CertificateOfAuthenticity({
     location: string | null;
     gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   } | null;
+  showVerifyCta?: boolean;
+  certificateStatus?: string | null;
 }) {
   const router = useRouter();
   const user = useUser();
   const [pending, startTransition] = useTransition();
+  const [verifying, setVerifying] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   // Initialize scan locations from artwork metadata
@@ -410,6 +416,55 @@ export function CertificateOfAuthenticity({
           </Button>
         </div>
       </div>
+
+      {/* Verify certificate banner – shown when owner arrives from notification */}
+      {isOwner && showVerifyCta && (
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-4xl mb-4">
+          {certificateStatus === 'pending_verification' ? (
+            <div className="bg-wine/10 border-2 border-wine/40 rounded-lg p-4 sm:p-5">
+              <p className="font-serif text-ink mb-3">
+                An artist has claimed this certificate. Review the details below to confirm the claim, then verify to complete the process.
+              </p>
+              <Button
+                onClick={() => {
+                  setVerifying(true);
+                  startTransition(async () => {
+                    try {
+                      const result = await verifyCertificate(artwork.id);
+                      if (result.success) {
+                        toast.success('Certificate verified.');
+                        router.refresh();
+                      } else {
+                        toast.error(result.error || 'Failed to verify certificate');
+                      }
+                    } catch (e) {
+                      toast.error('Failed to verify certificate');
+                    } finally {
+                      setVerifying(false);
+                    }
+                  });
+                }}
+                disabled={verifying || pending}
+                className="font-serif bg-wine text-parchment hover:bg-wine/90"
+              >
+                {verifying || pending ? 'Verifying...' : 'Verify certificate'}
+              </Button>
+            </div>
+          ) : certificateStatus === 'verified' ? (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+              <p className="font-serif">This certificate has been verified.</p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p className="font-serif">
+                Certificate is not ready for verification. It may have already been verified or the claim is still in progress.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Certificate */}
       <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-12 max-w-4xl">
