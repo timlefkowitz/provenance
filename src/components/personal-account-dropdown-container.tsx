@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
-import { ChevronsUpDown, Home, LogOut, Settings, User, Shield } from 'lucide-react';
+import { ChevronsUpDown, Home, LogOut, Settings, User, Check } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
@@ -17,6 +18,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  DropdownMenuLabel,
 } from '@kit/ui/dropdown-menu';
 import { If } from '@kit/ui/if';
 import { SubMenuModeToggle } from '@kit/ui/mode-toggle';
@@ -26,10 +28,15 @@ import { cn } from '@kit/ui/utils';
 import { usePersonalAccountData } from '@kit/accounts/hooks/use-personal-account-data';
 import { AdminMenuItem } from './admin-menu-item';
 import { LanguageSwitcher } from './language-switcher';
+import { getPerspective } from './perspective-switcher';
 import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
+import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
+
+const PERSPECTIVE_KEY = 'user_perspective';
+const SELECTED_PROFILE_KEY = 'selected_profile_id';
 
 const paths = {
   home: pathsConfig.app.home,
@@ -92,6 +99,40 @@ export function ProfileAccountDropdownContainer(props: {
   const collectorProfiles = useMemo(() => {
     return profiles.filter(p => p.role === 'collector');
   }, [profiles]);
+
+  // Current role/perspective (synced with PerspectiveSwitcher)
+  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = getPerspective();
+      setCurrentPerspective(p);
+    }
+  }, []);
+
+  const switchRole = useCallback(
+    (role: UserRole) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(PERSPECTIVE_KEY, role);
+        localStorage.removeItem(SELECTED_PROFILE_KEY);
+      }
+      setCurrentPerspective(role);
+      router.refresh();
+    },
+    [router],
+  );
+
+  // Profiles for the current perspective (for switching between galleries, etc.)
+  const profilesForCurrentRole = useMemo(() => {
+    return profiles.filter(p => p.role === currentPerspective);
+  }, [profiles, currentPerspective]);
+
+  const setSelectedProfileAndNavigate = useCallback((profileId: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SELECTED_PROFILE_KEY, profileId);
+    }
+  }, []);
 
   if (!userData) {
     return null;
@@ -166,91 +207,73 @@ export function ProfileAccountDropdownContainer(props: {
           </Link>
         </DropdownMenuItem>
 
-        {/* Profile menu with submenu for gallery profiles */}
-        {galleryProfiles.length > 0 ? (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex cursor-pointer items-center space-x-2">
-              <User className={'h-5'} />
-              <span>Profile</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {/* Main profile link */}
-              <DropdownMenuItem asChild>
-                <Link
-                  className={'flex cursor-pointer items-center space-x-2'}
-                  href={paths.profile}
-                >
-                  <User className={'h-4'} />
-                  <span>My Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              
-              {/* Gallery profiles */}
-              {galleryProfiles.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  {galleryProfiles.map((profile) => (
-                    <DropdownMenuItem key={profile.id} asChild>
-                      <Link
-                        className={'flex cursor-pointer items-center space-x-2'}
-                        href={`/artists/${userData.id}?role=gallery&profileId=${profile.id}`}
-                      >
-                        <User className={'h-4'} />
-                        <span className="truncate">{profile.name}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-              
-              {/* Artist profiles */}
-              {artistProfiles.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  {artistProfiles.map((profile) => (
-                    <DropdownMenuItem key={profile.id} asChild>
-                      <Link
-                        className={'flex cursor-pointer items-center space-x-2'}
-                        href={`/artists/${userData.id}?role=artist`}
-                      >
-                        <User className={'h-4'} />
-                        <span className="truncate">{profile.name}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-              
-              {/* Collector profiles */}
-              {collectorProfiles.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  {collectorProfiles.map((profile) => (
-                    <DropdownMenuItem key={profile.id} asChild>
-                      <Link
-                        className={'flex cursor-pointer items-center space-x-2'}
-                        href={`/artists/${userData.id}?role=collector`}
-                      >
-                        <User className={'h-4'} />
-                        <span className="truncate">{profile.name}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        ) : (
-          <DropdownMenuItem asChild>
-            <Link
-              className={'flex cursor-pointer items-center space-x-2'}
-              href={paths.profile}
+        {/* Profile submenu: show current role (Artist/Collector/Gallery) and switch between them + profiles */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="flex cursor-pointer items-center space-x-2">
+            <User className={'h-5'} />
+            <span>Profile</span>
+            <span className="ml-auto text-xs text-muted-foreground font-normal">
+              {getRoleLabel(currentPerspective)}
+            </span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-[12rem]">
+            <DropdownMenuLabel className="text-muted-foreground font-normal">
+              Viewing as: {getRoleLabel(currentPerspective)}
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              className={cn('flex cursor-pointer items-center justify-between', currentPerspective === USER_ROLES.ARTIST && 'bg-muted')}
+              onClick={() => switchRole(USER_ROLES.ARTIST)}
             >
-              <User className={'h-5'} />
-              <span>Profile</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
+              <span>{getRoleLabel(USER_ROLES.ARTIST)}</span>
+              {currentPerspective === USER_ROLES.ARTIST && <Check className="h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className={cn('flex cursor-pointer items-center justify-between', currentPerspective === USER_ROLES.COLLECTOR && 'bg-muted')}
+              onClick={() => switchRole(USER_ROLES.COLLECTOR)}
+            >
+              <span>{getRoleLabel(USER_ROLES.COLLECTOR)}</span>
+              {currentPerspective === USER_ROLES.COLLECTOR && <Check className="h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className={cn('flex cursor-pointer items-center justify-between', currentPerspective === USER_ROLES.GALLERY && 'bg-muted')}
+              onClick={() => switchRole(USER_ROLES.GALLERY)}
+            >
+              <span>{getRoleLabel(USER_ROLES.GALLERY)}</span>
+              {currentPerspective === USER_ROLES.GALLERY && <Check className="h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link
+                className={'flex cursor-pointer items-center space-x-2'}
+                href={paths.profile}
+              >
+                <User className={'h-4'} />
+                <span>My Profile</span>
+              </Link>
+            </DropdownMenuItem>
+            {profilesForCurrentRole.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                {profilesForCurrentRole.map((profile) => (
+                  <DropdownMenuItem key={profile.id} asChild>
+                    <Link
+                      className={'flex cursor-pointer items-center space-x-2'}
+                      href={
+                        currentPerspective === USER_ROLES.GALLERY
+                          ? `/artists/${userData.id}?role=gallery&profileId=${profile.id}`
+                          : `/artists/${userData.id}?role=${currentPerspective}`
+                      }
+                      onClick={() => setSelectedProfileAndNavigate(profile.id)}
+                    >
+                      <User className={'h-4'} />
+                      <span className="truncate">{profile.name}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuItem asChild>
           <Link
