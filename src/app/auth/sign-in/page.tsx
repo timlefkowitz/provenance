@@ -35,7 +35,7 @@ function SignInPage() {
       <div className={'flex justify-center mt-4'}>
         <Button asChild variant={'link'} size={'sm'}>
           <Link href={pathsConfig.auth.signUp}>
-            <Trans i18nKey={'auth:doNotHaveAnAccount'} />
+            <Trans i18nKey={'auth:doNotHaveAccountYet'} defaults="Do not have an account yet?" />
           </Link>
         </Button>
       </div>

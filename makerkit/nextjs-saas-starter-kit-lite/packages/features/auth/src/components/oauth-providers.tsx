@@ -105,6 +105,7 @@ export function OauthProviders(props: {
                   values={{
                     provider: getProviderName(provider),
                   }}
+                  defaults={'Sign in with {{provider}}'}
                 />
               </AuthProviderButton>
             );
