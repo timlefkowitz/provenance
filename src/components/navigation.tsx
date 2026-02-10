@@ -11,17 +11,18 @@ import { ProfileAccountDropdownContainer } from './personal-account-dropdown-con
 import { NotificationBadge } from './notification-badge';
 import { PerspectiveSwitcher } from './perspective-switcher';
 import { ProfileSwitcher } from './profile-switcher';
+import { UsingGalleryLabel } from './using-gallery-label';
 
 export function Navigation() {
   const user = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
-      <div className="flex items-center gap-8">
+    <nav className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+      <div className="flex items-center gap-8 min-w-0">
         <Link 
           href="/" 
-          className="text-2xl font-display font-bold tracking-widest uppercase text-wine hover:text-wine/80 transition-colors"
+          className="block max-w-[60vw] truncate text-xl sm:text-2xl font-display font-bold tracking-wide sm:tracking-widest uppercase text-wine hover:text-wine/80 transition-colors"
         >
           Provenance
         </Link>
@@ -41,6 +42,12 @@ export function Navigation() {
                 className="text-ink hover:text-wine transition-colors font-serif"
               >
                 Portal
+              </Link>
+              <Link
+                href="/open-calls"
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                Open Calls
               </Link>
               <Link 
                 href="/profiles" 
@@ -163,8 +170,11 @@ export function Navigation() {
             {user.data && (
               <PerspectiveSwitcher compact />
             )}
-            
-            {/* Profile Switcher */}
+            {/* When Gallery: show which gallery the user is using */}
+            {user.data && (
+              <UsingGalleryLabel />
+            )}
+            {/* Profile Switcher (e.g. switch between multiple galleries) */}
             {user.data && (
               <ProfileSwitcher compact />
             )}
@@ -184,6 +194,13 @@ export function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Add Artwork
+                </Link>
+                <Link
+                  href="/open-calls"
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Open Calls
                 </Link>
                 <Link 
                   href="/portal" 

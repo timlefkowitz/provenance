@@ -9,6 +9,7 @@ import { getUnreadNotificationCount } from '~/lib/notifications';
 import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
 import { ArtworkCard } from '../artworks/_components/artwork-card';
 import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
+import { getOpenCallSubmissionsForUser } from '../open-calls/_actions/get-open-call-submissions-for-user';
 import { ProvenanceUpdateRequestsList } from './_components/provenance-update-requests-list';
 import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart } from 'lucide-react';
@@ -105,6 +106,8 @@ export default async function PortalPage() {
   // Get favorites
   const favoriteArtworks = await getFavoriteArtworks(6);
   const favoriteCount = await getFavoriteCount();
+
+  const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
 
   // Check if user has a gallery profile
   const profiles = await getUserProfiles(user.id);
@@ -416,6 +419,69 @@ export default async function PortalPage() {
                   className="font-serif border-wine/30 hover:bg-wine/10"
                 >
                   <Link href="/registry">Discover Artists</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Open Call Submissions */}
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-display text-xl text-wine">
+                Open Call Submissions
+              </CardTitle>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif"
+              >
+                <Link href="/open-calls">View Open Calls</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {openCallSubmissions.length > 0 ? (
+              <div className="space-y-3">
+                {openCallSubmissions.slice(0, 4).map((submission) => (
+                  <Link
+                    key={submission.id}
+                    href={`/open-calls/${submission.open_call.slug}`}
+                    className="block p-4 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-serif text-sm text-ink">
+                          {submission.open_call.exhibition.title}
+                        </p>
+                        <p className="text-xs text-ink/60 font-serif mt-1">
+                          Submitted {new Date(submission.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <p className="text-xs text-ink/60 font-serif">
+                        {submission.artworks?.length || 0} artworks
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-ink/60 font-serif mb-4">
+                  No open call submissions yet
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                >
+                  <Link href="/open-calls">Explore Open Calls</Link>
                 </Button>
               </div>
             )}
