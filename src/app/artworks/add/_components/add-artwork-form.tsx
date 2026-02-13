@@ -56,6 +56,7 @@ export function AddArtworkForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
@@ -73,6 +74,14 @@ export function AddArtworkForm({
     exhibitionId: '',
     galleryProfileId: '',
   });
+
+  // Revoke object URLs on unmount
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsRef.current.clear();
+    };
+  }, []);
 
   // Update local exhibitions when prop changes
   useEffect(() => {
@@ -201,12 +210,19 @@ export function AddArtworkForm({
           }
         }
 
-        // Create preview
-        const reader = new FileReader();
-        const preview = await new Promise<string>((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(compressedFile);
-        });
+        // Create preview: use object URL when we kept the original file (compression failed) so browser can often display it; otherwise data URL
+        const usedOriginalFile = compressedFile === file;
+        let preview: string;
+        if (usedOriginalFile) {
+          preview = URL.createObjectURL(compressedFile);
+          objectUrlsRef.current.add(preview);
+        } else {
+          const reader = new FileReader();
+          preview = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(compressedFile);
+          });
+        }
 
         // Extract location from EXIF data (use original file for EXIF, not compressed)
         let location: ImagePreview['location'] = null;
@@ -277,6 +293,11 @@ export function AddArtworkForm({
   };
 
   const removeImage = (index: number) => {
+    const img = imagePreviews[index];
+    if (img?.preview?.startsWith('blob:')) {
+      URL.revokeObjectURL(img.preview);
+      objectUrlsRef.current.delete(img.preview);
+    }
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -480,7 +501,7 @@ export function AddArtworkForm({
                     {previewBroken ? (
                       <div className="w-full h-48 flex flex-col items-center justify-center gap-2 rounded-lg mb-2 bg-parchment/80 border border-wine/20 text-center px-3">
                         <ImageIcon className="h-12 w-12 text-wine/50" aria-hidden />
-                        <p className="text-sm text-ink/80 font-serif">Preview not available for this format.</p>
+                        <p className="text-sm text-ink/80 font-serif">Preview not available (some .jpeg from phones/cameras can&apos;t be previewed here).</p>
                         <p className="text-xs text-ink/60 font-serif">Your image will still upload correctly.</p>
                       </div>
                     ) : (
