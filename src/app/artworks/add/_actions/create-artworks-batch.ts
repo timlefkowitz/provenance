@@ -236,7 +236,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               
               // Only create if it doesn't exist
               if (!existingProfile) {
-                await client
+                const { error: profileError } = await client
                   .from('user_profiles')
                   .insert({
                     user_id: null, // Unclaimed profile
@@ -246,13 +246,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
                     is_claimed: false,
                     created_by_gallery_id: userRole === USER_ROLES.GALLERY ? userId : null,
                     is_active: true,
-                  })
-                  .catch((profileError: any) => {
-                    // Ignore duplicate errors or other non-critical errors
-                    if (profileError.code !== '23505') {
-                      console.error('Error creating unclaimed artist profile:', profileError);
-                    }
                   });
+                if (profileError && profileError.code !== '23505') {
+                  console.error('Error creating unclaimed artist profile:', profileError);
+                }
               }
             } catch (profileError) {
               // Don't fail artwork creation if profile creation fails
@@ -293,18 +290,15 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
               if (exhibition && exhibition.gallery_id === userId) {
                 // Add artwork to exhibition
-                await (client as any)
+                const { error: exhibitionInsertError } = await (client as any)
                   .from('exhibition_artworks')
                   .insert({
                     exhibition_id: exhibitionId,
                     artwork_id: artwork.id,
-                  })
-                  .catch((exhibitionError: any) => {
-                    // Ignore duplicate key errors
-                    if (exhibitionError.code !== '23505') {
-                      console.error('Error adding artwork to exhibition:', exhibitionError);
-                    }
                   });
+                if (exhibitionInsertError && exhibitionInsertError.code !== '23505') {
+                  console.error('Error linking artwork to exhibition:', exhibitionInsertError);
+                }
               }
             } catch (exhibitionError) {
               console.error('Error linking artwork to exhibition:', exhibitionError);
