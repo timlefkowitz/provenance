@@ -10,7 +10,7 @@ import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
-import { Camera, X, Upload, MapPin } from 'lucide-react';
+import { Camera, X, Upload, MapPin, ImageIcon } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 import type { UserRole } from '~/lib/user-roles';
 import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
@@ -21,6 +21,7 @@ import type { PastArtist } from '../_actions/get-past-artists';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 
 type ImagePreview = {
+  id?: string;
   file: File;
   preview: string;
   title: string;
@@ -59,6 +60,7 @@ export function AddArtworkForm({
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const [brokenPreviewIds, setBrokenPreviewIds] = useState<Set<string>>(new Set());
   const [uploadProgress, setUploadProgress] = useState<{ batch: number; totalBatches: number } | null>(null);
   const [primaryTitle, setPrimaryTitle] = useState('');
   const [localExhibitions, setLocalExhibitions] = useState<UserExhibition[]>(exhibitions);
@@ -243,7 +245,9 @@ export function AddArtworkForm({
           console.log('No location data in image:', exifError);
         }
 
+        const previewId = `preview-${Date.now()}-${index}`;
         const newPreview: ImagePreview = {
+          id: previewId,
           file: compressedFile,
           preview,
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
@@ -258,6 +262,7 @@ export function AddArtworkForm({
         );
       }
 
+      setBrokenPreviewIds(prev => new Set(prev)); // keep existing; new previews start unbroken
       setImagePreviews(prev => [...prev, ...newPreviews]);
     } catch (error) {
       console.error('Error processing images:', error);
@@ -458,8 +463,11 @@ export function AddArtworkForm({
                 {imagePreviews.length} {imagePreviews.length === 1 ? 'image' : 'images'} selected
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {imagePreviews.map((img, index) => (
-                  <div key={index} className="relative border border-wine/20 rounded-lg p-3 bg-white">
+                {imagePreviews.map((img, index) => {
+                  const previewId = img.id ?? `preview-${index}`;
+                  const previewBroken = brokenPreviewIds.has(previewId);
+                  return (
+                  <div key={previewId} className="relative border border-wine/20 rounded-lg p-3 bg-white">
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
@@ -469,11 +477,20 @@ export function AddArtworkForm({
                       <X className="h-4 w-4" />
                     </button>
                     <div className="relative">
-                    <img
-                      src={img.preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg mb-2"
-                    />
+                    {previewBroken ? (
+                      <div className="w-full h-48 flex flex-col items-center justify-center gap-2 rounded-lg mb-2 bg-parchment/80 border border-wine/20 text-center px-3">
+                        <ImageIcon className="h-12 w-12 text-wine/50" aria-hidden />
+                        <p className="text-sm text-ink/80 font-serif">Preview not available for this format.</p>
+                        <p className="text-xs text-ink/60 font-serif">Your image will still upload correctly.</p>
+                      </div>
+                    ) : (
+                      <img
+                        src={img.preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg mb-2"
+                        onError={() => setBrokenPreviewIds(prev => new Set(prev).add(previewId))}
+                      />
+                    )}
                       {img.location && (
                         <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -495,7 +512,8 @@ export function AddArtworkForm({
                     />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
