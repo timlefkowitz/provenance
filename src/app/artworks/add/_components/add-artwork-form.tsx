@@ -154,8 +154,8 @@ export function AddArtworkForm({
         fileType: f.type || 'image/jpeg',
       });
 
-      // If compression fails entirely, use original file when under this size (keeps batch under body limit)
-      const MAX_ORIGINAL_FALLBACK_BYTES = 3 * 1024 * 1024; // 3 MB
+      // If compression fails entirely, use original file when under this size (Vercel 4.5MB body limit – one image per request is ok)
+      const MAX_ORIGINAL_FALLBACK_BYTES = 4.5 * 1024 * 1024; // 4.5 MB
       const failedNames: string[] = [];
 
       for (let index = 0; index < imageFiles.length; index++) {
@@ -173,14 +173,14 @@ export function AddArtworkForm({
             compressedFile = await imageCompression(file, fallbackOptions);
           }
         } catch (compressionError) {
-          console.warn('Compression failed, trying aggressive compression:', compressionError);
+          // Try main thread + original format first (fixes many iPhone/Photos JPEG decode failures in worker)
+          console.warn('Compression failed, trying main thread with original format:', compressionError);
           try {
-            compressedFile = await imageCompression(file, fallbackOptions);
-          } catch (fallbackError) {
-            console.warn('Aggressive compression failed, trying main thread + original format:', fallbackError);
+            compressedFile = await imageCompression(file, lastResortOptions(file));
+          } catch (mainThreadError) {
             try {
-              compressedFile = await imageCompression(file, lastResortOptions(file));
-            } catch (lastError) {
+              compressedFile = await imageCompression(file, fallbackOptions);
+            } catch (fallbackError) {
               try {
                 compressedFile = await imageCompression(file, {
                   ...lastResortOptions(file),
@@ -188,12 +188,11 @@ export function AddArtworkForm({
                 });
               } catch (finalError) {
                 console.error('All compression attempts failed:', finalError);
-                // Use original file if small enough so one bad image doesn't block the batch
                 if (file.size <= MAX_ORIGINAL_FALLBACK_BYTES) {
                   compressedFile = file;
                 } else {
                   failedNames.push(file.name);
-                  continue; // skip this image, process the rest
+                  continue;
                 }
               }
             }
