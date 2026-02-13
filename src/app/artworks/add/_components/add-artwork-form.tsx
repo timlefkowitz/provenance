@@ -59,6 +59,7 @@ export function AddArtworkForm({
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ batch: number; totalBatches: number } | null>(null);
   const [primaryTitle, setPrimaryTitle] = useState('');
   const [localExhibitions, setLocalExhibitions] = useState<UserExhibition[]>(exhibitions);
   const [formData, setFormData] = useState({
@@ -131,24 +132,45 @@ export function AddArtworkForm({
     try {
       const newPreviews: ImagePreview[] = [];
       
-      // Process and compress each image
+      // Process and compress each image (Vercel has 4.5MB request body limit – keep each image ~700KB so multiple images fit)
+      const compressionOptions: Parameters<typeof imageCompression>[1] = {
+        maxSizeMB: 0.7,
+        maxWidthOrHeight: 1600,
+        useWebWorker: true,
+        fileType: 'image/jpeg', // JPEG for smaller size (fits Vercel 4.5MB body limit)
+        initialQuality: 0.85,
+      };
+      const fallbackOptions: Parameters<typeof imageCompression>[1] = {
+        ...compressionOptions,
+        maxSizeMB: 0.4,
+        maxWidthOrHeight: 1280,
+        initialQuality: 0.75,
+      };
+
       for (let index = 0; index < imageFiles.length; index++) {
         const file = imageFiles[index];
-        
-        // Compression options optimized for iPhone photos
-        const options = {
-          maxSizeMB: 2, // Compress to max 2MB (good quality, much smaller than original)
-          maxWidthOrHeight: 1920, // Max dimension (good for web display)
-          useWebWorker: true, // Use web worker for better performance
-          fileType: file.type, // Preserve original file type
-        };
+        if (file.size > 50 * 1024 * 1024) {
+          setError(`"${file.name}" is too large. Please choose images under 50 MB.`);
+          setCompressing(false);
+          return;
+        }
 
         let compressedFile: File;
         try {
-          compressedFile = await imageCompression(file, options);
+          compressedFile = await imageCompression(file, compressionOptions);
+          if (compressedFile.size > 1024 * 1024) {
+            compressedFile = await imageCompression(file, fallbackOptions);
+          }
         } catch (compressionError) {
-          console.warn('Compression failed, using original file:', compressionError);
-          compressedFile = file; // Fallback to original if compression fails
+          console.warn('Compression failed, trying aggressive compression:', compressionError);
+          try {
+            compressedFile = await imageCompression(file, fallbackOptions);
+          } catch (fallbackError) {
+            console.error('Aggressive compression failed:', fallbackError);
+            setError(`Could not compress "${file.name}". Try a smaller image or different format.`);
+            setCompressing(false);
+            return;
+          }
         }
 
         // Create preview
@@ -249,48 +271,65 @@ export function AddArtworkForm({
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const formDataToSend = new FormData();
-        
-        // Append all images
-        imagePreviews.forEach((img, index) => {
-          formDataToSend.append(`images`, img.file);
-          formDataToSend.append(`titles`, img.title);
-          // Append location data if available
-          if (img.location) {
-            formDataToSend.append(`locations`, JSON.stringify(img.location));
-          } else {
-            formDataToSend.append(`locations`, '');
-          }
-        });
-        
-        formDataToSend.append('description', formData.description);
-        formDataToSend.append('artistName', formData.artistName);
-        formDataToSend.append('medium', formData.medium);
-        formDataToSend.append('creationDate', formData.creationDate);
-        formDataToSend.append('isPublic', formData.isPublic.toString());
-        if (formData.exhibitionId) {
-          formDataToSend.append('exhibitionId', formData.exhibitionId);
-        }
-        if (formData.galleryProfileId) {
-          formDataToSend.append('galleryProfileId', formData.galleryProfileId);
-        }
+    // Vercel 4.5 MB body limit: send in chunks of 6 images (~4.2 MB max) so 30+ images work
+    const MAX_IMAGES_PER_BATCH = 6;
+    const chunks: ImagePreview[][] = [];
+    for (let i = 0; i < imagePreviews.length; i += MAX_IMAGES_PER_BATCH) {
+      chunks.push(imagePreviews.slice(i, i + MAX_IMAGES_PER_BATCH));
+    }
 
-        const result = await createArtworksBatch(formDataToSend, userId);
-        
-        if (result.error) {
-          setError(result.error);
-        } else if (result.artworkIds && result.artworkIds.length > 0) {
-          // If only one artwork, go to its certificate, otherwise go to artworks feed
-          if (result.artworkIds.length === 1) {
-            router.push(`/artworks/${result.artworkIds[0]}/certificate`);
-          } else {
-            router.push('/artworks');
+    startTransition(async () => {
+      setUploadProgress({ batch: 0, totalBatches: chunks.length });
+      const allArtworkIds: string[] = [];
+      try {
+        for (let c = 0; c < chunks.length; c++) {
+          setUploadProgress({ batch: c + 1, totalBatches: chunks.length });
+          const chunk = chunks[c];
+
+          const formDataToSend = new FormData();
+          chunk.forEach((img) => {
+            formDataToSend.append('images', img.file);
+            formDataToSend.append('titles', img.title);
+            formDataToSend.append('locations', img.location ? JSON.stringify(img.location) : '');
+          });
+          formDataToSend.append('description', formData.description);
+          formDataToSend.append('artistName', formData.artistName);
+          formDataToSend.append('medium', formData.medium);
+          formDataToSend.append('creationDate', formData.creationDate);
+          formDataToSend.append('isPublic', formData.isPublic.toString());
+          if (formData.exhibitionId) formDataToSend.append('exhibitionId', formData.exhibitionId);
+          if (formData.galleryProfileId) formDataToSend.append('galleryProfileId', formData.galleryProfileId);
+
+          const result = await createArtworksBatch(formDataToSend, userId);
+
+          if (result.error) {
+            const uploaded = allArtworkIds.length;
+            setError(
+              uploaded > 0
+                ? `${result.error} (${uploaded} of ${imagePreviews.length} uploaded successfully – you can add the rest in a new batch)`
+                : result.error
+            );
+            setUploadProgress(null);
+            return;
           }
+          if (result.artworkIds?.length) {
+            allArtworkIds.push(...result.artworkIds);
+          }
+        }
+        setUploadProgress(null);
+        if (allArtworkIds.length === 1) {
+          router.push(`/artworks/${allArtworkIds[0]}/certificate`);
+        } else {
+          router.push('/artworks');
         }
       } catch (e) {
-        setError('Something went wrong. Please try again.');
+        setUploadProgress(null);
+        const uploaded = allArtworkIds.length;
+        setError(
+          uploaded > 0
+            ? `Something went wrong. ${uploaded} of ${imagePreviews.length} uploaded – you can add the rest in a new batch.`
+            : 'Something went wrong. Please try again.'
+        );
         console.error(e);
       }
     });
@@ -676,8 +715,10 @@ export function AddArtworkForm({
           disabled={pending || imagePreviews.length === 0}
           className="bg-wine text-parchment hover:bg-wine/90 font-serif"
         >
-          {pending 
-            ? `Creating ${imagePreviews.length} ${imagePreviews.length === 1 ? 'Certificate' : 'Certificates'}...` 
+          {pending
+            ? uploadProgress
+              ? `Uploading batch ${uploadProgress.batch} of ${uploadProgress.totalBatches}…`
+              : `Creating ${imagePreviews.length} ${imagePreviews.length === 1 ? 'Certificate' : 'Certificates'}…`
             : getCreateCertificateButtonLabel(userRole ?? null, imagePreviews.length)}
         </Button>
         <Button
