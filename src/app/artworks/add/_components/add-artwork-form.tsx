@@ -137,7 +137,7 @@ export function AddArtworkForm({
         maxSizeMB: 0.7,
         maxWidthOrHeight: 1600,
         useWebWorker: true,
-        fileType: 'image/jpeg', // JPEG for smaller size (fits Vercel 4.5MB body limit)
+        fileType: 'image/jpeg',
         initialQuality: 0.85,
       };
       const fallbackOptions: Parameters<typeof imageCompression>[1] = {
@@ -146,6 +146,13 @@ export function AddArtworkForm({
         maxWidthOrHeight: 1280,
         initialQuality: 0.75,
       };
+      // Last resort: main thread + original format (avoids worker decode and JPEG conversion issues)
+      const lastResortOptions = (f: File): Parameters<typeof imageCompression>[1] => ({
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1200,
+        useWebWorker: false,
+        fileType: f.type || 'image/jpeg',
+      });
 
       for (let index = 0; index < imageFiles.length; index++) {
         const file = imageFiles[index];
@@ -166,10 +173,24 @@ export function AddArtworkForm({
           try {
             compressedFile = await imageCompression(file, fallbackOptions);
           } catch (fallbackError) {
-            console.error('Aggressive compression failed:', fallbackError);
-            setError(`Could not compress "${file.name}". Try a smaller image or different format.`);
-            setCompressing(false);
-            return;
+            console.warn('Aggressive compression failed, trying main thread + original format:', fallbackError);
+            try {
+              compressedFile = await imageCompression(file, lastResortOptions(file));
+            } catch (lastError) {
+              try {
+                compressedFile = await imageCompression(file, {
+                  ...lastResortOptions(file),
+                  fileType: 'image/jpeg',
+                });
+              } catch (finalError) {
+                console.error('All compression attempts failed:', finalError);
+                setError(
+                  `Could not process "${file.name}". Try opening it in Photos or Preview and re-exporting as JPEG, or use a different image.`
+                );
+                setCompressing(false);
+                return;
+              }
+            }
           }
         }
 
