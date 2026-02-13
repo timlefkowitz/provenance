@@ -50,28 +50,40 @@ export function getUserRole(publicData: Record<string, any> | null | undefined):
 
 /**
  * Certificate type by poster role:
- * Gallery → Certificate of Show; Collector → Certificate of Collection; Artist → Certificate of Authenticity
+ * Gallery → Certificate of Show; Collector → Certificate of Ownership; Artist → Certificate of Authenticity.
+ * After artist claims and owner approves, type becomes authenticity.
  */
 export const CERTIFICATE_TYPES = {
   AUTHENTICITY: 'authenticity',
   SHOW: 'show',
-  COLLECTION: 'collection',
+  OWNERSHIP: 'ownership',
 } as const;
 
 export type CertificateType = typeof CERTIFICATE_TYPES[keyof typeof CERTIFICATE_TYPES];
 
 export function getCertificateTypeForRole(role: UserRole | null): CertificateType {
   if (role === USER_ROLES.GALLERY) return CERTIFICATE_TYPES.SHOW;
-  if (role === USER_ROLES.COLLECTOR) return CERTIFICATE_TYPES.COLLECTION;
+  if (role === USER_ROLES.COLLECTOR) return CERTIFICATE_TYPES.OWNERSHIP;
   return CERTIFICATE_TYPES.AUTHENTICITY;
 }
 
-export function getCertificateTypeLabel(type: CertificateType): string {
-  const labels: Record<CertificateType, string> = {
+export function getCertificateTypeLabel(type: CertificateType | string): string {
+  const labels: Record<string, string> = {
     [CERTIFICATE_TYPES.AUTHENTICITY]: 'Certificate of Authenticity',
     [CERTIFICATE_TYPES.SHOW]: 'Certificate of Show',
-    [CERTIFICATE_TYPES.COLLECTION]: 'Certificate of Collection',
+    [CERTIFICATE_TYPES.OWNERSHIP]: 'Certificate of Ownership',
+    collection: 'Certificate of Ownership', // legacy value
   };
   return labels[type] || labels[CERTIFICATE_TYPES.AUTHENTICITY];
+}
+
+/** Button label when creating certificates: "Create Certificate of Show" / "Create 3 Certificates of Show" etc. */
+export function getCreateCertificateButtonLabel(role: UserRole | null, count: number): string {
+  const type = getCertificateTypeForRole(role);
+  const suffix = getCertificateTypeLabel(type).replace(/^Certificate of /i, ''); // "Show" | "Ownership" | "Authenticity"
+  const plural = count !== 1;
+  const certWord = plural ? 'Certificates' : 'Certificate';
+  const prefix = count > 0 ? `Create ${count} ` : 'Create ';
+  return `${prefix}${certWord} of ${suffix}`;
 }
 

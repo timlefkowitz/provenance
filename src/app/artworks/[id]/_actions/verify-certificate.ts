@@ -57,12 +57,13 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
       return { success: false, error: 'Certificate is not ready for verification' };
     }
 
-    // Update artwork with verification
+    // Update artwork with verification; once artist claimed and owner approved, it becomes Certificate of Authenticity
     const { error: updateError } = await client
       .from('artworks')
       .update({
         verified_by_owner_at: new Date().toISOString(),
         certificate_status: 'verified',
+        certificate_type: 'authenticity',
       })
       .eq('id', artworkId);
 

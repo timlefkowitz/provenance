@@ -78,7 +78,7 @@ export function CertificateOfAuthenticity({
   } | null;
   showVerifyCta?: boolean;
   certificateStatus?: string | null;
-  certificateType?: CertificateType;
+  certificateType?: CertificateType | string;
 }) {
   const router = useRouter();
   const user = useUser();

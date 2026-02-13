@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Camera, X, Upload, MapPin } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 import type { UserRole } from '~/lib/user-roles';
-import { USER_ROLES } from '~/lib/user-roles';
+import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { CreateExhibitionDialog } from './create-exhibition-dialog';
@@ -65,6 +65,7 @@ export function AddArtworkForm({
     description: '',
     artistName: defaultArtistName,
     medium: defaultMedium,
+    creationDate: '',
     isPublic: true, // Default to public
     exhibitionId: '',
     galleryProfileId: '',
@@ -267,6 +268,7 @@ export function AddArtworkForm({
         formDataToSend.append('description', formData.description);
         formDataToSend.append('artistName', formData.artistName);
         formDataToSend.append('medium', formData.medium);
+        formDataToSend.append('creationDate', formData.creationDate);
         formDataToSend.append('isPublic', formData.isPublic.toString());
         if (formData.exhibitionId) {
           formDataToSend.append('exhibitionId', formData.exhibitionId);
@@ -516,6 +518,20 @@ export function AddArtworkForm({
             This will be applied to all artworks
           </p>
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="creationDate">Creation Date</Label>
+          <Input
+            id="creationDate"
+            type="date"
+            value={formData.creationDate}
+            onChange={(e) => setFormData({ ...formData, creationDate: e.target.value })}
+            className="font-serif"
+          />
+          <p className="text-xs text-ink/60 font-serif">
+            This will be applied to all artworks
+          </p>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -662,7 +678,7 @@ export function AddArtworkForm({
         >
           {pending 
             ? `Creating ${imagePreviews.length} ${imagePreviews.length === 1 ? 'Certificate' : 'Certificates'}...` 
-            : `Create ${imagePreviews.length > 0 ? `${imagePreviews.length} ` : ''}Certificate${imagePreviews.length !== 1 ? 's' : ''} of Authenticity`}
+            : getCreateCertificateButtonLabel(userRole ?? null, imagePreviews.length)}
         </Button>
         <Button
           type="button"

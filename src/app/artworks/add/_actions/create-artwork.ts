@@ -64,7 +64,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     // Generate certificate number
     const certificateNumber = await generateCertificateNumber(client);
 
-    // Certificate type by poster: gallery → show, collector → collection, artist → authenticity
+    // Certificate type by poster: gallery → show, collector → ownership, artist → authenticity
     const userRole = getUserRole(account?.public_data as Record<string, any>);
     const certificateType = getCertificateTypeForRole(userRole);
     const isCollectorOrGallery = userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY;

@@ -109,7 +109,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         }
 
-        // Certificate type by poster: gallery → Certificate of Show, collector → Certificate of Collection, artist → Certificate of Authenticity
+        // Certificate type by poster: gallery → Certificate of Show, collector → Certificate of Ownership, artist → Certificate of Authenticity
         const certificateType = getCertificateTypeForRole(userRole);
         // If collector or gallery, certificate needs artist claim
         // If artist, certificate is verified immediately
