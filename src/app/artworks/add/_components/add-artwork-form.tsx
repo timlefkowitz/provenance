@@ -154,6 +154,10 @@ export function AddArtworkForm({
         fileType: f.type || 'image/jpeg',
       });
 
+      // If compression fails entirely, use original file when under this size (keeps batch under body limit)
+      const MAX_ORIGINAL_FALLBACK_BYTES = 3 * 1024 * 1024; // 3 MB
+      const failedNames: string[] = [];
+
       for (let index = 0; index < imageFiles.length; index++) {
         const file = imageFiles[index];
         if (file.size > 50 * 1024 * 1024) {
@@ -184,11 +188,13 @@ export function AddArtworkForm({
                 });
               } catch (finalError) {
                 console.error('All compression attempts failed:', finalError);
-                setError(
-                  `Could not process "${file.name}". Try opening it in Photos or Preview and re-exporting as JPEG, or use a different image.`
-                );
-                setCompressing(false);
-                return;
+                // Use original file if small enough so one bad image doesn't block the batch
+                if (file.size <= MAX_ORIGINAL_FALLBACK_BYTES) {
+                  compressedFile = file;
+                } else {
+                  failedNames.push(file.name);
+                  continue; // skip this image, process the rest
+                }
               }
             }
           }
@@ -245,6 +251,12 @@ export function AddArtworkForm({
           location,
         };
         newPreviews.push(newPreview);
+      }
+
+      if (failedNames.length > 0) {
+        setError(
+          `Could not process ${failedNames.length} ${failedNames.length === 1 ? 'image' : 'images'}: ${failedNames.join(', ')}. Try re-exporting as JPEG from Photos or Preview, or use different images. The rest were added.`
+        );
       }
 
       setImagePreviews(prev => [...prev, ...newPreviews]);
