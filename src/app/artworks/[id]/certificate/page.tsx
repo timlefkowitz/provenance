@@ -63,7 +63,8 @@ export default async function CertificatePage({
         sold_by_is_public,
         metadata,
         status,
-        certificate_status
+        certificate_status,
+        certificate_type
       `)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
@@ -102,7 +103,8 @@ export default async function CertificatePage({
         sold_by_is_public,
         metadata,
         status,
-        certificate_status
+        certificate_status,
+        certificate_type
       `)
       .eq('id', id)
       .eq('status', 'verified')
@@ -211,6 +213,8 @@ export default async function CertificatePage({
   // Fetch exhibition for this artwork
   const exhibition = await getArtworkExhibition(artwork.id);
 
+  const certificateType = artwork.certificate_type || 'authenticity';
+
   return (
     <CertificateOfAuthenticity 
       artwork={artwork} 
@@ -220,6 +224,7 @@ export default async function CertificatePage({
       exhibition={exhibition}
       showVerifyCta={showVerifyCta}
       certificateStatus={artwork.certificate_status ?? null}
+      certificateType={certificateType}
     />
   );
 }

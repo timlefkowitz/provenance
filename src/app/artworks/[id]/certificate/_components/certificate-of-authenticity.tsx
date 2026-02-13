@@ -15,6 +15,7 @@ import { recordScanLocation } from '../../_actions/record-scan-location';
 import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
+import { getCertificateTypeLabel, type CertificateType } from '~/lib/user-roles';
 
 type Artwork = {
   id: string;
@@ -60,7 +61,8 @@ export function CertificateOfAuthenticity({
   creatorInfo = null,
   exhibition = null,
   showVerifyCta = false,
-  certificateStatus = null
+  certificateStatus = null,
+  certificateType = 'authenticity',
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -76,6 +78,7 @@ export function CertificateOfAuthenticity({
   } | null;
   showVerifyCta?: boolean;
   certificateStatus?: string | null;
+  certificateType?: CertificateType;
 }) {
   const router = useRouter();
   const user = useUser();
@@ -472,7 +475,7 @@ export function CertificateOfAuthenticity({
           {/* Header */}
           <div className="text-center mb-6 sm:mb-8 border-b-2 border-wine pb-4 sm:pb-6">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-wine mb-2 tracking-widest">
-              CERTIFICATE OF AUTHENTICITY
+              {getCertificateTypeLabel(certificateType).toUpperCase()}
             </h1>
             <p className="text-ink/70 font-serif text-sm sm:text-base md:text-lg">
               Provenance | A Journal of Art, Objects & Their Histories

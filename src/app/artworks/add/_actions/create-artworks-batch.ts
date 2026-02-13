@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 
 const ARTWORKS_BUCKET = 'artworks';
@@ -20,6 +20,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const description = formData.get('description') as string || '';
     const artistName = formData.get('artistName') as string || '';
     const medium = formData.get('medium') as string || '';
+    const creationDate = formData.get('creationDate') as string || '';
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
     const galleryProfileId = formData.get('galleryProfileId') as string || null;
@@ -108,7 +109,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         }
 
-        // Determine certificate status based on user role
+        // Certificate type by poster: gallery → Certificate of Show, collector → Certificate of Collection, artist → Certificate of Authenticity
+        const certificateType = getCertificateTypeForRole(userRole);
         // If collector or gallery, certificate needs artist claim
         // If artist, certificate is verified immediately
         let certificateStatus = 'verified';
@@ -146,9 +148,11 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           description,
           artist_name: artistName,
           medium,
+          creation_date: creationDate || null,
           image_url: imageUrl,
           certificate_number: certificateNumber,
           status: 'verified', // Keep status for backward compatibility
+          certificate_type: certificateType,
           certificate_status: certificateStatus, // New workflow status
           artist_account_id: artistAccountId,
           created_by: userId,
@@ -161,18 +165,34 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
         // Add gallery_profile_id if provided (for galleries with multiple profiles)
         if (galleryProfileId && userRole === USER_ROLES.GALLERY) {
-          // Verify the gallery profile belongs to this user
+          // Verify the gallery profile belongs to this user OR user is a gallery member
           try {
             const { data: profile } = await client
               .from('user_profiles')
               .select('id, user_id, role')
               .eq('id', galleryProfileId)
-              .eq('user_id', userId)
               .eq('role', USER_ROLES.GALLERY)
               .single();
             
             if (profile) {
-              insertData.gallery_profile_id = galleryProfileId;
+              // Check if user owns the profile or is a member
+              const isOwner = profile.user_id === userId;
+              let isMember = false;
+              
+              if (!isOwner) {
+                const { data: member } = await client
+                  .from('gallery_members')
+                  .select('id')
+                  .eq('gallery_profile_id', galleryProfileId)
+                  .eq('user_id', userId)
+                  .single();
+                
+                isMember = !!member;
+              }
+              
+              if (isOwner || isMember) {
+                insertData.gallery_profile_id = galleryProfileId;
+              }
             }
           } catch (error) {
             console.warn('Invalid gallery profile ID provided, continuing without it:', error);

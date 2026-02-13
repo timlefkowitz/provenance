@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
+import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 
 const ARTWORKS_BUCKET = 'artworks';
 
@@ -17,15 +18,16 @@ export async function createArtwork(formData: FormData, userId: string) {
     const description = formData.get('description') as string || '';
     const artistName = formData.get('artistName') as string || '';
     const medium = formData.get('medium') as string || '';
+    const creationDate = formData.get('creationDate') as string || '';
 
     if (!imageFile || !title) {
       return { error: 'Title and image are required' };
     }
 
-    // Ensure account exists (should be created by trigger, but verify)
+    // Ensure account exists and get role for certificate type (Gallery → Show, Collector → Collection, Artist → Authenticity)
     const { data: account, error: accountError } = await client
       .from('accounts')
-      .select('id')
+      .select('id, public_data')
       .eq('id', userId)
       .single();
 
@@ -62,21 +64,48 @@ export async function createArtwork(formData: FormData, userId: string) {
     // Generate certificate number
     const certificateNumber = await generateCertificateNumber(client);
 
+    // Certificate type by poster: gallery → show, collector → collection, artist → authenticity
+    const userRole = getUserRole(account?.public_data as Record<string, any>);
+    const certificateType = getCertificateTypeForRole(userRole);
+    const isCollectorOrGallery = userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY;
+    const certificateStatus = isCollectorOrGallery ? 'pending_artist_claim' : 'verified';
+    let artistAccountId: string | null = null;
+    if (isCollectorOrGallery && artistName) {
+      try {
+        const { data: artistAccount } = await client
+          .from('accounts')
+          .select('id, public_data')
+          .eq('name', artistName)
+          .single();
+        if (artistAccount && getUserRole(artistAccount.public_data as Record<string, any>) === USER_ROLES.ARTIST) {
+          artistAccountId = artistAccount.id;
+        }
+      } catch {
+        // Artist not found by name; they can claim later
+      }
+    }
+
     // Create artwork record
+    const insertPayload: Record<string, unknown> = {
+      account_id: userId,
+      title,
+      description,
+      artist_name: artistName,
+      medium,
+      creation_date: creationDate || null,
+      image_url: imageUrl,
+      certificate_number: certificateNumber,
+      status: 'verified',
+      certificate_type: certificateType,
+      certificate_status: certificateStatus,
+      created_by: userId,
+      updated_by: userId,
+    };
+    if (artistAccountId) (insertPayload as any).artist_account_id = artistAccountId;
+
     const { data: artwork, error } = await (client as any)
       .from('artworks')
-      .insert({
-        account_id: userId,
-        title,
-        description,
-        artist_name: artistName,
-        medium,
-        image_url: imageUrl,
-        certificate_number: certificateNumber,
-        status: 'verified',
-        created_by: userId,
-        updated_by: userId,
-      })
+      .insert(insertPayload)
       .select('id')
       .single();
 

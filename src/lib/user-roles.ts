@@ -48,3 +48,30 @@ export function getUserRole(publicData: Record<string, any> | null | undefined):
   return isValidRole(role) ? role : null;
 }
 
+/**
+ * Certificate type by poster role:
+ * Gallery → Certificate of Show; Collector → Certificate of Collection; Artist → Certificate of Authenticity
+ */
+export const CERTIFICATE_TYPES = {
+  AUTHENTICITY: 'authenticity',
+  SHOW: 'show',
+  COLLECTION: 'collection',
+} as const;
+
+export type CertificateType = typeof CERTIFICATE_TYPES[keyof typeof CERTIFICATE_TYPES];
+
+export function getCertificateTypeForRole(role: UserRole | null): CertificateType {
+  if (role === USER_ROLES.GALLERY) return CERTIFICATE_TYPES.SHOW;
+  if (role === USER_ROLES.COLLECTOR) return CERTIFICATE_TYPES.COLLECTION;
+  return CERTIFICATE_TYPES.AUTHENTICITY;
+}
+
+export function getCertificateTypeLabel(type: CertificateType): string {
+  const labels: Record<CertificateType, string> = {
+    [CERTIFICATE_TYPES.AUTHENTICITY]: 'Certificate of Authenticity',
+    [CERTIFICATE_TYPES.SHOW]: 'Certificate of Show',
+    [CERTIFICATE_TYPES.COLLECTION]: 'Certificate of Collection',
+  };
+  return labels[type] || labels[CERTIFICATE_TYPES.AUTHENTICITY];
+}
+
