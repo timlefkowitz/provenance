@@ -55,6 +55,7 @@ export function AddArtworkForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
@@ -70,6 +71,14 @@ export function AddArtworkForm({
     exhibitionId: '',
     galleryProfileId: '',
   });
+
+  // Revoke object URLs on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsRef.current.clear();
+    };
+  }, []);
 
   // Update local exhibitions when prop changes
   useEffect(() => {
@@ -137,12 +146,9 @@ export function AddArtworkForm({
           return;
         }
 
-        // Preview: read as data URL (no compression – upload original file)
-        const preview = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
+        // Preview: use object URL so the browser displays the file directly (avoids blank preview with some JPEGs)
+        const preview = URL.createObjectURL(file);
+        objectUrlsRef.current.add(preview);
 
         // Extract location from EXIF data
         let location: ImagePreview['location'] = null;
@@ -199,6 +205,11 @@ export function AddArtworkForm({
   };
 
   const removeImage = (index: number) => {
+    const img = imagePreviews[index];
+    if (img?.preview?.startsWith('blob:')) {
+      URL.revokeObjectURL(img.preview);
+      objectUrlsRef.current.delete(img.preview);
+    }
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
