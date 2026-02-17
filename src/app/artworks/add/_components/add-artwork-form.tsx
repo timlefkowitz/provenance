@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import imageCompression from 'browser-image-compression';
 import exifr from 'exifr';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -10,7 +9,7 @@ import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
-import { Camera, X, Upload, MapPin, ImageIcon } from 'lucide-react';
+import { Camera, X, Upload, MapPin } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 import type { UserRole } from '~/lib/user-roles';
 import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
@@ -56,12 +55,9 @@ export function AddArtworkForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const objectUrlsRef = useRef<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
-  const [compressing, setCompressing] = useState(false);
-  const [brokenPreviewIds, setBrokenPreviewIds] = useState<Set<string>>(new Set());
   const [uploadProgress, setUploadProgress] = useState<{ batch: number; totalBatches: number } | null>(null);
   const [primaryTitle, setPrimaryTitle] = useState('');
   const [localExhibitions, setLocalExhibitions] = useState<UserExhibition[]>(exhibitions);
@@ -74,14 +70,6 @@ export function AddArtworkForm({
     exhibitionId: '',
     galleryProfileId: '',
   });
-
-  // Revoke object URLs on unmount
-  useEffect(() => {
-    return () => {
-      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      objectUrlsRef.current.clear();
-    };
-  }, []);
 
   // Update local exhibitions when prop changes
   useEffect(() => {
@@ -137,155 +125,73 @@ export function AddArtworkForm({
     const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
 
-    setCompressing(true);
     setError(null);
 
     try {
       const newPreviews: ImagePreview[] = [];
-      
-      // Process and compress each image (Vercel has 4.5MB request body limit – keep each image ~700KB so multiple images fit)
-      const compressionOptions: Parameters<typeof imageCompression>[1] = {
-        maxSizeMB: 0.7,
-        maxWidthOrHeight: 1600,
-        useWebWorker: true,
-        fileType: 'image/jpeg',
-        initialQuality: 0.85,
-      };
-      const fallbackOptions: Parameters<typeof imageCompression>[1] = {
-        ...compressionOptions,
-        maxSizeMB: 0.4,
-        maxWidthOrHeight: 1280,
-        initialQuality: 0.75,
-      };
-      // Last resort: main thread + original format (avoids worker decode and JPEG conversion issues)
-      const lastResortOptions = (f: File): Parameters<typeof imageCompression>[1] => ({
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1200,
-        useWebWorker: false,
-        fileType: f.type || 'image/jpeg',
-      });
-
-      // If compression fails entirely, use original file when under this size (Vercel 4.5MB body limit – one image per request is ok)
-      const MAX_ORIGINAL_FALLBACK_BYTES = 4.5 * 1024 * 1024; // 4.5 MB
-      const failedNames: string[] = [];
 
       for (let index = 0; index < imageFiles.length; index++) {
         const file = imageFiles[index];
-        if (file.size > 50 * 1024 * 1024) {
-          setError(`"${file.name}" is too large. Please choose images under 50 MB.`);
-          setCompressing(false);
+        if (file.size > 10 * 1024 * 1024) {
+          setError(`"${file.name}" is too large. Please choose images under 10 MB.`);
           return;
         }
 
-        let compressedFile: File;
-        try {
-          compressedFile = await imageCompression(file, compressionOptions);
-          if (compressedFile.size > 1024 * 1024) {
-            compressedFile = await imageCompression(file, fallbackOptions);
-          }
-        } catch (compressionError) {
-          // Try main thread + original format first (fixes many iPhone/Photos JPEG decode failures in worker)
-          console.warn('Compression failed, trying main thread with original format:', compressionError);
-          try {
-            compressedFile = await imageCompression(file, lastResortOptions(file));
-          } catch (mainThreadError) {
-            try {
-              compressedFile = await imageCompression(file, fallbackOptions);
-            } catch (fallbackError) {
-              try {
-                compressedFile = await imageCompression(file, {
-                  ...lastResortOptions(file),
-                  fileType: 'image/jpeg',
-                });
-              } catch (finalError) {
-                console.error('All compression attempts failed:', finalError);
-                if (file.size <= MAX_ORIGINAL_FALLBACK_BYTES) {
-                  compressedFile = file;
-                } else {
-                  failedNames.push(file.name);
-                  continue;
-                }
-              }
-            }
-          }
-        }
-
-        // Create preview: use object URL when we kept the original file (compression failed) so browser can often display it; otherwise data URL
-        const usedOriginalFile = compressedFile === file;
-        let preview: string;
-        if (usedOriginalFile) {
-          preview = URL.createObjectURL(compressedFile);
-          objectUrlsRef.current.add(preview);
-        } else {
+        // Preview: read as data URL (no compression – upload original file)
+        const preview = await new Promise<string>((resolve) => {
           const reader = new FileReader();
-          preview = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(compressedFile);
-          });
-        }
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
 
-        // Extract location from EXIF data (use original file for EXIF, not compressed)
+        // Extract location from EXIF data
         let location: ImagePreview['location'] = null;
         try {
           const exifData = await exifr.gps(file);
           if (exifData?.latitude && exifData?.longitude) {
-            // Try to get reverse geocoded location
             try {
               const response = await fetch(
                 `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${exifData.latitude}&longitude=${exifData.longitude}&localityLanguage=en`
               );
               const geoData = await response.json();
-              
               location = {
                 latitude: exifData.latitude,
                 longitude: exifData.longitude,
                 city: geoData.city || geoData.locality,
                 region: geoData.principalSubdivision,
                 country: geoData.countryName,
-                formatted: geoData.locality 
+                formatted: geoData.locality
                   ? `${geoData.locality}, ${geoData.principalSubdivision || geoData.countryName}`
-                  : geoData.principalSubdivision 
+                  : geoData.principalSubdivision
                     ? `${geoData.principalSubdivision}, ${geoData.countryName}`
                     : geoData.countryName || null,
               };
-            } catch (geoError) {
-              // If reverse geocoding fails, just store coordinates
+            } catch {
               location = {
                 latitude: exifData.latitude,
                 longitude: exifData.longitude,
               };
             }
           }
-        } catch (exifError) {
-          // No location data available, that's okay
-          console.log('No location data in image:', exifError);
+        } catch {
+          // No location data
         }
 
         const previewId = `preview-${Date.now()}-${index}`;
-        const newPreview: ImagePreview = {
+        newPreviews.push({
           id: previewId,
-          file: compressedFile,
+          file,
           preview,
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
           location,
-        };
-        newPreviews.push(newPreview);
+        });
       }
 
-      if (failedNames.length > 0) {
-        setError(
-          `Could not process ${failedNames.length} ${failedNames.length === 1 ? 'image' : 'images'}: ${failedNames.join(', ')}. Try re-exporting as JPEG from Photos or Preview, or use different images. The rest were added.`
-        );
-      }
-
-      setBrokenPreviewIds(prev => new Set(prev)); // keep existing; new previews start unbroken
       setImagePreviews(prev => [...prev, ...newPreviews]);
-    } catch (error) {
-      console.error('Error processing images:', error);
+    } catch (err) {
+      console.error('Error processing images:', err);
       setError('Failed to process images. Please try again.');
     } finally {
-      setCompressing(false);
-      // Reset input to allow selecting the same files again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -293,11 +199,6 @@ export function AddArtworkForm({
   };
 
   const removeImage = (index: number) => {
-    const img = imagePreviews[index];
-    if (img?.preview?.startsWith('blob:')) {
-      URL.revokeObjectURL(img.preview);
-      objectUrlsRef.current.delete(img.preview);
-    }
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -445,7 +346,6 @@ export function AddArtworkForm({
               }}
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
-              disabled={compressing}
             >
               <Upload className="mr-2 h-4 w-4" />
               Choose Photos
@@ -461,21 +361,11 @@ export function AddArtworkForm({
               }}
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
-              disabled={compressing}
             >
               <Camera className="mr-2 h-4 w-4" />
               Take Photo
             </Button>
           </div>
-
-          {/* Compression Status */}
-          {compressing && (
-            <div className="mb-4 p-3 bg-wine/10 border border-wine/20 rounded-lg">
-              <p className="text-sm text-wine font-serif text-center">
-                Compressing images for faster upload...
-              </p>
-            </div>
-          )}
 
           {/* Image Previews */}
           {imagePreviews.length > 0 && (
@@ -486,53 +376,43 @@ export function AddArtworkForm({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {imagePreviews.map((img, index) => {
                   const previewId = img.id ?? `preview-${index}`;
-                  const previewBroken = brokenPreviewIds.has(previewId);
                   return (
-                  <div key={previewId} className="relative border border-wine/20 rounded-lg p-3 bg-white">
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
-                      aria-label="Remove image"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    <div className="relative">
-                    {previewBroken ? (
-                      <div className="w-full h-48 flex flex-col items-center justify-center gap-2 rounded-lg mb-2 bg-parchment/80 border border-wine/20 text-center px-3">
-                        <ImageIcon className="h-12 w-12 text-wine/50" aria-hidden />
-                        <p className="text-sm text-ink/80 font-serif">Preview not available (some .jpeg from phones/cameras can&apos;t be previewed here).</p>
-                        <p className="text-xs text-ink/60 font-serif">Your image will still upload correctly.</p>
+                    <div key={previewId} className="relative border border-wine/20 rounded-lg p-3 bg-white">
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
+                        aria-label="Remove image"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <div className="relative">
+                        <img
+                          src={img.preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-48 object-cover rounded-lg mb-2"
+                        />
+                        {img.location && (
+                          <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{img.location.formatted || 'Location detected'}</span>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <img
-                        src={img.preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-48 object-cover rounded-lg mb-2"
-                        onError={() => setBrokenPreviewIds(prev => new Set(prev).add(previewId))}
-                      />
-                    )}
-                      {img.location && (
-                        <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{img.location.formatted || 'Location detected'}</span>
-                        </div>
-                      )}
+                      <div className="space-y-1 text-left">
+                        <Label htmlFor={`title-${index}`} className="text-xs font-serif text-ink/70">
+                          Title for this artwork *
+                        </Label>
+                        <Input
+                          id={`title-${index}`}
+                          value={img.title}
+                          onChange={(e) => updateImageTitle(index, e.target.value)}
+                          placeholder="e.g., Dawn over the Valley"
+                          className="font-serif text-sm"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1 text-left">
-                      <Label htmlFor={`title-${index}`} className="text-xs font-serif text-ink/70">
-                        Title for this artwork *
-                      </Label>
-                    <Input
-                        id={`title-${index}`}
-                      value={img.title}
-                      onChange={(e) => updateImageTitle(index, e.target.value)}
-                        placeholder="e.g., Dawn over the Valley"
-                      className="font-serif text-sm"
-                      required
-                    />
-                    </div>
-                  </div>
                   );
                 })}
               </div>
