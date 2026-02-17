@@ -22,7 +22,6 @@ import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 type ImagePreview = {
   id?: string;
   file: File;
-  preview: string;
   title: string;
   location?: {
     latitude: number;
@@ -33,6 +32,45 @@ type ImagePreview = {
     formatted?: string;
   } | null;
 };
+
+/**
+ * Renders an img from a File using a blob URL that this component owns.
+ * Creating/revoking per component fixes blank previews under React Strict Mode
+ * (parent cleanup was revoking URLs before remount). Also tries data URL
+ * fallback if blob fails (e.g. HEIC or unsupported format).
+ */
+function PreviewImage({ file, alt, className }: { file: File; alt: string; className?: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    setFailed(false);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  // If blob URL failed to load (e.g. HEIC), try data URL once
+  const handleError = () => {
+    if (failed) return;
+    setFailed(true);
+    if (src?.startsWith('blob:')) URL.revokeObjectURL(src);
+    setSrc(null);
+    const reader = new FileReader();
+    reader.onloadend = () => setSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  if (!src) return <div className={className} style={{ minHeight: '12rem' }} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={handleError}
+    />
+  );
+}
 
 export function AddArtworkForm({ 
   userId, 
@@ -55,7 +93,6 @@ export function AddArtworkForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const objectUrlsRef = useRef<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
@@ -71,14 +108,6 @@ export function AddArtworkForm({
     exhibitionId: '',
     galleryProfileId: '',
   });
-
-  // Revoke object URLs on unmount to avoid memory leaks
-  useEffect(() => {
-    return () => {
-      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      objectUrlsRef.current.clear();
-    };
-  }, []);
 
   // Update local exhibitions when prop changes
   useEffect(() => {
@@ -146,10 +175,6 @@ export function AddArtworkForm({
           return;
         }
 
-        // Preview: use object URL so the browser displays the file directly (avoids blank preview with some JPEGs)
-        const preview = URL.createObjectURL(file);
-        objectUrlsRef.current.add(preview);
-
         // Extract location from EXIF data
         let location: ImagePreview['location'] = null;
         try {
@@ -187,7 +212,6 @@ export function AddArtworkForm({
         newPreviews.push({
           id: previewId,
           file,
-          preview,
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
           location,
         });
@@ -205,11 +229,6 @@ export function AddArtworkForm({
   };
 
   const removeImage = (index: number) => {
-    const img = imagePreviews[index];
-    if (img?.preview?.startsWith('blob:')) {
-      URL.revokeObjectURL(img.preview);
-      objectUrlsRef.current.delete(img.preview);
-    }
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -398,8 +417,8 @@ export function AddArtworkForm({
                         <X className="h-4 w-4" />
                       </button>
                       <div className="relative">
-                        <img
-                          src={img.preview}
+                        <PreviewImage
+                          file={img.file}
                           alt={`Preview ${index + 1}`}
                           className="w-full h-48 object-cover rounded-lg mb-2"
                         />
