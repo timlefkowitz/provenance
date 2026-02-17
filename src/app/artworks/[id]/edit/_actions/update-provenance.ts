@@ -42,10 +42,10 @@ export async function updateProvenance(
       return { error: 'You must be signed in to update provenance' };
     }
 
-    // Verify the user owns this artwork
+    // Verify the user owns this artwork or is a gallery member
     const { data: artwork, error: fetchError } = await (client as any)
       .from('artworks')
-      .select('account_id, title')
+      .select('account_id, title, gallery_profile_id')
       .eq('id', artworkId)
       .single();
 
@@ -53,8 +53,25 @@ export async function updateProvenance(
       return { error: 'Artwork not found' };
     }
 
-    if (!options?.skipOwnershipCheck && artwork.account_id !== user.id) {
-      return { error: 'You do not have permission to edit this artwork' };
+    if (!options?.skipOwnershipCheck) {
+      const isOwner = artwork.account_id === user.id;
+      let isGalleryMember = false;
+
+      // Check if user is a member of the gallery that posted this artwork
+      if (!isOwner && artwork.gallery_profile_id) {
+        const { data: member } = await client
+          .from('gallery_members')
+          .select('id')
+          .eq('gallery_profile_id', artwork.gallery_profile_id)
+          .eq('user_id', user.id)
+          .single();
+
+        isGalleryMember = !!member;
+      }
+
+      if (!isOwner && !isGalleryMember) {
+        return { error: 'You do not have permission to edit this artwork' };
+      }
     }
 
     // Store original title to check if it changed

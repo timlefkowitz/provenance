@@ -12,26 +12,43 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
     throw new Error('Unauthorized');
   }
 
-  // Verify user is a gallery and owns this exhibition
+  // Verify user is a gallery and owns this exhibition or is a gallery member
   const { data: exhibition } = await (client as any)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
     .single();
 
-  if (!exhibition || exhibition.gallery_id !== user.id) {
-    throw new Error('Exhibition not found or access denied');
+  if (!exhibition) {
+    throw new Error('Exhibition not found');
   }
 
-  const { data: account } = await client
-    .from('accounts')
-    .select('public_data')
-    .eq('id', user.id)
-    .single();
+  const isOwner = exhibition.gallery_id === user.id;
+  let isGalleryMember = false;
 
-  const userRole = getUserRole(account?.public_data as Record<string, any>);
-  if (userRole !== USER_ROLES.GALLERY) {
-    throw new Error('Only galleries can update exhibitions');
+  // Check if user is a member of any gallery profile owned by the gallery account
+  if (!isOwner) {
+    const { data: galleryProfiles } = await client
+      .from('user_profiles')
+      .select('id')
+      .eq('user_id', exhibition.gallery_id)
+      .eq('role', USER_ROLES.GALLERY);
+
+    if (galleryProfiles && galleryProfiles.length > 0) {
+      const profileIds = galleryProfiles.map(p => p.id);
+      const { data: member } = await client
+        .from('gallery_members')
+        .select('id')
+        .in('gallery_profile_id', profileIds)
+        .eq('user_id', user.id)
+        .single();
+
+      isGalleryMember = !!member;
+    }
+  }
+
+  if (!isOwner && !isGalleryMember) {
+    throw new Error('Exhibition not found or access denied');
   }
 
   const title = formData.get('title') as string;

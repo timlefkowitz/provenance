@@ -48,6 +48,7 @@ export function ArtworkCard({
   currentUserId?: string;
 }) {
   const router = useRouter();
+  const [imageError, setImageError] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [pending, startTransition] = useTransition();
   const [showSignInDialog, setShowSignInDialog] = useState(false);
@@ -150,7 +151,7 @@ export function ArtworkCard({
           prefetch={true}
         >
           <div className="relative aspect-square bg-parchment overflow-hidden">
-          {artwork.image_url ? (
+          {artwork.image_url && !imageError ? (
             <Image
               src={artwork.image_url}
               alt={artwork.title}
@@ -159,12 +160,13 @@ export function ArtworkCard({
               unoptimized
               loading="lazy"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              onError={() => setImageError(true)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-ink/30 font-serif">
-              No Image
+              {artwork.image_url && imageError ? 'Image unavailable' : 'No Image'}
             </div>
-            )}
+          )}
           </div>
         </Link>
         <CardHeader className="flex-1">

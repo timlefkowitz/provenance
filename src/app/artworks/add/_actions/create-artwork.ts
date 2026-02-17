@@ -5,8 +5,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
-
-const ARTWORKS_BUCKET = 'artworks';
+import { getArtworkImagePublicUrl, getContentTypeAndExtension, ARTWORKS_BUCKET } from '~/lib/artwork-storage';
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
@@ -184,11 +183,11 @@ async function uploadArtworkImage(
 
     const bytes = await file.arrayBuffer();
     const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const extension = file.name.split('.').pop() || 'jpg';
+    const { extension, contentType } = getContentTypeAndExtension(file);
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
-      contentType: file.type,
+      contentType,
       upsert: false,
     });
 
@@ -201,12 +200,8 @@ async function uploadArtworkImage(
       throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
     }
 
-    const { data: urlData } = bucket.getPublicUrl(fileName);
-    if (!urlData?.publicUrl) {
-      throw new Error('Failed to get public URL for uploaded image');
-    }
-    
-    return urlData.publicUrl;
+    // Build URL from app env so it matches Next.js image remotePatterns
+    return getArtworkImagePublicUrl(fileName);
   } catch (error) {
     console.error('Error in uploadArtworkImage:', error);
     throw error; // Re-throw to get better error messages

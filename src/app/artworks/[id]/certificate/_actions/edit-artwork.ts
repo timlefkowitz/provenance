@@ -6,8 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
-
-const ARTWORKS_BUCKET = 'artworks';
+import { getArtworkImagePublicUrl, getContentTypeAndExtension, ARTWORKS_BUCKET } from '~/lib/artwork-storage';
 
 export type EditArtworkFields = {
   title?: string;
@@ -44,11 +43,11 @@ async function uploadArtworkImage(
 
     const bytes = await file.arrayBuffer();
     const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const extension = file.name.split('.').pop() || 'jpg';
+    const { extension, contentType } = getContentTypeAndExtension(file);
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
-      contentType: file.type,
+      contentType,
       upsert: false,
     });
 
@@ -57,12 +56,8 @@ async function uploadArtworkImage(
       throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
     }
 
-    const { data: urlData } = bucket.getPublicUrl(fileName);
-    if (!urlData?.publicUrl) {
-      throw new Error('Failed to get public URL for uploaded image');
-    }
-    
-    return urlData.publicUrl;
+    // Build URL from app env so it matches Next.js image remotePatterns
+    return getArtworkImagePublicUrl(fileName);
   } catch (error) {
     console.error('Error in uploadArtworkImage:', error);
     throw error;
@@ -85,7 +80,7 @@ export async function editArtwork(
     // Verify artwork exists and get owner
     const { data: artwork, error: artworkError } = await (client as any)
       .from('artworks')
-      .select('id, account_id, title')
+      .select('id, account_id, title, gallery_profile_id')
       .eq('id', artworkId)
       .single();
 
@@ -93,9 +88,24 @@ export async function editArtwork(
       return { success: false, error: 'Artwork not found' };
     }
 
-    // Verify isCreator matches actual ownership
+    // Verify isCreator matches actual ownership or gallery membership
     const actualIsCreator = artwork.account_id === user.id;
-    if (isCreator !== actualIsCreator) {
+    let isGalleryMember = false;
+
+    // Check if user is a member of the gallery that posted this artwork
+    if (!actualIsCreator && artwork.gallery_profile_id) {
+      const { data: member } = await client
+        .from('gallery_members')
+        .select('id')
+        .eq('gallery_profile_id', artwork.gallery_profile_id)
+        .eq('user_id', user.id)
+        .single();
+
+      isGalleryMember = !!member;
+    }
+
+    const canEdit = actualIsCreator || isGalleryMember;
+    if (isCreator !== canEdit) {
       return { success: false, error: 'Permission mismatch' };
     }
 

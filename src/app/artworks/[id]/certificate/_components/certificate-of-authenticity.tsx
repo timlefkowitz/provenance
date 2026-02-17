@@ -86,6 +86,7 @@ export function CertificateOfAuthenticity({
   const [verifying, setVerifying] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
+  const [imageError, setImageError] = useState(false);
   // Initialize scan locations from artwork metadata
   const initialScanLocations = (artwork.metadata as any)?.scan_locations || [];
   const [scanLocations, setScanLocations] = useState<Array<{
@@ -521,16 +522,23 @@ export function CertificateOfAuthenticity({
           {artwork.image_url && (
             <div className="mb-6 sm:mb-8 text-center">
               <div className="inline-block border-2 border-wine p-2 sm:p-4 bg-parchment max-w-full">
-                <div className="relative w-full max-w-full">
-                  <Image
-                    src={artwork.image_url}
-                    alt={artwork.title}
-                    width={600}
-                    height={400}
-                    className="object-contain w-full h-auto max-h-64 sm:max-h-80 md:max-h-96"
-                    unoptimized
-                  />
-                </div>
+                {imageError ? (
+                  <div className="w-full min-h-48 flex items-center justify-center text-ink/50 font-serif py-12">
+                    Image unavailable
+                  </div>
+                ) : (
+                  <div className="relative w-full max-w-full">
+                    <Image
+                      src={artwork.image_url}
+                      alt={artwork.title}
+                      width={600}
+                      height={400}
+                      className="object-contain w-full h-auto max-h-64 sm:max-h-80 md:max-h-96"
+                      unoptimized
+                      onError={() => setImageError(true)}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

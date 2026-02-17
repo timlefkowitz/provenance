@@ -49,6 +49,16 @@ BEGIN
                 );
         END;
         $inner$ LANGUAGE plpgsql SECURITY DEFINER;
+        -- Allow authenticated to call this from RLS policies
+        GRANT EXECUTE ON FUNCTION public.is_gallery_member_for_artwork(uuid, uuid) TO authenticated;
+    END IF;
+END $$;
+
+-- If function already exists (from gallery members migration), grant execute so RLS can call it
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public' AND p.proname = 'is_gallery_member_for_artwork') THEN
+        GRANT EXECUTE ON FUNCTION public.is_gallery_member_for_artwork(uuid, uuid) TO authenticated;
     END IF;
 END $$;
 

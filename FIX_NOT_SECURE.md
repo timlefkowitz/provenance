@@ -1,91 +1,88 @@
-# Fix "This Page Isn't Secure" on provenance.guru
+# Fix "This Page Isn't Secure" / "Proceed Anyway" on provenance.guru
 
-When the browser says **this page isn't secure**, it usually means either:
+When the browser says **this page isn't secure** or asks you to **proceed anyway**, it usually means:
 
 1. **You're on HTTP** – The site is loading over `http://` instead of `https://`.
-2. **No SSL certificate yet** – Vercel hasn’t been able to issue an HTTPS certificate for your domain (often because of DNS).
+2. **No SSL certificate yet** – Vercel hasn't been able to issue an HTTPS certificate (often because of DNS or CAA).
+3. **App is generating HTTP links** – e.g. `NEXT_PUBLIC_SITE_URL` is wrong in Vercel.
 
-Follow these steps.
-
----
-
-## Step 1: Use HTTPS in the address bar
-
-- Open **`https://provenance.guru`** (with `https://`), not `http://provenance.guru`.
-- If you use a bookmark, update it to `https://`.
-
-If **only** HTTP was the issue, the padlock should appear when you use `https://`.
+Use the checklist below so the site is always served over HTTPS with a valid certificate.
 
 ---
 
-## Step 2: Check the domain in Vercel
+## 1. DNS in GoDaddy (you already did this)
 
-Vercel automatically issues an SSL certificate (via Let’s Encrypt) **after** the domain is added and DNS is correct. If DNS is wrong or not propagated, the certificate is never issued and the site can show “not secure.”
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard) → your project.
-2. Open **Settings** → **Domains**.
-3. Find **provenance.guru** and check the status:
-   - **Valid Configuration** – DNS is correct; SSL should be issued (or in progress).
-   - **Invalid Configuration** – Vercel will show what’s wrong (e.g. missing or wrong DNS records). Fix those first.
+- **Apex:** one **A** record: **Name** `@` → **Value** `76.76.21.21`
+- **www:** one **CNAME**: **Name** `www` → **Value** `cname.vercel-dns.com`
+- **No extra records** for the apex (no duplicate A, AAAA, or CNAME for `@`)
 
 ---
 
-## Step 3: Fix DNS (if Vercel says Invalid Configuration)
+## 2. CAA record (required for Let's Encrypt)
 
-1. In Vercel, click **provenance.guru** and copy the **exact** DNS records it shows.
-2. In **GoDaddy**: My Products → **provenance.guru** → **DNS** (Manage DNS).
-3. Ensure you have the records Vercel asks for, for example:
-   - **Root (provenance.guru):**  
-     - Either an **A** record pointing to Vercel’s IP (e.g. `76.76.21.21`),  
-     - Or an **ALIAS** record if your registrar supports it (value from Vercel).
-   - **www:**  
-     - **CNAME** record: `www` → value Vercel gives (e.g. `cname.vercel-dns.com`).
-4. Save and wait **10–30 minutes** (up to 48 hours in rare cases). Recheck **Settings → Domains** in Vercel until it shows **Valid Configuration**.
+Vercel uses Let's Encrypt. If you have **any** CAA records, one **must** allow Let's Encrypt or the certificate will never be issued.
 
-Details and alternatives (e.g. if GoDaddy doesn’t support ALIAS) are in **FIX_DNS_RED_X.md** and **ADD_ROOT_DOMAIN_RECORD.md**.
+In GoDaddy DNS, ensure you have:
 
----
+| Type | Name | Value           | TTL   |
+|------|------|-----------------|-------|
+| CAA  | `@`  | `0 issue "letsencrypt.org"` | 600 or default |
 
-## Step 4: Allow Let’s Encrypt (CAA records)
-
-If you added **CAA** records for your domain, they must allow Let’s Encrypt, or Vercel can’t get a certificate.
-
-In GoDaddy DNS, add (or keep) a CAA record:
-
-- **Type:** `CAA`
-- **Name:** `@` (or blank for root)
-- **Value:** `0 issue "letsencrypt.org"`
-- **TTL:** 600 (or default)
-
-Save and wait for DNS to update, then recheck the domain in Vercel.
+- If you have other CAA records (e.g. `0 issue "digicert.com"`), either **add** the Let's Encrypt one above or remove CAA records that block other CAs (depending on your policy).
+- **No CAA at all** is also fine (no restriction = Let's Encrypt can issue).
 
 ---
 
-## Step 5: Wait for the certificate
+## 3. Domain in Vercel
 
-After DNS shows **Valid Configuration** in Vercel:
-
-- Certificate issuance can take a few minutes (sometimes up to an hour).
-- Don’t change DNS again during this time.
-- Visit **https://provenance.guru** again; the padlock should appear once the cert is active.
-
----
-
-## Step 6: Clear cache and retry
-
-- Hard refresh: **Ctrl+Shift+R** (Windows/Linux) or **Cmd+Shift+R** (Mac).
-- Or try an incognito/private window.
-- Make sure you’re on **https://provenance.guru**.
+1. [Vercel Dashboard](https://vercel.com/dashboard) → your project → **Settings** → **Domains**.
+2. **provenance.guru** and **www.provenance.guru** should be listed.
+3. Status for **provenance.guru** must be **Valid Configuration**. If it says **Invalid Configuration**, Vercel will show what's wrong (fix DNS/CAA first).
+4. Optional: click the domain → **Refresh** to re-run DNS check and trigger certificate issuance.
 
 ---
 
-## Quick checklist
+## 4. Don't block certificate validation
 
-- [ ] You’re opening **https://provenance.guru** (not http).
-- [ ] **provenance.guru** is added in Vercel (Settings → Domains).
-- [ ] Domain status in Vercel is **Valid Configuration** (DNS matches what Vercel shows).
-- [ ] If you use CAA records, `0 issue "letsencrypt.org"` is present.
-- [ ] You’ve waited at least 10–30 minutes after fixing DNS.
-- [ ] You’ve refreshed or tried in a private window.
+- **Do not** redirect or rewrite the `/.well-known` path (Vercel needs it for Let's Encrypt HTTP-01). If you add a `vercel.json` or middleware, leave `/.well-known` untouched.
 
-Once DNS is valid and the certificate is issued, Vercel serves the site over HTTPS and the “not secure” warning should go away.
+---
+
+## 5. Environment variable in Vercel
+
+So the app never builds or redirects to HTTP:
+
+- In Vercel: **Settings** → **Environment Variables**
+- Set **NEXT_PUBLIC_SITE_URL** = **`https://provenance.guru`** (with `https://`, no trailing slash)
+- Redeploy after changing so the new value is used.
+
+---
+
+## 6. Wait for the certificate
+
+After DNS (and CAA) are correct and Vercel shows **Valid Configuration**:
+
+- Certificate issuance usually takes **a few minutes** (up to ~1 hour in some cases).
+- Avoid changing DNS again during this time.
+- Then open **https://provenance.guru** (and **https://www.provenance.guru**) and check for the padlock.
+
+---
+
+## 7. Use HTTPS and clear cache
+
+- Always open **https://provenance.guru** (not `http://`). Update bookmarks to `https://`.
+- If it still shows "not secure": hard refresh (**Cmd+Shift+R** / **Ctrl+Shift+R**) or try an incognito/private window.
+
+---
+
+## Quick checklist (so you don't get "proceed anyway")
+
+- [ ] GoDaddy: one A record `@` → `76.76.21.21`; one CNAME `www` → `cname.vercel-dns.com`; no duplicate apex records.
+- [ ] GoDaddy: if you use CAA, `0 issue "letsencrypt.org"` exists for `@`.
+- [ ] Vercel **Settings → Domains**: **provenance.guru** status is **Valid Configuration**.
+- [ ] Vercel **Settings → Environment Variables**: **NEXT_PUBLIC_SITE_URL** = **https://provenance.guru**.
+- [ ] No redirect/rewrite of `/.well-known` (e.g. in `vercel.json` or middleware).
+- [ ] Waited 10–30 minutes (or up to ~1 hour) after fixing DNS/CAA.
+- [ ] You open **https://provenance.guru** and refreshed or tried in a private window.
+
+Once all of the above are done, Vercel serves the site over HTTPS with a valid certificate and the "not secure" / "proceed anyway" message should go away.

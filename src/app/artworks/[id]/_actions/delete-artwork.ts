@@ -17,7 +17,7 @@ export async function deleteArtwork(artworkId: string) {
   // Get artwork to verify ownership
   const { data: artwork, error: artworkError } = await (client as any)
     .from('artworks')
-    .select('id, account_id, image_url')
+    .select('id, account_id, image_url, gallery_profile_id')
     .eq('id', artworkId)
     .single();
 
@@ -25,8 +25,23 @@ export async function deleteArtwork(artworkId: string) {
     throw new Error('Artwork not found');
   }
 
-  // Verify ownership
-  if (artwork.account_id !== user.id) {
+  // Verify ownership or gallery membership
+  const isOwner = artwork.account_id === user.id;
+  let isGalleryMember = false;
+
+  // Check if user is a member of the gallery that posted this artwork
+  if (!isOwner && artwork.gallery_profile_id) {
+    const { data: member } = await client
+      .from('gallery_members')
+      .select('id')
+      .eq('gallery_profile_id', artwork.gallery_profile_id)
+      .eq('user_id', user.id)
+      .single();
+
+    isGalleryMember = !!member;
+  }
+
+  if (!isOwner && !isGalleryMember) {
     throw new Error('You can only delete your own artworks');
   }
 
