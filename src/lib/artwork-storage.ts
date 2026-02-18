@@ -3,6 +3,8 @@
  * All artwork image uploads (add flow, edit flow) must go through ArtworkImageUploader.
  */
 
+import sharp from 'sharp';
+
 const ARTWORKS_BUCKET = 'artworks';
 
 const EXT_TO_MIME: Record<string, string> = {
@@ -50,12 +52,24 @@ export class ArtworkImageUploader {
   ): Promise<string> {
     const fileLabel = `${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`;
 
-    const bytes = await file.arrayBuffer();
+    let bytes = await file.arrayBuffer();
+    const { extension: origExt, contentType: origContentType } = getContentTypeAndExtension(file);
+    let extension = origExt;
+    let contentType = origContentType;
+
+    // Convert to standard JPEG so HEIC and browser-unfriendly formats display on certificate.
+    const converted = await normalizeToJpeg(bytes);
+    if (converted) {
+      bytes = converted;
+      extension = 'jpeg';
+      contentType = 'image/jpeg';
+      console.info('[ArtworkUpload] Normalized image to JPEG for storage', { original: file.name });
+    }
+
     const signature = getBinarySignature(bytes);
     // Use admin storage client for the actual upload so this server action path
     // does not fail when storage RLS/session propagation is inconsistent.
     const bucket = adminClient.storage.from(ARTWORKS_BUCKET);
-    const { extension, contentType } = getContentTypeAndExtension(file);
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
     console.info('[ArtworkUpload] Starting upload', {
       file: fileLabel,
@@ -188,4 +202,17 @@ function getBinarySignature(input: ArrayBuffer): { hex: string; ascii: string } 
     .map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.'))
     .join('');
   return { hex, ascii };
+}
+
+/** Convert image to standard JPEG. Returns buffer on success, null if conversion fails. */
+async function normalizeToJpeg(input: ArrayBuffer): Promise<ArrayBuffer | null> {
+  try {
+    const buf = await sharp(Buffer.from(input))
+      .rotate() // Auto-rotate from EXIF
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  } catch {
+    return null;
+  }
 }
