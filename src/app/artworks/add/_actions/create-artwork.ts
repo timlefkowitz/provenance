@@ -5,7 +5,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
-import { uploadArtworkImage as uploadArtworkImageStorage } from '~/lib/artwork-storage';
+import { artworkImageUploader } from '~/lib/artwork-storage';
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
@@ -51,7 +51,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     let imageUrl: string;
     try {
       const adminClient = getSupabaseServerAdminClient();
-      imageUrl = await uploadArtworkImageStorage(client, adminClient, imageFile, userId);
+      imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, userId);
     } catch (uploadError: any) {
       console.error('Upload error:', uploadError);
       return { error: uploadError?.message || 'Failed to upload image. Please check that the storage bucket exists.' };

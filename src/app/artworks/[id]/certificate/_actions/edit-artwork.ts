@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
-import { uploadArtworkImage as uploadArtworkImageStorage } from '~/lib/artwork-storage';
+import { artworkImageUploader } from '~/lib/artwork-storage';
 
 export type EditArtworkFields = {
   title?: string;
@@ -79,7 +79,7 @@ export async function editArtwork(
     if (imageFile && imageFile.size > 0) {
       try {
         const adminClient = getSupabaseServerAdminClient();
-        const imageUrl = await uploadArtworkImageStorage(client, adminClient, imageFile, user.id);
+        const imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, user.id);
         if (imageUrl) {
           updateFields.image_url = imageUrl;
         }

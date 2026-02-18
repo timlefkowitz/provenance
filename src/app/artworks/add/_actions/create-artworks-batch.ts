@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
-import { uploadArtworkImage as uploadArtworkImageStorage } from '~/lib/artwork-storage';
+import { artworkImageUploader } from '~/lib/artwork-storage';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -89,7 +89,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       }
 
       try {
-        const imageUrl = await uploadArtworkImageStorage(client, adminClient, imageFile, userId);
+        const imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, userId);
 
         // Generate certificate number
         const certificateNumber = await generateCertificateNumber(client);
