@@ -55,12 +55,11 @@ function PreviewFromFile({
     setUrl(blobUrl);
     setFailed(false);
     setTriedDataUrl(false);
-    // Revoke in next tick so React Strict Mode / rapid re-runs don't revoke
-    // the URL before the <img> has a chance to load it
-    const toRevoke = blobUrl;
-    setTimeout(() => URL.revokeObjectURL(toRevoke), 0);
     return () => {
-      blobUrlRef.current = null;
+      if (blobUrlRef.current === blobUrl) {
+        blobUrlRef.current = null;
+      }
+      URL.revokeObjectURL(blobUrl);
     };
   }, [file]);
 
