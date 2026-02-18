@@ -44,6 +44,10 @@ async function readFileSignature(file: File): Promise<{ hex: string; ascii: stri
   return { hex, ascii };
 }
 
+function isHeicSignature(ascii: string): boolean {
+  return ascii.includes('ftypheic') || ascii.includes('ftypheif') || ascii.includes('ftypmif1');
+}
+
 /** Renders preview from File: blob URL first, then data URL fallback for picky JPEGs (e.g. Safari). */
 function PreviewFromFile({
   file,
@@ -66,10 +70,9 @@ function PreviewFromFile({
     setFailed(false);
     setTriedDataUrl(false);
     return () => {
-      if (blobUrlRef.current === blobUrl) {
-        blobUrlRef.current = null;
-      }
-      URL.revokeObjectURL(blobUrl);
+      const current = blobUrlRef.current;
+      blobUrlRef.current = null;
+      if (current) URL.revokeObjectURL(current);
     };
   }, [file]);
 
@@ -113,31 +116,40 @@ function PreviewFromFile({
             height: canvas.height,
           });
         })
-        .catch((err) => {
-          readFileSignature(file)
-            .then((sig) => {
-              console.error('[ArtworkPreview] Bitmap fallback failed', {
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                error: err instanceof Error ? err.message : String(err),
-                signatureHex: sig.hex,
-                signatureAscii: sig.ascii,
-                hint:
-                  sig.ascii.includes('ftypheic') || sig.ascii.includes('ftypheif')
-                    ? 'File appears to be HEIC/HEIF despite extension; browser decode can fail.'
-                    : undefined,
+        .catch(async (err) => {
+          const sig = await readFileSignature(file).catch(() => ({ ascii: '', hex: '' }));
+          if (isHeicSignature(sig.ascii)) {
+            try {
+              const convert = (await import('heic-convert/browser')).default;
+              const arrayBuffer = await file.arrayBuffer();
+              const jpegBuffer = await convert({
+                buffer: arrayBuffer,
+                format: 'JPEG',
+                quality: 0.9,
               });
-            })
-            .catch(() => {
-              console.error('[ArtworkPreview] Bitmap fallback failed', {
+              const blob = new Blob([jpegBuffer as BlobPart], { type: 'image/jpeg' });
+              const blobUrl = URL.createObjectURL(blob);
+              blobUrlRef.current = blobUrl;
+              setUrl(blobUrl);
+              console.info('[ArtworkPreview] HEIC convert succeeded', { name: file.name });
+              return;
+            } catch (heicErr) {
+              console.warn('[ArtworkPreview] HEIC convert failed', {
                 name: file.name,
-                type: file.type,
-                size: file.size,
-                error: err instanceof Error ? err.message : String(err),
+                error: heicErr instanceof Error ? heicErr.message : String(heicErr),
               });
-            })
-            .finally(() => setFailed(true));
+            }
+          } else {
+            console.error('[ArtworkPreview] Bitmap fallback failed', {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              error: err instanceof Error ? err.message : String(err),
+              signatureHex: sig.hex,
+              signatureAscii: sig.ascii,
+            });
+          }
+          setFailed(true);
         });
       return;
     }
