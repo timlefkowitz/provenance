@@ -43,7 +43,7 @@ export class ArtworkImageUploader {
    * Call from server actions only (pass getSupabaseServerClient() and getSupabaseServerAdminClient()).
    */
   async upload(
-    _client: ArtworkStorageClient,
+    client: ArtworkStorageClient,
     adminClient: ArtworkStorageAdminClient,
     file: File,
     userId: string,
@@ -79,6 +79,20 @@ export class ArtworkImageUploader {
         });
         uploadError = retryUpload.error;
       }
+    }
+
+    // If admin upload still failed (often due to invalid/missing service role key in env),
+    // fall back to authenticated client upload so RLS-enabled environments keep working.
+    if (uploadError) {
+      const userBucket = client.storage.from(ARTWORKS_BUCKET);
+      const userUpload = await userBucket.upload(fileName, bytes, {
+        contentType,
+        upsert: false,
+      });
+      if (!userUpload.error) {
+        return getArtworkImagePublicUrl(fileName);
+      }
+      uploadError = userUpload.error;
     }
 
     if (uploadError) {
