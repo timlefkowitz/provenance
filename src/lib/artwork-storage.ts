@@ -43,26 +43,12 @@ export class ArtworkImageUploader {
    * Call from server actions only (pass getSupabaseServerClient() and getSupabaseServerAdminClient()).
    */
   async upload(
-    client: ArtworkStorageClient,
+    _client: ArtworkStorageClient,
     adminClient: ArtworkStorageAdminClient,
     file: File,
     userId: string,
   ): Promise<string> {
     const fileLabel = `${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`;
-
-    const { data: buckets } = await adminClient.storage.listBuckets();
-    const bucketExists = buckets?.some((b) => b.id === ARTWORKS_BUCKET);
-    if (!bucketExists) {
-      console.error('[ArtworkUpload] Bucket missing, creating:', ARTWORKS_BUCKET);
-      const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
-        public: true,
-        allowedMimeTypes: [...ALLOWED_MIME_TYPES],
-        fileSizeLimit: FILE_SIZE_LIMIT,
-      });
-      if (createError) {
-        console.error('[ArtworkUpload] Bucket create failed:', createError.message ?? createError);
-      }
-    }
 
     const bytes = await file.arrayBuffer();
     // Use admin storage client for the actual upload so this server action path
@@ -71,10 +57,29 @@ export class ArtworkImageUploader {
     const { extension, contentType } = getContentTypeAndExtension(file);
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
-    const { error: uploadError } = await bucket.upload(fileName, bytes, {
+    const firstUpload = await bucket.upload(fileName, bytes, {
       contentType,
       upsert: false,
     });
+    let uploadError = firstUpload.error;
+
+    // Keep upload path lean: only create bucket on-demand if upload says it's missing.
+    if (uploadError && isBucketMissingError(uploadError.message)) {
+      const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
+        public: true,
+        allowedMimeTypes: [...ALLOWED_MIME_TYPES],
+        fileSizeLimit: FILE_SIZE_LIMIT,
+      });
+
+      // Retry once after ensuring bucket exists.
+      if (!createError || isAlreadyExistsError(createError.message)) {
+        const retryUpload = await bucket.upload(fileName, bytes, {
+          contentType,
+          upsert: false,
+        });
+        uploadError = retryUpload.error;
+      }
+    }
 
     if (uploadError) {
       console.error('[ArtworkUpload] Storage upload failed:', {
@@ -91,6 +96,16 @@ export class ArtworkImageUploader {
 
     return getArtworkImagePublicUrl(fileName);
   }
+}
+
+function isBucketMissingError(message?: string): boolean {
+  const msg = (message ?? '').toLowerCase();
+  return msg.includes('bucket not found') || msg.includes('not found');
+}
+
+function isAlreadyExistsError(message?: string): boolean {
+  const msg = (message ?? '').toLowerCase();
+  return msg.includes('already exists') || msg.includes('duplicate');
 }
 
 function getContentTypeAndExtension(file: { name: string; type: string }): { extension: string; contentType: string } {
