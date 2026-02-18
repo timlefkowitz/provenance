@@ -56,6 +56,13 @@ export class ArtworkImageUploader {
     const bucket = adminClient.storage.from(ARTWORKS_BUCKET);
     const { extension, contentType } = getContentTypeAndExtension(file);
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
+    console.info('[ArtworkUpload] Starting upload', {
+      file: fileLabel,
+      contentType,
+      storagePath: fileName,
+      bucket: ARTWORKS_BUCKET,
+      strategy: 'admin-first',
+    });
 
     const firstUpload = await bucket.upload(fileName, bytes, {
       contentType,
@@ -65,6 +72,11 @@ export class ArtworkImageUploader {
 
     // Keep upload path lean: only create bucket on-demand if upload says it's missing.
     if (uploadError && isBucketMissingError(uploadError.message)) {
+      console.warn('[ArtworkUpload] Bucket missing, attempting create-and-retry', {
+        bucket: ARTWORKS_BUCKET,
+        storagePath: fileName,
+        error: uploadError.message ?? uploadError,
+      });
       const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
         public: true,
         allowedMimeTypes: [...ALLOWED_MIME_TYPES],
@@ -78,21 +90,42 @@ export class ArtworkImageUploader {
           upsert: false,
         });
         uploadError = retryUpload.error;
+        if (!uploadError) {
+          console.info('[ArtworkUpload] Upload succeeded after bucket create/retry', {
+            storagePath: fileName,
+          });
+        }
+      } else {
+        console.error('[ArtworkUpload] Bucket create failed', {
+          bucket: ARTWORKS_BUCKET,
+          error: createError.message ?? createError,
+        });
       }
     }
 
     // If admin upload still failed (often due to invalid/missing service role key in env),
     // fall back to authenticated client upload so RLS-enabled environments keep working.
     if (uploadError) {
+      console.warn('[ArtworkUpload] Admin upload failed, trying authenticated fallback', {
+        storagePath: fileName,
+        error: uploadError.message ?? uploadError,
+      });
       const userBucket = client.storage.from(ARTWORKS_BUCKET);
       const userUpload = await userBucket.upload(fileName, bytes, {
         contentType,
         upsert: false,
       });
       if (!userUpload.error) {
+        console.info('[ArtworkUpload] Authenticated fallback upload succeeded', {
+          storagePath: fileName,
+        });
         return getArtworkImagePublicUrl(fileName);
       }
       uploadError = userUpload.error;
+      console.error('[ArtworkUpload] Authenticated fallback upload failed', {
+        storagePath: fileName,
+        error: uploadError.message ?? uploadError,
+      });
     }
 
     if (uploadError) {

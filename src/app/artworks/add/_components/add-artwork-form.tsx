@@ -65,25 +65,64 @@ function PreviewFromFile({
 
   const handleError = () => {
     if (!triedDataUrl && url?.startsWith('blob:')) {
+      console.warn('[ArtworkPreview] Blob preview failed, trying bitmap fallback', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
       if (blobUrlRef.current === url) {
         blobUrlRef.current = null;
         URL.revokeObjectURL(url);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        setUrl(dataUrl);
-        setTriedDataUrl(true);
-      };
-      reader.onerror = () => {
-        console.error('[ArtworkPreview] Blob and data URL failed:', file.name, file.type, file.size);
-        setFailed(true);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      console.error('[ArtworkPreview] Image failed to load (preview only):', file.name, file.type, file.size);
-      setFailed(true);
+      setTriedDataUrl(true);
+
+      // Some camera JPEGs fail direct <img> decode in certain browsers.
+      // Try transcoding through canvas for a resilient preview.
+      createImageBitmap(file)
+        .then((bitmap) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            bitmap.close();
+            console.error('[ArtworkPreview] Canvas context unavailable', {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            });
+            setFailed(true);
+            return;
+          }
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          setUrl(canvas.toDataURL('image/jpeg', 0.9));
+          console.info('[ArtworkPreview] Bitmap fallback succeeded', {
+            name: file.name,
+            width: canvas.width,
+            height: canvas.height,
+          });
+        })
+        .catch((err) => {
+          console.error('[ArtworkPreview] Bitmap fallback failed', {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          setFailed(true);
+        });
+      return;
     }
+
+    console.error('[ArtworkPreview] Image preview failed after fallback', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      triedDataUrl,
+      urlType: url?.slice(0, 10) ?? 'none',
+    });
+    setFailed(true);
   };
 
   if (failed) {
