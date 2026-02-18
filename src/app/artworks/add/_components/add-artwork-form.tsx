@@ -34,6 +34,16 @@ type ImagePreview = {
   } | null;
 };
 
+async function readFileSignature(file: File): Promise<{ hex: string; ascii: string }> {
+  const head = await file.slice(0, 16).arrayBuffer();
+  const bytes = Array.from(new Uint8Array(head));
+  const hex = bytes.map((b) => b.toString(16).padStart(2, '0')).join(' ');
+  const ascii = bytes
+    .map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.'))
+    .join('');
+  return { hex, ascii };
+}
+
 /** Renders preview from File: blob URL first, then data URL fallback for picky JPEGs (e.g. Safari). */
 function PreviewFromFile({
   file,
@@ -104,13 +114,30 @@ function PreviewFromFile({
           });
         })
         .catch((err) => {
-          console.error('[ArtworkPreview] Bitmap fallback failed', {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          setFailed(true);
+          readFileSignature(file)
+            .then((sig) => {
+              console.error('[ArtworkPreview] Bitmap fallback failed', {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                error: err instanceof Error ? err.message : String(err),
+                signatureHex: sig.hex,
+                signatureAscii: sig.ascii,
+                hint:
+                  sig.ascii.includes('ftypheic') || sig.ascii.includes('ftypheif')
+                    ? 'File appears to be HEIC/HEIF despite extension; browser decode can fail.'
+                    : undefined,
+              });
+            })
+            .catch(() => {
+              console.error('[ArtworkPreview] Bitmap fallback failed', {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            })
+            .finally(() => setFailed(true));
         });
       return;
     }

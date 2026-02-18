@@ -51,6 +51,7 @@ export class ArtworkImageUploader {
     const fileLabel = `${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`;
 
     const bytes = await file.arrayBuffer();
+    const signature = getBinarySignature(bytes);
     // Use admin storage client for the actual upload so this server action path
     // does not fail when storage RLS/session propagation is inconsistent.
     const bucket = adminClient.storage.from(ARTWORKS_BUCKET);
@@ -62,6 +63,8 @@ export class ArtworkImageUploader {
       storagePath: fileName,
       bucket: ARTWORKS_BUCKET,
       strategy: 'admin-first',
+      signatureHex: signature.hex,
+      signatureAscii: signature.ascii,
     });
 
     const firstUpload = await bucket.upload(fileName, bytes, {
@@ -177,3 +180,12 @@ export function getArtworkImagePublicUrl(filePath: string): string {
 export const artworkImageUploader = new ArtworkImageUploader();
 
 export { ARTWORKS_BUCKET };
+
+function getBinarySignature(input: ArrayBuffer): { hex: string; ascii: string } {
+  const bytes = Array.from(new Uint8Array(input.slice(0, 16)));
+  const hex = bytes.map((b) => b.toString(16).padStart(2, '0')).join(' ');
+  const ascii = bytes
+    .map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.'))
+    .join('');
+  return { hex, ascii };
+}
