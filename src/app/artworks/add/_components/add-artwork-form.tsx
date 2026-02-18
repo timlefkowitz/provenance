@@ -22,6 +22,7 @@ import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 type ImagePreview = {
   id?: string;
   file: File;
+  preview: string;
   title: string;
   location?: {
     latitude: number;
@@ -33,41 +34,37 @@ type ImagePreview = {
   } | null;
 };
 
-/**
- * Renders an img from a File using a blob URL that this component owns.
- * Creating/revoking per component fixes blank previews under React Strict Mode
- * (parent cleanup was revoking URLs before remount). Also tries data URL
- * fallback if blob fails (e.g. HEIC or unsupported format).
- */
-function PreviewImage({ file, alt, className }: { file: File; alt: string; className?: string }) {
-  const [src, setSrc] = useState<string | null>(null);
+/** Renders preview from data URL; on error (e.g. some Mac Safari JPEGs) shows a friendly placeholder. */
+function PreviewImgOrPlaceholder({
+  preview,
+  alt,
+  className,
+}: {
+  preview: string;
+  alt: string;
+  className?: string;
+}) {
   const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setSrc(url);
-    setFailed(false);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  // If blob URL failed to load (e.g. HEIC), try data URL once
-  const handleError = () => {
-    if (failed) return;
-    setFailed(true);
-    if (src?.startsWith('blob:')) URL.revokeObjectURL(src);
-    setSrc(null);
-    const reader = new FileReader();
-    reader.onloadend = () => setSrc(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  if (!src) return <div className={className} style={{ minHeight: '12rem' }} />;
+  if (failed) {
+    return (
+      <div
+        className={className}
+        style={{ minHeight: '12rem' }}
+        aria-hidden
+      >
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1 rounded-lg bg-parchment/80 border border-wine/20 text-center px-3 py-8">
+          <p className="text-sm text-ink/70 font-serif">Preview not available</p>
+          <p className="text-xs text-ink/50 font-serif">Your image will still upload correctly.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <img
-      src={src}
+      src={preview}
       alt={alt}
       className={className}
-      onError={handleError}
+      onError={() => setFailed(true)}
     />
   );
 }
@@ -208,10 +205,19 @@ export function AddArtworkForm({
           // No location data
         }
 
+        // Data URL preview works on both phone and Mac; blob URLs can fail on some Mac/Safari JPEGs
+        const preview = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+
         const previewId = `preview-${Date.now()}-${index}`;
         newPreviews.push({
           id: previewId,
           file,
+          preview,
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
           location,
         });
@@ -417,8 +423,8 @@ export function AddArtworkForm({
                         <X className="h-4 w-4" />
                       </button>
                       <div className="relative">
-                        <PreviewImage
-                          file={img.file}
+                        <PreviewImgOrPlaceholder
+                          preview={img.preview}
                           alt={`Preview ${index + 1}`}
                           className="w-full h-48 object-cover rounded-lg mb-2"
                         />
