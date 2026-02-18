@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
-import { getArtworkImagePublicUrl, getContentTypeAndExtension, ARTWORKS_BUCKET } from '~/lib/artwork-storage';
+import { uploadArtworkImage as uploadArtworkImageStorage } from '~/lib/artwork-storage';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -77,6 +77,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       console.error('Error fetching account for email:', error);
     }
 
+    const adminClient = getSupabaseServerAdminClient();
     for (let i = 0; i < images.length; i++) {
       const imageFile = images[i];
       const title = titles[i];
@@ -88,12 +89,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       }
 
       try {
-        // Upload image
-        const imageUrl = await uploadArtworkImage(client, imageFile, userId);
-        if (!imageUrl) {
-          errors.push(`Failed to upload image ${i + 1}`);
-          continue;
-        }
+        const imageUrl = await uploadArtworkImageStorage(client, adminClient, imageFile, userId);
 
         // Generate certificate number
         const certificateNumber = await generateCertificateNumber(client);
@@ -357,56 +353,6 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
   } catch (error) {
     console.error('Error in createArtworksBatch:', error);
     return { error: 'An unexpected error occurred' };
-  }
-}
-
-async function uploadArtworkImage(
-  client: ReturnType<typeof getSupabaseServerClient>,
-  file: File,
-  userId: string,
-): Promise<string | null> {
-  try {
-    // Ensure bucket exists using admin client
-    const adminClient = getSupabaseServerAdminClient();
-    const { data: buckets } = await adminClient.storage.listBuckets();
-    
-    const bucketExists = buckets?.some(b => b.id === ARTWORKS_BUCKET);
-    
-    if (!bucketExists) {
-      const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
-        public: true,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        fileSizeLimit: 10485760, // 10MB
-      });
-      
-      if (createError) {
-        console.error('Error creating bucket:', createError);
-      }
-    }
-
-    const bytes = await file.arrayBuffer();
-    const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const { extension, contentType } = getContentTypeAndExtension(file);
-    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-
-    const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
-      contentType,
-      upsert: false,
-    });
-
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
-        throw new Error('Storage bucket not found. Please run the database migration to create the artworks bucket.');
-      }
-      throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
-    }
-
-    // Build URL from app env so it matches Next.js image remotePatterns
-    return getArtworkImagePublicUrl(fileName);
-  } catch (error) {
-    console.error('Error in uploadArtworkImage:', error);
-    throw error;
   }
 }
 

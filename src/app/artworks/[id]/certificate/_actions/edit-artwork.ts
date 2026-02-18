@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
-import { getArtworkImagePublicUrl, getContentTypeAndExtension, ARTWORKS_BUCKET } from '~/lib/artwork-storage';
+import { uploadArtworkImage as uploadArtworkImageStorage } from '~/lib/artwork-storage';
 
 export type EditArtworkFields = {
   title?: string;
@@ -15,54 +15,6 @@ export type EditArtworkFields = {
   created_at?: string;
   exhibitionId?: string | null;
 };
-
-async function uploadArtworkImage(
-  client: ReturnType<typeof getSupabaseServerClient>,
-  file: File,
-  userId: string,
-): Promise<string | null> {
-  try {
-    // Ensure bucket exists using admin client
-    const adminClient = getSupabaseServerAdminClient();
-    const { data: buckets } = await adminClient.storage.listBuckets();
-    
-    const bucketExists = buckets?.some(b => b.id === ARTWORKS_BUCKET);
-    
-    if (!bucketExists) {
-      // Create the bucket using admin client
-      const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
-        public: true,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        fileSizeLimit: 10485760, // 10MB
-      });
-      
-      if (createError) {
-        console.error('Error creating bucket:', createError);
-      }
-    }
-
-    const bytes = await file.arrayBuffer();
-    const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const { extension, contentType } = getContentTypeAndExtension(file);
-    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-
-    const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
-      contentType,
-      upsert: false,
-    });
-
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
-    }
-
-    // Build URL from app env so it matches Next.js image remotePatterns
-    return getArtworkImagePublicUrl(fileName);
-  } catch (error) {
-    console.error('Error in uploadArtworkImage:', error);
-    throw error;
-  }
-}
 
 export async function editArtwork(
   artworkId: string,
@@ -126,7 +78,8 @@ export async function editArtwork(
     const imageFile = formData.get('image') as File | null;
     if (imageFile && imageFile.size > 0) {
       try {
-        const imageUrl = await uploadArtworkImage(client, imageFile, user.id);
+        const adminClient = getSupabaseServerAdminClient();
+        const imageUrl = await uploadArtworkImageStorage(client, adminClient, imageFile, user.id);
         if (imageUrl) {
           updateFields.image_url = imageUrl;
         }
