@@ -53,7 +53,7 @@ export async function createArtwork(formData: FormData, userId: string) {
       const adminClient = getSupabaseServerAdminClient();
       imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, userId);
     } catch (uploadError: any) {
-      console.error('Upload error:', uploadError);
+      console.error('[createArtwork] Image upload failed:', uploadError?.message ?? uploadError, 'file:', imageFile?.name, uploadError?.stack);
       return { error: uploadError?.message || 'Failed to upload image. Please check that the storage bucket exists.' };
     }
 
@@ -145,8 +145,8 @@ export async function createArtwork(formData: FormData, userId: string) {
     }
 
     return { artworkId: artwork.id };
-  } catch (error) {
-    console.error('Error in createArtwork:', error);
+  } catch (error: any) {
+    console.error('[createArtwork] Fatal error:', error?.message ?? error, error?.stack);
     return { error: 'An unexpected error occurred' };
   }
 }

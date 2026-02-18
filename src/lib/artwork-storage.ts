@@ -45,15 +45,20 @@ export class ArtworkImageUploader {
     file: File,
     userId: string,
   ): Promise<string> {
+    const fileLabel = `${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`;
+
     const { data: buckets } = await adminClient.storage.listBuckets();
     const bucketExists = buckets?.some((b) => b.id === ARTWORKS_BUCKET);
     if (!bucketExists) {
+      console.error('[ArtworkUpload] Bucket missing, creating:', ARTWORKS_BUCKET);
       const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
         public: true,
         allowedMimeTypes: [...ALLOWED_MIME_TYPES],
         fileSizeLimit: FILE_SIZE_LIMIT,
       });
-      if (createError) console.error('Error creating bucket:', createError);
+      if (createError) {
+        console.error('[ArtworkUpload] Bucket create failed:', createError.message ?? createError);
+      }
     }
 
     const bytes = await file.arrayBuffer();
@@ -67,6 +72,12 @@ export class ArtworkImageUploader {
     });
 
     if (uploadError) {
+      console.error('[ArtworkUpload] Storage upload failed:', {
+        file: fileLabel,
+        storagePath: fileName,
+        contentType,
+        error: uploadError.message ?? uploadError,
+      });
       if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
         throw new Error('Storage bucket not found. Please run the database migration to create the artworks bucket.');
       }

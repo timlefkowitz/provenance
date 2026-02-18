@@ -78,13 +78,15 @@ export async function editArtwork(
     const imageFile = formData.get('image') as File | null;
     if (imageFile && imageFile.size > 0) {
       try {
+        console.error('[editArtwork] Uploading new image:', imageFile.name, imageFile.type, artworkId);
         const adminClient = getSupabaseServerAdminClient();
         const imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, user.id);
         if (imageUrl) {
           updateFields.image_url = imageUrl;
         }
       } catch (imageError: any) {
-        return { success: false, error: `Image upload failed: ${imageError.message}` };
+        console.error('[editArtwork] Image upload failed:', imageError?.message ?? imageError, 'artworkId:', artworkId, 'file:', imageFile?.name, imageError?.stack);
+        return { success: false, error: `Image upload failed: ${imageError?.message ?? 'Unknown error'}` };
       }
     }
 

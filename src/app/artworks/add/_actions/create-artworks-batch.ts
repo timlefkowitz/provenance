@@ -326,8 +326,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         }
       } catch (error: any) {
-        console.error(`Error processing artwork ${i + 1}:`, error);
-        errors.push(`Error processing artwork ${i + 1}: ${error.message || 'Unknown error'}`);
+        console.error('[createArtworksBatch] Error processing artwork', i + 1, ':', error?.message ?? error, 'file:', imageFile?.name, error?.stack);
+        errors.push(`Error processing artwork ${i + 1}: ${error?.message || 'Unknown error'}`);
       }
     }
 
@@ -350,8 +350,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       artworkIds,
       errors: errors.length > 0 ? errors : undefined
     };
-  } catch (error) {
-    console.error('Error in createArtworksBatch:', error);
+  } catch (error: any) {
+    console.error('[createArtworksBatch] Fatal error:', error?.message ?? error, error?.stack);
     return { error: 'An unexpected error occurred' };
   }
 }

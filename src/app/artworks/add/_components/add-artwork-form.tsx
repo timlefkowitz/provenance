@@ -76,7 +76,10 @@ function PreviewFromFile({
       src={url}
       alt={alt}
       className={className}
-      onError={() => setFailed(true)}
+      onError={() => {
+        console.error('[ArtworkPreview] Image failed to load (preview only):', file.name, file.type, file.size);
+        setFailed(true);
+      }}
     />
   );
 }
@@ -228,8 +231,8 @@ export function AddArtworkForm({
       }
 
       setImagePreviews(prev => [...prev, ...newPreviews]);
-    } catch (err) {
-      console.error('Error processing images:', err);
+    } catch (err: any) {
+      console.error('[AddArtworkForm] Error processing selected images:', err?.message ?? err, err?.stack);
       setError('Failed to process images. Please try again.');
     } finally {
       if (fileInputRef.current) {
