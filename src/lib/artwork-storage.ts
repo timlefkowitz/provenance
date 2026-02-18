@@ -3,9 +3,16 @@
  * All artwork image uploads (add flow, edit flow) must go through ArtworkImageUploader.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- heic-convert is CJS, no ESM build
+const convert = require('heic-convert') as (opts: { buffer: Buffer; format: 'JPEG' | 'PNG'; quality?: number }) => Promise<Buffer>;
 import sharp from 'sharp';
 
 const ARTWORKS_BUCKET = 'artworks';
+
+function isHeicSignature(input: ArrayBuffer): boolean {
+  const bytes = new TextDecoder().decode(new Uint8Array(input.slice(4, 12)));
+  return bytes.includes('ftypheic') || bytes.includes('ftypheif') || bytes.includes('ftypmif1');
+}
 
 const EXT_TO_MIME: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -206,12 +213,30 @@ function getBinarySignature(input: ArrayBuffer): { hex: string; ascii: string } 
 
 /** Convert image to standard JPEG. Returns buffer on success, null if conversion fails. */
 async function normalizeToJpeg(input: ArrayBuffer): Promise<ArrayBuffer | null> {
+  const buf = Buffer.from(input);
+
+  // HEIC: sharp often lacks libheif; use heic-convert.
+  if (isHeicSignature(input)) {
+    try {
+      const out = await convert({
+        buffer: buf,
+        format: 'JPEG',
+        quality: 0.9,
+      });
+      return new Uint8Array(out).buffer as ArrayBuffer;
+    } catch (e) {
+      console.warn('[ArtworkUpload] heic-convert failed:', e instanceof Error ? e.message : e);
+      return null;
+    }
+  }
+
+  // Standard formats: use sharp.
   try {
-    const buf = await sharp(Buffer.from(input))
+    const out = await sharp(buf)
       .rotate() // Auto-rotate from EXIF
       .jpeg({ quality: 90 })
       .toBuffer();
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    return new Uint8Array(out).buffer as ArrayBuffer;
   } catch {
     return null;
   }
