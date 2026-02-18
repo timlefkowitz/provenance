@@ -3,6 +3,12 @@
  * Artworks and Collectibles Schema
  * This schema supports provenance tracking for artworks and collectibles
  * -------------------------------------------------------
+ *
+ * DATA-SAFE: Does not wipe user data.
+ * - create table if not exists (no DROP TABLE)
+ * - create index if not exists
+ * - RLS policies and storage bucket insert use on conflict do nothing / create only
+ * - No DELETE, TRUNCATE, or DROP TABLE.
  */
 
 -- Create artworks table

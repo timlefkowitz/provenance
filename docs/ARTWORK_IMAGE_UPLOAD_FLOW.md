@@ -65,6 +65,37 @@ So: **one storage bucket, one DB column (`image_url`), but three separate implem
 
 ---
 
+## Migrations that cover artwork upload
+
+These Supabase migrations create and update the `artworks` table, `image_url`, the **artworks** storage bucket, and RLS. Run them in order (Supabase only runs migrations that haven’t been applied).
+
+| Migration | What it does for artwork upload |
+|-----------|----------------------------------|
+| **20250103000000_create_artworks.sql** | Creates `public.artworks` (with `image_url`), RLS (read own, read verified, insert, update, delete), **storage bucket `artworks`** (public), and storage RLS (read anon+auth, insert/update/delete for `userId/...`). |
+| 20250106000000_add_artwork_privacy.sql | Adds `is_public`; updates `artworks_read_public` to require `is_public`. |
+| 20250108000000_ensure_anon_artworks_access.sql | Grants anon SELECT on `artworks`. |
+| 20250110000000_add_notifications_and_certificate_workflow.sql | Adds certificate workflow columns to `artworks`. |
+| 20250111000000_add_artwork_additional_fields.sql | Adds extra columns to `artworks`. |
+| 20250123000000_add_gallery_profile_id_to_artworks.sql | Adds `gallery_profile_id` to `artworks`. |
+| **20250126000001_update_rls_for_gallery_members.sql** | Replaces artworks RLS so gallery members can insert/update/delete for their gallery’s artworks; keeps public read for verified+public. |
+| 20250126000004_ensure_anon_artworks_visibility.sql | Ensures anon can see verified public artworks. |
+| 20250213000001_add_certificate_type_to_artworks.sql | Adds `certificate_type` to `artworks`. |
+
+**How to run migrations**
+
+From the app that has the migrations:
+
+```bash
+cd makerkit/nextjs-saas-starter-kit-lite/apps/web
+npx supabase db push
+```
+
+Or: `supabase migration up` (with CLI linked to your project).
+
+Supabase records applied migrations and **does not** re-run them. To “run them again”: use a different project or reset the DB (migrations run from scratch), or add a **new** migration to fix a policy/schema. If uploads fail with “bucket not found” or permission errors, ensure **20250103000000_create_artworks.sql** and **20250126000001_update_rls_for_gallery_members.sql** (if using galleries) have been applied.
+
+---
+
 ## Summary
 
 - **Multiple sources for “adding” an image to the DB:**  

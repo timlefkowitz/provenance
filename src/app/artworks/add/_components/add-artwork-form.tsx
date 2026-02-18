@@ -34,7 +34,7 @@ type ImagePreview = {
   } | null;
 };
 
-/** Renders preview from File using a blob URL so JPEGs display reliably (data URLs often fail for some cameras/Mac). */
+/** Renders preview from File: blob URL first, then data URL fallback for picky JPEGs (e.g. Safari). */
 function PreviewFromFile({
   file,
   alt,
@@ -45,14 +45,47 @@ function PreviewFromFile({
   className?: string;
 }) {
   const [url, setUrl] = useState<string | null>(null);
+  const [triedDataUrl, setTriedDataUrl] = useState(false);
   const [failed, setFailed] = useState(false);
+  const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     const blobUrl = URL.createObjectURL(file);
+    blobUrlRef.current = blobUrl;
     setUrl(blobUrl);
     setFailed(false);
-    return () => URL.revokeObjectURL(blobUrl);
+    setTriedDataUrl(false);
+    // Revoke in next tick so React Strict Mode / rapid re-runs don't revoke
+    // the URL before the <img> has a chance to load it
+    const toRevoke = blobUrl;
+    setTimeout(() => URL.revokeObjectURL(toRevoke), 0);
+    return () => {
+      blobUrlRef.current = null;
+    };
   }, [file]);
+
+  const handleError = () => {
+    if (!triedDataUrl && url?.startsWith('blob:')) {
+      if (blobUrlRef.current === url) {
+        blobUrlRef.current = null;
+        URL.revokeObjectURL(url);
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setUrl(dataUrl);
+        setTriedDataUrl(true);
+      };
+      reader.onerror = () => {
+        console.error('[ArtworkPreview] Blob and data URL failed:', file.name, file.type, file.size);
+        setFailed(true);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      console.error('[ArtworkPreview] Image failed to load (preview only):', file.name, file.type, file.size);
+      setFailed(true);
+    }
+  };
 
   if (failed) {
     return (
@@ -76,10 +109,7 @@ function PreviewFromFile({
       src={url}
       alt={alt}
       className={className}
-      onError={() => {
-        console.error('[ArtworkPreview] Image failed to load (preview only):', file.name, file.type, file.size);
-        setFailed(true);
-      }}
+      onError={handleError}
     />
   );
 }

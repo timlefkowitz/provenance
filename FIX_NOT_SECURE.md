@@ -5,6 +5,7 @@ When the browser says **this page isn't secure** or asks you to **proceed anyway
 1. **You're on HTTP** – The site is loading over `http://` instead of `https://`.
 2. **No SSL certificate yet** – Vercel hasn't been able to issue an HTTPS certificate (often because of DNS or CAA).
 3. **App is generating HTTP links** – e.g. `NEXT_PUBLIC_SITE_URL` is wrong in Vercel.
+4. **Certificate name does not match** – Safari says "certificate name does not match input" / "www.provenance.guru": the cert doesn’t cover the host you’re visiting (e.g. only apex is in Vercel, or only www).
 
 Use the checklist below so the site is always served over HTTPS with a valid certificate.
 
@@ -33,12 +34,17 @@ In GoDaddy DNS, ensure you have:
 
 ---
 
-## 3. Domain in Vercel
+## 3. Domain in Vercel (fixes "certificate name does not match")
+
+**If Safari says "certificate name does not match input" and shows www.provenance.guru**, the certificate doesn’t cover the host you’re on. Vercel must have **both** the apex and www so it can issue certs for both.
 
 1. [Vercel Dashboard](https://vercel.com/dashboard) → your project → **Settings** → **Domains**.
-2. **provenance.guru** and **www.provenance.guru** should be listed.
-3. Status for **provenance.guru** must be **Valid Configuration**. If it says **Invalid Configuration**, Vercel will show what's wrong (fix DNS/CAA first).
-4. Optional: click the domain → **Refresh** to re-run DNS check and trigger certificate issuance.
+2. **Add both domains** (if either is missing):
+   - **provenance.guru** (apex)
+   - **www.provenance.guru** (www)
+3. **Both** must show status **Valid Configuration**. If either says **Invalid Configuration**, fix the DNS/CAA for that host (see sections 1–2).
+4. Optional: click each domain → **Refresh** to re-run the DNS check and trigger certificate issuance.
+5. Wait a few minutes (up to ~1 hour) for Vercel to issue/renew certs for both names, then try **https://provenance.guru** and **https://www.provenance.guru** again.
 
 ---
 
@@ -75,11 +81,11 @@ After DNS (and CAA) are correct and Vercel shows **Valid Configuration**:
 
 ---
 
-## Quick checklist (so you don't get "proceed anyway")
+## Quick checklist (so you don't get "proceed anyway" or "certificate name does not match")
 
 - [ ] GoDaddy: one A record `@` → `76.76.21.21`; one CNAME `www` → `cname.vercel-dns.com`; no duplicate apex records.
 - [ ] GoDaddy: if you use CAA, `0 issue "letsencrypt.org"` exists for `@`.
-- [ ] Vercel **Settings → Domains**: **provenance.guru** status is **Valid Configuration**.
+- [ ] Vercel **Settings → Domains**: **both** **provenance.guru** and **www.provenance.guru** are added and status is **Valid Configuration** (required to fix "certificate name does not match").
 - [ ] Vercel **Settings → Environment Variables**: **NEXT_PUBLIC_SITE_URL** = **https://provenance.guru**.
 - [ ] No redirect/rewrite of `/.well-known` (e.g. in `vercel.json` or middleware).
 - [ ] Waited 10–30 minutes (or up to ~1 hour) after fixing DNS/CAA.

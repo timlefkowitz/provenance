@@ -3,6 +3,12 @@
  * Update RLS Policies for Gallery Team Members
  * Allows gallery members to manage gallery profiles, artworks, and exhibitions
  * -------------------------------------------------------
+ *
+ * DATA-SAFE: Does not wipe user data.
+ * - Only DROP POLICY and CREATE POLICY (permission rules); dropping a policy
+ *   does not delete any rows from tables.
+ * - create or replace function only updates function definitions.
+ * - No DELETE, TRUNCATE, DROP TABLE, or any operation that removes user data.
  */
 
 -- ============================================================

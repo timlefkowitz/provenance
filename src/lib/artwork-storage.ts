@@ -26,6 +26,9 @@ export type ArtworkStorageClient = {
 
 export type ArtworkStorageAdminClient = {
   storage: {
+    from: (bucket: string) => {
+      upload: (path: string, body: ArrayBuffer, opts: { contentType: string; upsert: boolean }) => Promise<{ error: { message?: string } | null }>;
+    };
     listBuckets: () => Promise<{ data: { id: string }[] | null }>;
     createBucket: (id: string, opts: { public: boolean; allowedMimeTypes: string[]; fileSizeLimit: number }) => Promise<{ error: { message: string } | null }>;
   };
@@ -62,7 +65,9 @@ export class ArtworkImageUploader {
     }
 
     const bytes = await file.arrayBuffer();
-    const bucket = client.storage.from(ARTWORKS_BUCKET);
+    // Use admin storage client for the actual upload so this server action path
+    // does not fail when storage RLS/session propagation is inconsistent.
+    const bucket = adminClient.storage.from(ARTWORKS_BUCKET);
     const { extension, contentType } = getContentTypeAndExtension(file);
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
