@@ -34,17 +34,26 @@ type ImagePreview = {
   } | null;
 };
 
-/** Renders preview from data URL; on error (e.g. some Mac Safari JPEGs) shows a friendly placeholder. */
-function PreviewImgOrPlaceholder({
-  preview,
+/** Renders preview from File using a blob URL so JPEGs display reliably (data URLs often fail for some cameras/Mac). */
+function PreviewFromFile({
+  file,
   alt,
   className,
 }: {
-  preview: string;
+  file: File;
   alt: string;
   className?: string;
 }) {
+  const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const blobUrl = URL.createObjectURL(file);
+    setUrl(blobUrl);
+    setFailed(false);
+    return () => URL.revokeObjectURL(blobUrl);
+  }, [file]);
+
   if (failed) {
     return (
       <div
@@ -59,9 +68,12 @@ function PreviewImgOrPlaceholder({
       </div>
     );
   }
+  if (!url) {
+    return <div className={className} style={{ minHeight: '12rem' }} aria-hidden />;
+  }
   return (
     <img
-      src={preview}
+      src={url}
       alt={alt}
       className={className}
       onError={() => setFailed(true)}
@@ -205,19 +217,11 @@ export function AddArtworkForm({
           // No location data
         }
 
-        // Data URL preview works on both phone and Mac; blob URLs can fail on some Mac/Safari JPEGs
-        const preview = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
-        });
-
         const previewId = `preview-${Date.now()}-${index}`;
         newPreviews.push({
           id: previewId,
           file,
-          preview,
+          preview: '', // not used; PreviewFromFile uses file + blob URL
           title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
           location,
         });
@@ -423,8 +427,8 @@ export function AddArtworkForm({
                         <X className="h-4 w-4" />
                       </button>
                       <div className="relative">
-                        <PreviewImgOrPlaceholder
-                          preview={img.preview}
+                        <PreviewFromFile
+                          file={img.file}
                           alt={`Preview ${index + 1}`}
                           className="w-full h-48 object-cover rounded-lg mb-2"
                         />
