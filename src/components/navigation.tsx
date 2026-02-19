@@ -43,18 +43,6 @@ export function Navigation() {
               >
                 Portal
               </Link>
-              <Link
-                href="/open-calls"
-                className="text-ink hover:text-wine transition-colors font-serif"
-              >
-                Open Calls
-              </Link>
-              <Link 
-                href="/profiles" 
-                className="text-ink hover:text-wine transition-colors font-serif"
-              >
-                Profiles
-              </Link>
               <Link 
                 href="/registry" 
                 className="text-ink hover:text-wine transition-colors font-serif"
@@ -195,26 +183,12 @@ export function Navigation() {
                 >
                   Add Artwork
                 </Link>
-                <Link
-                  href="/open-calls"
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Open Calls
-                </Link>
                 <Link 
                   href="/portal" 
                   className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Portal
-                </Link>
-                <Link 
-                  href="/profiles" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Profiles
                 </Link>
                 <Link 
                   href="/registry" 
