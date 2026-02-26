@@ -1,7 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import dynamic from 'next/dynamic';
 
 import { ThemeProvider } from 'next-themes';
@@ -41,12 +39,10 @@ export function RootProviders({
   lang: string;
   theme?: string;
 }>) {
-  const i18nSettings = useMemo(() => {
-    if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
-      console.debug('[Provenance] RootProviders getI18nSettings', { lang });
-    }
-    return getI18nSettings(lang);
-  }, [lang]);
+  if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
+    console.debug('[Provenance] RootProviders getI18nSettings', { lang });
+  }
+  const i18nSettings = getI18nSettings(lang);
 
   if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
     console.debug('[Provenance] RootProviders mount', { lang, theme });
