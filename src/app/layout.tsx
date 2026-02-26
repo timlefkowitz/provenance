@@ -50,8 +50,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Get the current language from server-side i18n (reads from cookie)
-  const i18n = await createI18nServerInstance();
-  const currentLang = i18n.language || 'en';
+  // Wrap in try-catch to prevent layout crash on Vercel (e.g. i18n/cookies edge cases)
+  let currentLang = 'en';
+  try {
+    const i18n = await createI18nServerInstance();
+    currentLang = i18n.language || 'en';
+  } catch (err) {
+    console.error('[RootLayout] i18n init failed, using en:', err);
+  }
 
   return (
     <html lang={currentLang} suppressHydrationWarning>

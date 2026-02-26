@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 
 import { Button } from '@kit/ui/button';
 import {
@@ -27,7 +26,7 @@ import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
 import { updateUserRole } from '~/app/onboarding/_actions/update-user-role';
-import { USER_ROLES, getRoleLabel, getUserRole, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, getRoleLabel, getUserRole } from '~/lib/user-roles';
 
 const ROLES = [
   { value: USER_ROLES.COLLECTOR, label: getRoleLabel(USER_ROLES.COLLECTOR) },
@@ -43,36 +42,39 @@ export function RoleSelectionModal() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<string>('');
+  const [account, setAccount] = useState<{ public_data?: Record<string, unknown> } | null>(null);
 
-  // Fetch account data to check if user has a role
-  const { data: account } = useQuery({
-    queryKey: ['account:role-check', user?.sub],
-    queryFn: async () => {
-      if (!user?.sub) return null;
+  // Fetch account data to check if user has a role (avoid useQuery to prevent QueryClient issues on Vercel)
+  const fetchAccount = useCallback(async () => {
+    if (!user?.sub) return null;
+    const { data, error: err } = await client
+      .from('accounts')
+      .select('public_data')
+      .eq('id', user.sub)
+      .single();
+    if (err) {
+      console.error('Error fetching account:', err);
+      return null;
+    }
+    return data;
+  }, [client, user?.sub]);
 
-      const { data, error } = await client
-        .from('accounts')
-        .select('public_data')
-        .eq('id', user.sub)
-        .single();
-
-      if (error) {
-        console.error('Error fetching account:', error);
-        return null;
-      }
-
-      return data;
-    },
-    enabled: !!user?.sub,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+  useEffect(() => {
+    if (!user?.sub) {
+      setAccount(null);
+      return;
+    }
+    let cancelled = false;
+    fetchAccount().then((data) => {
+      if (!cancelled && data) setAccount(data);
+    });
+    return () => { cancelled = true; };
+  }, [user?.sub, fetchAccount]);
 
   // Check if user needs to select a role
   useEffect(() => {
     if (user?.sub && account) {
       const userRole = getUserRole(account.public_data as Record<string, any>);
-      // Show modal if user is logged in but doesn't have a role
       setOpen(!userRole);
     } else {
       setOpen(false);
