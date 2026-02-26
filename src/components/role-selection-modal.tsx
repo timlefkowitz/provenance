@@ -23,7 +23,7 @@ import {
 import { Label } from '@kit/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
 import { updateUserRole } from '~/app/onboarding/_actions/update-user-role';
@@ -37,7 +37,7 @@ const ROLES = [
 
 export function RoleSelectionModal() {
   const router = useRouter();
-  const { data: user } = useUser();
+  const { data: user } = useCurrentUser();
   const client = useSupabase();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();

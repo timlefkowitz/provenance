@@ -258,22 +258,30 @@ export function AddArtworkForm({
     }
   }, [userRole, galleryProfiles, formData.galleryProfileId]);
 
-  // Keep primaryTitle in sync with the single image title (common case: one artwork)
+  // Initialize primaryTitle when first image is added (one-time)
   useEffect(() => {
-    if (imagePreviews.length === 1) {
-      // When a single image is added and no primary title yet, initialize it
-      if (!primaryTitle) {
-        setPrimaryTitle(imagePreviews[0].title);
-      } else if (imagePreviews[0].title !== primaryTitle) {
-        // When primary title changes, update the image title to match
-        setImagePreviews(prev =>
-          prev.map((img, index) =>
-            index === 0 ? { ...img, title: primaryTitle } : img,
-          ),
-        );
-      }
+    if (imagePreviews.length === 1 && !primaryTitle) {
+      setPrimaryTitle(imagePreviews[0].title);
     }
-  }, [imagePreviews, primaryTitle]);
+  }, [imagePreviews.length]); // Only run when image count changes, not on every title edit
+
+  const handlePrimaryTitleChange = (value: string) => {
+    setPrimaryTitle(value);
+    if (imagePreviews.length === 1) {
+      setImagePreviews(prev =>
+        prev.map((img, i) => (i === 0 ? { ...img, title: value } : img))
+      );
+    }
+  };
+
+  const handleImageTitleChange = (index: number, value: string) => {
+    setImagePreviews(prev =>
+      prev.map((img, i) => (i === index ? { ...img, title: value } : img))
+    );
+    if (index === 0) {
+      setPrimaryTitle(value);
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -350,12 +358,6 @@ export function AddArtworkForm({
 
   const removeImage = (index: number) => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateImageTitle = (index: number, title: string) => {
-    setImagePreviews(prev => 
-      prev.map((img, i) => i === index ? { ...img, title } : img)
-    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -459,9 +461,11 @@ export function AddArtworkForm({
         <Input
           id="primaryTitle"
           value={primaryTitle}
-          onChange={(e) => setPrimaryTitle(e.target.value)}
+          onChange={(e) => handlePrimaryTitleChange(e.target.value)}
           placeholder="e.g., Dawn over the Valley"
           className="font-serif"
+          autoComplete="off"
+          autoCorrect="off"
         />
         <p className="text-xs text-ink/60 font-serif">
           This will be applied to the first artwork. You can still edit individual titles under each photo.
@@ -556,10 +560,12 @@ export function AddArtworkForm({
                         <Input
                           id={`title-${index}`}
                           value={img.title}
-                          onChange={(e) => updateImageTitle(index, e.target.value)}
+                          onChange={(e) => handleImageTitleChange(index, e.target.value)}
                           placeholder="e.g., Dawn over the Valley"
                           className="font-serif text-sm"
                           required
+                          autoComplete="off"
+                          autoCorrect="off"
                         />
                       </div>
                     </div>

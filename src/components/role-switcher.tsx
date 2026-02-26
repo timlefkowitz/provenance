@@ -14,7 +14,7 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { updateUserRole } from '~/app/onboarding/_actions/update-user-role';
 import { USER_ROLES, getRoleLabel, getUserRole, type UserRole } from '~/lib/user-roles';
@@ -27,7 +27,7 @@ const ROLES = [
 
 export function RoleSwitcher() {
   const router = useRouter();
-  const { data: user } = useUser();
+  const { data: user } = useCurrentUser();
   const client = useSupabase();
   const [pending, startTransition] = useTransition();
 

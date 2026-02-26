@@ -8,7 +8,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Star, Scan, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
@@ -81,7 +81,7 @@ export function CertificateOfAuthenticity({
   certificateType?: CertificateType | string;
 }) {
   const router = useRouter();
-  const user = useUser();
+  const user = useCurrentUser();
   const [pending, startTransition] = useTransition();
   const [verifying, setVerifying] = useState(false);
   const [featured, setFeatured] = useState(false);

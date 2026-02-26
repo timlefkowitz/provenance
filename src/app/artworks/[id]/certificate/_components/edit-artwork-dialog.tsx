@@ -15,7 +15,7 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { toast } from '@kit/ui/sonner';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useQuery } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { editArtwork } from '../_actions/edit-artwork';
@@ -50,7 +50,7 @@ export function EditArtworkDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const user = useUser();
+  const user = useCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(artwork.image_url || null);
   const [imageFile, setImageFile] = useState<File | null>(null);

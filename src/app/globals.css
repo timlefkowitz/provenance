@@ -24,6 +24,7 @@
   --font-display: var(--font-cinzel), serif;
   --font-serif: var(--font-cormorant), serif;
   --font-body: var(--font-caslon), serif;
+  --font-family-landing: Helvetica, Arial, sans-serif;
 }
 
 @layer base {
@@ -35,6 +36,11 @@
 }
 
 /* Custom utilities for the specific style */
+.min-h-viewport {
+  min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport: better on iOS/Android when browser chrome shows/hides */
+}
+
 .border-double-box {
   border: 4px double var(--color-wine);
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { Label } from '@kit/ui/label';
 import { getPerspective } from './perspective-switcher';
@@ -15,7 +15,7 @@ import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
  * Only renders when perspective is Gallery and the user has at least one gallery profile.
  */
 export function UsingGalleryLabel() {
-  const { data: user } = useUser();
+  const { data: user } = useCurrentUser();
   const client = useSupabase();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [currentPerspective, setCurrentPerspective] = useState<string>(USER_ROLES.ARTIST);

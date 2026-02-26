@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
 import { ChevronsUpDown, Home, LogOut, Settings, User, Check } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -59,7 +59,7 @@ export function ProfileAccountDropdownContainer(props: {
   };
 }) {
   const signOut = useSignOut();
-  const user = useUser(props.user);
+  const user = useCurrentUser(props.user);
   const userData = user.data;
   const client = useSupabase();
   const personalAccountData = usePersonalAccountData(userData?.id || '', props.account);

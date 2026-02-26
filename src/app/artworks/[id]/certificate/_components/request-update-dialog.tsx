@@ -15,7 +15,7 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { toast } from '@kit/ui/sonner';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
@@ -24,7 +24,7 @@ import type { Artwork } from './certificate-of-authenticity';
 export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const user = useUser();
+  const user = useCurrentUser();
   const client = useSupabase();
   const [canRequestOwnership, setCanRequestOwnership] = useState(false);
   const [requestType, setRequestType] = useState<'provenance_update' | 'ownership_request'>('provenance_update');

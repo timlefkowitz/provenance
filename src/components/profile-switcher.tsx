@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
@@ -16,7 +16,7 @@ const SELECTED_PROFILE_KEY = 'selected_profile_id';
 
 export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
-  const { data: user } = useUser();
+  const { data: user } = useCurrentUser();
   const client = useSupabase();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [currentPerspective, setCurrentPerspective] = useState<string>(USER_ROLES.ARTIST);

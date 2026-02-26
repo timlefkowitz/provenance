@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
 import pathsConfig from '~/config/paths.config';
@@ -14,7 +14,7 @@ import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
 export function Navigation() {
-  const user = useUser();
+  const user = useCurrentUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (

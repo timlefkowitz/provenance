@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
 export function NotificationBadge() {
-  const { data: user } = useUser();
+  const { data: user } = useCurrentUser();
   const client = useSupabase();
 
   const { data: unreadCount } = useQuery({

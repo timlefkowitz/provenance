@@ -125,7 +125,7 @@ export default async function AboutPage() {
 
       {/* Footer */}
       <footer className="mt-20 w-full max-w-4xl text-center text-sm opacity-60 font-body">
-        <p>© {new Date().getFullYear()} Provenance Platform. Verified on Avalanche.</p>
+        <p>© {new Date().getFullYear()} Provenance Platform.</p>
       </footer>
     </main>
   );

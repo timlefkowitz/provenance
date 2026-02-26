@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { DropdownMenuItem } from '@kit/ui/dropdown-menu';
 import { Shield } from 'lucide-react';
 
 export function AdminMenuItem() {
-  const user = useUser();
+  const user = useCurrentUser();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 

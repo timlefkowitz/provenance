@@ -8,7 +8,7 @@ import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
-import { useUser } from '@kit/supabase/hooks/use-user';
+import { useCurrentUser } from '~/hooks/use-current-user';
 import { updateProvenance } from '../_actions/update-provenance';
 import { GallerySelector } from './gallery-selector';
 import { ExhibitionSelector } from './exhibition-selector';
@@ -42,7 +42,7 @@ export function EditProvenanceForm({
   currentExhibitionId?: string | null;
 }) {
   const router = useRouter();
-  const user = useUser();
+  const user = useCurrentUser();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
