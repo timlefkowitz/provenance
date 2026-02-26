@@ -47,16 +47,16 @@ export function ProfileAccountDropdownContainer(props: {
   const userData = user.data;
   const personalAccountData = usePersonalAccountData(userData?.id || '', props.account);
 
-  if (!userData) {
-    return null;
-  }
-
   const signedInAsLabel = useMemo(() => {
     const email = userData?.email ?? undefined;
     const phone = userData?.phone ?? undefined;
 
     return email ?? phone;
   }, [userData]);
+
+  if (!userData) {
+    return null;
+  }
 
   const displayName =
     personalAccountData?.data?.name ?? props.account?.name ?? userData?.email ?? '';
