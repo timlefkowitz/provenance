@@ -9,6 +9,7 @@ const ARTWORKS_BUCKET = 'artworks';
 type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
 
 export async function createArtwork(formData: FormData, userId: string) {
+  console.log('[createArtwork] Starting for userId:', userId);
   try {
     const client = getSupabaseServerClient();
     
@@ -20,8 +21,15 @@ export async function createArtwork(formData: FormData, userId: string) {
     const medium = formData.get('medium') as string || '';
 
     if (!imageFile || !title) {
+      console.warn('[createArtwork] Validation failed - missing title or image for userId:', userId);
       return { error: 'Title and image are required' };
     }
+
+    console.log('[createArtwork] File details:', {
+      name: imageFile.name,
+      size: imageFile.size,
+      type: imageFile.type,
+    });
 
     // Ensure account exists (should be created by trigger, but verify)
     const { data: account, error: accountError } = await client
@@ -51,12 +59,15 @@ export async function createArtwork(formData: FormData, userId: string) {
     // Upload image to Supabase Storage
     let imageUrl: string;
     try {
+      console.log('[createArtwork] Uploading image to storage...');
       imageUrl = await uploadArtworkImage(client, imageFile, userId) || '';
       if (!imageUrl) {
+        console.error('[createArtwork] Upload returned no URL for userId:', userId);
         return { error: 'Failed to upload image: No URL returned' };
       }
+      console.log('[createArtwork] Image uploaded successfully:', imageUrl);
     } catch (uploadError: any) {
-      console.error('Upload error:', uploadError);
+      console.error('[createArtwork] Upload error for userId:', userId, uploadError);
       return { error: uploadError?.message || 'Failed to upload image. Please check that the storage bucket exists.' };
     }
 
@@ -64,6 +75,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     const certificateNumber = await generateCertificateNumber(client);
 
     // Create artwork record
+    console.log('[createArtwork] Inserting artwork record for userId:', userId);
     const { data: artwork, error } = await (client as any)
       .from('artworks')
       .insert({
@@ -82,16 +94,17 @@ export async function createArtwork(formData: FormData, userId: string) {
       .single();
 
     if (error) {
-      console.error('Error creating artwork:', error);
+      console.error('[createArtwork] DB insert failed for userId:', userId, error);
       return { error: error.message || 'Failed to create artwork' };
     }
 
+    console.log('[createArtwork] Artwork created successfully:', artwork.id);
     revalidatePath('/artworks');
     revalidatePath(`/artworks/${artwork.id}`);
 
     return { artworkId: artwork.id };
   } catch (error) {
-    console.error('Error in createArtwork:', error);
+    console.error('[createArtwork] Unexpected error for userId:', userId, error);
     return { error: 'An unexpected error occurred' };
   }
 }
@@ -102,14 +115,14 @@ async function uploadArtworkImage(
   userId: string,
 ): Promise<string | null> {
   try {
-    // Ensure bucket exists using admin client
     const adminClient = getSupabaseServerAdminClient();
     const { data: buckets } = await adminClient.storage.listBuckets();
     
     const bucketExists = buckets?.some(b => b.id === ARTWORKS_BUCKET);
+    console.log('[uploadArtworkImage] Bucket exists:', bucketExists);
     
     if (!bucketExists) {
-      // Create the bucket using admin client
+      console.log('[uploadArtworkImage] Creating bucket:', ARTWORKS_BUCKET);
       const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
         public: true,
         allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
@@ -117,9 +130,7 @@ async function uploadArtworkImage(
       });
       
       if (createError) {
-        console.error('Error creating bucket:', createError);
-        // If bucket creation fails, it might already exist or we don't have permissions
-        // Continue and try to upload anyway
+        console.error('[uploadArtworkImage] Error creating bucket:', createError);
       }
     }
 
@@ -128,20 +139,21 @@ async function uploadArtworkImage(
     const extension = file.name.split('.').pop() || 'jpg';
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
+    console.log('[uploadArtworkImage] Uploading to path:', fileName, '| contentType:', file.type, '| size:', file.size);
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
       contentType: file.type,
       upsert: false,
     });
 
     if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      // Return more specific error information
+      console.error('[uploadArtworkImage] Upload failed:', { fileName, error: uploadError });
       if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
         throw new Error('Storage bucket not found. Please run the database migration to create the artworks bucket.');
       }
       throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
     }
 
+    console.log('[uploadArtworkImage] Upload succeeded, getting public URL for:', fileName);
     const { data: urlData } = bucket.getPublicUrl(fileName);
     if (!urlData?.publicUrl) {
       throw new Error('Failed to get public URL for uploaded image');
@@ -149,8 +161,8 @@ async function uploadArtworkImage(
     
     return urlData.publicUrl;
   } catch (error) {
-    console.error('Error in uploadArtworkImage:', error);
-    throw error; // Re-throw to get better error messages
+    console.error('[uploadArtworkImage] Error:', error);
+    throw error;
   }
 }
 

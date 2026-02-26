@@ -1,3 +1,7 @@
+//
+//  Hey IT's TIM HELLO, WHAT ARE YOU DOING HERE?
+// 
+// 
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -33,6 +37,7 @@ function inferContentType(file: File): string {
 }
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
+  console.log('[createArtworksBatch] Starting for userId:', userId);
   try {
     const client = getSupabaseServerClient();
     
@@ -43,11 +48,15 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const artistName = formData.get('artistName') as string || '';
     const medium = formData.get('medium') as string || '';
 
+    console.log('[createArtworksBatch] Received', images.length, 'images for userId:', userId);
+
     if (!images || images.length === 0) {
+      console.warn('[createArtworksBatch] No images provided for userId:', userId);
       return { error: 'At least one image is required' };
     }
 
     if (images.length !== titles.length) {
+      console.warn('[createArtworksBatch] Image/title count mismatch:', images.length, 'images vs', titles.length, 'titles');
       return { error: 'Each image must have a title' };
     }
 
@@ -80,6 +89,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const errors: string[] = [];
 
     for (let i = 0; i < images.length; i++) {
+
+      
       const imageFile = images[i];
       const title = titles[i];
 
@@ -89,17 +100,23 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       }
 
       try {
-        // Upload image
+        console.log(`[createArtworksBatch] Processing artwork ${i + 1}/${images.length}:`, {
+          name: imageFile.name,
+          size: imageFile.size,
+          type: imageFile.type,
+          title,
+        });
+
         const imageUrl = await uploadArtworkImage(client, imageFile, userId);
         if (!imageUrl) {
+          console.error(`[createArtworksBatch] Upload returned no URL for artwork ${i + 1}`);
           errors.push(`Failed to upload image ${i + 1}`);
           continue;
         }
+        console.log(`[createArtworksBatch] Artwork ${i + 1} uploaded:`, imageUrl);
 
-        // Generate certificate number
         const certificateNumber = await generateCertificateNumber(client);
 
-        // Create artwork record
         const { data: artwork, error } = await (client as any)
           .from('artworks')
           .insert({
@@ -118,18 +135,20 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           .single();
 
         if (error) {
-          console.error(`Error creating artwork ${i + 1}:`, error);
+          console.error(`[createArtworksBatch] DB insert failed for artwork ${i + 1}:`, error);
           errors.push(`Failed to create artwork ${i + 1}: ${error.message}`);
         } else if (artwork) {
+          console.log(`[createArtworksBatch] Artwork ${i + 1} created:`, artwork.id);
           artworkIds.push(artwork.id);
         }
       } catch (error: any) {
-        console.error(`Error processing artwork ${i + 1}:`, error);
+        console.error(`[createArtworksBatch] Unexpected error on artwork ${i + 1}:`, error);
         errors.push(`Error processing artwork ${i + 1}: ${error.message || 'Unknown error'}`);
       }
     }
 
     if (artworkIds.length === 0) {
+      console.error('[createArtworksBatch] All artworks failed for userId:', userId, 'errors:', errors);
       return { 
         error: errors.length > 0 
           ? `Failed to create artworks: ${errors.join('; ')}`
@@ -138,8 +157,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     }
 
     if (errors.length > 0) {
-      // Some succeeded, some failed
-      console.warn('Some artworks failed to create:', errors);
+      console.warn('[createArtworksBatch] Partial success for userId:', userId, '| succeeded:', artworkIds.length, '| failed:', errors.length, errors);
+    } else {
+      console.log('[createArtworksBatch] All artworks created successfully for userId:', userId, '| ids:', artworkIds);
     }
 
     revalidatePath('/artworks');
@@ -149,7 +169,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       errors: errors.length > 0 ? errors : undefined
     };
   } catch (error) {
-    console.error('Error in createArtworksBatch:', error);
+    console.error('[createArtworksBatch] Unexpected error for userId:', userId, error);
     return { error: 'An unexpected error occurred' };
   }
 }
@@ -160,13 +180,14 @@ async function uploadArtworkImage(
   userId: string,
 ): Promise<string | null> {
   try {
-    // Ensure bucket exists using admin client
     const adminClient = getSupabaseServerAdminClient();
     const { data: buckets } = await adminClient.storage.listBuckets();
     
     const bucketExists = buckets?.some(b => b.id === ARTWORKS_BUCKET);
+    console.log('[uploadArtworkImage] Bucket exists:', bucketExists);
     
     if (!bucketExists) {
+      console.log('[uploadArtworkImage] Creating bucket:', ARTWORKS_BUCKET);
       const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
         public: true,
         allowedMimeTypes: [
@@ -183,7 +204,7 @@ async function uploadArtworkImage(
       });
       
       if (createError) {
-        console.error('Error creating bucket:', createError);
+        console.error('[uploadArtworkImage] Error creating bucket:', createError);
       }
     }
 
@@ -193,19 +214,21 @@ async function uploadArtworkImage(
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
     const contentType = inferContentType(file);
 
+    console.log('[uploadArtworkImage] Uploading to path:', fileName, '| contentType:', contentType, '| size:', file.size);
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
       contentType,
       upsert: false,
     });
 
     if (uploadError) {
-      console.error('Error uploading image:', uploadError);
+      console.error('[uploadArtworkImage] Upload failed:', { fileName, error: uploadError });
       if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
         throw new Error('Storage bucket not found. Please run the database migration to create the artworks bucket.');
       }
       throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
     }
 
+    console.log('[uploadArtworkImage] Upload succeeded, getting public URL for:', fileName);
     const { data: urlData } = bucket.getPublicUrl(fileName);
     if (!urlData?.publicUrl) {
       throw new Error('Failed to get public URL for uploaded image');
@@ -213,7 +236,7 @@ async function uploadArtworkImage(
     
     return urlData.publicUrl;
   } catch (error) {
-    console.error('Error in uploadArtworkImage:', error);
+    console.error('[uploadArtworkImage] Error:', error);
     throw error;
   }
 }
