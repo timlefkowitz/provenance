@@ -3,7 +3,6 @@ import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text } from "next/font/google"
 import "./globals.css";
 
 import { Toaster } from "@kit/ui/sonner";
-import { ClientOnlyGate } from "~/components/client-only-gate";
 import { RootProviders } from "~/components/root-providers";
 import { OnboardingGuard } from "~/components/onboarding-guard";
 import { Navigation } from "~/components/navigation";
@@ -68,18 +67,15 @@ export default async function RootLayout({
     <html lang={currentLang} suppressHydrationWarning>
       <body
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased bg-parchment text-ink`}
-        suppressHydrationWarning
       >
-        <ClientOnlyGate>
-          <RootProviders lang={currentLang}>
-            <OnboardingGuard>
-              <Navigation />
-              <GalleryProfileNotification />
-              {children}
-              <RoleSelectionModal />
-            </OnboardingGuard>
-          </RootProviders>
-        </ClientOnlyGate>
+        <RootProviders lang={currentLang}>
+          <OnboardingGuard>
+            <Navigation />
+            <GalleryProfileNotification />
+            {children}
+            <RoleSelectionModal />
+          </OnboardingGuard>
+        </RootProviders>
         <Toaster richColors position="top-center" />
         <ClientAnalytics />
       </body>

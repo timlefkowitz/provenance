@@ -2,9 +2,11 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import type { Database } from '@kit/supabase/database';
 import { revalidatePath } from 'next/cache';
 
 const ARTWORKS_BUCKET = 'artworks';
+type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
@@ -95,7 +97,7 @@ export async function createArtwork(formData: FormData, userId: string) {
 }
 
 async function uploadArtworkImage(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: ServerClient,
   file: File,
   userId: string,
 ): Promise<string | null> {
@@ -153,11 +155,13 @@ async function uploadArtworkImage(
 }
 
 async function generateCertificateNumber(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: ServerClient,
 ): Promise<string> {
   // Try to use the database function, fallback to client-side generation
   try {
-    const { data, error } = await client.rpc('generate_certificate_number');
+    const { data, error } = await (client as unknown as any).rpc(
+      'generate_certificate_number',
+    );
     if (!error && data) {
       return data;
     }
