@@ -1,20 +1,40 @@
 export async function i18nResolver(language: string, namespace: string) {
+  // On the client (browser), load from public URL so it works in production.
+  // Dynamic import() of public/ files often fails in bundled client code on Vercel.
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch(`/locales/${language}/${namespace}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as Record<string, string>;
+    } catch (error) {
+      console.error(
+        `[i18n] Failed to load locales/${language}/${namespace}.json`,
+        error
+      );
+      if (language !== 'en') {
+        try {
+          const fallback = await fetch(`/locales/en/${namespace}.json`);
+          if (fallback.ok) return (await fallback.json()) as Record<string, string>;
+        } catch {
+          // ignore
+        }
+      }
+      return {};
+    }
+  }
+
+  // Server: use dynamic import (filesystem)
   try {
-    // Try to load the translation file
-    // Path from src/lib/i18n/ to public/locales/
     const data = await import(
       `../../../public/locales/${language}/${namespace}.json`
     );
-
-    // Next.js JSON imports return the data directly, not as default
     return (data.default || data) as Record<string, string>;
   } catch (error) {
     console.error(
       `Failed to load translation file: locales/${language}/${namespace}.json`,
       error
     );
-    
-    // Fallback to English if the requested language file doesn't exist
+
     if (language !== 'en') {
       try {
         const fallbackData = await import(
@@ -29,7 +49,7 @@ export async function i18nResolver(language: string, namespace: string) {
         return {};
       }
     }
-    
+
     return {};
   }
 }

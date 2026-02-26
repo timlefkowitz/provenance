@@ -58,6 +58,11 @@ export async function initializeI18nClient(
       },
     );
 
+  // Ensure at least one namespace is loaded before the empty check.
+  // resourcesToBackend loads on-demand, so no resource is loaded until something uses t().
+  const firstNs = Array.isArray(settings.ns) ? settings.ns[0] : (settings.ns as string) || 'common';
+  await i18next.loadNamespaces(firstNs);
+
   // to avoid infinite loops, we return the i18next instance after a certain number of iterations
   // even if the languages and namespaces are not loaded
   if (iteration >= MAX_ITERATIONS) {
