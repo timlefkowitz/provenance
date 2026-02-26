@@ -50,13 +50,27 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
     console.log('[createArtworksBatch] Received', images.length, 'images for userId:', userId);
 
-    if (!images || images.length === 0) {
-      console.warn('[createArtworksBatch] No images provided for userId:', userId);
-      return { error: 'At least one image is required' };
+    // Reject empty or invalid file entries (e.g. iOS sometimes sends empty FormData parts)
+    const validImages: File[] = [];
+    const validTitles: string[] = [];
+    for (let i = 0; i < images.length; i++) {
+      const file = images[i];
+      if (file && typeof file.arrayBuffer === 'function' && file.size > 0) {
+        validImages.push(file);
+        validTitles.push(titles[i] ?? '');
+      } else {
+        console.warn('[createArtworksBatch] Skipping invalid/empty file at index', i, file ? { name: file.name, size: file?.size } : 'missing');
+      }
     }
 
-    if (images.length !== titles.length) {
-      console.warn('[createArtworksBatch] Image/title count mismatch:', images.length, 'images vs', titles.length, 'titles');
+    if (validImages.length === 0) {
+      console.warn('[createArtworksBatch] No valid images after filtering for userId:', userId);
+      return { error: 'No valid images received. If you\'re on a phone, try choosing smaller photos or one image at a time (max 10MB each).' };
+    }
+
+    // Use validated arrays for the rest of the flow
+    if (validImages.length !== validTitles.length) {
+      console.warn('[createArtworksBatch] Image/title count mismatch after filter:', validImages.length, 'vs', validTitles.length);
       return { error: 'Each image must have a title' };
     }
 
@@ -88,11 +102,11 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const artworkIds: string[] = [];
     const errors: string[] = [];
 
-    for (let i = 0; i < images.length; i++) {
+    for (let i = 0; i < validImages.length; i++) {
 
       
-      const imageFile = images[i];
-      const title = titles[i];
+      const imageFile = validImages[i];
+      const title = validTitles[i];
 
       if (!title || !title.trim()) {
         errors.push(`Image ${i + 1} is missing a title`);
@@ -100,7 +114,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       }
 
       try {
-        console.log(`[createArtworksBatch] Processing artwork ${i + 1}/${images.length}:`, {
+        console.log(`[createArtworksBatch] Processing artwork ${i + 1}/${validImages.length}:`, {
           name: imageFile.name,
           size: imageFile.size,
           type: imageFile.type,

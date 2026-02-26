@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
     },
   },
   experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-icons',

@@ -175,7 +175,13 @@ export function AddArtworkForm({
           }
         }
       } catch (e) {
-        setError('Something went wrong. Please try again.');
+        const message = e instanceof Error ? e.message : '';
+        const isSizeError = /body.*limit|413|too large|exceeded/i.test(message);
+        setError(
+          isSizeError
+            ? 'Photo(s) are too large to upload. Try one image at a time or use smaller photos (under 10MB each).'
+            : 'Something went wrong. If you\'re on a phone, try one image at a time or smaller photos, then try again.'
+        );
         console.error(e);
       }
     });
