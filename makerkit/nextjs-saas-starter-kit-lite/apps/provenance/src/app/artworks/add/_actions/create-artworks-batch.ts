@@ -2,7 +2,10 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import type { Database } from '@kit/supabase/database';
 import { revalidatePath } from 'next/cache';
+
+type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
 
 const ARTWORKS_BUCKET = 'artworks';
 
@@ -129,7 +132,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 }
 
 async function uploadArtworkImage(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: ServerClient,
   file: File,
   userId: string,
 ): Promise<string | null> {
@@ -183,10 +186,10 @@ async function uploadArtworkImage(
 }
 
 async function generateCertificateNumber(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: ServerClient,
 ): Promise<string> {
   try {
-    const { data, error } = await client.rpc('generate_certificate_number');
+    const { data, error } = await (client as unknown as any).rpc('generate_certificate_number');
     if (!error && data) {
       return data;
     }
@@ -201,7 +204,7 @@ async function generateCertificateNumber(
 
   while (exists && attempts < 10) {
     certificateNumber = `PROV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    const { data } = await client
+    const { data } = await (client as any)
       .from('artworks')
       .select('id')
       .eq('certificate_number', certificateNumber)
