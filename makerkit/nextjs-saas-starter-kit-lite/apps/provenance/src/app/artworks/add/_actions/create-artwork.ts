@@ -176,7 +176,7 @@ async function generateCertificateNumber(
 
   while (exists && attempts < 10) {
     certificateNumber = `PROV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    const { data } = await client
+    const { data } = await (client as any)
       .from('artworks')
       .select('id')
       .eq('certificate_number', certificateNumber)
