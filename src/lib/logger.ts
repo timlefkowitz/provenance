@@ -1,0 +1,32 @@
+/**
+ * Structured logger for Vercel serverless functions.
+ * Outputs JSON to stdout/stderr so logs appear in Vercel dashboard and can be searched.
+ * Use these instead of ad-hoc console.log for production observability.
+ */
+type LogLevel = 'info' | 'warn' | 'error';
+
+function log(level: LogLevel, event: string, data: Record<string, unknown> = {}) {
+  const entry = {
+    level,
+    event,
+    timestamp: new Date().toISOString(),
+    ...data,
+  };
+  const line = JSON.stringify(entry);
+  if (level === 'error') {
+    // eslint-disable-next-line no-console
+    console.error(line);
+  } else if (level === 'warn') {
+    // eslint-disable-next-line no-console
+    console.warn(line);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(line);
+  }
+}
+
+export const logger = {
+  info: (event: string, data?: Record<string, unknown>) => log('info', event, data),
+  warn: (event: string, data?: Record<string, unknown>) => log('warn', event, data),
+  error: (event: string, data?: Record<string, unknown>) => log('error', event, data),
+};

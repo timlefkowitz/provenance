@@ -7,6 +7,7 @@ import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { logger } from '~/lib/logger';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -76,6 +77,14 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     } catch (error) {
       console.error('Error fetching account for email:', error);
     }
+
+    logger.info('artwork_post_start', {
+      role: userRole || 'unknown',
+      userId,
+      artworkCount: images.length,
+      hasExhibition: !!exhibitionId,
+      hasGalleryProfile: !!galleryProfileId,
+    });
 
     const adminClient = getSupabaseServerAdminClient();
     for (let i = 0; i < images.length; i++) {
@@ -332,6 +341,12 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     }
 
     if (artworkIds.length === 0) {
+      logger.error('artwork_post_failed', {
+        role: userRole || 'unknown',
+        userId,
+        attemptedCount: images.length,
+        errors,
+      });
       return { 
         error: errors.length > 0 
           ? `Failed to create artworks: ${errors.join('; ')}`
@@ -340,9 +355,22 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     }
 
     if (errors.length > 0) {
-      // Some succeeded, some failed
-      console.warn('Some artworks failed to create:', errors);
+      logger.warn('artwork_post_partial', {
+        role: userRole || 'unknown',
+        userId,
+        successCount: artworkIds.length,
+        failedCount: errors.length,
+        errors,
+      });
     }
+
+    logger.info('artwork_post_success', {
+      role: userRole || 'unknown',
+      userId,
+      artworkIds,
+      count: artworkIds.length,
+      certificateType: getCertificateTypeForRole(userRole),
+    });
 
     revalidatePath('/artworks');
 
@@ -351,7 +379,11 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       errors: errors.length > 0 ? errors : undefined
     };
   } catch (error: any) {
-    console.error('[createArtworksBatch] Fatal error:', error?.message ?? error, error?.stack);
+    logger.error('artwork_post_fatal', {
+      userId,
+      message: error?.message ?? String(error),
+      stack: error?.stack,
+    });
     return { error: 'An unexpected error occurred' };
   }
 }
