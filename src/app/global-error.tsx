@@ -41,7 +41,7 @@ export default function GlobalError({
     <html>
       <body>
         <div className="flex min-h-screen flex-col items-center justify-center p-6 font-sans">
-          <h2 className="text-2xl font-bold">Something went wrong!</h2>
+          <h2 className="text-2xl font-bold">Something went wrong! We are currently in development please check back :)</h2>
           <p className="mt-2 text-sm text-gray-600">
             Check the browser console (F12 → Console) for details.
           </p>
