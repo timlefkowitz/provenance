@@ -9,6 +9,29 @@ type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
 
 const ARTWORKS_BUCKET = 'artworks';
 
+/**
+ * Infer MIME type from file extension when the browser omits it.
+ * Older Android WebViews, Windows file pickers, and some mobile browsers
+ * can send files with an empty or generic content type.
+ */
+function inferContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    bmp: 'image/bmp',
+    tiff: 'image/tiff',
+    tif: 'image/tiff',
+  };
+  return map[ext] ?? 'image/jpeg';
+}
+
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
     const client = getSupabaseServerClient();
@@ -146,7 +169,16 @@ async function uploadArtworkImage(
     if (!bucketExists) {
       const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
         public: true,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        allowedMimeTypes: [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+          'image/heic',
+          'image/heif',
+          'image/bmp',
+          'image/tiff',
+        ],
         fileSizeLimit: 10485760, // 10MB
       });
       
@@ -159,9 +191,10 @@ async function uploadArtworkImage(
     const bucket = client.storage.from(ARTWORKS_BUCKET);
     const extension = file.name.split('.').pop() || 'jpg';
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
+    const contentType = inferContentType(file);
 
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
-      contentType: file.type,
+      contentType,
       upsert: false,
     });
 

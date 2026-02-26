@@ -7,14 +7,37 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
-import { Camera, X, Upload } from 'lucide-react';
+import { Camera, X, Upload, ImageIcon } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 
 type ImagePreview = {
   file: File;
   preview: string;
   title: string;
+  isHeic?: boolean;
 };
+
+/**
+ * Infer MIME type from file extension when the browser doesn't provide one.
+ * Older Android WebViews and some file managers omit file.type entirely.
+ */
+function inferMimeType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    bmp: 'image/bmp',
+    tiff: 'image/tiff',
+    tif: 'image/tiff',
+  };
+  return map[ext] ?? '';
+}
 
 export function AddArtworkForm({ 
   userId, 
@@ -26,7 +49,9 @@ export function AddArtworkForm({
   defaultMedium?: string;
 }) {
   const router = useRouter();
+  // Two separate inputs so the `capture` attribute is static and reliable across iOS/Android
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
@@ -49,36 +74,52 @@ export function AddArtworkForm({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    // Use inferred MIME type so files from Android WebViews or Windows with
+    // missing file.type are not silently dropped.
+    const imageFiles = Array.from(files).filter(f =>
+      inferMimeType(f).startsWith('image/'),
+    );
     if (imageFiles.length === 0) return;
 
     const newPreviews: ImagePreview[] = [];
     let processedCount = 0;
-    
+
+    const maybeCommit = () => {
+      processedCount++;
+      if (processedCount === imageFiles.length) {
+        setImagePreviews(prev => [...prev, ...newPreviews]);
+      }
+    };
+
     imageFiles.forEach((file, index) => {
+      const mimeType = inferMimeType(file);
+      const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
+      const title =
+        file.name.replace(/\.[^/.]+$/, '') ||
+        `Artwork ${imagePreviews.length + index + 1}`;
+
+      if (isHeic) {
+        // Browsers cannot decode HEIC; skip FileReader and use a placeholder.
+        newPreviews.push({ file, preview: '', title, isHeic: true });
+        maybeCommit();
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        const preview = reader.result as string;
-        const newPreview: ImagePreview = {
+        newPreviews.push({
           file,
-          preview,
-          title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
-        };
-        newPreviews.push(newPreview);
-        processedCount++;
-        
-        // Update state when all files are processed
-        if (processedCount === imageFiles.length) {
-          setImagePreviews(prev => [...prev, ...newPreviews]);
-        }
+          preview: reader.result as string,
+          title,
+        });
+        maybeCommit();
       };
       reader.readAsDataURL(file);
     });
 
-    // Reset input to allow selecting the same files again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    // Reset both inputs so the same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -153,28 +194,31 @@ export function AddArtworkForm({
       <div className="space-y-2">
         <Label htmlFor="images">Artwork Images *</Label>
         <div className="border-2 border-dashed border-wine/30 rounded-lg p-6 bg-parchment/50">
-          {/* File Input */}
+          {/* File picker — no capture so users get full gallery/file access */}
           <input
             ref={fileInputRef}
             type="file"
             id="images"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             multiple
             onChange={handleFileSelect}
             className="hidden"
           />
-          
+          {/* Camera input — static capture attribute for reliable iOS/Android behaviour */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
           {/* Upload Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <Button
               type="button"
-              onClick={() => {
-                if (fileInputRef.current) {
-                  // Remove capture attribute for file selection
-                  fileInputRef.current.removeAttribute('capture');
-                  fileInputRef.current.click();
-                }
-              }}
+              onClick={() => fileInputRef.current?.click()}
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
             >
@@ -183,13 +227,7 @@ export function AddArtworkForm({
             </Button>
             <Button
               type="button"
-              onClick={() => {
-                // For camera, set capture attribute to use device camera
-                if (fileInputRef.current) {
-                  fileInputRef.current.setAttribute('capture', 'environment');
-                  fileInputRef.current.click();
-                }
-              }}
+              onClick={() => cameraInputRef.current?.click()}
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
             >
@@ -215,11 +253,23 @@ export function AddArtworkForm({
                     >
                       <X className="h-4 w-4" />
                     </button>
-                    <img
-                      src={img.preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg mb-2"
-                    />
+                    {img.isHeic ? (
+                      <div className="w-full h-48 flex flex-col items-center justify-center rounded-lg mb-2 bg-parchment/60 border border-wine/10">
+                        <ImageIcon className="h-10 w-10 text-wine/40 mb-2" />
+                        <span className="text-xs text-ink/50 font-serif text-center px-2 truncate max-w-full">
+                          {img.file.name}
+                        </span>
+                        <span className="text-xs text-ink/40 font-serif mt-1">
+                          HEIC — will be uploaded as-is
+                        </span>
+                      </div>
+                    ) : (
+                      <img
+                        src={img.preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg mb-2"
+                      />
+                    )}
                     <Input
                       value={img.title}
                       onChange={(e) => updateImageTitle(index, e.target.value)}
@@ -240,7 +290,7 @@ export function AddArtworkForm({
                 Click to upload images or take photos
               </p>
               <p className="text-xs text-ink/50">
-                PNG, JPG, or WEBP up to 10MB each. You can select multiple images.
+                JPG, PNG, WEBP, GIF, or HEIC up to 10MB each. Select multiple images at once.
               </p>
             </div>
           )}
