@@ -56,7 +56,11 @@ export default async function RootLayout({
     const i18n = await createI18nServerInstance();
     currentLang = i18n.language || 'en';
   } catch (err) {
-    console.error('[RootLayout] i18n init failed, using en:', err);
+    console.error('[Provenance] RootLayout i18n init failed, using en:', err);
+  }
+
+  if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
+    console.debug('[Provenance] RootLayout render', { currentLang });
   }
 
   return (

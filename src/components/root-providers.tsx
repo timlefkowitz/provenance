@@ -41,7 +41,16 @@ export function RootProviders({
   lang: string;
   theme?: string;
 }>) {
-  const i18nSettings = useMemo(() => getI18nSettings(lang), [lang]);
+  const i18nSettings = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
+      console.debug('[Provenance] RootProviders getI18nSettings', { lang });
+    }
+    return getI18nSettings(lang);
+  }, [lang]);
+
+  if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
+    console.debug('[Provenance] RootProviders mount', { lang, theme });
+  }
 
   return (
     <ReactQueryProvider>
