@@ -323,10 +323,12 @@ export function AddArtworkForm({
     try {
       const newPreviews: ImagePreview[] = [];
 
+      const MAX_SINGLE_IMAGE_BYTES = 4 * 1024 * 1024; // ~4MB to stay under Vercel body limits
+
       for (let index = 0; index < imageFiles.length; index++) {
         const file = imageFiles[index];
-        if (file.size > 10 * 1024 * 1024) {
-          setError(`"${file.name}" is too large. Please choose images under 10 MB.`);
+        if (file.size > MAX_SINGLE_IMAGE_BYTES) {
+          setError(`"${file.name}" is too large. Please choose images under 4 MB.`);
           return;
         }
 
@@ -410,11 +412,34 @@ export function AddArtworkForm({
       return;
     }
 
-    // Vercel 4.5 MB body limit: send in chunks of 6 images (~4.2 MB max) so 30+ images work
-    const MAX_IMAGES_PER_BATCH = 6;
+    // Vercel ~4.5 MB body limit per request: group images into batches whose
+    // total size stays under ~4 MB so iPhone photos are safe.
+    const MAX_BATCH_BYTES = 4 * 1024 * 1024;
     const chunks: ImagePreview[][] = [];
-    for (let i = 0; i < imagePreviews.length; i += MAX_IMAGES_PER_BATCH) {
-      chunks.push(imagePreviews.slice(i, i + MAX_IMAGES_PER_BATCH));
+    let currentBatch: ImagePreview[] = [];
+    let currentBytes = 0;
+
+    for (let i = 0; i < imagePreviews.length; i++) {
+      const img = imagePreviews[i];
+      const size = img.file.size;
+
+      if (size > MAX_BATCH_BYTES) {
+        setError(`"${img.file.name}" is too large. Please choose images under 4 MB.`);
+        return;
+      }
+
+      if (currentBatch.length > 0 && currentBytes + size > MAX_BATCH_BYTES) {
+        chunks.push(currentBatch);
+        currentBatch = [];
+        currentBytes = 0;
+      }
+
+      currentBatch.push(img);
+      currentBytes += size;
+    }
+
+    if (currentBatch.length > 0) {
+      chunks.push(currentBatch);
     }
 
     startTransition(async () => {
@@ -698,7 +723,7 @@ export function AddArtworkForm({
                 Click to upload images or take photos
               </p>
               <p className="text-xs text-ink/50">
-                PNG, JPG, or WEBP up to 10MB each. You can select multiple images.
+                PNG, JPG, or WEBP up to 4MB each. You can select multiple images.
               </p>
             </div>
           )}
