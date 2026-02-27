@@ -34,6 +34,72 @@ type ImagePreview = {
   } | null;
 };
 
+async function maybeCompressImage(file: File): Promise<File> {
+  const MAX_TARGET_BYTES = 4 * 1024 * 1024;
+
+  if (file.size <= MAX_TARGET_BYTES) {
+    return file;
+  }
+
+  if (typeof createImageBitmap === 'undefined') {
+    return file;
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDim = 2000;
+    let { width, height } = bitmap;
+    let targetWidth = width;
+    let targetHeight = height;
+
+    if (width > height && width > maxDim) {
+      targetWidth = maxDim;
+      targetHeight = Math.round((maxDim / width) * height);
+    } else if (height >= width && height > maxDim) {
+      targetHeight = maxDim;
+      targetWidth = Math.round((maxDim / height) * width);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      bitmap.close();
+      return file;
+    }
+
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    bitmap.close();
+
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => {
+          if (b) resolve(b);
+          else reject(new Error('Failed to create compressed blob'));
+        },
+        'image/jpeg',
+        0.8,
+      );
+    });
+
+    const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpeg', {
+      type: 'image/jpeg',
+    });
+
+    console.info('[AddArtworkForm] Compressed image', {
+      name: file.name,
+      beforeBytes: file.size,
+      afterBytes: compressed.size,
+    });
+
+    return compressed.size < file.size ? compressed : file;
+  } catch (err) {
+    console.warn('[AddArtworkForm] Image compression failed, using original', err);
+    return file;
+  }
+}
+
 async function readFileSignature(file: File): Promise<{ hex: string; ascii: string }> {
   const head = await file.slice(0, 16).arrayBuffer();
   const bytes = Array.from(new Uint8Array(head));
@@ -323,13 +389,16 @@ export function AddArtworkForm({
     try {
       const newPreviews: ImagePreview[] = [];
 
-      const MAX_SINGLE_IMAGE_BYTES = 4 * 1024 * 1024; // ~4MB to stay under Vercel body limits
-
       for (let index = 0; index < imageFiles.length; index++) {
-        const file = imageFiles[index];
+        let file = imageFiles[index];
+        const MAX_SINGLE_IMAGE_BYTES = 4 * 1024 * 1024; // ~4MB to stay under Vercel body limits
+
         if (file.size > MAX_SINGLE_IMAGE_BYTES) {
-          setError(`"${file.name}" is too large. Please choose images under 4 MB.`);
-          return;
+          file = await maybeCompressImage(file);
+          if (file.size > MAX_SINGLE_IMAGE_BYTES) {
+            setError(`"${file.name}" is too large. Please choose images under 4 MB.`);
+            return;
+          }
         }
 
         // Extract location from EXIF data
