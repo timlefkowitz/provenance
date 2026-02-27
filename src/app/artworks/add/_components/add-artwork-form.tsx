@@ -285,10 +285,38 @@ export function AddArtworkForm({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      console.warn('[AddArtworkForm] File select with no files', {
+        inputId: e.target.id,
+      });
+      return;
+    }
 
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (imageFiles.length === 0) return;
+    const userAgent =
+      typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+
+    const imageFiles = Array.from(files)
+      .map((file) => {
+        const isImage = file.type.startsWith('image/');
+        console.log('[AddArtworkForm] Candidate file', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          isImage,
+          userAgent,
+        });
+        return { file, isImage };
+      })
+      .filter(({ isImage }) => isImage)
+      .map(({ file }) => file);
+
+    if (imageFiles.length === 0) {
+      console.warn('[AddArtworkForm] No image files after filtering', {
+        totalFiles: files.length,
+        userAgent,
+      });
+      return;
+    }
 
     setError(null);
 
@@ -393,11 +421,42 @@ export function AddArtworkForm({
       setUploadProgress({ batch: 0, totalBatches: chunks.length });
       const allArtworkIds: string[] = [];
       try {
+        const userAgent =
+          typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        const platform =
+          typeof navigator !== 'undefined'
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ((navigator as any).platform as string | undefined) ?? ''
+            : '';
+        const viewport =
+          typeof window !== 'undefined'
+            ? `${window.innerWidth}x${window.innerHeight}`
+            : '';
+
         for (let c = 0; c < chunks.length; c++) {
           setUploadProgress({ batch: c + 1, totalBatches: chunks.length });
           const chunk = chunks[c];
 
           const formDataToSend = new FormData();
+          const totalBytes = chunk.reduce(
+            (sum, img) => sum + img.file.size,
+            0,
+          );
+
+          console.log('[AddArtworkForm] Submitting artwork chunk', {
+            batch: c + 1,
+            totalBatches: chunks.length,
+            chunkSize: chunk.length,
+            totalBytes,
+            approxMb: Number.isFinite(totalBytes)
+              ? (totalBytes / (1024 * 1024)).toFixed(2)
+              : 'unknown',
+            userAgent,
+            platform,
+            viewport,
+            imageNames: chunk.map((img) => img.file.name),
+          });
+
           chunk.forEach((img) => {
             formDataToSend.append('images', img.file);
             formDataToSend.append('titles', img.title);
@@ -408,6 +467,16 @@ export function AddArtworkForm({
           formDataToSend.append('medium', formData.medium);
           formDataToSend.append('creationDate', formData.creationDate);
           formDataToSend.append('isPublic', formData.isPublic.toString());
+
+          if (userAgent) {
+            formDataToSend.append('debugUserAgent', userAgent);
+          }
+          if (platform) {
+            formDataToSend.append('debugPlatform', platform);
+          }
+          if (viewport) {
+            formDataToSend.append('debugViewport', viewport);
+          }
           if (formData.exhibitionId) formDataToSend.append('exhibitionId', formData.exhibitionId);
           if (formData.galleryProfileId) formDataToSend.append('galleryProfileId', formData.galleryProfileId);
 
@@ -436,12 +505,25 @@ export function AddArtworkForm({
       } catch (e) {
         setUploadProgress(null);
         const uploaded = allArtworkIds.length;
+        const message = e instanceof Error ? e.message : String(e);
+        const isSizeError =
+          /body.*limit|413|payload too large|request entity too large|too large|exceeded/i.test(
+            message,
+          );
+
+        console.error('[AddArtworkForm] Upload error', {
+          errorMessage: message,
+          uploaded,
+          totalImages: imagePreviews.length,
+        });
+
         setError(
-          uploaded > 0
-            ? `Something went wrong. ${uploaded} of ${imagePreviews.length} uploaded – you can add the rest in a new batch.`
-            : 'Something went wrong. Please try again.'
+          isSizeError
+            ? 'Photo(s) are too large to upload in a single batch. Try one image at a time or use smaller photos (under 10MB each).'
+            : uploaded > 0
+              ? `Something went wrong. ${uploaded} of ${imagePreviews.length} uploaded – you can add the rest in a new batch.`
+              : 'Something went wrong. Please try again.'
         );
-        console.error(e);
       }
     });
   };

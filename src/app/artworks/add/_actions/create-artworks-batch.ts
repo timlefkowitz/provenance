@@ -14,6 +14,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const client = getSupabaseServerClient();
     
     // Get form data
+    const debugUserAgent = formData.get('debugUserAgent') as string | null;
+    const debugPlatform = formData.get('debugPlatform') as string | null;
+    const debugViewport = formData.get('debugViewport') as string | null;
+
     const images = formData.getAll('images') as File[];
     const titles = formData.getAll('titles') as string[];
     const locations = formData.getAll('locations') as string[]; // JSON strings
@@ -24,6 +28,21 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
     const galleryProfileId = formData.get('galleryProfileId') as string || null;
+
+    logger.info('artwork_post_request_received', {
+      userId,
+      imageCount: images?.length ?? 0,
+      titleCount: titles?.length ?? 0,
+      hasDescription: Boolean(description),
+      hasArtistName: Boolean(artistName),
+      hasMedium: Boolean(medium),
+      hasCreationDate: Boolean(creationDate),
+      hasExhibitionId: Boolean(exhibitionId),
+      hasGalleryProfileId: Boolean(galleryProfileId),
+      debugUserAgent,
+      debugPlatform,
+      debugViewport,
+    });
 
     if (!images || images.length === 0) {
       return { error: 'At least one image is required' };
