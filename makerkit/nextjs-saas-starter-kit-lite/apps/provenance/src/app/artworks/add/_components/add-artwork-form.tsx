@@ -167,11 +167,14 @@ export function AddArtworkForm({
         if (result.error) {
           setError(result.error);
         } else if (result.artworkIds && result.artworkIds.length > 0) {
-          // If only one artwork, go to its certificate, otherwise go to artworks feed
-          if (result.artworkIds.length === 1) {
-            router.push(`/artworks/${result.artworkIds[0]}/certificate`);
+          if (result.errors && result.errors.length > 0) {
+            setError(`Some certificates could not be created: ${result.errors.join(' ')} ${result.artworkIds.length} succeeded — go to My Artworks to view them.`);
           } else {
-            router.push('/artworks');
+            if (result.artworkIds.length === 1) {
+              router.push(`/artworks/${result.artworkIds[0]}/certificate`);
+            } else {
+              router.push('/artworks');
+            }
           }
         }
       } catch (e) {

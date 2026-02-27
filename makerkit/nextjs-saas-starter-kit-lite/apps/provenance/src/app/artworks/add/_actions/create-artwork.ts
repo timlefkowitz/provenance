@@ -8,6 +8,16 @@ import { revalidatePath } from 'next/cache';
 const ARTWORKS_BUCKET = 'artworks';
 type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
 
+function inferContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+    heic: 'image/heic', heif: 'image/heif', bmp: 'image/bmp', tiff: 'image/tiff', tif: 'image/tiff',
+  };
+  return map[ext] ?? 'image/jpeg';
+}
+
 export async function createArtwork(formData: FormData, userId: string) {
   console.log('[createArtwork] Starting for userId:', userId);
   try {
@@ -125,7 +135,7 @@ async function uploadArtworkImage(
       console.log('[uploadArtworkImage] Creating bucket:', ARTWORKS_BUCKET);
       const { error: createError } = await adminClient.storage.createBucket(ARTWORKS_BUCKET, {
         public: true,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/bmp', 'image/tiff'],
         fileSizeLimit: 10485760, // 10MB
       });
       
@@ -136,12 +146,14 @@ async function uploadArtworkImage(
 
     const bytes = await file.arrayBuffer();
     const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const extension = file.name.split('.').pop() || 'jpg';
+    const rawExt = (file.name.split('.').pop() ?? '').toLowerCase();
+    const extension = /^(jpe?g|png|webp|gif|heic|heif|bmp|tiff?)$/.test(rawExt) ? rawExt : 'jpg';
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
+    const contentType = inferContentType(file);
 
-    console.log('[uploadArtworkImage] Uploading to path:', fileName, '| contentType:', file.type, '| size:', file.size);
+    console.log('[uploadArtworkImage] Uploading to path:', fileName, '| contentType:', contentType, '| size:', file.size);
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
-      contentType: file.type,
+      contentType,
       upsert: false,
     });
 

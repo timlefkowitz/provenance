@@ -224,7 +224,8 @@ async function uploadArtworkImage(
 
     const bytes = await file.arrayBuffer();
     const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const extension = file.name.split('.').pop() || 'jpg';
+    const rawExt = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const extension = /^(jpe?g|png|webp|gif|heic|heif|bmp|tiff?)$/i.test(rawExt) ? rawExt : 'jpg';
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
     const contentType = inferContentType(file);
 
