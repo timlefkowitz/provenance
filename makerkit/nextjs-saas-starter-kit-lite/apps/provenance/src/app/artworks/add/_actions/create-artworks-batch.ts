@@ -37,7 +37,16 @@ function inferContentType(file: File): string {
 }
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
-  console.log('[createArtworksBatch] Starting for userId:', userId);
+  const debugUserAgent = formData.get('debugUserAgent') as string | null;
+  const debugPlatform = formData.get('debugPlatform') as string | null;
+  const debugViewport = formData.get('debugViewport') as string | null;
+
+  console.log('[createArtworksBatch] Starting', {
+    userId,
+    debugUserAgent,
+    debugPlatform,
+    debugViewport,
+  });
   try {
     const client = getSupabaseServerClient();
     
@@ -45,10 +54,17 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const images = formData.getAll('images') as File[];
     const titles = formData.getAll('titles') as string[];
     const description = formData.get('description') as string || '';
-    const artistName = formData.get('artistName') as string || '';
-    const medium = formData.get('medium') as string || '';
+    const artistName = (formData.get('artistName') as string) || '';
+    const medium = (formData.get('medium') as string) || '';
 
-    console.log('[createArtworksBatch] Received', images.length, 'images for userId:', userId);
+    console.log('[createArtworksBatch] Raw FormData', {
+      userId,
+      imageCount: images.length,
+      titleCount: titles.length,
+      hasDescription: Boolean(description),
+      hasArtistName: Boolean(artistName),
+      hasMedium: Boolean(medium),
+    });
 
     // Reject empty or invalid file entries (e.g. iOS sometimes sends empty FormData parts)
     const validImages: File[] = [];
@@ -56,10 +72,39 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     for (let i = 0; i < images.length; i++) {
       const file = images[i];
       if (file && typeof file.arrayBuffer === 'function' && file.size > 0) {
+        const name = file.name;
+        const rawType = (file as File).type;
+        const inferredType = inferContentType(file);
+        const ext = name.split('.').pop()?.toLowerCase() ?? '';
+        const isHeic =
+          inferredType === 'image/heic' ||
+          inferredType === 'image/heif' ||
+          ext === 'heic' ||
+          ext === 'heif';
+
+        console.log('[createArtworksBatch] Valid image candidate', {
+          index: i,
+          name,
+          size: file.size,
+          rawType,
+          inferredType,
+          ext,
+          isHeic,
+        });
+
         validImages.push(file);
         validTitles.push(titles[i] ?? '');
       } else {
-        console.warn('[createArtworksBatch] Skipping invalid/empty file at index', i, file ? { name: file.name, size: file?.size } : 'missing');
+        console.warn(
+          '[createArtworksBatch] Skipping invalid/empty file',
+          {
+            index: i,
+            hasFile: Boolean(file),
+            name: file?.name,
+            size: file?.size,
+            type: file?.type,
+          },
+        );
       }
     }
 
@@ -194,6 +239,25 @@ async function uploadArtworkImage(
   userId: string,
 ): Promise<string | null> {
   try {
+    const rawType = file.type;
+    const inferredType = inferContentType(file);
+    const rawExt = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const isHeic =
+      inferredType === 'image/heic' ||
+      inferredType === 'image/heif' ||
+      rawExt === 'heic' ||
+      rawExt === 'heif';
+
+    console.log('[uploadArtworkImage] File debug', {
+      userId,
+      name: file.name,
+      size: file.size,
+      rawType,
+      inferredType,
+      ext: rawExt,
+      isHeic,
+    });
+
     const adminClient = getSupabaseServerAdminClient();
     const { data: buckets } = await adminClient.storage.listBuckets();
     
@@ -224,10 +288,9 @@ async function uploadArtworkImage(
 
     const bytes = await file.arrayBuffer();
     const bucket = client.storage.from(ARTWORKS_BUCKET);
-    const rawExt = file.name.split('.').pop()?.toLowerCase() ?? '';
     const extension = /^(jpe?g|png|webp|gif|heic|heif|bmp|tiff?)$/i.test(rawExt) ? rawExt : 'jpg';
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-    const contentType = inferContentType(file);
+    const contentType = inferredType;
 
     console.log('[uploadArtworkImage] Uploading to path:', fileName, '| contentType:', contentType, '| size:', file.size);
     const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {

@@ -19,7 +19,16 @@ function inferContentType(file: File): string {
 }
 
 export async function createArtwork(formData: FormData, userId: string) {
-  console.log('[createArtwork] Starting for userId:', userId);
+  const debugUserAgent = formData.get('debugUserAgent') as string | null;
+  const debugPlatform = formData.get('debugPlatform') as string | null;
+  const debugViewport = formData.get('debugViewport') as string | null;
+
+  console.log('[createArtwork] Starting', {
+    userId,
+    debugUserAgent,
+    debugPlatform,
+    debugViewport,
+  });
   try {
     const client = getSupabaseServerClient();
     
@@ -28,10 +37,17 @@ export async function createArtwork(formData: FormData, userId: string) {
     const title = formData.get('title') as string;
     const description = formData.get('description') as string || '';
     const artistName = formData.get('artistName') as string || '';
-    const medium = formData.get('medium') as string || '';
+    const medium = (formData.get('medium') as string) || '';
 
     if (!imageFile || !title) {
-      console.warn('[createArtwork] Validation failed - missing title or image for userId:', userId);
+      console.warn(
+        '[createArtwork] Validation failed - missing title or image',
+        {
+          userId,
+          hasImage: Boolean(imageFile),
+          hasTitle: Boolean(title),
+        },
+      );
       return { error: 'Title and image are required' };
     }
 
@@ -39,7 +55,17 @@ export async function createArtwork(formData: FormData, userId: string) {
       name: imageFile.name,
       size: imageFile.size,
       type: imageFile.type,
+      inferredType: inferContentType(imageFile),
+      isZeroBytes: imageFile.size === 0,
     });
+
+    if (imageFile.size === 0) {
+      console.warn('[createArtwork] Zero-byte image file received', {
+        userId,
+        name: imageFile.name,
+        type: imageFile.type,
+      });
+    }
 
     // Ensure account exists (should be created by trigger, but verify)
     const { data: account, error: accountError } = await client

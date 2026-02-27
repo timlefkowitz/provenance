@@ -72,14 +72,53 @@ export function AddArtworkForm({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      console.warn('[AddArtworkForm] File select with no files', {
+        from:
+          e.target === fileInputRef.current
+            ? 'file-input'
+            : e.target === cameraInputRef.current
+              ? 'camera-input'
+              : 'unknown',
+      });
+      return;
+    }
+
+    const userAgent =
+      typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
 
     // Use inferred MIME type so files from Android WebViews or Windows with
     // missing file.type are not silently dropped.
-    const imageFiles = Array.from(files).filter(f =>
-      inferMimeType(f).startsWith('image/'),
-    );
-    if (imageFiles.length === 0) return;
+    const imageFiles = Array.from(files)
+      .map((f) => {
+        const inferred = inferMimeType(f);
+        console.log('[AddArtworkForm] Candidate file', {
+          name: f.name,
+          size: f.size,
+          type: f.type,
+          inferredType: inferred,
+          isHeic:
+            inferred === 'image/heic' ||
+            inferred === 'image/heif' ||
+            /\.heic$/i.test(f.name) ||
+            /\.heif$/i.test(f.name),
+          userAgent,
+        });
+        return { file: f, inferredType: inferred };
+      })
+      .filter(({ inferredType }) => inferredType.startsWith('image/'))
+      .map(({ file }) => file);
+
+    if (imageFiles.length === 0) {
+      console.warn(
+        '[AddArtworkForm] No image files after MIME-type filtering',
+        {
+          totalFiles: files.length,
+          userAgent,
+        },
+      );
+      return;
+    }
 
     const newPreviews: ImagePreview[] = [];
     let processedCount = 0;
@@ -151,7 +190,36 @@ export function AddArtworkForm({
     startTransition(async () => {
       try {
         const formDataToSend = new FormData();
-        
+
+        const totalBytes = imagePreviews.reduce(
+          (sum, img) => sum + img.file.size,
+          0,
+        );
+        const approxMb = totalBytes / (1024 * 1024);
+
+        const userAgent =
+          typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        const platform =
+          typeof navigator !== 'undefined'
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ((navigator as any).platform as string | undefined) ?? ''
+            : '';
+        const viewport =
+          typeof window !== 'undefined'
+            ? `${window.innerWidth}x${window.innerHeight}`
+            : '';
+
+        console.log('[AddArtworkForm] Submitting artwork batch', {
+          imageCount: imagePreviews.length,
+          totalBytes,
+          approxMb: Number.isFinite(approxMb)
+            ? approxMb.toFixed(2)
+            : 'unknown',
+          userAgent,
+          platform,
+          viewport,
+        });
+
         // Append all images
         imagePreviews.forEach((img, index) => {
           formDataToSend.append(`images`, img.file);
@@ -161,6 +229,17 @@ export function AddArtworkForm({
         formDataToSend.append('description', formData.description);
         formDataToSend.append('artistName', formData.artistName);
         formDataToSend.append('medium', formData.medium);
+
+        // Debug fields to help diagnose mobile/iPhone issues on the server
+        if (userAgent) {
+          formDataToSend.append('debugUserAgent', userAgent);
+        }
+        if (platform) {
+          formDataToSend.append('debugPlatform', platform);
+        }
+        if (viewport) {
+          formDataToSend.append('debugViewport', viewport);
+        }
 
         const result = await createArtworksBatch(formDataToSend, userId);
         
