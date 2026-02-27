@@ -517,6 +517,40 @@ export function AddArtworkForm({
           totalImages: imagePreviews.length,
         });
 
+        // Best-effort: send error details to server so we can see them in Vercel logs,
+        // even when debugging from mobile without a JS console.
+        try {
+          const ua =
+            typeof navigator !== 'undefined' ? navigator.userAgent : '';
+          const platformInfo =
+            typeof navigator !== 'undefined'
+              ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ((navigator as any).platform as string | undefined) ?? ''
+              : '';
+          const viewportSize =
+            typeof window !== 'undefined'
+              ? `${window.innerWidth}x${window.innerHeight}`
+              : '';
+
+          void fetch('/api/log-client-error', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message,
+              uploaded,
+              totalImages: imagePreviews.length,
+              userAgent: ua,
+              platform: platformInfo,
+              viewport: viewportSize,
+              chunkCount: chunks.length,
+            }),
+          });
+        } catch {
+          // Swallow logging failures; they shouldn't block the UI.
+        }
+
         setError(
           isSizeError
             ? 'Photo(s) are too large to upload in a single batch. Try one image at a time or use smaller photos (under 10MB each).'
