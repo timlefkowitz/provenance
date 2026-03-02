@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
@@ -15,6 +16,7 @@ import { UsingGalleryLabel } from './using-gallery-label';
 
 export function Navigation() {
   const user = useCurrentUser();
+  const signOut = useSignOut();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -217,11 +219,21 @@ export function Navigation() {
                 </Link>
                 <Link 
                   href="/artworks/add" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2"
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
                 </Link>
+                <button
+                  type="button"
+                  className="flex items-center justify-between text-ink hover:text-wine transition-colors font-serif py-2"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void signOut.mutateAsync();
+                  }}
+                >
+                  <Trans i18nKey="auth:signOut" defaults="Sign Out" />
+                </button>
               </>
             )}
           </div>
