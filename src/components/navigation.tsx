@@ -210,20 +210,6 @@ export function Navigation() {
             </Link>
             {user.data && (
               <>
-                <Link 
-                  href="/notifications" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Notifications
-                </Link>
-                <Link 
-                  href="/artworks/add" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
-                </Link>
                 <button
                   type="button"
                   className="flex items-center justify-between text-ink hover:text-wine transition-colors font-serif py-2"
