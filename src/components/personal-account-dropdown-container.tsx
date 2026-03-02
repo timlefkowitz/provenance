@@ -275,18 +275,6 @@ export function ProfileAccountDropdownContainer(props: {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <DropdownMenuItem asChild>
-          <Link
-            className={'flex cursor-pointer items-center space-x-2'}
-            href={paths.profileSettings}
-          >
-            <Settings className={'h-5'} />
-            <span>
-              <Trans i18nKey={'account:settingsTab'} />
-            </span>
-          </Link>
-        </DropdownMenuItem>
-
         <AdminMenuItem />
 
         <DropdownMenuSeparator />
@@ -298,6 +286,18 @@ export function ProfileAccountDropdownContainer(props: {
         <LanguageSwitcher />
 
         <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link
+            className={'flex cursor-pointer items-center space-x-2'}
+            href={paths.profileSettings}
+          >
+            <Settings className={'h-5'} />
+            <span>
+              <Trans i18nKey={'account:settingsTab'} />
+            </span>
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuItem
           role={'button'}
