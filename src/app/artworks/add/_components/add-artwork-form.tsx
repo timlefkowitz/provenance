@@ -573,6 +573,8 @@ export function AddArtworkForm({
           }
           if (formData.exhibitionId) formDataToSend.append('exhibitionId', formData.exhibitionId);
           if (formData.galleryProfileId) formDataToSend.append('galleryProfileId', formData.galleryProfileId);
+          // Explicitly tell the server which perspective the user is posting from
+          formDataToSend.append('posterRole', userRole ?? '');
 
           const result = await createArtworksBatch(formDataToSend, userId);
 

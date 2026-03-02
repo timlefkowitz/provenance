@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
-import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, getCertificateTypeForRole, isValidRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
@@ -28,6 +28,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
     const galleryProfileId = formData.get('galleryProfileId') as string || null;
+    const posterRoleRaw = (formData.get('posterRole') as string | null) ?? null;
 
     logger.info('artwork_post_request_received', {
       userId,
@@ -39,6 +40,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       hasCreationDate: Boolean(creationDate),
       hasExhibitionId: Boolean(exhibitionId),
       hasGalleryProfileId: Boolean(galleryProfileId),
+      posterRole: posterRoleRaw || 'none',
       debugUserAgent,
       debugPlatform,
       debugViewport,
@@ -83,7 +85,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     // Fetch user account info once for email sending and role checking
     let accountEmail: string | null = null;
     let accountName: string | null = null;
-    let userRole: string | null = null;
+    let accountRole: UserRole | null = null;
+    let posterRole: UserRole | null = null;
     try {
       const { data: account } = await client
         .from('accounts')
@@ -92,13 +95,20 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         .single();
       accountEmail = account?.email || null;
       accountName = account?.name || null;
-      userRole = getUserRole(account?.public_data as Record<string, any>);
+      accountRole = getUserRole(account?.public_data as Record<string, any>);
+      if (posterRoleRaw && isValidRole(posterRoleRaw)) {
+        posterRole = posterRoleRaw as UserRole;
+      }
     } catch (error) {
       console.error('Error fetching account for email:', error);
     }
 
+    const effectiveRole: UserRole | null = posterRole ?? accountRole;
+
     logger.info('artwork_post_start', {
-      role: userRole || 'unknown',
+      role: effectiveRole || accountRole || 'unknown',
+      accountRole: accountRole || 'none',
+      posterRole: posterRole || 'none',
       userId,
       artworkCount: images.length,
       hasExhibition: !!exhibitionId,
@@ -133,13 +143,13 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         }
 
         // Certificate type by poster: gallery → Certificate of Show, collector → Certificate of Ownership, artist → Certificate of Authenticity
-        const certificateType = getCertificateTypeForRole(userRole);
+        const certificateType = getCertificateTypeForRole(effectiveRole);
         // If collector or gallery, certificate needs artist claim
         // If artist, certificate is verified immediately
         let certificateStatus = 'verified';
         let artistAccountId: string | null = null;
         
-        if (userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY) {
+        if (effectiveRole === USER_ROLES.COLLECTOR || effectiveRole === USER_ROLES.GALLERY) {
           certificateStatus = 'pending_artist_claim';
           
           // Try to find artist account by name
@@ -187,7 +197,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         insertData.is_public = isPublic;
 
         // Add gallery_profile_id if provided (for galleries with multiple profiles)
-        if (galleryProfileId && userRole === USER_ROLES.GALLERY) {
+        if (galleryProfileId && effectiveRole === USER_ROLES.GALLERY) {
           // Verify the gallery profile belongs to this user OR user is a gallery member
           try {
             const { data: profile } = await client
@@ -245,7 +255,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           
           // Create unclaimed artist profile in registry if gallery/collector added artwork with artist name
           // and artist doesn't have an account yet
-          if ((userRole === USER_ROLES.GALLERY || userRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
+          if ((effectiveRole === USER_ROLES.GALLERY || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
             try {
               // Check if unclaimed profile already exists for this artist name
               const { data: existingProfile } = await client
@@ -361,7 +371,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
     if (artworkIds.length === 0) {
       logger.error('artwork_post_failed', {
-        role: userRole || 'unknown',
+        role: effectiveRole || accountRole || 'unknown',
         userId,
         attemptedCount: images.length,
         errors,
@@ -375,7 +385,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
     if (errors.length > 0) {
       logger.warn('artwork_post_partial', {
-        role: userRole || 'unknown',
+        role: effectiveRole || accountRole || 'unknown',
         userId,
         successCount: artworkIds.length,
         failedCount: errors.length,
@@ -384,11 +394,11 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     }
 
     logger.info('artwork_post_success', {
-      role: userRole || 'unknown',
+      role: effectiveRole || accountRole || 'unknown',
       userId,
       artworkIds,
       count: artworkIds.length,
-      certificateType: getCertificateTypeForRole(userRole),
+      certificateType: getCertificateTypeForRole(effectiveRole),
     });
 
     revalidatePath('/artworks');
