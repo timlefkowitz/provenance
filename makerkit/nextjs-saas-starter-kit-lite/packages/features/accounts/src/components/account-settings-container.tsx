@@ -35,6 +35,8 @@ export function PersonalAccountSettingsContainer(
 
     initialAccount?: InitialAccountData | null;
 
+    initialUserEmail?: string | null;
+
     features: {
       enableAccountDeletion: boolean;
       enablePasswordUpdate: boolean;
@@ -148,7 +150,10 @@ export function PersonalAccountSettingsContainer(
         </CardHeader>
 
         <CardContent>
-          <UpdateEmailFormContainer callbackPath={props.paths.callback} />
+          <UpdateEmailFormContainer
+            callbackPath={props.paths.callback}
+            initialUserEmail={props.initialUserEmail}
+          />
         </CardContent>
       </Card>
 

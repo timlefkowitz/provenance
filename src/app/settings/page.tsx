@@ -53,6 +53,7 @@ export default async function SettingsPage() {
         <PersonalAccountSettingsContainer
           userId={user.id}
           initialAccount={initialAccount}
+          initialUserEmail={user.email ?? undefined}
           paths={paths}
           features={features}
         />

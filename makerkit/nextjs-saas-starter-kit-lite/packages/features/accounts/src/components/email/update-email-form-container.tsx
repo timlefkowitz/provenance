@@ -5,8 +5,20 @@ import { LoadingOverlay } from '@kit/ui/loading-overlay';
 
 import { UpdateEmailForm } from './update-email-form';
 
-export function UpdateEmailFormContainer(props: { callbackPath: string }) {
+export function UpdateEmailFormContainer(props: {
+  callbackPath: string;
+  initialUserEmail?: string | null;
+}) {
   const { data: user, isPending } = useUser();
+
+  if (props.initialUserEmail !== undefined && props.initialUserEmail !== null) {
+    return (
+      <UpdateEmailForm
+        callbackPath={props.callbackPath}
+        userEmail={props.initialUserEmail ?? ''}
+      />
+    );
+  }
 
   if (isPending) {
     return <LoadingOverlay fullPage={false} />;
