@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
@@ -15,6 +16,7 @@ import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
 export function Navigation() {
+  const router = useRouter();
   const user = useCurrentUser();
   const signOut = useSignOut();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -210,13 +212,16 @@ export function Navigation() {
             </Link>
             {user.data && (
               <>
-                <Link
-                  href={pathsConfig.app.profileSettings}
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
+                <button
+                  type="button"
+                  className="w-full text-left text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push(pathsConfig.app.profileSettings);
+                  }}
                 >
                   <Trans i18nKey="account:settingsTab" defaults="Settings" />
-                </Link>
+                </button>
                 <button
                   type="button"
                   className="flex items-center justify-between text-ink hover:text-wine transition-colors font-serif py-2"
