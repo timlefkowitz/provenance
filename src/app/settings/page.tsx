@@ -27,6 +27,16 @@ export default async function SettingsPage() {
     redirect('/auth/sign-in');
   }
 
+  const { data: account } = await client
+    .from('accounts')
+    .select('id, name, picture_url')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const initialAccount = account
+    ? { id: account.id, name: account.name ?? null, picture_url: account.picture_url ?? null }
+    : null;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
@@ -42,6 +52,7 @@ export default async function SettingsPage() {
         {/* Account Settings - Security, Password, etc. */}
         <PersonalAccountSettingsContainer
           userId={user.id}
+          initialAccount={initialAccount}
           paths={paths}
           features={features}
         />

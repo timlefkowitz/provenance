@@ -13,6 +13,7 @@ import { If } from '@kit/ui/if';
 import { LanguageSelector } from '@kit/ui/language-selector';
 import { LoadingOverlay } from '@kit/ui/loading-overlay';
 import { Trans } from '@kit/ui/trans';
+import { Button } from '@kit/ui/button';
 
 import { usePersonalAccountData } from '../hooks/use-personal-account-data';
 import { AccountDangerZone } from './account-danger-zone';
@@ -22,9 +23,17 @@ import { UpdatePasswordFormContainer } from './password/update-password-containe
 import { UpdateAccountDetailsFormContainer } from './update-account-details-form-container';
 import { UpdateAccountImageContainer } from './update-account-image-container';
 
+export type InitialAccountData = {
+  id: string;
+  name: string | null;
+  picture_url: string | null;
+};
+
 export function PersonalAccountSettingsContainer(
   props: React.PropsWithChildren<{
     userId: string;
+
+    initialAccount?: InitialAccountData | null;
 
     features: {
       enableAccountDeletion: boolean;
@@ -37,10 +46,37 @@ export function PersonalAccountSettingsContainer(
   }>,
 ) {
   const supportsLanguageSelection = useSupportMultiLanguage();
-  const user = usePersonalAccountData(props.userId);
+  const user = usePersonalAccountData(props.userId, props.initialAccount ?? undefined);
 
-  if (!user.data || user.isPending) {
+  if (user.isPending && !user.data) {
     return <LoadingOverlay fullPage />;
+  }
+
+  if (user.isError || (!user.isPending && !user.data)) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle>
+            <Trans i18nKey="account:errorLoadingAccount" defaults="Could not load account" />
+          </CardTitle>
+          <CardDescription>
+            <Trans
+              i18nKey="account:errorLoadingAccountDescription"
+              defaults="Something went wrong loading your account. Please try again."
+            />
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={() => user.refetch()}>
+            <Trans i18nKey="common:retry" defaults="Retry" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!user.data) {
+    return null;
   }
 
   return (
