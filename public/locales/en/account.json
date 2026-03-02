@@ -57,6 +57,7 @@
   "unenrollFactorError": "Unenrolling factor failed",
   "factorsListError": "Error loading factors list",
   "factorsListErrorDescription": "Sorry, we couldn't load the factors list. Please try again.",
+  "factorsListTimeoutDescription": "Loading is taking longer than expected. You can try again.",
   "factorName": "Factor Name",
   "factorType": "Type",
   "factorStatus": "Status",

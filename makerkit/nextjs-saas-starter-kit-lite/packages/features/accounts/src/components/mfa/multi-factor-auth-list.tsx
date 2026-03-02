@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 import type { Factor } from '@supabase/supabase-js';
 
@@ -46,6 +46,8 @@ import { Trans } from '@kit/ui/trans';
 
 import { MultiFactorAuthSetupDialog } from './multi-factor-auth-setup-dialog';
 
+const LOADING_TIMEOUT_MS = 8_000;
+
 export function MultiFactorAuthFactorsList(props: { userId: string }) {
   return (
     <div className={'flex flex-col space-y-4'}>
@@ -63,9 +65,26 @@ function FactorsTableContainer(props: { userId: string }) {
     data: factors,
     isLoading,
     isError,
+    refetch,
+    isRefetching,
   } = useFetchAuthFactors(props.userId);
 
-  if (isLoading) {
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
+  const onRetry = useCallback(() => {
+    setLoadingTimedOut(false);
+    refetch();
+  }, [refetch]);
+
+  if (isLoading && !loadingTimedOut) {
     return (
       <div className={'flex items-center space-x-4'}>
         <Spinner />
@@ -74,6 +93,32 @@ function FactorsTableContainer(props: { userId: string }) {
           <Trans i18nKey={'account:loadingFactors'} />
         </div>
       </div>
+    );
+  }
+
+  if (isLoading && loadingTimedOut) {
+    return (
+      <Alert variant={'destructive'}>
+        <ExclamationTriangleIcon className={'h-4'} />
+        <AlertTitle>
+          <Trans i18nKey={'account:factorsListError'} defaults="Could not load factors" />
+        </AlertTitle>
+        <AlertDescription>
+          <Trans
+            i18nKey={'account:factorsListTimeoutDescription'}
+            defaults="Loading is taking longer than expected. You can try again."
+          />
+        </AlertDescription>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          disabled={isRefetching}
+          className="mt-2"
+        >
+          <Trans i18nKey={'common:retry'} defaults="Retry" />
+        </Button>
+      </Alert>
     );
   }
 
@@ -91,6 +136,9 @@ function FactorsTableContainer(props: { userId: string }) {
             <Trans i18nKey={'account:factorsListErrorDescription'} />
           </AlertDescription>
         </Alert>
+        <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">
+          <Trans i18nKey={'common:retry'} defaults="Retry" />
+        </Button>
       </div>
     );
   }
