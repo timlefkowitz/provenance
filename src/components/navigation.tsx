@@ -210,6 +210,13 @@ export function Navigation() {
             </Link>
             {user.data && (
               <>
+                <Link
+                  href={pathsConfig.app.profileSettings}
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Trans i18nKey="account:settingsTab" defaults="Settings" />
+                </Link>
                 <button
                   type="button"
                   className="flex items-center justify-between text-ink hover:text-wine transition-colors font-serif py-2"
