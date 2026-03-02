@@ -287,16 +287,14 @@ export function ProfileAccountDropdownContainer(props: {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem asChild>
-          <Link
-            className={'flex cursor-pointer items-center space-x-2'}
-            href={paths.profileSettings}
-          >
-            <Settings className={'h-5'} />
-            <span>
-              <Trans i18nKey={'account:settingsTab'} />
-            </span>
-          </Link>
+        <DropdownMenuItem
+          className="flex cursor-pointer items-center space-x-2"
+          onSelect={() => router.push(paths.profileSettings)}
+        >
+          <Settings className="h-5" />
+          <span>
+            <Trans i18nKey="account:settingsTab" />
+          </span>
         </DropdownMenuItem>
 
         <DropdownMenuItem
