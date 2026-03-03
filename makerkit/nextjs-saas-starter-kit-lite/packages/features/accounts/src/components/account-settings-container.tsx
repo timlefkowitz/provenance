@@ -1,5 +1,6 @@
 'use client';
 
+import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -29,7 +30,7 @@ export type InitialAccountData = {
   picture_url: string | null;
 };
 
-export function PersonalAccountSettingsContainer(
+function PersonalAccountSettingsContainerInner(
   props: React.PropsWithChildren<{
     userId: string;
 
@@ -214,6 +215,8 @@ export function PersonalAccountSettingsContainer(
     </div>
   );
 }
+
+export const PersonalAccountSettingsContainer = memo(PersonalAccountSettingsContainerInner);
 
 function useSupportMultiLanguage() {
   const { i18n } = useTranslation();
