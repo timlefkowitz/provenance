@@ -2,9 +2,10 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 
 /**
- * Delete an artwork (only the owner can delete)
+ * Delete an artwork (owner or gallery team member can delete)
  */
 export async function deleteArtwork(artworkId: string) {
   const client = getSupabaseServerClient();
@@ -14,7 +15,7 @@ export async function deleteArtwork(artworkId: string) {
     throw new Error('Unauthorized');
   }
 
-  // Get artwork to verify ownership
+  // Get artwork to verify ownership or gallery membership
   const { data: artwork, error: artworkError } = await (client as any)
     .from('artworks')
     .select('id, account_id, image_url, gallery_profile_id')
@@ -25,32 +26,20 @@ export async function deleteArtwork(artworkId: string) {
     throw new Error('Artwork not found');
   }
 
-  // Verify ownership or gallery membership
-  const isOwner = artwork.account_id === user.id;
-  let isGalleryMember = false;
+  const canDelete = await canEditGalleryArtworks(user.id, {
+    account_id: artwork.account_id,
+    gallery_profile_id: artwork.gallery_profile_id ?? undefined,
+  });
 
-  // Check if user is a member of the gallery that posted this artwork
-  if (!isOwner && artwork.gallery_profile_id) {
-    const { data: member } = await client
-      .from('gallery_members')
-      .select('id')
-      .eq('gallery_profile_id', artwork.gallery_profile_id)
-      .eq('user_id', user.id)
-      .single();
-
-    isGalleryMember = !!member;
-  }
-
-  if (!isOwner && !isGalleryMember) {
+  if (!canDelete) {
     throw new Error('You can only delete your own artworks');
   }
 
-  // Delete the artwork (this will cascade delete related notifications due to foreign key)
+  // Delete by id; RLS allows owner or gallery member
   const { error: deleteError } = await (client as any)
     .from('artworks')
     .delete()
-    .eq('id', artworkId)
-    .eq('account_id', user.id); // Double check ownership in the delete query
+    .eq('id', artworkId);
 
   if (deleteError) {
     throw new Error(`Failed to delete artwork: ${deleteError.message}`);

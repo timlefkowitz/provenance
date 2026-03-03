@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
+import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 
 export async function updateProvenance(
   artworkId: string,
@@ -54,22 +55,11 @@ export async function updateProvenance(
     }
 
     if (!options?.skipOwnershipCheck) {
-      const isOwner = artwork.account_id === user.id;
-      let isGalleryMember = false;
-
-      // Check if user is a member of the gallery that posted this artwork
-      if (!isOwner && artwork.gallery_profile_id) {
-        const { data: member } = await client
-          .from('gallery_members')
-          .select('id')
-          .eq('gallery_profile_id', artwork.gallery_profile_id)
-          .eq('user_id', user.id)
-          .single();
-
-        isGalleryMember = !!member;
-      }
-
-      if (!isOwner && !isGalleryMember) {
+      const canEdit = await canEditGalleryArtworks(user.id, {
+        account_id: artwork.account_id,
+        gallery_profile_id: artwork.gallery_profile_id ?? undefined,
+      });
+      if (!canEdit) {
         return { error: 'You do not have permission to edit this artwork' };
       }
     }

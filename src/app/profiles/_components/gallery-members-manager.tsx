@@ -188,10 +188,10 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="font-display text-xl text-wine">
-              Team Members
+              Team members
             </CardTitle>
             <CardDescription className="font-serif">
-              Manage who can post and manage content for this gallery
+              Add people who can manage this gallery&apos;s collection, post Certificates of Show, and manage exhibitions. They must already have a Provenance account.
             </CardDescription>
           </div>
           {canManage && (
@@ -207,9 +207,9 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="font-display text-wine">Invite Team Member</DialogTitle>
+                  <DialogTitle className="font-display text-wine">Add team member</DialogTitle>
                   <DialogDescription className="font-serif">
-                    Invite a user by their email address to join this gallery team.
+                    Enter the email of someone who already has a Provenance account. They will be able to manage collections, post Certificates of Show, and manage exhibitions for this gallery.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -231,8 +231,8 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="member">Member - Can post and manage content</SelectItem>
-                        <SelectItem value="admin">Admin - Can manage members and content</SelectItem>
+                        <SelectItem value="member">Member – Can manage collections, post certificates, and manage exhibitions</SelectItem>
+                        <SelectItem value="admin">Admin – Can do everything Members can, plus add or remove team members</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -385,7 +385,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         {!canManage && members.length > 0 && (
           <Alert className="mt-4 border-ink/20 bg-parchment/40">
             <AlertDescription className="font-serif text-sm text-ink/70">
-              You are a member of this gallery. Only owners and admins can manage team members.
+              You can manage this gallery&apos;s collections and certificates. Only owners and admins can add or remove team members.
             </AlertDescription>
           </Alert>
         )}

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { updateProvenance } from '../../[id]/edit/_actions/update-provenance';
+import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 
 export async function batchUpdateProvenance(
   artworkIds: string[],
@@ -40,20 +41,24 @@ export async function batchUpdateProvenance(
       return { error: 'No artworks selected' };
     }
 
-    // Verify user owns all artworks
+    // Verify user owns or can edit all artworks (owner or gallery team member)
     const { data: artworks, error: fetchError } = await client
       .from('artworks')
-      .select('id, account_id')
+      .select('id, account_id, gallery_profile_id')
       .in('id', artworkIds);
 
     if (fetchError || !artworks) {
       return { error: 'Error fetching artworks' };
     }
 
-    // Check ownership
-    const unauthorizedArtworks = artworks.filter(a => a.account_id !== user.id);
-    if (unauthorizedArtworks.length > 0) {
-      return { error: 'You do not have permission to edit some of these artworks' };
+    for (const a of artworks) {
+      const canEdit = await canEditGalleryArtworks(user.id, {
+        account_id: a.account_id,
+        gallery_profile_id: a.gallery_profile_id ?? undefined,
+      });
+      if (!canEdit) {
+        return { error: 'You do not have permission to edit some of these artworks' };
+      }
     }
 
     // Update each artwork

@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
+import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
 export type VerifyCertificateResult = { success: true } | { success: false; error: string };
 
@@ -39,7 +40,7 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     // Get artwork
     const { data: artwork, error: artworkError } = await client
       .from('artworks')
-      .select('id, account_id, title, certificate_number, certificate_status, artist_account_id')
+      .select('id, account_id, title, certificate_number, certificate_status, artist_account_id, gallery_profile_id, certificate_type')
       .eq('id', artworkId)
       .single();
 
@@ -47,8 +48,10 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
       return { success: false, error: 'Artwork not found' };
     }
 
-    // Check if user owns this artwork
-    if (artwork.account_id !== user.id) {
+    // Check if user owns this artwork or is a gallery team member (for Certificates of Show)
+    const isOwner = artwork.account_id === user.id;
+    const isGalleryTeamMember = artwork.gallery_profile_id && artwork.certificate_type === 'show' && await canManageGallery(user.id, artwork.gallery_profile_id);
+    if (!isOwner && !isGalleryTeamMember) {
       return { success: false, error: 'You can only verify certificates for your own artworks' };
     }
 

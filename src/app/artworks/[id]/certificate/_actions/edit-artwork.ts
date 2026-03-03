@@ -7,6 +7,7 @@ import { createNotification } from '~/lib/notifications';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { canEditGalleryArtworks, canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 
 export type EditArtworkFields = {
   title?: string;
@@ -40,23 +41,11 @@ export async function editArtwork(
       return { success: false, error: 'Artwork not found' };
     }
 
-    // Verify isCreator matches actual ownership or gallery membership
-    const actualIsCreator = artwork.account_id === user.id;
-    let isGalleryMember = false;
-
-    // Check if user is a member of the gallery that posted this artwork
-    if (!actualIsCreator && artwork.gallery_profile_id) {
-      const { data: member } = await client
-        .from('gallery_members')
-        .select('id')
-        .eq('gallery_profile_id', artwork.gallery_profile_id)
-        .eq('user_id', user.id)
-        .single();
-
-      isGalleryMember = !!member;
-    }
-
-    const canEdit = actualIsCreator || isGalleryMember;
+    // Verify isCreator matches actual ownership or gallery team membership
+    const canEdit = await canEditGalleryArtworks(user.id, {
+      account_id: artwork.account_id,
+      gallery_profile_id: artwork.gallery_profile_id ?? undefined,
+    });
     if (isCreator !== canEdit) {
       return { success: false, error: 'Permission mismatch' };
     }
@@ -163,7 +152,8 @@ export async function editArtwork(
           .eq('id', exhibitionId)
           .single();
 
-        if (exhibition && exhibition.gallery_id === user.id) {
+        const canUpdateExhibition = exhibition && (exhibition.gallery_id === user.id || await canManageExhibition(user.id, exhibition.gallery_id));
+        if (canUpdateExhibition) {
           // Update exhibition
           const exhibitionUpdate: any = {
             title: exhibitionTitle.trim(),

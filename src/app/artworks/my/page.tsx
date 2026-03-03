@@ -14,13 +14,12 @@ export default async function MyArtworksPage() {
     redirect('/auth/sign-in');
   }
 
-  // Fetch user's artworks
+  // Fetch artworks user owns or can manage (via gallery team membership); RLS enforces access
   const { data: artworks } = await client
     .from('artworks')
     .select(
       'id, title, artist_name, image_url, created_at, certificate_number, description, creation_date',
     )
-    .eq('account_id', user.id)
     .eq('status', 'verified')
     .order('created_at', { ascending: false });
 

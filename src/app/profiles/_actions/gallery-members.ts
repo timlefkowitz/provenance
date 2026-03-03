@@ -83,6 +83,60 @@ export async function canManageGallery(
 }
 
 /**
+ * Artwork-like shape for permission checks (account_id and optional gallery_profile_id).
+ */
+export interface ArtworkForPermission {
+  account_id: string;
+  gallery_profile_id?: string | null;
+}
+
+/**
+ * Check if a user can edit/delete an artwork (owner or any gallery team member for that gallery).
+ * Use this in server actions that update or delete artworks and certificates.
+ */
+export async function canEditGalleryArtworks(
+  userId: string,
+  artwork: ArtworkForPermission
+): Promise<boolean> {
+  if (artwork.account_id === userId) {
+    return true;
+  }
+  if (artwork.gallery_profile_id) {
+    return isGalleryMember(userId, artwork.gallery_profile_id);
+  }
+  return false;
+}
+
+/**
+ * Check if a user can manage an exhibition (gallery account owner or any gallery team member for that account).
+ * exhibitionGalleryId is the gallery account id (exhibitions.gallery_id).
+ */
+export async function canManageExhibition(
+  userId: string,
+  exhibitionGalleryId: string
+): Promise<boolean> {
+  if (exhibitionGalleryId === userId) {
+    return true;
+  }
+  const client = getSupabaseServerClient();
+  const { data: profiles } = await client
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', exhibitionGalleryId)
+    .eq('role', 'gallery');
+
+  if (!profiles?.length) {
+    return false;
+  }
+
+  for (const p of profiles) {
+    const member = await isGalleryMember(userId, p.id);
+    if (member) return true;
+  }
+  return false;
+}
+
+/**
  * Get all members of a gallery profile
  */
 export async function getGalleryMembers(
@@ -200,7 +254,7 @@ export async function inviteGalleryMember(
       .single();
 
     if (userError || !invitedUser) {
-      return { success: false, error: 'User with this email not found' };
+      return { success: false, error: "That email doesn't have a Provenance account yet" };
     }
 
     // Check if user is already a member
