@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { logger } from '~/lib/logger';
 
 export async function toggleFollow(artistId: string, currentUserId: string) {
   try {
@@ -24,7 +25,11 @@ export async function toggleFollow(artistId: string, currentUserId: string) {
         .eq('following_id', artistId);
 
       if (error) {
-        console.error('Error unfollowing:', error);
+        logger.error('follow_unfollow_failed', {
+          artistId,
+          followerId: currentUserId,
+          error,
+        });
         return { error: 'Failed to unfollow' };
       }
 
@@ -40,7 +45,11 @@ export async function toggleFollow(artistId: string, currentUserId: string) {
         });
 
       if (error) {
-        console.error('Error following:', error);
+        logger.error('follow_follow_failed', {
+          artistId,
+          followerId: currentUserId,
+          error,
+        });
         return { error: 'Failed to follow' };
       }
 
@@ -48,7 +57,11 @@ export async function toggleFollow(artistId: string, currentUserId: string) {
       return { isFollowing: true };
     }
   } catch (error) {
-    console.error('Error in toggleFollow:', error);
+    logger.error('follow_toggle_failed', {
+      artistId,
+      followerId: currentUserId,
+      error,
+    });
     return { error: 'An unexpected error occurred' };
   }
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
+import { logger } from '~/lib/logger';
 
 export type VerifyCertificateResult = { success: true } | { success: false; error: string };
 
@@ -91,7 +92,12 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
           },
         });
       } catch (notifError) {
-        console.error('Failed to create notification:', notifError);
+        logger.error('verify_certificate_notification_failed', {
+          artworkId,
+          artistAccountId: artwork.artist_account_id,
+          ownerId: user.id,
+          error: notifError,
+        });
         // Don't fail the verification if notification fails
       }
     }
@@ -101,7 +107,11 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to verify certificate';
-    console.error('verifyCertificate error:', err);
+    logger.error('verify_certificate_failed', {
+      artworkId,
+      error: err,
+      message,
+    });
     return { success: false, error: message };
   }
 }

@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
+import { logger } from '~/lib/logger';
 
 export async function updateProvenance(
   artworkId: string,
@@ -144,7 +145,11 @@ export async function updateProvenance(
       .eq('id', artworkId);
 
     if (error) {
-      console.error('Error updating provenance:', error);
+      logger.error('update_provenance_update_failed', {
+        artworkId,
+        userId: user.id,
+        error,
+      });
       return { error: error.message || 'Failed to update provenance' };
     }
 
@@ -192,17 +197,31 @@ export async function updateProvenance(
                 .catch((exhibitionError: any) => {
                   // Ignore duplicate key errors
                   if (exhibitionError.code !== '23505') {
-                    console.error('Error adding artwork to exhibition:', exhibitionError);
+                    logger.error('update_provenance_exhibition_link_insert_failed', {
+                      artworkId,
+                      exhibitionId: newExhibitionId,
+                      userId: user.id,
+                      error: exhibitionError,
+                    });
                   }
                 });
             } else {
-              console.warn(`User ${user.id} does not own exhibition ${newExhibitionId}`);
+              logger.warn('update_provenance_exhibition_not_owned', {
+                artworkId,
+                exhibitionId: newExhibitionId,
+                userId: user.id,
+              });
             }
           }
         }
       } catch (exhibitionError) {
         // Don't fail the entire update if exhibition linking fails
-        console.error('Error updating exhibition link:', exhibitionError);
+        logger.error('update_provenance_exhibition_link_failed', {
+          artworkId,
+          userId: user.id,
+          exhibitionId: provenance.exhibitionId ?? null,
+          error: exhibitionError,
+        });
       }
     }
 
@@ -221,7 +240,11 @@ export async function updateProvenance(
         });
       } catch (error) {
         // Don't fail the update if notification fails
-        console.error('Error creating update notification:', error);
+        logger.error('update_provenance_notification_failed', {
+          artworkId,
+          userId: artwork.account_id,
+          error,
+        });
       }
     }
 
@@ -243,7 +266,10 @@ export async function updateProvenance(
 
     return { success: true };
   } catch (error) {
-    console.error('Error in updateProvenance:', error);
+    logger.error('update_provenance_failed', {
+      artworkId,
+      error,
+    });
     return { error: 'An unexpected error occurred' };
   }
 }

@@ -8,6 +8,7 @@ import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-
 import { updateProvenance } from '../../edit/_actions/update-provenance';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { canEditGalleryArtworks, canManageExhibition } from '~/app/profiles/_actions/gallery-members';
+import { logger } from '~/lib/logger';
 
 export type EditArtworkFields = {
   title?: string;
@@ -67,14 +68,24 @@ export async function editArtwork(
     const imageFile = formData.get('image') as File | null;
     if (imageFile && imageFile.size > 0) {
       try {
-        console.error('[editArtwork] Uploading new image:', imageFile.name, imageFile.type, artworkId);
+        logger.info('edit_artwork_upload_start', {
+          artworkId,
+          fileName: imageFile.name,
+          fileType: imageFile.type,
+          userId: user.id,
+        });
         const adminClient = getSupabaseServerAdminClient();
         const imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, user.id);
         if (imageUrl) {
           updateFields.image_url = imageUrl;
         }
       } catch (imageError: any) {
-        console.error('[editArtwork] Image upload failed:', imageError?.message ?? imageError, 'artworkId:', artworkId, 'file:', imageFile?.name, imageError?.stack);
+        logger.error('edit_artwork_image_upload_failed', {
+          artworkId,
+          fileName: imageFile?.name,
+          userId: user.id,
+          error: imageError,
+        });
         return { success: false, error: `Image upload failed: ${imageError?.message ?? 'Unknown error'}` };
       }
     }
@@ -118,7 +129,11 @@ export async function editArtwork(
           .eq('id', artworkId);
 
         if (imageUpdateError) {
-          console.error('Error updating image:', imageUpdateError);
+          logger.error('edit_artwork_image_update_failed', {
+            artworkId,
+            userId: user.id,
+            error: imageUpdateError,
+          });
           return { success: false, error: 'Failed to update image' };
         }
       }
@@ -131,7 +146,11 @@ export async function editArtwork(
           .eq('id', artworkId);
 
         if (dateUpdateError) {
-          console.error('Error updating date:', dateUpdateError);
+          logger.error('edit_artwork_date_update_failed', {
+            artworkId,
+            userId: user.id,
+            error: dateUpdateError,
+          });
           return { success: false, error: 'Failed to update date' };
         }
       }
@@ -174,7 +193,12 @@ export async function editArtwork(
             .eq('id', exhibitionId);
 
           if (exhibitionUpdateError) {
-            console.error('Error updating exhibition:', exhibitionUpdateError);
+            logger.error('edit_artwork_exhibition_update_failed', {
+              artworkId,
+              exhibitionId,
+              userId: user.id,
+              error: exhibitionUpdateError,
+            });
             return { success: false, error: 'Failed to update exhibition' };
           }
         }
@@ -253,7 +277,11 @@ export async function editArtwork(
       return { success: true };
     }
   } catch (error: any) {
-    console.error('Error in editArtwork:', error);
+    logger.error('edit_artwork_failed', {
+      artworkId,
+      isCreator,
+      error,
+    });
     return { success: false, error: error.message || 'An unexpected error occurred' };
   }
 }

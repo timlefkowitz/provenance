@@ -5,12 +5,31 @@
  */
 type LogLevel = 'info' | 'warn' | 'error';
 
+function normalizeErrorValue(value: unknown) {
+  if (value instanceof Error) {
+    return {
+      message: value.message,
+      name: value.name,
+      stack: value.stack,
+    };
+  }
+  return value;
+}
+
 function log(level: LogLevel, event: string, data: Record<string, unknown> = {}) {
+  const normalizedData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    normalizedData[key] = normalizeErrorValue(value);
+  }
+
   const entry = {
     level,
     event,
     timestamp: new Date().toISOString(),
-    ...data,
+    environment: process.env.NODE_ENV,
+    vercelEnv: process.env.VERCEL_ENV,
+    vercelUrl: process.env.VERCEL_URL,
+    ...normalizedData,
   };
   const line = JSON.stringify(entry);
   if (level === 'error') {

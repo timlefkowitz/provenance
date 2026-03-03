@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { logger } from '~/lib/logger';
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
@@ -44,7 +45,10 @@ export async function createArtwork(formData: FormData, userId: string) {
         .single();
 
       if (createAccountError || !newAccount) {
-        console.error('Error creating/finding account:', createAccountError);
+        logger.error('create_artwork_account_create_failed', {
+          userId,
+          error: createAccountError,
+        });
         return { error: 'Account not found. Please complete your profile setup first.' };
       }
     }
@@ -54,7 +58,11 @@ export async function createArtwork(formData: FormData, userId: string) {
       const adminClient = getSupabaseServerAdminClient();
       imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, userId);
     } catch (uploadError: any) {
-      console.error('[createArtwork] Image upload failed:', uploadError?.message ?? uploadError, 'file:', imageFile?.name, uploadError?.stack);
+      logger.error('create_artwork_image_upload_failed', {
+        userId,
+        fileName: imageFile?.name,
+        error: uploadError,
+      });
       return { error: uploadError?.message || 'Failed to upload image. Please check that the storage bucket exists.' };
     }
 
@@ -107,7 +115,11 @@ export async function createArtwork(formData: FormData, userId: string) {
       .single();
 
     if (error) {
-      console.error('Error creating artwork:', error);
+      logger.error('create_artwork_insert_failed', {
+        userId,
+        title,
+        error,
+      });
       return { error: error.message || 'Failed to create artwork' };
     }
 
@@ -136,18 +148,30 @@ export async function createArtwork(formData: FormData, userId: string) {
           certificateNumber,
           artworkUrl,
         ).catch((emailError) => {
-          console.error('Failed to send certification email:', emailError);
+          logger.error('create_artwork_cert_email_failed', {
+            userId,
+            artworkId: artwork.id,
+            email: account.email,
+            error: emailError,
+          });
           // Don't fail the artwork creation if email fails
         });
       }
     } catch (emailError) {
-      console.error('Error sending certification email:', emailError);
+      logger.error('create_artwork_cert_email_block_failed', {
+        userId,
+        artworkId: artwork.id,
+        error: emailError,
+      });
       // Don't fail the artwork creation if email fails
     }
 
     return { artworkId: artwork.id };
   } catch (error: any) {
-    console.error('[createArtwork] Fatal error:', error?.message ?? error, error?.stack);
+    logger.error('create_artwork_fatal', {
+      userId,
+      error,
+    });
     return { error: 'An unexpected error occurred' };
   }
 }
@@ -162,7 +186,9 @@ async function generateCertificateNumber(
       return data;
     }
   } catch (error) {
-    console.error('Error calling generate_certificate_number:', error);
+    logger.error('generate_certificate_number_failed', {
+      error,
+    });
   }
 
   // Fallback: generate client-side

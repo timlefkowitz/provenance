@@ -73,7 +73,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         .single();
 
       if (createAccountError || !newAccount) {
-        console.error('Error creating/finding account:', createAccountError);
+        logger.error('create_artworks_batch_account_create_failed', {
+          userId,
+          error: createAccountError,
+        });
         return { error: 'Account not found. Please complete your profile setup first.' };
       }
     }
@@ -100,7 +103,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         posterRole = posterRoleRaw as UserRole;
       }
     } catch (error) {
-      console.error('Error fetching account for email:', error);
+      logger.error('create_artworks_batch_account_fetch_failed', {
+        userId,
+        error,
+      });
     }
 
     const effectiveRole: UserRole | null = posterRole ?? accountRole;
@@ -138,7 +144,11 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           try {
             locationData = JSON.parse(locationStr);
           } catch (parseError) {
-            console.warn('Failed to parse location data:', parseError);
+            logger.warn('create_artworks_batch_location_parse_failed', {
+              index: i,
+              locationStr,
+              error: parseError,
+            });
           }
         }
 
@@ -169,7 +179,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               }
             } catch (error) {
               // Artist not found by name, that's okay - they can claim later
-              console.log('Artist account not found by name, will need to claim:', artistName);
+              logger.info('create_artworks_batch_artist_not_found_by_name', {
+                userId,
+                artistName,
+              });
             }
           }
         }
@@ -239,7 +252,12 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           .single();
 
         if (error) {
-          console.error(`Error creating artwork ${i + 1}:`, error);
+          logger.error('create_artworks_batch_artwork_insert_failed', {
+            index: i,
+            userId,
+            title,
+            error,
+          });
           
           // Check if error is about missing is_public column
           if (error.message?.includes('is_public') || error.message?.includes('schema cache')) {
@@ -281,12 +299,20 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
                     is_active: true,
                   });
                 if (profileError && profileError.code !== '23505') {
-                  console.error('Error creating unclaimed artist profile:', profileError);
+                  logger.error('create_artworks_batch_unclaimed_profile_insert_failed', {
+                    userId,
+                    artistName,
+                    error: profileError,
+                  });
                 }
               }
             } catch (profileError) {
               // Don't fail artwork creation if profile creation fails
-              console.error('Error creating unclaimed artist profile:', profileError);
+              logger.error('create_artworks_batch_unclaimed_profile_fatal', {
+                userId,
+                artistName,
+                error: profileError,
+              });
             }
           }
           
@@ -330,11 +356,19 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
                     artwork_id: artwork.id,
                   });
                 if (exhibitionInsertError && exhibitionInsertError.code !== '23505') {
-                  console.error('Error linking artwork to exhibition:', exhibitionInsertError);
+                  logger.error('create_artworks_batch_exhibition_link_insert_failed', {
+                    exhibitionId,
+                    artworkId: artwork.id,
+                    error: exhibitionInsertError,
+                  });
                 }
               }
             } catch (exhibitionError) {
-              console.error('Error linking artwork to exhibition:', exhibitionError);
+              logger.error('create_artworks_batch_exhibition_link_failed', {
+                exhibitionId,
+                artworkId: artwork.id,
+                error: exhibitionError,
+              });
               // Don't fail artwork creation if exhibition linking fails
             }
           }
@@ -354,17 +388,33 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
                 certificateNumber,
                 artworkUrl,
               ).catch((emailError) => {
-                console.error(`Failed to send certification email for artwork ${i + 1}:`, emailError);
+                logger.error('create_artworks_batch_cert_email_failed', {
+                  index: i,
+                  userId,
+                  email: accountEmail,
+                  artworkId: artwork.id,
+                  error: emailError,
+                });
                 // Don't fail the artwork creation if email fails
               });
             } catch (emailError) {
-              console.error(`Error sending certification email for artwork ${i + 1}:`, emailError);
+              logger.error('create_artworks_batch_cert_email_block_failed', {
+                index: i,
+                userId,
+                artworkId: artwork.id,
+                error: emailError,
+              });
               // Don't fail the artwork creation if email fails
             }
           }
         }
       } catch (error: any) {
-        console.error('[createArtworksBatch] Error processing artwork', i + 1, ':', error?.message ?? error, 'file:', imageFile?.name, error?.stack);
+        logger.error('create_artworks_batch_artwork_fatal', {
+          index: i,
+          userId,
+          fileName: imageFile?.name,
+          error,
+        });
         errors.push(`Error processing artwork ${i + 1}: ${error?.message || 'Unknown error'}`);
       }
     }
@@ -426,7 +476,9 @@ async function generateCertificateNumber(
       return data;
     }
   } catch (error) {
-    console.error('Error calling generate_certificate_number:', error);
+    logger.error('generate_certificate_number_failed', {
+      error,
+    });
   }
 
   // Fallback: generate client-side

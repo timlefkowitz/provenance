@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { updateProvenance } from '../edit/_actions/update-provenance';
+import { logger } from '~/lib/logger';
 
 export async function respondToProvenanceUpdateRequest(
   requestId: string,
@@ -56,7 +57,13 @@ export async function respondToProvenanceUpdateRequest(
           .eq('id', request.artworks.id);
 
         if (transferError) {
-          console.error('Error transferring ownership:', transferError);
+          logger.error('provenance_request_transfer_ownership_failed', {
+            requestId,
+            artworkId: request.artworks.id,
+            requestedBy: request.requested_by,
+            reviewerId: user.id,
+            error: transferError,
+          });
           return { success: false, error: 'Failed to transfer ownership' };
         }
       } else {
@@ -68,7 +75,12 @@ export async function respondToProvenanceUpdateRequest(
             .eq('id', request.artworks.id);
 
           if (imageUpdateError) {
-            console.error('Error updating image:', imageUpdateError);
+            logger.error('provenance_request_update_image_failed', {
+              requestId,
+              artworkId: request.artworks.id,
+              reviewerId: user.id,
+              error: imageUpdateError,
+            });
             return { success: false, error: 'Failed to update image' };
           }
         }
@@ -80,7 +92,12 @@ export async function respondToProvenanceUpdateRequest(
             .eq('id', request.artworks.id);
 
           if (dateUpdateError) {
-            console.error('Error updating date:', dateUpdateError);
+            logger.error('provenance_request_update_date_failed', {
+              requestId,
+              artworkId: request.artworks.id,
+              reviewerId: user.id,
+              error: dateUpdateError,
+            });
             return { success: false, error: 'Failed to update date' };
           }
         }
@@ -143,7 +160,13 @@ export async function respondToProvenanceUpdateRequest(
               .eq('id', request.update_fields.exhibitionId);
 
             if (exhibitionUpdateError) {
-              console.error('Error updating exhibition:', exhibitionUpdateError);
+            logger.error('provenance_request_update_exhibition_failed', {
+              requestId,
+              artworkId: request.artworks.id,
+              exhibitionId: request.update_fields.exhibitionId,
+              reviewerId: user.id,
+              error: exhibitionUpdateError,
+            });
               // Don't fail the entire request if exhibition update fails
             }
           }
@@ -178,7 +201,12 @@ export async function respondToProvenanceUpdateRequest(
         .eq('id', requestId);
 
       if (updateError) {
-        console.error('Error updating request status:', updateError);
+        logger.error('provenance_request_status_update_failed', {
+          requestId,
+          newStatus: 'approved',
+          reviewerId: user.id,
+          error: updateError,
+        });
         return { success: false, error: 'Failed to update request status' };
       }
 
@@ -201,7 +229,14 @@ export async function respondToProvenanceUpdateRequest(
           relatedUserId: user.id,
         });
       } catch (notifError) {
-        console.error('Error creating notification:', notifError);
+        logger.error('provenance_request_notification_failed', {
+          requestId,
+          requestType: request.request_type,
+          outcome: 'approved',
+          reviewerId: user.id,
+          requestedBy: request.requested_by,
+          error: notifError,
+        });
       }
     } else {
       // Deny the request
@@ -216,7 +251,12 @@ export async function respondToProvenanceUpdateRequest(
         .eq('id', requestId);
 
       if (updateError) {
-        console.error('Error updating request status:', updateError);
+        logger.error('provenance_request_status_update_failed', {
+          requestId,
+          newStatus: 'denied',
+          reviewerId: user.id,
+          error: updateError,
+        });
         return { success: false, error: 'Failed to update request status' };
       }
 
@@ -239,7 +279,14 @@ export async function respondToProvenanceUpdateRequest(
           relatedUserId: user.id,
         });
       } catch (notifError) {
-        console.error('Error creating notification:', notifError);
+        logger.error('provenance_request_notification_failed', {
+          requestId,
+          requestType: request.request_type,
+          outcome: 'denied',
+          reviewerId: user.id,
+          requestedBy: request.requested_by,
+          error: notifError,
+        });
       }
     }
 
@@ -248,7 +295,11 @@ export async function respondToProvenanceUpdateRequest(
 
     return { success: true };
   } catch (error: any) {
-    console.error('Error in respondToProvenanceUpdateRequest:', error);
+    logger.error('provenance_request_respond_failed', {
+      requestId,
+      action,
+      error,
+    });
     return { success: false, error: error.message || 'An unexpected error occurred' };
   }
 }

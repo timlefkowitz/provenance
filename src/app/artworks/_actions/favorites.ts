@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
+import { logger } from '~/lib/logger';
 
 /**
  * Add an artwork to user's favorites
@@ -41,7 +42,11 @@ export async function addFavorite(artworkId: string) {
     if (error.code === '23505') {
       return { success: true, alreadyFavorited: true };
     }
-    console.error('Error adding favorite:', error);
+    logger.error('favorite_add_failed', {
+      artworkId,
+      userId: user.id,
+      error,
+    });
     throw new Error(`Failed to add favorite: ${error.message}`);
   }
 
@@ -67,7 +72,12 @@ export async function addFavorite(artworkId: string) {
       });
     } catch (notifError) {
       // Don't fail favorite if notification fails
-      console.error('Error creating favorite notification:', notifError);
+      logger.error('favorite_notification_failed', {
+        artworkId,
+        userId: user.id,
+        ownerId: artwork.account_id,
+        error: notifError,
+      });
     }
   }
 
@@ -94,7 +104,11 @@ export async function removeFavorite(artworkId: string) {
     .eq('artwork_id', artworkId);
 
   if (error) {
-    console.error('Error removing favorite:', error);
+    logger.error('favorite_remove_failed', {
+      artworkId,
+      userId: user.id,
+      error,
+    });
     throw new Error(`Failed to remove favorite: ${error.message}`);
   }
 
@@ -122,7 +136,11 @@ export async function isFavorited(artworkId: string): Promise<boolean> {
     .single();
 
   if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-    console.error('Error checking favorite:', error);
+    logger.error('favorite_check_failed', {
+      artworkId,
+      userId: user.id,
+      error,
+    });
     return false;
   }
 
@@ -149,7 +167,10 @@ export async function getFavoriteArtworks(limit: number = 10) {
     .limit(limit);
 
   if (favoritesError) {
-    console.error('Error fetching favorites:', favoritesError);
+    logger.error('favorite_list_fetch_failed', {
+      userId: user.id,
+      error: favoritesError,
+    });
     return [];
   }
 
@@ -165,7 +186,10 @@ export async function getFavoriteArtworks(limit: number = 10) {
     .in('id', artworkIds);
 
   if (artworksError) {
-    console.error('Error fetching favorite artworks:', artworksError);
+    logger.error('favorite_artworks_fetch_failed', {
+      userId: user.id,
+      error: artworksError,
+    });
     return [];
   }
 
@@ -204,7 +228,10 @@ export async function getFavoriteCount(): Promise<number> {
     .eq('user_id', user.id);
 
   if (error) {
-    console.error('Error getting favorite count:', error);
+    logger.error('favorite_count_failed', {
+      userId: user.id,
+      error,
+    });
     return 0;
   }
 

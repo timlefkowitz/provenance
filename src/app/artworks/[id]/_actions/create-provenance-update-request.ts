@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createNotification } from '~/lib/notifications';
+import { logger } from '~/lib/logger';
 
 export type ProvenanceUpdateFields = {
   title?: string;
@@ -114,7 +115,12 @@ export async function createProvenanceUpdateRequest(
       });
 
     if (insertError) {
-      console.error('Error creating provenance update request:', insertError);
+      logger.error('provenance_request_insert_failed', {
+        artworkId,
+        requestedBy: user.id,
+        requestType,
+        error: insertError,
+      });
       return { success: false, error: 'Failed to create update request' };
     }
 
@@ -137,13 +143,23 @@ export async function createProvenanceUpdateRequest(
         relatedUserId: user.id,
       });
     } catch (notifError) {
-      console.error('Error creating notification:', notifError);
+      logger.error('provenance_request_notification_failed', {
+        artworkId,
+        requestedBy: user.id,
+        ownerId: artwork.account_id,
+        requestType,
+        error: notifError,
+      });
       // Don't fail the request if notification fails
     }
 
     return { success: true };
   } catch (error: any) {
-    console.error('Error in createProvenanceUpdateRequest:', error);
+    logger.error('provenance_request_failed', {
+      artworkId,
+      requestType,
+      error,
+    });
     return { success: false, error: error.message || 'An unexpected error occurred' };
   }
 }

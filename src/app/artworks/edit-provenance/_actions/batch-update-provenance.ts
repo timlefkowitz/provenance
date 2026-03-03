@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { updateProvenance } from '../../[id]/edit/_actions/update-provenance';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
+import { logger } from '~/lib/logger';
 
 export async function batchUpdateProvenance(
   artworkIds: string[],
@@ -101,7 +102,10 @@ export async function batchUpdateProvenance(
 
     return { success: true, updatedCount: successCount };
   } catch (error) {
-    console.error('Error in batchUpdateProvenance:', error);
+    logger.error('batch_update_provenance_failed', {
+      artworkIds,
+      error,
+    });
     return { error: 'An unexpected error occurred' };
   }
 }
