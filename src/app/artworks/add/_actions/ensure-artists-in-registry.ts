@@ -63,7 +63,7 @@ export async function ensureArtistsInRegistry(
 
         // Check if unclaimed profile already exists
         const { data: existingProfile } = await client
-          .from('user_profiles')
+          .from('user_profiles' as any)
           .select('id')
           .eq('name', trimmedName)
           .eq('role', 'artist')
@@ -79,7 +79,7 @@ export async function ensureArtistsInRegistry(
 
         // Check if claimed profile exists
         const { data: claimedProfile } = await client
-          .from('user_profiles')
+          .from('user_profiles' as any)
           .select('id')
           .eq('name', trimmedName)
           .eq('role', 'artist')
@@ -94,7 +94,7 @@ export async function ensureArtistsInRegistry(
 
         // Create unclaimed profile
         const { error: insertError } = await client
-          .from('user_profiles')
+          .from('user_profiles' as any)
           .insert({
             user_id: null, // Unclaimed profile
             role: 'artist',

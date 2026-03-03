@@ -1,5 +1,6 @@
 'use server';
 
+import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -152,7 +153,7 @@ export async function createArtwork(formData: FormData, userId: string) {
 }
 
 async function generateCertificateNumber(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: SupabaseClient,
 ): Promise<string> {
   // Try to use the database function, fallback to client-side generation
   try {

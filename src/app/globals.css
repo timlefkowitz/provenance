@@ -21,17 +21,23 @@
   --color-ink: #111111;
   --color-wine: #4A2F25;
 
-  --font-display: var(--font-cinzel), serif;
-  --font-serif: var(--font-cormorant), serif;
-  --font-body: var(--font-caslon), serif;
-  --font-family-landing: Helvetica, Arial, sans-serif;
+  /* Use Gotham as primary font across the app, with sensible fallbacks */
+  --font-display: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --font-serif: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --font-body: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --font-family-landing: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
 }
 
 @layer base {
   body {
     background-color: var(--color-parchment);
     color: var(--color-ink);
-    font-family: var(--font-serif);
+    font-family: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+      sans-serif;
   }
 }
 

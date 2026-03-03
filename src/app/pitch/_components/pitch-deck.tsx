@@ -306,7 +306,8 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
               margin: 0.5in;
             }
             body {
-              font-family: serif;
+              font-family: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                system-ui, sans-serif;
               background: #F5F1E8;
               color: #111111;
               margin: 0;

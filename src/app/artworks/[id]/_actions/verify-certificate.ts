@@ -38,8 +38,8 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     }
 
     // Get artwork
-    const { data: artwork, error: artworkError } = await client
-      .from('artworks')
+    const { data: artwork, error: artworkError } = await (client as any)
+      .from('artworks' as any)
       .select('id, account_id, title, certificate_number, certificate_status, artist_account_id, gallery_profile_id, certificate_type')
       .eq('id', artworkId)
       .single();
@@ -61,8 +61,8 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     }
 
     // Update artwork with verification; once artist claimed and owner approved, it becomes Certificate of Authenticity
-    const { error: updateError } = await client
-      .from('artworks')
+    const { error: updateError } = await (client as any)
+      .from('artworks' as any)
       .update({
         verified_by_owner_at: new Date().toISOString(),
         certificate_status: 'verified',

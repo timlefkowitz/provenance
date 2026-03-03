@@ -264,7 +264,8 @@ export function CertificateOfAuthenticity({
               align-items: center;
               justify-content: center;
               min-height: 100vh;
-              font-family: serif;
+              font-family: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                system-ui, sans-serif;
             }
             .qr-container {
               text-align: center;
