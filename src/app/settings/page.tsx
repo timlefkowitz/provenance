@@ -13,6 +13,7 @@ const callbackPath = pathsConfig.auth.callback;
 const features = {
   enableAccountDeletion: true,
   enablePasswordUpdate: authConfig.providers.password,
+  enableMfa: false,
 };
 
 const paths = {

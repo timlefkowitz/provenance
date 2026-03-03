@@ -40,6 +40,7 @@ export function PersonalAccountSettingsContainer(
     features: {
       enableAccountDeletion: boolean;
       enablePasswordUpdate: boolean;
+      enableMfa?: boolean;
     };
 
     paths: {
@@ -175,21 +176,23 @@ export function PersonalAccountSettingsContainer(
         </Card>
       </If>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Trans i18nKey={'account:multiFactorAuth'} />
-          </CardTitle>
+      <If condition={props.features.enableMfa ?? true}>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <Trans i18nKey={'account:multiFactorAuth'} />
+            </CardTitle>
 
-          <CardDescription>
-            <Trans i18nKey={'account:multiFactorAuthDescription'} />
-          </CardDescription>
-        </CardHeader>
+            <CardDescription>
+              <Trans i18nKey={'account:multiFactorAuthDescription'} />
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent>
-          <MultiFactorAuthFactorsList userId={props.userId} />
-        </CardContent>
-      </Card>
+          <CardContent>
+            <MultiFactorAuthFactorsList userId={props.userId} />
+          </CardContent>
+        </Card>
+      </If>
 
       <If condition={props.features.enableAccountDeletion}>
         <Card className={'border-destructive'}>
