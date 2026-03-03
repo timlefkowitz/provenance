@@ -1,21 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+const UsernameQuerySchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(2, 'Username must be at least 2 characters')
+    .max(50, 'Username must be at most 50 characters')
+    .regex(/^[a-zA-Z0-9_.-]+$/, 'Username may contain letters, numbers, dots, underscores, and dashes only'),
+});
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const username = searchParams.get('username');
 
-  if (!username || username.trim().length < 2) {
-    return NextResponse.json({ available: false, error: 'Username must be at least 2 characters' });
+  const parseResult = UsernameQuerySchema.safeParse({
+    username: searchParams.get('username') ?? '',
+  });
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0]?.message ?? 'Invalid username';
+    return NextResponse.json({ available: false, error: firstError }, { status: 400 });
   }
+
+  const { username } = parseResult.data;
 
   const client = getSupabaseServerClient();
 
-  // Check if username is taken (case-insensitive)
   const { data: accounts, error } = await client
     .from('accounts')
     .select('id')
-    .ilike('name', username.trim())
+    .ilike('name', username)
     .limit(1);
 
   if (error) {
@@ -25,9 +40,9 @@ export async function GET(request: NextRequest) {
 
   const isAvailable = !accounts || accounts.length === 0;
 
-  return NextResponse.json({ 
+  return NextResponse.json({
     available: isAvailable,
-    message: isAvailable ? 'Username is available' : 'Username is already taken'
+    message: isAvailable ? 'Username is available' : 'Username is already taken',
   });
 }
 
