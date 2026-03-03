@@ -26,12 +26,17 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
 
   const handlePerspectiveChange = (value: UserRole) => {
     setPerspective(value);
-    
-    // Save to localStorage
+
     if (typeof window !== 'undefined') {
+      // Save to localStorage
       localStorage.setItem(PERSPECTIVE_KEY, value);
+
+      // Notify other components in this tab that the perspective changed
+      window.dispatchEvent(
+        new CustomEvent('user_perspective_changed', { detail: value }),
+      );
     }
-    
+
     // Refresh to apply perspective changes
     router.refresh();
   };

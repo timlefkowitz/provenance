@@ -29,8 +29,35 @@ export function UsingGalleryLabel() {
       setSelectedProfileId(id);
     };
     sync();
-    const interval = setInterval(sync, 400);
-    return () => clearInterval(interval);
+
+    const handleStorage = () => {
+      sync();
+    };
+
+    const handlePerspectiveChanged = () => {
+      sync();
+    };
+
+    const handleProfileSelected = () => {
+      sync();
+    };
+
+    if (typeof window !== 'undefined') {
+      // Cross-tab changes
+      window.addEventListener('storage', handleStorage);
+      // Same-tab perspective changes
+      window.addEventListener('user_perspective_changed', handlePerspectiveChanged as EventListener);
+      // Same-tab profile selection changes
+      window.addEventListener('user_profile_selected', handleProfileSelected as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage);
+        window.removeEventListener('user_perspective_changed', handlePerspectiveChanged as EventListener);
+        window.removeEventListener('user_profile_selected', handleProfileSelected as EventListener);
+      }
+    };
   }, []);
 
   const { data: profiles = [] } = useQuery({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback, memo } from 'react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -31,7 +31,7 @@ export function UnifiedProfileSettingsForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: currentName,
     medium: currentMedium,
@@ -48,6 +48,38 @@ export function UnifiedProfileSettingsForm({
       galleriesText: (currentGalleries ?? []).join('\n'),
     });
   }, [currentName, currentMedium, currentLinks, currentGalleries]);
+
+  const handleNameChange = useCallback((value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      name: value,
+    }));
+  }, []);
+
+  const handleMediumChange = useCallback((value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      medium: value,
+    }));
+  }, []);
+
+  const handleLinkChange = useCallback((index: number, value: string) => {
+    setFormData((prev) => {
+      const nextLinks = [...prev.links];
+      nextLinks[index] = value;
+      return {
+        ...prev,
+        links: nextLinks,
+      };
+    });
+  }, []);
+
+  const handleGalleriesChange = useCallback((value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      galleriesText: value,
+    }));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,78 +148,22 @@ export function UnifiedProfileSettingsForm({
       )}
 
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Your Name</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Your name"
-            minLength={2}
-            maxLength={100}
-            className="font-serif"
-            required
-          />
-        </div>
+        <NameAndMediumSection
+          name={formData.name}
+          medium={formData.medium}
+          onNameChange={handleNameChange}
+          onMediumChange={handleMediumChange}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="medium">Default Medium</Label>
-          <Input
-            id="medium"
-            value={formData.medium}
-            onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
-            placeholder="e.g., Oil on Canvas, Acrylic on Paper, Digital Art"
-            className="font-serif"
-          />
-          <p className="text-sm text-ink/60 font-serif">
-            This will be automatically filled in when you create new artworks
-          </p>
-        </div>
+        <LinksSection
+          links={formData.links}
+          onLinkChange={handleLinkChange}
+        />
 
-        {/* Links */}
-        <div className="space-y-2">
-          <Label>Links (up to 3)</Label>
-          <p className="text-xs text-ink/60 font-serif">
-            Add links to your website, portfolio, or social profiles.
-          </p>
-          {[0, 1, 2].map((idx) => (
-            <Input
-              key={idx}
-              value={formData.links[idx] ?? ''}
-              onChange={(e) => {
-                const next = [...formData.links];
-                next[idx] = e.target.value;
-                setFormData({ ...formData, links: next });
-              }}
-              placeholder={
-                idx === 0
-                  ? 'https://your-website.com'
-                  : idx === 1
-                  ? 'https://instagram.com/your-handle'
-                  : 'https://link-three.com'
-              }
-              className="font-serif"
-            />
-          ))}
-        </div>
-
-        {/* Galleries */}
-        <div className="space-y-2">
-          <Label htmlFor="galleries">Galleries (one per line)</Label>
-          <Textarea
-            id="galleries"
-            value={formData.galleriesText}
-            onChange={(e) =>
-              setFormData({ ...formData, galleriesText: e.target.value })
-            }
-            placeholder={'Gallery Name, City\nAnother Gallery, City\nThird Gallery, Country'}
-            rows={4}
-            className="font-serif"
-          />
-          <p className="text-sm text-ink/60 font-serif">
-            List galleries you&apos;ve worked with or that represent you.
-          </p>
-        </div>
+        <GalleriesSection
+          galleriesText={formData.galleriesText}
+          onGalleriesChange={handleGalleriesChange}
+        />
       </div>
 
       <div className="pt-4">
@@ -202,4 +178,111 @@ export function UnifiedProfileSettingsForm({
     </form>
   );
 }
+
+type NameAndMediumSectionProps = {
+  name: string;
+  medium: string;
+  onNameChange: (value: string) => void;
+  onMediumChange: (value: string) => void;
+};
+
+const NameAndMediumSection = memo(function NameAndMediumSection({
+  name,
+  medium,
+  onNameChange,
+  onMediumChange,
+}: NameAndMediumSectionProps) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Your Name</Label>
+        <Input
+          id="name"
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="Your name"
+          minLength={2}
+          maxLength={100}
+          className="font-serif"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="medium">Default Medium</Label>
+        <Input
+          id="medium"
+          value={medium}
+          onChange={(e) => onMediumChange(e.target.value)}
+          placeholder="e.g., Oil on Canvas, Acrylic on Paper, Digital Art"
+          className="font-serif"
+        />
+        <p className="text-sm text-ink/60 font-serif">
+          This will be automatically filled in when you create new artworks
+        </p>
+      </div>
+    </div>
+  );
+});
+
+type LinksSectionProps = {
+  links: string[];
+  onLinkChange: (index: number, value: string) => void;
+};
+
+const LinksSection = memo(function LinksSection({
+  links,
+  onLinkChange,
+}: LinksSectionProps) {
+  return (
+    <div className="space-y-2">
+      <Label>Links (up to 3)</Label>
+      <p className="text-xs text-ink/60 font-serif">
+        Add links to your website, portfolio, or social profiles.
+      </p>
+      {[0, 1, 2].map((idx) => (
+        <Input
+          key={idx}
+          value={links[idx] ?? ''}
+          onChange={(e) => onLinkChange(idx, e.target.value)}
+          placeholder={
+            idx === 0
+              ? 'https://your-website.com'
+              : idx === 1
+              ? 'https://instagram.com/your-handle'
+              : 'https://link-three.com'
+          }
+          className="font-serif"
+        />
+      ))}
+    </div>
+  );
+});
+
+type GalleriesSectionProps = {
+  galleriesText: string;
+  onGalleriesChange: (value: string) => void;
+};
+
+const GalleriesSection = memo(function GalleriesSection({
+  galleriesText,
+  onGalleriesChange,
+}: GalleriesSectionProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="galleries">Galleries (one per line)</Label>
+      <Textarea
+        id="galleries"
+        value={galleriesText}
+        onChange={(e) => onGalleriesChange(e.target.value)}
+        placeholder={'Gallery Name, City\nAnother Gallery, City\nThird Gallery, Country'}
+        rows={4}
+        className="font-serif"
+      />
+      <p className="text-sm text-ink/60 font-serif">
+        List galleries you&apos;ve worked with or that represent you.
+      </p>
+    </div>
+  );
+});
 

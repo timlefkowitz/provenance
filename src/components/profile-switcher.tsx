@@ -102,38 +102,59 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
     }
   }, [filteredProfiles, selectedProfileId]);
 
-  // Update perspective when it changes in localStorage
+  // Update perspective when it changes (cross-tab via storage, same-tab via custom event)
   useEffect(() => {
     const checkPerspective = () => {
       const perspective = getPerspective();
-      if (perspective !== currentPerspective) {
-        setCurrentPerspective(perspective);
+      setCurrentPerspective((prev) => {
+        if (perspective === prev) {
+          return prev;
+        }
+
         // Clear selected profile when perspective changes
         setSelectedProfileId(null);
         if (typeof window !== 'undefined') {
           localStorage.removeItem(SELECTED_PROFILE_KEY);
         }
-      }
+
+        return perspective;
+      });
     };
 
-    // Listen for storage changes (when perspective switcher updates in another tab)
-    window.addEventListener('storage', checkPerspective);
-    
-    // Also check periodically (since same-tab updates don't trigger storage event)
-    const interval = setInterval(checkPerspective, 300);
+    const handleStorage = () => {
+      checkPerspective();
+    };
+
+    const handlePerspectiveChanged = () => {
+      checkPerspective();
+    };
+
+    if (typeof window !== 'undefined') {
+      // Cross-tab changes
+      window.addEventListener('storage', handleStorage);
+      // Same-tab changes, dispatched from PerspectiveSwitcher
+      window.addEventListener('user_perspective_changed', handlePerspectiveChanged as EventListener);
+    }
 
     return () => {
-      window.removeEventListener('storage', checkPerspective);
-      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage);
+        window.removeEventListener('user_perspective_changed', handlePerspectiveChanged as EventListener);
+      }
     };
-  }, [currentPerspective]);
+  }, []);
 
   const handleProfileSelect = (profileId: string) => {
     setSelectedProfileId(profileId);
     
-    // Save to localStorage
     if (typeof window !== 'undefined') {
+      // Save to localStorage
       localStorage.setItem(SELECTED_PROFILE_KEY, profileId);
+
+      // Notify other components in this tab that the selected profile changed
+      window.dispatchEvent(
+        new CustomEvent('user_profile_selected', { detail: profileId }),
+      );
     }
     
     // Refresh to apply profile changes
