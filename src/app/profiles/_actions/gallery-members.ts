@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
+import { logger } from '~/lib/logger';
 
 export interface GalleryMember {
   id: string;
@@ -182,7 +183,12 @@ export async function getGalleryMembers(
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching gallery members:', error);
+      logger.error('get_gallery_members_query_failed', {
+        galleryProfileId,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+      });
       return { data: null, error: error.message };
     }
 
@@ -206,9 +212,14 @@ export async function getGalleryMembers(
     }));
 
     return { data: transformedMembers, error: null };
-  } catch (error: any) {
-    console.error('Error in getGalleryMembers:', error);
-    return { data: null, error: error.message || 'An unexpected error occurred' };
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    logger.error('get_gallery_members_exception', {
+      galleryProfileId,
+      message: err.message,
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return { data: null, error: err.message || 'An unexpected error occurred' };
   }
 }
 

@@ -55,8 +55,21 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
   const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
-    loadMembers();
-    checkPermissions();
+    let cancelled = false;
+    async function run() {
+      try {
+        await loadMembers();
+        if (!cancelled) await checkPermissions();
+      } catch (error) {
+        if (cancelled) return;
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[GalleryMembersManager] useEffect error:', msg, error);
+        toast.error('Failed to load team members');
+        setLoading(false);
+      }
+    }
+    run();
+    return () => { cancelled = true; };
   }, [galleryProfileId, userId]);
 
   async function loadMembers() {
@@ -64,12 +77,15 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
     try {
       const { data, error } = await getGalleryMembers(galleryProfileId);
       if (error) {
+        console.error('[GalleryMembersManager] getGalleryMembers error:', error);
         toast.error(error);
       } else if (data) {
         setMembers(data);
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load members');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to load members';
+      console.error('[GalleryMembersManager] loadMembers error:', msg, error);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -80,7 +96,8 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
       const can = await canManageGallery(userId, galleryProfileId);
       setCanManage(can);
     } catch (error) {
-      console.error('Error checking permissions:', error);
+      console.error('[GalleryMembersManager] checkPermissions error:', error);
+      setCanManage(false);
     }
   }
 
@@ -105,10 +122,13 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         setInviteDialogOpen(false);
         loadMembers();
       } else {
+        console.error('[GalleryMembersManager] inviteGalleryMember error:', error);
         toast.error(error || 'Failed to invite member');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to invite member');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to invite member';
+      console.error('[GalleryMembersManager] handleInvite error:', msg, error);
+      toast.error(msg);
     } finally {
       setInviting(false);
     }
@@ -122,10 +142,13 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         toast.success(`Removed ${memberName} from the gallery`);
         loadMembers();
       } else {
+        console.error('[GalleryMembersManager] removeGalleryMember error:', error);
         toast.error(error || 'Failed to remove member');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to remove member');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to remove member';
+      console.error('[GalleryMembersManager] handleRemove error:', msg, error);
+      toast.error(msg);
     }
   }
 
@@ -141,10 +164,13 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         toast.success('Member role updated');
         loadMembers();
       } else {
+        console.error('[GalleryMembersManager] updateGalleryMemberRole error:', error);
         toast.error(error || 'Failed to update role');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update role');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to update role';
+      console.error('[GalleryMembersManager] handleRoleUpdate error:', msg, error);
+      toast.error(msg);
     }
   }
 
