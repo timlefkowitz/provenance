@@ -57,6 +57,12 @@ export function Navigation() {
               >
                 Grants
               </Link>
+              <Link 
+                href="/portal/leads" 
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                Leads
+              </Link>
             </>
           )}
           <Link 
@@ -211,6 +217,13 @@ export function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Grants
+                </Link>
+                <Link 
+                  href="/portal/leads" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Leads
                 </Link>
               </>
             )}

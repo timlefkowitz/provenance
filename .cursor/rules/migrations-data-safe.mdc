@@ -1,0 +1,48 @@
+---
+description: Ensure database migrations never wipe or destroy user data
+globs: "**/supabase/migrations/*.sql","**/migrations/*.sql"
+alwaysApply: false
+---
+
+# Database migrations: preserve user data
+
+When creating or editing SQL migrations, **double-check that the migration does not wipe or destroy user data.**
+
+## Safe patterns
+
+- `create table if not exists` — adds new tables only
+- `create index if not exists` — adds indexes only
+- `alter table ... add column` (with care: use `if not exists` or check for missing column)
+- `create policy` / `drop policy if exists` — RLS only
+- `grant` / `revoke` — permissions only
+- `create trigger` on new or existing tables (no data removal)
+
+## Dangerous patterns — avoid or justify explicitly
+
+- **`DROP TABLE`** — never drop tables that hold user/app data without an explicit migration strategy and backup
+- **`TRUNCATE`** — removes all rows; do not use on user/content tables
+- **`DELETE FROM ...`** without a very narrow `WHERE` — can wipe data
+- **`DROP COLUMN`** — removes data in that column; only if intentionally retiring a column with a documented plan
+
+## Before committing a migration
+
+1. Scan the file for: `DROP`, `TRUNCATE`, `DELETE`, and any broad `UPDATE`.
+2. Confirm the migration only **adds** (tables, columns, indexes, policies) or **idempotently changes** (e.g. `drop policy if exists` then `create policy`) and does not remove or overwrite user data.
+3. If the migration must touch existing data (e.g. backfill, one-time fix), add a short comment at the top: `-- DATA-SAFE: [brief note]` or `-- TOUCHES DATA: [what and why]`.
+
+## Example header for additive migrations
+
+```sql
+/*
+ * -------------------------------------------------------
+ * Brief description
+ * -------------------------------------------------------
+ *
+ * DATA-SAFE: Does not wipe user data.
+ * - create table if not exists (no DROP TABLE)
+ * - create index if not exists
+ * - No DELETE, TRUNCATE, or DROP TABLE on user/data tables.
+ */
+```
+
+Use this checklist every time you add or modify a migration file.

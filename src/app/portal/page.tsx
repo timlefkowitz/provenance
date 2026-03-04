@@ -11,9 +11,11 @@ import { ArtworkCard } from '../artworks/_components/artwork-card';
 import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
 import { getOpenCallSubmissionsForUser } from '../open-calls/_actions/get-open-call-submissions-for-user';
 import { ProvenanceUpdateRequestsList } from './_components/provenance-update-requests-list';
+import { SendSummaryButton } from './_components/send-summary-button';
 import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
-import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart } from 'lucide-react';
+import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
+import { getLeadsForArtist } from './leads/_actions/leads';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -117,6 +119,17 @@ export default async function PortalPage() {
 
   // Get provenance update requests for artworks owned by this user
   const provenanceUpdateRequests = await getProvenanceUpdateRequestsForOwner();
+
+  const isArtist = userRole === USER_ROLES.ARTIST;
+  let leadsCount = 0;
+  if (isArtist) {
+    try {
+      const leads = await getLeadsForArtist();
+      leadsCount = leads.length;
+    } catch {
+      // Table may not exist yet
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -243,16 +256,45 @@ export default async function PortalPage() {
               </div>
               <Bell className="h-8 w-8 text-wine/50" />
             </div>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="mt-4 font-serif text-wine hover:text-wine/80"
-            >
-              <Link href="/notifications">View All →</Link>
-            </Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif text-wine hover:text-wine/80"
+              >
+                <Link href="/notifications">View All →</Link>
+              </Button>
+              <SendSummaryButton />
+            </div>
           </CardContent>
         </Card>
+
+        {isArtist && (
+          <Card className="border-wine/20 bg-parchment/60">
+            <CardContent className="p-6">
+              <Link href="/portal/leads" className="block">
+                <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
+                  <div>
+                    <p className="text-sm text-ink/60 font-serif mb-1">Sales leads</p>
+                    <p className="text-3xl font-display font-bold text-wine">
+                      {leadsCount}
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-wine/50" />
+                </div>
+              </Link>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="mt-4 font-serif text-wine hover:text-wine/80"
+              >
+                <Link href="/portal/leads">View board →</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
