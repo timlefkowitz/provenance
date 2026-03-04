@@ -18,7 +18,8 @@ Extract structured data from this artist CV/resume. Return a single JSON object 
  * Call from server only; requires OPENAI_API_KEY.
  */
 export async function extractCvToJson(cvText: string): Promise<{ data: ArtistCvJson | null; error: string | null }> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const rawKey = process.env.OPENAI_API_KEY;
+  const apiKey = typeof rawKey === 'string' ? rawKey.trim() : undefined;
   if (!apiKey) {
     console.error('[Grants] extractCvToJson OPENAI_API_KEY not set');
     return { data: null, error: 'OpenAI API key not configured' };

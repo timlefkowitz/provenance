@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    const key = typeof apiKey === 'string' ? apiKey.trim() : undefined;
+    if (!key) {
       console.error('[Grants] chat OPENAI_API_KEY not set');
       return NextResponse.json({ error: 'Grant assistant not configured' }, { status: 503 });
     }
@@ -89,7 +90,7 @@ ${cvContext}
 
 When the user asks for grants or opportunities, search your knowledge for real or representative grants that match their practice and location. When you have specific recommendations, call the recommend_grants function with the list. Always give a short conversational reply in your message as well.`;
 
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey: key });
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemContent },
       ...history.slice(-12).map((m: { role: string; content: string }) =>
