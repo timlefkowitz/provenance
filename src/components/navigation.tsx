@@ -51,6 +51,12 @@ export function Navigation() {
               >
                 <Trans i18nKey="common:navigation.registry" defaults="Registry" />
               </Link>
+              <Link 
+                href="/grants" 
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                Grants
+              </Link>
             </>
           )}
           <Link 
@@ -198,6 +204,13 @@ export function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <Trans i18nKey="common:navigation.registry" defaults="Registry" />
+                </Link>
+                <Link 
+                  href="/grants" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Grants
                 </Link>
               </>
             )}
