@@ -45,16 +45,19 @@ const RECOMMEND_GRANTS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
 };
 
 export async function POST(request: NextRequest) {
+  console.log('[Grants] POST /api/grants/chat');
   try {
     const client = getSupabaseServerClient();
     const { data: { user }, error: authError } = await client.auth.getUser();
 
     if (authError || !user) {
+      console.error('[Grants] chat auth failed', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const artistProfile = await getProfileByRole(user.id, USER_ROLES.ARTIST);
     if (!artistProfile) {
+      console.error('[Grants] chat no artist profile', user.id);
       return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
     }
 
@@ -67,6 +70,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
+      console.error('[Grants] chat OPENAI_API_KEY not set');
       return NextResponse.json({ error: 'Grant assistant not configured' }, { status: 503 });
     }
 
@@ -103,6 +107,7 @@ When the user asks for grants or opportunities, search your knowledge for real o
       tool_choice: 'auto',
     });
 
+    console.log('[Grants] chat OpenAI response received');
     const choice = completion.choices[0];
     const msg = choice?.message;
     let reply = (msg?.content || '').trim() || 'I couldn’t find specific grants this time. Try asking for a discipline or location.';
@@ -128,11 +133,12 @@ When the user asks for grants or opportunities, search your knowledge for real o
               }));
               const { saved } = await saveArtistGrants(user.id, artistProfile.id, toSave);
               if (saved) {
+                console.log('[Grants] chat saved', saved, 'grants');
                 newGrants.push(...toSave.map((g) => ({ ...g, eligible_locations: g.eligible_locations || [], discipline: g.discipline || [] })));
               }
             }
           } catch (e) {
-            console.error('[grants/chat] parse tool args', e);
+            console.error('[Grants] chat parse tool args', e);
           }
         }
       }
@@ -140,7 +146,7 @@ When the user asks for grants or opportunities, search your knowledge for real o
 
     return NextResponse.json({ reply, newGrants });
   } catch (err) {
-    console.error('[grants/chat]', err);
+    console.error('[Grants] chat error', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Server error' },
       { status: 500 }

@@ -23,12 +23,15 @@ export function UploadCvForm() {
         setError('Please select a file');
         return;
       }
+      console.log('[Grants] UploadCvForm submit', file.name, file.type);
       setUploading(true);
       const result = await uploadArtistCv(new FormData(form));
       setUploading(false);
       if (result.success) {
+        console.log('[Grants] UploadCvForm success, refreshing');
         router.refresh();
       } else {
+        console.error('[Grants] UploadCvForm error', result.error);
         setError(result.error);
       }
     },

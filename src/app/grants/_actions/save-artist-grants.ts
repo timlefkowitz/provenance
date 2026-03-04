@@ -13,6 +13,7 @@ export async function saveArtistGrants(
 ): Promise<{ saved: number; error: string | null }> {
   if (!grants.length) return { saved: 0, error: null };
 
+  console.log('[Grants] saveArtistGrants', grants.length, 'grants');
   const client = getSupabaseServerClient();
   const rows = grants.map((g) => ({
     user_id: userId,
@@ -31,8 +32,9 @@ export async function saveArtistGrants(
   const { data, error } = await (client as any).from('artist_grants').insert(rows).select('id');
 
   if (error) {
-    console.error('[saveArtistGrants]', error);
+    console.error('[Grants] saveArtistGrants insert failed', error);
     return { saved: 0, error: error.message };
   }
+  console.log('[Grants] saveArtistGrants saved', data?.length ?? 0);
   return { saved: data?.length ?? 0, error: null };
 }

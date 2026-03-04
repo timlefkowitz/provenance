@@ -53,7 +53,7 @@ export function Navigation() {
               </Link>
               <Link 
                 href="/grants" 
-                className="text-ink hover:text-wine transition-colors font-serif"
+                className="text-ink hover:text-wine transition-colors font-serif cursor-pointer"
               >
                 Grants
               </Link>
@@ -207,7 +207,7 @@ export function Navigation() {
                 </Link>
                 <Link 
                   href="/grants" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10 cursor-pointer"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Grants

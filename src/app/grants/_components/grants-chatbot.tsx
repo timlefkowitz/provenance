@@ -24,6 +24,7 @@ export function GrantsChatbot({ hasCv, onGrantsUpdated }: GrantsChatbotProps) {
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || loading) return;
+      console.log('[Grants] chatbot sendMessage', text.trim().slice(0, 50));
       const userMessage: ChatMessage = { role: 'user', content: text.trim() };
       setMessages((prev) => [...prev, userMessage]);
       setInput('');
@@ -50,9 +51,11 @@ export function GrantsChatbot({ hasCv, onGrantsUpdated }: GrantsChatbotProps) {
           { role: 'assistant', content: data.reply || 'No response.' },
         ]);
         if (data.newGrants?.length) {
+          console.log('[Grants] chatbot received', data.newGrants.length, 'new grants');
           onGrantsUpdated?.();
         }
       } catch (e) {
+        console.error('[Grants] chatbot error', e);
         const message = e instanceof Error ? e.message : 'Something went wrong';
         setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${message}` }]);
       } finally {

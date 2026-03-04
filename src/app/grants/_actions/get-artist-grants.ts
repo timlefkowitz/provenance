@@ -22,7 +22,7 @@ export async function getArtistGrants(userId: string): Promise<ArtistGrantRow[]>
     .order('deadline', { ascending: true, nullsFirst: false });
 
   if (error) {
-    console.error('Error fetching artist grants:', error);
+    console.error('[Grants] getArtistGrants failed', error);
     return [];
   }
   return (data || []) as ArtistGrantRow[];

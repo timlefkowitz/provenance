@@ -23,10 +23,12 @@ export type UploadArtistCvResult = { success: true; error?: never } | { success:
  * Upload artist CV (PDF, DOCX, or TXT), extract text, run OpenAI extraction, and save to profile.
  */
 export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCvResult> {
+  console.log('[Grants] uploadArtistCv started');
   const client = getSupabaseServerClient();
   const { data: { user }, error: authError } = await client.auth.getUser();
 
   if (authError || !user) {
+    console.error('[Grants] uploadArtistCv auth failed', authError);
     return { success: false, error: 'You must be signed in to upload a CV' };
   }
 
@@ -45,15 +47,19 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
 
   const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);
   if (!artistProfile) {
+    console.error('[Grants] uploadArtistCv no artist profile', user.id);
     return { success: false, error: 'Create an artist profile first from your profiles or settings' };
   }
 
   const bytes = await file.arrayBuffer();
+  console.log('[Grants] extractTextFromCvBuffer', file.type);
   const { text, error: extractErr } = await extractTextFromCvBuffer(bytes, file.type);
   if (extractErr || !text) {
+    console.error('[Grants] extractTextFromCvBuffer failed', extractErr);
     return { success: false, error: extractErr || 'Could not extract text from file' };
   }
 
+  console.log('[Grants] extractCvToJson calling OpenAI');
   const { data: cvJson, error: jsonErr } = await extractCvToJson(text);
   if (jsonErr) {
     return { success: false, error: jsonErr };
@@ -79,7 +85,7 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
     }
     bucket = admin.storage.from(ARTIST_CVS_BUCKET);
   } catch (e) {
-    console.error('[uploadArtistCv] bucket check/create', e);
+    console.error('[Grants] uploadArtistCv bucket check/create', e);
   }
 
   const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
@@ -88,7 +94,7 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
   });
 
   if (uploadError) {
-    console.error('[uploadArtistCv] upload', uploadError);
+    console.error('[Grants] uploadArtistCv upload failed', uploadError);
     return { success: false, error: uploadError.message || 'Upload failed' };
   }
 
@@ -106,9 +112,10 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
     .eq('user_id', user.id);
 
   if (updateError) {
-    console.error('[uploadArtistCv] update profile', updateError);
+    console.error('[Grants] uploadArtistCv update profile failed', updateError);
     return { success: false, error: updateError.message || 'Failed to save CV to profile' };
   }
 
+  console.log('[Grants] uploadArtistCv completed successfully');
   return { success: true };
 }

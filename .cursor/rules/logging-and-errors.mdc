@@ -1,0 +1,38 @@
+---
+description: Add console logs and error logging in implemented code
+alwaysApply: true
+---
+
+# Logging and errors in implemented code
+
+When implementing or modifying code in this project:
+
+1. **Log important steps**  
+   Add `console.log` (or a project logger) at meaningful points so behavior is traceable in development and logs:
+   - Start of a server action or API handler (e.g. `[Grants] uploadArtistCv started`)
+   - After a successful outcome (e.g. `[Grants] CV extracted and saved`)
+   - Before external calls (e.g. `[Grants] Calling OpenAI for CV extraction`)
+
+2. **Log errors**  
+   Always log errors before rethrowing or returning an error response:
+   - Use `console.error('[Scope] description', error)` with a short scope tag (e.g. `[Grants]`, `[API/grants/chat]`).
+   - Include the error object so stack traces and messages are visible.
+
+3. **Keep logs concise**  
+   Use a consistent prefix (e.g. `[FeatureName]`) and avoid logging sensitive data (tokens, full request bodies, PII).
+
+Example:
+
+```typescript
+export async function uploadArtistCv(formData: FormData) {
+  console.log('[Grants] uploadArtistCv started');
+  try {
+    // ...
+    console.log('[Grants] CV uploaded and extracted successfully');
+    return { success: true };
+  } catch (err) {
+    console.error('[Grants] uploadArtistCv failed', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+```

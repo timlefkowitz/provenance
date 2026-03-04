@@ -20,6 +20,7 @@ Extract structured data from this artist CV/resume. Return a single JSON object 
 export async function extractCvToJson(cvText: string): Promise<{ data: ArtistCvJson | null; error: string | null }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
+    console.error('[Grants] extractCvToJson OPENAI_API_KEY not set');
     return { data: null, error: 'OpenAI API key not configured' };
   }
 
@@ -29,6 +30,7 @@ export async function extractCvToJson(cvText: string): Promise<{ data: ArtistCvJ
   }
 
   try {
+    console.log('[Grants] extractCvToJson calling OpenAI');
     const openai = new OpenAI({ apiKey });
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -45,10 +47,11 @@ export async function extractCvToJson(cvText: string): Promise<{ data: ArtistCvJ
     }
 
     const data = JSON.parse(content) as ArtistCvJson;
+    console.log('[Grants] extractCvToJson success');
     return { data, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to extract CV';
-    console.error('[extractCvToJson]', err);
+    console.error('[Grants] extractCvToJson', err);
     return { data: null, error: message };
   }
 }
