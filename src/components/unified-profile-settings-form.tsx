@@ -198,6 +198,8 @@ const NameAndMediumSection = memo(function NameAndMediumSection({
         <Label htmlFor="name">Your Name</Label>
         <Input
           id="name"
+          name="name"
+          autoComplete="name"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder="Your name"
@@ -212,6 +214,7 @@ const NameAndMediumSection = memo(function NameAndMediumSection({
         <Label htmlFor="medium">Default Medium</Label>
         <Input
           id="medium"
+          name="medium"
           value={medium}
           onChange={(e) => onMediumChange(e.target.value)}
           placeholder="e.g., Oil on Canvas, Acrylic on Paper, Digital Art"
@@ -236,25 +239,46 @@ const LinksSection = memo(function LinksSection({
 }: LinksSectionProps) {
   return (
     <div className="space-y-2">
-      <Label>Links (up to 3)</Label>
-      <p className="text-xs text-ink/60 font-serif">
-        Add links to your website, portfolio, or social profiles.
-      </p>
-      {[0, 1, 2].map((idx) => (
-        <Input
-          key={idx}
-          value={links[idx] ?? ''}
-          onChange={(e) => onLinkChange(idx, e.target.value)}
-          placeholder={
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-ink font-serif">
+          Links (up to 3)
+        </p>
+        <p className="text-xs text-ink/60 font-serif">
+          Add links to your website, portfolio, or social profiles.
+        </p>
+      </div>
+      <div className="space-y-2">
+        {[0, 1, 2].map((idx) => {
+          const id = `link-${idx + 1}`;
+          const label =
             idx === 0
-              ? 'https://your-website.com'
+              ? 'Primary link'
               : idx === 1
-              ? 'https://instagram.com/your-handle'
-              : 'https://link-three.com'
-          }
-          className="font-serif"
-        />
-      ))}
+              ? 'Social link'
+              : 'Additional link';
+
+          return (
+            <div key={idx} className="space-y-1">
+              <Label htmlFor={id}>{label}</Label>
+              <Input
+                id={id}
+                name={`links[${idx}]`}
+                autoComplete="url"
+                value={links[idx] ?? ''}
+                onChange={(e) => onLinkChange(idx, e.target.value)}
+                placeholder={
+                  idx === 0
+                    ? 'https://your-website.com'
+                    : idx === 1
+                    ? 'https://instagram.com/your-handle'
+                    : 'https://link-three.com'
+                }
+                className="font-serif"
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 });

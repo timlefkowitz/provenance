@@ -243,7 +243,9 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
                     <Label htmlFor="email" className="font-serif">Email Address</Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       placeholder="user@example.com"
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
