@@ -1,7 +1,5 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdmin } from '~/lib/admin';
 import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
 import { FixArtistNamesButton } from './_components/fix-artist-names-button';
 import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
@@ -13,19 +11,7 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  const client = getSupabaseServerClient();
-  const { data: { user } } = await client.auth.getUser();
-
-  if (!user) {
-    redirect('/auth/sign-in');
-  }
-
-  // Check if user is admin
-  const userIsAdmin = await isAdmin(user.id);
-
-  if (!userIsAdmin) {
-    redirect('/');
-  }
+  await requireAdmin();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -113,4 +99,3 @@ export default async function AdminPage() {
     </div>
   );
 }
-

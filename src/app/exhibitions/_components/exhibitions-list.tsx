@@ -38,6 +38,7 @@ export function ExhibitionsList({
       toast.success('Exhibition deleted successfully');
       router.refresh();
     } catch (error: any) {
+      console.error('[ExhibitionsList] Error deleting exhibition', error);
       toast.error(error.message || 'Failed to delete exhibition');
     } finally {
       setDeletingId(null);

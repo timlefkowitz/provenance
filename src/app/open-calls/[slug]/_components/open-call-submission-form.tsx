@@ -51,6 +51,7 @@ export function OpenCallSubmissionForm({
         toast.success('Submission received. Thank you!');
         form.reset();
       } catch (submitError: any) {
+        console.error('[OpenCallSubmissionForm] Submit failed', submitError);
         const message = submitError?.message || 'Failed to submit open call.';
         setError(message);
         toast.error(message);

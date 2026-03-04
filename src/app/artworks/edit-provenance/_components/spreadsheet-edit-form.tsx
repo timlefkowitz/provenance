@@ -198,6 +198,7 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
               successCount++;
             }
           } catch (e) {
+            console.error('[SpreadsheetEditForm] Batch update failed for artwork', artworkId, e);
             errors.push(`${artworks.find(a => a.id === artworkId)?.title || artworkId}: ${e instanceof Error ? e.message : 'Unknown error'}`);
           }
         }
@@ -213,8 +214,8 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
           }, 2000);
         }
       } catch (e) {
+        console.error('[SpreadsheetEditForm] Submit failed', e);
         setError('Something went wrong. Please try again.');
-        console.error(e);
       }
     });
   };

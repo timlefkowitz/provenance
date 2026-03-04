@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { User } from '@supabase/supabase-js';
 
 /**
  * Check if a user is an admin
@@ -48,3 +50,23 @@ export async function getCurrentUserAdminStatus(): Promise<boolean> {
   }
 }
 
+/**
+ * Require an authenticated admin user for the current request.
+ * Redirects to sign-in if not authenticated, or to home if not admin.
+ * Use at the top of admin page server components.
+ */
+export async function requireAdmin(): Promise<{ user: User }> {
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    redirect('/auth/sign-in');
+  }
+
+  const userIsAdmin = await isAdmin(user.id);
+  if (!userIsAdmin) {
+    redirect('/');
+  }
+
+  return { user };
+}

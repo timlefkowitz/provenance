@@ -58,8 +58,8 @@ export function FeaturedArtworksManager() {
           router.refresh();
         }
       } catch (e) {
+        console.error('[FeaturedArtworksManager] Error removing featured artwork', e);
         toast.error('Something went wrong. Please try again.');
-        console.error(e);
       }
     });
   };

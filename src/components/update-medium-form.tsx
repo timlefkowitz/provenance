@@ -38,8 +38,8 @@ export function UpdateMediumForm({
           setTimeout(() => setSuccess(false), 3000);
         }
       } catch (e) {
+        console.error('[UpdateMediumForm] Error updating medium', e);
         setError('Something went wrong. Please try again.');
-        console.error(e);
       }
     });
   };

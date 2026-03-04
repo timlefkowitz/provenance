@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Provenance — User & Data Diagram</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#F5F1E8',
+        primaryTextColor: '#111111',
+        primaryBorderColor: '#4A2F25',
+        lineColor: '#4A2F25',
+        secondaryColor: '#F5F1E8',
+        tertiaryColor: '#ebe6dc',
+        secondaryTextColor: '#111111',
+        tertiaryTextColor: '#111111',
+        tertiaryBorderColor: '#4A2F25',
+        secondaryBorderColor: '#4A2F25',
+        background: '#F5F1E8',
+        mainBkg: '#F5F1E8',
+        secondBkg: '#ebe6dc',
+        tertiaryBkg: '#ebe6dc',
+        textColor: '#111111',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      },
+    });
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: #faf9f7;
+      color: #111111;
+    }
+    h1 { color: #4A2F25; font-size: 1.75rem; margin-top: 2rem; margin-bottom: 0.5rem; }
+    h1:first-of-type { margin-top: 0; }
+    p { color: #333; margin: 0 0 1rem; }
+    .diagram {
+      background: #fff;
+      border: 1px solid #d4cfc4;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+    .diagram svg { max-width: 100%; height: auto; }
+    .diagram svg text { fill: #111111 !important; color: #111111; }
+    .diagram svg .node rect,
+    .diagram svg .node polygon,
+    .diagram svg .node circle,
+    .diagram svg .node path { fill: #F5F1E8 !important; stroke: #4A2F25 !important; }
+    .diagram svg .cluster rect,
+    .diagram svg .cluster polygon { fill: #ebe6dc !important; stroke: #4A2F25 !important; }
+    .diagram svg .cluster text { fill: #111111 !important; }
+    .diagram svg .edgePath path { stroke: #4A2F25 !important; }
+    .diagram svg .arrowheadPath { fill: #4A2F25 !important; }
+    .diagram svg .entityBox { fill: #F5F1E8 !important; stroke: #4A2F25 !important; }
+    .diagram svg .entityLabel { fill: #111111 !important; }
+    .mermaid { display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+  <h1>Provenance — What the user uses</h1>
+  <p>High-level: Identity, Account, Profiles, Content, Social, Certificates.</p>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TB
+    subgraph Identity["Identity & auth"]
+        AUTH[auth.users]
+        SESSION[Session / JWT claims]
+        MFA[MFA verify]
+        AUTH --> SESSION
+        SESSION --> MFA
+    end
+
+    subgraph Account["Account"]
+        ACCOUNTS[(accounts)]
+        ROLE[Role: collector / artist / gallery]
+        ACCOUNTS --> ROLE
+    end
+
+    subgraph Profiles["Profiles"]
+        UP[user_profiles]
+        GM[gallery_members]
+        APC[artist_profile_claims]
+    end
+
+    subgraph Content["Content"]
+        ART[(artworks)]
+        EXH[(exhibitions)]
+        EXA[exhibition_artworks]
+        OC[(open_calls)]
+        OCS[open_call_submissions]
+        EXH --> EXA
+        OC --> OCS
+    end
+
+    subgraph Social["Social & engagement"]
+        FAV[artwork_favorites]
+        FOLLOW[user_follows]
+        NOTIF[(notifications)]
+    end
+
+    subgraph Certificates["Certificates & provenance"]
+        CERT[Certificate of Show / Ownership / Authenticity]
+        PUR[Provenance update requests]
+    end
+
+    User((User)) --> Identity
+    Identity --> Account
+    Account --> Profiles
+    Account --> Content
+    Account --> Social
+    Content --> Certificates
+    </pre>
+  </div>
+
+  <h1>Auth & account flow</h1>
+  <p>Sign-in/sign-up → callback → accounts → onboarding → role.</p>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    subgraph Auth["Auth (Supabase)"]
+        SIGNIN["/auth/sign-in"]
+        SIGNUP["/auth/sign-up"]
+        CALLBACK["/auth/callback"]
+        VERIFY["/auth/verify"]
+        RESET["/auth/password-reset"]
+    end
+
+    subgraph Account["Account"]
+        ACCOUNTS[(accounts)]
+        ACCOUNTS_FIELDS["id, name, email, picture_url, public_data"]
+    end
+
+    subgraph Onboarding["Onboarding"]
+        ONB["/onboarding"]
+        ROLE["role: collector | artist | gallery"]
+    end
+
+    SIGNIN --> CALLBACK
+    SIGNUP --> CALLBACK
+    CALLBACK --> ACCOUNTS
+    ACCOUNTS --> ACCOUNTS_FIELDS
+    ACCOUNTS --> ONB
+    ONB --> ROLE
+    </pre>
+  </div>
+
+  <h1>User profiles (per-role)</h1>
+  <p>user_profiles, gallery_members, artist_profile_claims.</p>
+  <div class="diagram">
+    <pre class="mermaid">
+erDiagram
+    auth_users ||--o| user_profiles : "has"
+    auth_users ||--o| gallery_members : "member of"
+    user_profiles ||--o| artist_profile_claims : "claim"
+
+    user_profiles {
+        uuid id PK
+        uuid user_id FK
+        varchar role "collector | artist | gallery"
+        varchar name
+        text picture_url
+        text bio
+        varchar medium
+        text location
+        text website
+    }
+
+    gallery_members {
+        uuid id PK
+        uuid gallery_profile_id FK
+        uuid user_id FK
+        varchar role "owner | member"
+    }
+
+    artist_profile_claims {
+        uuid id PK
+        uuid artist_profile_id FK
+        uuid claimant_user_id FK
+        varchar status "pending | approved | rejected"
+    }
+    </pre>
+  </div>
+
+  <h1>Artworks & certificates</h1>
+  <p>User actions: add, edit, claim/verify certificate, favorite, provenance update.</p>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TB
+    subgraph Artworks["Artworks"]
+        ART[(artworks)]
+        ART_F["account_id, title, artist_name, certificate_number, status, is_public"]
+        ART --> ART_F
+    end
+
+    subgraph Certs["Certificate types by role"]
+        GALLERY["Gallery → Certificate of Show"]
+        COLLECTOR["Collector → Certificate of Ownership"]
+        ARTIST["Artist → Certificate of Authenticity"]
+    end
+
+    subgraph UserActions["User actions"]
+        ADD["Add artwork(s)"]
+        EDIT["Edit / edit provenance"]
+        CLAIM["Claim certificate"]
+        VERIFY["Verify certificate"]
+        FAV["Favorite"]
+        PUR["Provenance update request"]
+    end
+
+    User --> ADD
+    User --> EDIT
+    User --> CLAIM
+    User --> VERIFY
+    User --> FAV
+    User --> PUR
+    ADD --> ART
+    EDIT --> ART
+    CLAIM --> Certs
+    VERIFY --> Certs
+    FAV --> artwork_favorites
+    PUR --> ART
+    </pre>
+  </div>
+
+  <h1>Exhibitions & open calls</h1>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    subgraph Exhibitions["Exhibitions"]
+        EXH[(exhibitions)]
+        EXA[(exhibition_artworks)]
+        EXART[(exhibition_artists)]
+        EXH --> EXA
+        EXH --> EXART
+    end
+
+    subgraph OpenCalls["Open calls"]
+        OC[(open_calls)]
+        OCS[(open_call_submissions)]
+        OC --> OCS
+    end
+
+    User --> EXH
+    User --> OC
+    User --> OCS
+    </pre>
+  </div>
+
+  <h1>Social & notifications</h1>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TB
+    user_follows["user_follows (follower_id, following_id)"]
+    artwork_favorites["artwork_favorites (user_id, artwork_id)"]
+    notifications["notifications (user_id, type, artwork_id, related_user_id, read)"]
+
+    User --> user_follows
+    User --> artwork_favorites
+    User --> notifications
+    </pre>
+  </div>
+</body>
+</html>

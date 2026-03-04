@@ -611,7 +611,7 @@ export function AddArtworkForm({
           errorMessage: message,
           uploaded,
           totalImages: imagePreviews.length,
-        });
+        }, e);
 
         // Best-effort: send error details to server so we can see them in Vercel logs,
         // even when debugging from mobile without a JS console.

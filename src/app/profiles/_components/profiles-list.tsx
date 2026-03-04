@@ -53,8 +53,8 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
           router.refresh();
         }
       } catch (error) {
+        console.error('[ProfilesList] Error deleting profile', error);
         toast.error('Failed to delete profile');
-        console.error(error);
       } finally {
         setDeletingId(null);
       }

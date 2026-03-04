@@ -34,6 +34,7 @@ export function FixArtistNamesButton() {
       const response = await fixArtistNames(ARTWORK_IDS, CORRECT_ARTIST_NAME);
       setResult(response);
     } catch (error) {
+      console.error('[FixArtistNames] fixArtistNames failed', error);
       setResult({
         success: false,
         error: error instanceof Error ? error.message : 'An unexpected error occurred',

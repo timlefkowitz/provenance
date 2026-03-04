@@ -53,6 +53,7 @@ export function LinkArtworksToExhibitionButton() {
         toast.error(result.error || 'Failed to search artworks');
       }
     } catch (error) {
+      console.error('[LinkArtworksToExhibition] Search failed', error);
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       setSearchResult({
         success: false,
@@ -96,6 +97,7 @@ export function LinkArtworksToExhibitionButton() {
         toast.error(result.error || 'Failed to link artworks');
       }
     } catch (error) {
+      console.error('[LinkArtworksToExhibition] Link failed', error);
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       setLinkResult({
         success: false,

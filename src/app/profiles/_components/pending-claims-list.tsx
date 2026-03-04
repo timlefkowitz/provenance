@@ -77,6 +77,7 @@ export function PendingClaimsList({
           router.refresh();
         }
       } catch (error: any) {
+        console.error('[PendingClaimsList] Error approving claim', error);
         toast.error(error.message || 'Failed to approve claim');
       }
     });
@@ -103,6 +104,7 @@ export function PendingClaimsList({
           router.refresh();
         }
       } catch (error: any) {
+        console.error('[PendingClaimsList] Error rejecting claim', error);
         toast.error(error.message || 'Failed to reject claim');
       }
     });

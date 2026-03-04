@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '~/lib/logger';
+import { checkRateLimit } from '~/lib/rate-limit';
 
 function sanitizeClientErrorPayload(input: unknown): Record<string, unknown> {
   if (!input || typeof input !== 'object') {
@@ -44,6 +45,10 @@ function sanitizeClientErrorPayload(input: unknown): Record<string, unknown> {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!checkRateLimit(req, { keyPrefix: 'log_client_error', maxPerWindow: 30 })) {
+      return NextResponse.json({ ok: false }, { status: 429 });
+    }
+
     const body = await req.json().catch(() => null);
 
     const data = sanitizeClientErrorPayload(body);

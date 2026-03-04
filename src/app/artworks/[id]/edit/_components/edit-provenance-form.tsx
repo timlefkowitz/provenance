@@ -91,8 +91,8 @@ export function EditProvenanceForm({
           }, 1500);
         }
       } catch (e) {
+        console.error('[EditProvenanceForm] Submit failed', e);
         setError('Something went wrong. Please try again.');
-        console.error(e);
       }
     });
   };

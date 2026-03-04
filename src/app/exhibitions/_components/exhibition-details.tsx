@@ -41,6 +41,7 @@ export function ExhibitionDetails({
         toast.success('Artwork added to exhibition');
         router.refresh();
       } catch (error: any) {
+        console.error('[ExhibitionDetails] Error adding artwork to exhibition', error);
         toast.error(error.message || 'Failed to add artwork');
       }
     });
@@ -53,6 +54,7 @@ export function ExhibitionDetails({
         toast.success('Artwork removed from exhibition');
         router.refresh();
       } catch (error: any) {
+        console.error('[ExhibitionDetails] Error removing artwork from exhibition', error);
         toast.error(error.message || 'Failed to remove artwork');
       }
     });

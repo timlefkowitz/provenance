@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdmin } from '~/lib/admin';
 import { getPitchDeckContent } from '~/app/pitch/_actions/pitch-deck-content';
 import { EditPitchDeckForm } from './_components/edit-pitch-deck-form';
 
@@ -9,18 +7,7 @@ export const metadata = {
 };
 
 export default async function AdminPitchDeckPage() {
-  const client = getSupabaseServerClient();
-  const { data: { user } } = await client.auth.getUser();
-
-  if (!user) {
-    redirect('/auth/sign-in');
-  }
-
-  // Check if user is admin
-  const userIsAdmin = await isAdmin(user.id);
-  if (!userIsAdmin) {
-    redirect('/');
-  }
+  await requireAdmin();
 
   // Load pitch deck content
   const content = await getPitchDeckContent();

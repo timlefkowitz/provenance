@@ -6,6 +6,9 @@ This application uses a custom email solution built with **nodemailer** for send
 
 - ✅ Welcome email when users sign up (including Google OAuth)
 - ✅ Certification email when artworks are uploaded and certified
+- ✅ Notification email (e.g. gallery invite)
+- ✅ Summary email (e.g. activity summary)
+- ✅ Update email (product/news updates)
 - ✅ Custom email templates with HTML styling
 - ✅ SMTP-based email delivery (works with any SMTP provider)
 
@@ -30,6 +33,26 @@ NEXT_PUBLIC_SITE_URL=https://provenance.guru  # Your production URL
 ```
 
 ## SMTP Provider Options
+
+### Google Workspace (recommended for Provenance)
+
+Use Google Workspace so emails send from your organization's domain (e.g. `noreply@provenance.guru`).
+
+**Requirements:**
+- A Google Workspace account (not personal Gmail if you want a custom "from" domain).
+- 2FA enabled on the sending account.
+- An [App Password](https://support.google.com/accounts/answer/185833) for that account (not your normal password).
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-workspace-email@yourdomain.com
+SMTP_PASSWORD=<app-password-from-google>
+SMTP_FROM=noreply@provenance.guru
+```
+
+If `SMTP_FROM` uses a different domain than the Workspace account, ensure that address can send in Google Admin, or set `SMTP_FROM` to `SMTP_USER` for simplicity.
 
 ### Gmail
 ```bash
@@ -98,6 +121,7 @@ When an artwork is successfully uploaded and certified, the system automatically
 Email templates are defined in `src/lib/email.ts`:
 - `getWelcomeEmailTemplate()` - Welcome email for new users
 - `getCertificationEmailTemplate()` - Certification email for new artworks
+- Notification, summary, and update templates - For alerts, digests, and product updates
 
 You can customize these templates by editing the HTML in the functions.
 
@@ -135,6 +159,64 @@ await fetch('/api/email/send', {
     artworkTitle: 'Artwork Title',
     certificateNumber: 'PROV-ABC123',
     artworkUrl: 'https://provenance.guru/artworks/123'
+  })
+});
+
+// Send notification email
+await fetch('/api/email/send', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
+  },
+  body: JSON.stringify({
+    type: 'notification',
+    email: 'user@example.com',
+    userId: 'user-id',
+    subject: 'Your notification',
+    title: 'Notification title',
+    body: 'Notification body text.',
+    ctaUrl: 'https://provenance.guru/portal',
+    ctaLabel: 'View'
+  })
+});
+
+// Send summary email
+await fetch('/api/email/send', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
+  },
+  body: JSON.stringify({
+    type: 'summary',
+    email: 'user@example.com',
+    userId: 'user-id',
+    subject: 'Your weekly summary',
+    items: [
+      { title: 'Item one', description: 'Optional description' },
+      { title: 'Item two' }
+    ],
+    period: 'This week'
+  })
+});
+
+// Send update email
+await fetch('/api/email/send', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
+  },
+  body: JSON.stringify({
+    type: 'update',
+    email: 'user@example.com',
+    userId: 'user-id',
+    subject: 'Product update',
+    title: 'Update title',
+    body: 'Update body text.',
+    link: 'https://provenance.guru/blog/update',
+    linkLabel: 'Learn more'
   })
 });
 ```

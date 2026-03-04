@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdmin } from '~/lib/admin';
 import { QueuedArtworksList } from './_components/queued-artworks-list';
 
 export const metadata = {
@@ -8,19 +6,7 @@ export const metadata = {
 };
 
 export default async function QueuedArtworksPage() {
-  const client = getSupabaseServerClient();
-  const { data: { user } } = await client.auth.getUser();
-
-  if (!user) {
-    redirect('/auth/sign-in');
-  }
-
-  // Check if user is admin
-  const userIsAdmin = await isAdmin(user.id);
-
-  if (!userIsAdmin) {
-    redirect('/');
-  }
+  await requireAdmin();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">

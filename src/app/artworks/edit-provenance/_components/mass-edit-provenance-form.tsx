@@ -170,6 +170,7 @@ export function MassEditProvenanceForm({ artworks }: { artworks: Artwork[] }) {
               successCount++;
             }
           } catch (e) {
+            console.error('[MassEditProvenanceForm] Batch update failed for artwork', artworkId, e);
             errors.push(`Artwork ${artworkId}: ${e instanceof Error ? e.message : 'Unknown error'}`);
           }
         }
@@ -185,8 +186,8 @@ export function MassEditProvenanceForm({ artworks }: { artworks: Artwork[] }) {
           }, 2000);
         }
       } catch (e) {
+        console.error('[MassEditProvenanceForm] Submit failed', e);
         setError('Something went wrong. Please try again.');
-        console.error(e);
       }
     });
   };

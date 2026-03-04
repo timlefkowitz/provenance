@@ -55,7 +55,7 @@ export function CustomEmailPasswordSignUpContainer({
           onSignUp(data.user?.id);
         }
       } catch (error) {
-        console.error(error);
+        console.error('[CustomPasswordSignUp] Sign up failed', error);
       }
     },
     [

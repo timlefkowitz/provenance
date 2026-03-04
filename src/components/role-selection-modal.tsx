@@ -96,6 +96,7 @@ export function RoleSelectionModal() {
         setOpen(false);
         router.refresh();
       } catch (e) {
+        console.error('[RoleSelectionModal] Error updating role', e);
         setError('Something went wrong. Please try again.');
       }
     });

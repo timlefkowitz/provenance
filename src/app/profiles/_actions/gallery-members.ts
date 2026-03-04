@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
+import { sendNotificationEmail } from '~/lib/email';
 
 export interface GalleryMember {
   id: string;
@@ -308,6 +309,24 @@ export async function inviteGalleryMember(
     } catch (notifError) {
       console.error('Error creating notification:', notifError);
       // Don't fail the invitation if notification fails
+    }
+
+    // Send provenance email to invited user (notification type)
+    if (invitedUser.email) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+      sendNotificationEmail(
+        invitedUser.email,
+        invitedUser.name || invitedUser.email.split('@')[0] || 'there',
+        'You\'ve been added to a gallery on Provenance',
+        {
+          title: 'You\'ve been added to a gallery',
+          body: `You have been added as a ${role} to the gallery "${profile.name}". You can now manage collections, post Certificates of Show, and manage exhibitions for this gallery.`,
+          ctaUrl: `${siteUrl}/profiles`,
+          ctaLabel: 'View galleries',
+        }
+      ).catch((emailError) => {
+        console.error('Error sending gallery invite email:', emailError);
+      });
     }
 
     revalidatePath(`/profiles`);

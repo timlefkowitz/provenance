@@ -79,6 +79,7 @@ export function ExhibitionForm({
         router.push('/exhibitions');
         router.refresh();
       } catch (e: any) {
+        console.error('[ExhibitionForm] Error saving exhibition', e);
         const errorMessage = e?.message || 'Failed to save exhibition';
         setError(errorMessage);
         toast.error(errorMessage);

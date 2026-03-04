@@ -77,8 +77,8 @@ export function QueuedArtworksList() {
           router.refresh();
         }
       } catch (e) {
+        console.error('[QueuedArtworksList] Error adding to featured', e);
         toast.error('Something went wrong. Please try again.');
-        console.error(e);
       }
     });
   };
