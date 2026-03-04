@@ -11,7 +11,6 @@ import { ArtworkCard } from '../artworks/_components/artwork-card';
 import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
 import { getOpenCallSubmissionsForUser } from '../open-calls/_actions/get-open-call-submissions-for-user';
 import { ProvenanceUpdateRequestsList } from './_components/provenance-update-requests-list';
-import { SendSummaryButton } from './_components/send-summary-button';
 import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
@@ -265,7 +264,6 @@ export default async function PortalPage() {
               >
                 <Link href="/notifications">View All →</Link>
               </Button>
-              <SendSummaryButton />
             </div>
           </CardContent>
         </Card>
