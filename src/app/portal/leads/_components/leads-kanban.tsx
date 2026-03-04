@@ -37,15 +37,8 @@ import {
 import { Textarea } from '@kit/ui/textarea';
 import { toast } from '@kit/ui/sonner';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
-import {
-  type ArtistLead,
-  type LeadStage,
-  LEAD_STAGES,
-  createLead,
-  updateLeadStage,
-  deleteLead,
-  getLeadsForArtist,
-} from '../_actions/leads';
+import { createLead, updateLeadStage, deleteLead, getLeadsForArtist } from '../_actions/leads';
+import { LEAD_STAGES, type LeadStage, type ArtistLead } from '../_actions/leads-constants';
 
 const STAGE_LABELS: Record<LeadStage, string> = {
   interested: 'Interested',
