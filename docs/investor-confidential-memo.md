@@ -19,8 +19,12 @@ Art market participants (artists, collectors, galleries, institutions) lack a st
 | **Artist Pro** | $10/month | Provenance, CV, grants, leads |
 | **Collector Pro** | $30/month | Collection and provenance management |
 | **Gallery** | $100/month | Gallery-level tools and workflows |
+| **API** | Usage-based | Integration and data access for developers |
 
-Enterprise and API pricing to follow.
+Enterprise pricing to follow.
+
+**Roadmap**
+- **Real estate portal** — Provenance and verification for property and physical assets.
 
 ## 4. Current capitalization
 
@@ -66,10 +70,6 @@ At 1,000 users with a moderate mix, **~$275K–$385K ARR** is a reasonable targe
 - Franklin Brooks
 - Timothy Lefkowitz
 - Justin Parr
-
-## 9. Contact
-
-[Name, email, calendar link]
 
 ---
 

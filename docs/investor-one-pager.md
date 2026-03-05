@@ -9,8 +9,21 @@ Pre-revenue / early stage. Founding team has purchased initial shares; product i
 **Business model**
 - **Artist Pro:** $10/month
 - **Collector Pro:** $30/month
-- **Gallery:** $100/month  
-Additional revenue from enterprise (institutions) and API access.
+- **Gallery:** $100/month
+- **API:** usage-based (integration & data access)
+- Additional revenue from enterprise (institutions).
+
+**Roadmap**
+- Talk at CAM (Contemporary Art Month) awards
+- SXSW events (Capital Factory)
+- Join accelerators (TechBloc, Antler, Founder University, Techstars, Y Combinator)
+- Evaluation (insurance and appraisals) system based on the MET’s system
+- System for donating artwork to museums
+- Grant list with AI helper
+- Gather provenance from news sources / publications for galleries, institutions, and artists
+- Identify unknown artworks
+- Relationship tracker
+- Real estate portal (provenance and verification for property and assets)
 
 **Round terms**
 - **Instrument:** SAFE (Simple Agreement for Future Equity)
@@ -22,6 +35,3 @@ Additional revenue from enterprise (institutions) and API access.
 
 **Team**  
 Franklin Brooks, Timothy Lefkowitz, Justin Parr.
-
-**Contact**  
-[Your email]
