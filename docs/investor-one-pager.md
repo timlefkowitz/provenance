@@ -30,8 +30,10 @@ Pre-revenue / early stage. Founding team has purchased initial shares; product i
 - **Valuation cap:** **$10,000,000** (pre-money)
 - **Raising:** **$2,500,000**
 
-**Use of funds**  
-[Fill in: e.g. Product, growth to first 1,000 users, first enterprise/API pilots.]
+**Use of funds**
+- **Survival funds** — Runway to focus on provenance without distraction.
+- **SXSW events & accelerators** — Presence at SXSW (e.g. Capital Factory), applications to and participation in accelerators (TechBloc, Antler, Founder University, Techstars, Y Combinator) to build distribution and credibility.
+- **Current tools** — Ongoing $188/month for stack (Vercel, Supabase, Google Workspace, Cursor, Resend, QuickBooks).
 
 **Team**  
 Franklin Brooks, Timothy Lefkowitz, Justin Parr.
