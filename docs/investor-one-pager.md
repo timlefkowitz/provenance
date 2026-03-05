@@ -14,8 +14,8 @@ Additional revenue from enterprise (institutions) and API access.
 
 **Round terms**
 - **Instrument:** SAFE (Simple Agreement for Future Equity)
-- **Valuation cap:** **$5,000,000** (pre-money)
-- **Raising:** [Fill in: e.g. $250K–$750K]
+- **Valuation cap:** **$10,000,000** (pre-money)
+- **Raising:** **$2,500,000**
 
 **Use of funds**  
 [Fill in: e.g. Product, growth to first 1,000 users, first enterprise/API pilots.]

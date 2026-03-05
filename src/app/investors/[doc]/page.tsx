@@ -6,11 +6,13 @@ import { MarkdownViewer } from '../_components/markdown-viewer';
 const DOC_MAP: Record<string, string> = {
   'one-pager': 'investor-one-pager.md',
   'confidential-memo': 'investor-confidential-memo.md',
+  'monthly-expenses': 'investor-monthly-expenses.md',
 };
 
 const DOC_TITLES: Record<string, string> = {
   'one-pager': 'Seed round one-pager',
   'confidential-memo': 'Confidential investment memorandum',
+  'monthly-expenses': 'Monthly expenses',
 };
 
 type PageProps = { params: Promise<{ doc: string }> };

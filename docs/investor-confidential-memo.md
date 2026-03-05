@@ -37,8 +37,8 @@ Enterprise and API pricing to follow.
 | Term | Detail |
 |------|--------|
 | **Instrument** | SAFE |
-| **Valuation cap** | **$5,000,000** (pre-money) |
-| **Amount raising** | [Fill in] |
+| **Valuation cap** | **$10,000,000** (pre-money) |
+| **Amount raising** | **$2,500,000** |
 
 Conversion into equity at the next qualified financing at the lower of the cap or the price in that round (or per your chosen SAFE form).
 
@@ -50,10 +50,12 @@ Conversion into equity at the next qualified financing at the lower of the cap o
 |----------|-------------|-------------|
 | 1,000 users | Mix: 700 Artist Pro, 200 Collector Pro, 100 Gallery | ~$276,000 |
 | 1,000 users | Mix: 500 / 300 / 200 | ~$384,000 |
+| 500,000 users | Mix: 70% Artist Pro, 20% Collector Pro, 10% Gallery | ~$138,000,000 |
+| 500,000 users | Mix: 50% / 30% / 20% | ~$204,000,000 |
 | Enterprise | 5–10 institutions at $25K–$75K/year | $125K–$750K |
 | API | Usage-based; 10M+ calls/month at modest yield | $50K–$500K+ |
 
-At 1,000 users with a moderate mix, **~$275K–$385K ARR** is a reasonable target; enterprise and API can add meaningfully on top.
+At 1,000 users with a moderate mix, **~$275K–$385K ARR** is a reasonable target. At **500,000 paying users**, the same mix yields **~$138M–$204M ARR**; enterprise and API can add meaningfully on top.
 
 ## 7. Use of funds
 

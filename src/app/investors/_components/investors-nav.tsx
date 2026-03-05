@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: '/investors', label: 'Investor materials' },
   { href: '/investors/one-pager', label: 'One-pager' },
   { href: '/investors/confidential-memo', label: 'Confidential memo' },
+  { href: '/investors/monthly-expenses', label: 'Monthly expenses' },
 ] as const;
 
 export function InvestorsNav() {

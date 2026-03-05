@@ -8,6 +8,7 @@ export const metadata = {
 const DOCS = [
   { slug: 'one-pager', title: 'Seed round one-pager', description: 'Summary: what we do, traction, pricing, round terms, team.' },
   { slug: 'confidential-memo', title: 'Confidential investment memorandum', description: 'Full memo with cap table, projections, and terms.' },
+  { slug: 'monthly-expenses', title: 'Monthly expenses', description: 'Monthly burn and expense breakdown by category.' },
 ] as const;
 
 export default function InvestorsPage() {
