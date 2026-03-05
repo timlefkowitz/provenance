@@ -8,7 +8,7 @@
 
 | Metric | Current | Future (post-raise) |
 |--------|---------|----------------------|
-| **Total monthly burn** | $150 | [Fill in with total below] |
+| **Total monthly burn** | $188 | [Fill in with total below] |
 | **Runway** | [Fill in] | [Fill in] |
 
 ---
@@ -22,7 +22,8 @@
 | Google Workspace | 30 |
 | Cursor | 60 |
 | Resend | 20 |
-| **Total (current)** | **150** |
+| QuickBooks | 38 |
+| **Total (current)** | **188** |
 
 *Our team needs to have salaries; the future budget below includes payroll.*
 
@@ -57,7 +58,8 @@
 | Google Workspace | 30 |
 | Cursor | 60 |
 | Resend | 20 |
-| **Subtotal** | 150 |
+| QuickBooks | 38 |
+| **Subtotal** | 188 |
 
 ### Total future monthly expenses
 
@@ -65,7 +67,7 @@
 |----------|-------------|
 | Salaries (CEO + 3 engineers + board) | [Fill in] |
 | Marketing (Google Ads) | 500 |
-| Infrastructure & tools | 150 |
+| Infrastructure & tools | 188 |
 | **Total** | **[Fill in]** |
 
 ---
