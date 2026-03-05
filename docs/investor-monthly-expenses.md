@@ -6,79 +6,66 @@
 
 ## Summary
 
-| Metric | Amount |
-|--------|--------|
-| **Total monthly burn** | [Fill in] |
-| **Runway (months)** | [Fill in, e.g. at current burn] |
-
-*Update the sections below with your actual line items.*
+| Metric | Current | Future (post-raise) |
+|--------|---------|----------------------|
+| **Total monthly burn** | $150 | [Fill in with total below] |
+| **Runway** | [Fill in] | [Fill in] |
 
 ---
 
-## Payroll & contractors
+## Current expenses
 
 | Item | Monthly ($) |
 |------|-------------|
-| [Fill in] | |
-| **Subtotal** | |
+| Vercel | 20 |
+| Supabase | 20 |
+| Google Workspace | 30 |
+| Cursor | 60 |
+| Resend | 20 |
+| **Total (current)** | **150** |
+
+*Our team needs to have salaries; the future budget below includes payroll.*
 
 ---
 
-## Infrastructure & hosting
+## Future expenses (post-raise)
+
+### Salaries
+
+| Role | Monthly ($) |
+|------|-------------|
+| CEO salary | [Fill in] |
+| Software engineer 1 | [Fill in] |
+| Software engineer 2 | [Fill in] |
+| Software engineer 3 | [Fill in] |
+| Board compensation | [Fill in] |
+| **Subtotal (salaries)** | |
+
+### Marketing
 
 | Item | Monthly ($) |
 |------|-------------|
-| [e.g. Vercel, Supabase, domain] | |
-| **Subtotal** | |
+| Google Ads | 500 |
+| **Subtotal (marketing)** | 500 |
 
----
-
-## Software & tools
+### Infrastructure & tools (current stack, ongoing)
 
 | Item | Monthly ($) |
 |------|-------------|
-| [e.g. design, analytics, email] | |
-| **Subtotal** | |
+| Vercel | 20 |
+| Supabase | 20 |
+| Google Workspace | 30 |
+| Cursor | 60 |
+| Resend | 20 |
+| **Subtotal** | 150 |
 
----
-
-## Marketing & growth
-
-| Item | Monthly ($) |
-|------|-------------|
-| [Fill in] | |
-| **Subtotal** | |
-
----
-
-## Legal, accounting & admin
-
-| Item | Monthly ($) |
-|------|-------------|
-| [Fill in] | |
-| **Subtotal** | |
-
----
-
-## Other
-
-| Item | Monthly ($) |
-|------|-------------|
-| [Fill in] | |
-| **Subtotal** | |
-
----
-
-## Total monthly expenses
+### Total future monthly expenses
 
 | Category | Monthly ($) |
 |----------|-------------|
-| Payroll & contractors | |
-| Infrastructure & hosting | |
-| Software & tools | |
-| Marketing & growth | |
-| Legal, accounting & admin | |
-| Other | |
+| Salaries (CEO + 3 engineers + board) | [Fill in] |
+| Marketing (Google Ads) | 500 |
+| Infrastructure & tools | 150 |
 | **Total** | **[Fill in]** |
 
 ---
