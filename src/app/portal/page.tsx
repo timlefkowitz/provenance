@@ -112,10 +112,9 @@ export default async function PortalPage() {
 
   const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
 
+  const galleryProfiles = await getUserGalleryProfiles(user.id);
   const userRole = (account?.public_data as any)?.role;
   const isGallery = userRole === USER_ROLES.GALLERY;
-  const galleryProfiles = await getUserGalleryProfiles(user.id);
-  const hasGalleryProfile = galleryProfiles.length > 0;
 
   // Get provenance update requests for artworks owned by this user
   const provenanceUpdateRequests = await getProvenanceUpdateRequestsForOwner();
@@ -143,8 +142,8 @@ export default async function PortalPage() {
         </p>
       </div>
 
-      {/* Gallery Profile Prompt */}
-      {isGallery && !hasGalleryProfile && (
+      {/* Gallery Profile Prompt (only for gallery accounts without a profile) */}
+      {isGallery && galleryProfiles.length === 0 && (
         <Card className="mb-8 border-wine/30 bg-wine/10">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -173,7 +172,7 @@ export default async function PortalPage() {
       )}
 
       {/* Gallery team management */}
-      {isGallery && hasGalleryProfile && (
+      {galleryProfiles.length > 0 && (
         <div className="mb-10">
           <h2 className="text-2xl font-display font-bold text-wine mb-2">
             Gallery teams
