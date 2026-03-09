@@ -37,17 +37,36 @@ export default async function PortalPage() {
     .eq('id', user.id)
     .single();
 
-  // Get user's artworks count and recent artworks (admin client bypasses RLS so "Your Artworks" shows correctly)
+  // Gallery profiles this user can act as (owned or as a team member)
+  const galleryProfiles = await getUserGalleryProfiles(user.id);
+  const galleryOwnerIds = Array.from(
+    new Set(
+      (galleryProfiles || [])
+        .map((p: any) => p.user_id)
+        .filter((id: unknown): id is string => typeof id === 'string'),
+    ),
+  );
+
+  // If user is connected to any gallery team, treat those gallery accounts
+  // as the primary "Your Artworks" accounts in the Portal.
+  const primaryAccountIds =
+    galleryOwnerIds.length > 0 ? galleryOwnerIds : [user.id];
+
+  // Get user's artworks count and recent artworks
+  // Uses admin client so "Your Artworks" shows correctly for gallery owners and team members.
   let artworksCount: number | null = null;
   let recentArtworks: any[] | null = null;
   try {
-    const admin = getSupabaseServerAdminClient();
+    const admin = getSupabaseServerAdminClient() as any;
     const [countRes, recentRes] = await Promise.all([
-      admin.from('artworks').select('*', { count: 'exact', head: true }).eq('account_id', user.id),
+      admin
+        .from('artworks')
+        .select('*', { count: 'exact', head: true })
+        .in('account_id', primaryAccountIds),
       admin
         .from('artworks')
         .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
-        .eq('account_id', user.id)
+        .in('account_id', primaryAccountIds)
         .order('created_at', { ascending: false })
         .limit(6),
     ]);
@@ -55,11 +74,14 @@ export default async function PortalPage() {
     recentArtworks = recentRes.data ?? null;
   } catch {
     const [countRes, recentRes] = await Promise.all([
-      (client as any).from('artworks').select('*', { count: 'exact', head: true }).eq('account_id', user.id),
+      (client as any)
+        .from('artworks')
+        .select('*', { count: 'exact', head: true })
+        .in('account_id', primaryAccountIds),
       (client as any)
         .from('artworks')
         .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
-        .eq('account_id', user.id)
+        .in('account_id', primaryAccountIds)
         .order('created_at', { ascending: false })
         .limit(6),
     ]);
@@ -68,7 +90,7 @@ export default async function PortalPage() {
   }
 
   // Get users they're following
-  const { data: followingData } = await client
+  const { data: followingData } = await (client as any)
     .from('user_follows')
     .select('following_id')
     .eq('follower_id', user.id)
@@ -92,7 +114,7 @@ export default async function PortalPage() {
   }
 
   // Get recent notifications (prioritize unread)
-  const { data: allNotifications } = await client
+  const { data: allNotifications } = await (client as any)
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
@@ -112,7 +134,6 @@ export default async function PortalPage() {
 
   const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
 
-  const galleryProfiles = await getUserGalleryProfiles(user.id);
   const userRole = (account?.public_data as any)?.role;
   const isGallery = userRole === USER_ROLES.GALLERY;
 
