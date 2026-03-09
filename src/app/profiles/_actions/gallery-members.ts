@@ -171,15 +171,7 @@ export async function getGalleryMembers(
 
     const { data: members, error } = await client
       .from('gallery_members')
-      .select(`
-        *,
-        user:accounts!gallery_members_user_id_fkey(
-          id,
-          name,
-          email,
-          picture_url
-        )
-      `)
+      .select('*')
       .eq('gallery_profile_id', galleryProfileId)
       .order('created_at', { ascending: true });
 
@@ -193,24 +185,65 @@ export async function getGalleryMembers(
       return { data: null, error: error.message };
     }
 
+    const memberRows = members || [];
+
+    // Fetch account info for all member user_ids in a single query
+    const userIds = Array.from(
+      new Set(
+        memberRows
+          .map((m: any) => m.user_id)
+          .filter((id: unknown): id is string => typeof id === 'string'),
+      ),
+    );
+
+    let accountsById: Record<string, { id: string; email: string | null; name: string | null; picture_url: string | null }> =
+      {};
+
+    if (userIds.length > 0) {
+      const { data: accounts, error: accountsError } = await client
+        .from('accounts')
+        .select('id, email, name, picture_url')
+        .in('id', userIds);
+
+      if (accountsError) {
+        logger.error('get_gallery_members_accounts_query_failed', {
+          galleryProfileId,
+          message: accountsError.message,
+          code: accountsError.code,
+          details: accountsError.details,
+        });
+      } else if (accounts) {
+        accountsById = (accounts as any[]).reduce((acc, account) => {
+          acc[account.id] = account;
+          return acc;
+        }, {} as typeof accountsById);
+      }
+    }
+
     // Transform the data to match our interface
-    const transformedMembers: GalleryMember[] = (members || []).map((member: any) => ({
-      id: member.id,
-      gallery_profile_id: member.gallery_profile_id,
-      user_id: member.user_id,
-      role: member.role,
-      invited_by: member.invited_by,
-      invited_at: member.invited_at,
-      joined_at: member.joined_at,
-      created_at: member.created_at,
-      updated_at: member.updated_at,
-      user: member.user ? {
-        id: member.user.id,
-        email: member.user.email,
-        name: member.user.name,
-        picture_url: member.user.picture_url,
-      } : undefined,
-    }));
+    const transformedMembers: GalleryMember[] = memberRows.map((member: any) => {
+      const account = accountsById[member.user_id];
+
+      return {
+        id: member.id,
+        gallery_profile_id: member.gallery_profile_id,
+        user_id: member.user_id,
+        role: member.role,
+        invited_by: member.invited_by,
+        invited_at: member.invited_at,
+        joined_at: member.joined_at,
+        created_at: member.created_at,
+        updated_at: member.updated_at,
+        user: account
+          ? {
+              id: account.id,
+              email: account.email,
+              name: account.name,
+              picture_url: account.picture_url,
+            }
+          : undefined,
+      };
+    });
 
     return { data: transformedMembers, error: null };
   } catch (error: unknown) {
