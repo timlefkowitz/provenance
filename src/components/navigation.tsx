@@ -58,10 +58,10 @@ export function Navigation() {
                 Grants
               </Link>
               <Link 
-                href="/portal/leads" 
+                href="/portal/or" 
                 className="text-ink hover:text-wine transition-colors font-serif"
               >
-                Leads
+                OR
               </Link>
             </>
           )}
@@ -219,11 +219,11 @@ export function Navigation() {
                   Grants
                 </Link>
                 <Link 
-                  href="/portal/leads" 
+                  href="/portal/or" 
                   className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Leads
+                  OR
                 </Link>
               </>
             )}

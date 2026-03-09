@@ -325,7 +325,7 @@ export function LeadsKanban({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-ink/70 font-serif text-sm">
-          Track people interested in your work. Drag cards between columns or use &quot;Move to&quot;.
+          Drag cards between columns or use &quot;Move to&quot;.
         </p>
         <Button
           className="bg-wine text-parchment hover:bg-wine/90 font-serif"

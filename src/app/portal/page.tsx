@@ -15,7 +15,7 @@ import { SendSummaryButton } from './_components/send-summary-button';
 import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
-import { getLeadsForArtist } from './leads/_actions/leads';
+import { getLeadsForArtist } from './or/_actions/leads';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -273,10 +273,10 @@ export default async function PortalPage() {
         {isArtist && (
           <Card className="border-wine/20 bg-parchment/60">
             <CardContent className="p-6">
-              <Link href="/portal/leads" className="block">
+              <Link href="/portal/or" className="block">
                 <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
                   <div>
-                    <p className="text-sm text-ink/60 font-serif mb-1">Sales leads</p>
+                    <p className="text-sm text-ink/60 font-serif mb-1">Opportunities and Relationships</p>
                     <p className="text-3xl font-display font-bold text-wine">
                       {leadsCount}
                     </p>
@@ -290,7 +290,7 @@ export default async function PortalPage() {
                 size="sm"
                 className="mt-4 font-serif text-wine hover:text-wine/80"
               >
-                <Link href="/portal/leads">View board →</Link>
+                <Link href="/portal/or">View board →</Link>
               </Button>
             </CardContent>
           </Card>

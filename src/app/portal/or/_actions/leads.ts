@@ -83,7 +83,7 @@ export async function createLead(input: {
   }
 
   console.log('[Leads] createLead success');
-  revalidatePath('/portal/leads');
+  revalidatePath('/portal/or');
   return { success: true };
 }
 
@@ -111,7 +111,7 @@ export async function updateLeadStage(leadId: string, stage: LeadStage) {
   }
 
   console.log('[Leads] updateLeadStage success');
-  revalidatePath('/portal/leads');
+  revalidatePath('/portal/or');
   return { success: true };
 }
 
@@ -155,7 +155,7 @@ export async function updateLead(
   }
 
   console.log('[Leads] updateLead success');
-  revalidatePath('/portal/leads');
+  revalidatePath('/portal/or');
   return { success: true };
 }
 
@@ -183,6 +183,6 @@ export async function deleteLead(leadId: string) {
   }
 
   console.log('[Leads] deleteLead success');
-  revalidatePath('/portal/leads');
+  revalidatePath('/portal/or');
   return { success: true };
 }

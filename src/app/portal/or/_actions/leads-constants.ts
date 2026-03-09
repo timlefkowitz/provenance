@@ -15,4 +15,3 @@ export type ArtistLead = {
   updated_at: string;
   artwork?: { id: string; title: string; image_url: string | null } | null;
 };
-

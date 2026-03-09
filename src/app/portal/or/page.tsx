@@ -9,11 +9,11 @@ import { getLeadsForArtist } from './_actions/leads';
 import { LeadsKanban } from './_components/leads-kanban';
 
 export const metadata = {
-  title: 'Leads | Provenance',
-  description: 'Track people interested in buying your artwork',
+  title: 'Opportunities & Relationships | Provenance',
+  description: 'Track opportunities of interest',
 };
 
-export default async function LeadsPage() {
+export default async function OpportunitiesPage() {
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
@@ -28,10 +28,10 @@ export default async function LeadsPage() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-4xl font-display font-bold text-wine mb-2">
-            Sales leads
+            Opportunities and Relationships
           </h1>
           <p className="text-ink/70 font-serif">
-            Track people interested in buying your artwork.
+            Track opportunities of interest.
           </p>
         </div>
         <Card className="border-wine/20 bg-parchment/60 max-w-xl">
@@ -40,7 +40,7 @@ export default async function LeadsPage() {
               Artist profile required
             </h2>
             <p className="text-ink/70 font-serif text-sm mb-4">
-              The leads board is for artists. Create an artist profile from your profiles page, then return here to track interested buyers.
+              The opportunities board is for artists. Create an artist profile from your profiles page, then return here to track opportunities.
             </p>
             <Button asChild className="bg-wine text-parchment hover:bg-wine/90 font-serif">
               <Link href="/profiles">Go to Profiles</Link>
@@ -71,10 +71,10 @@ export default async function LeadsPage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Sales leads
+          Opportunities and Relationships
         </h1>
         <p className="text-ink/70 font-serif">
-          Track people interested in buying your artwork. Four stages: Interested → Contacted → Negotiating → Sold.
+          Track opportunities of interest. Four stages: Interested → Contacted → Negotiating → Sold.
         </p>
       </div>
 
