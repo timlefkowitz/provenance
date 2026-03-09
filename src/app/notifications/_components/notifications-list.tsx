@@ -84,6 +84,10 @@ export function NotificationsList({
       case 'certificate_claim_request':
       case 'certificate_claimed':
       case 'certificate_verified':
+      case 'artist_claim_request':
+      case 'artist_claim_approved':
+      case 'artist_claim_denied':
+      case 'artist_claim_other_certificates':
         return <FileText className="h-5 w-5" />;
       case 'artist_profile_claim_request':
       case 'artist_profile_claim_approved':
@@ -100,14 +104,19 @@ export function NotificationsList({
     switch (type) {
       case 'certificate_verified':
       case 'artist_profile_claim_approved':
+      case 'artist_claim_approved':
         return 'text-green-600';
       case 'certificate_claimed':
         return 'text-blue-600';
       case 'certificate_claim_request':
       case 'artist_profile_claim_request':
+      case 'artist_claim_request':
         return 'text-wine';
       case 'artist_profile_claim_rejected':
+      case 'artist_claim_denied':
         return 'text-red-600';
+      case 'artist_claim_other_certificates':
+        return 'text-ink';
       default:
         return 'text-ink';
     }
@@ -218,6 +227,42 @@ export function NotificationsList({
                           className="font-serif bg-wine text-parchment hover:bg-wine/90"
                         >
                           Verify Certificate
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'artist_claim_request' && notification.artwork_id && (
+                      <Link href="/portal">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          Review in Portal
+                        </Button>
+                      </Link>
+                    )}
+
+                    {(notification.type === 'artist_claim_approved' || notification.type === 'artist_claim_denied') && notification.artwork_id && (
+                      <Link href={`/artworks/${notification.artwork_id}/certificate`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          {notification.type === 'artist_claim_approved' ? 'View Certificate' : 'View Certificate'}
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'artist_claim_other_certificates' && (
+                      <Link href="/portal">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          Go to Portal
                         </Button>
                       </Link>
                     )}

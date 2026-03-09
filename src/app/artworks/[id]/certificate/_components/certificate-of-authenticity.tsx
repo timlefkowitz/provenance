@@ -9,13 +9,16 @@ import { Star, Scan, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { useCurrentUser } from '~/hooks/use-current-user';
+import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
-import { getCertificateTypeLabel, type CertificateType } from '~/lib/user-roles';
+import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { createArtistClaimRequest } from '../../_actions/create-artist-claim-request';
 
 type Artwork = {
   id: string;
@@ -99,6 +102,8 @@ export function CertificateOfAuthenticity({
     scanned_at: string;
   }>>(initialScanLocations);
 
+  const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
+
   // Check if artwork is already featured on mount (only for admins, and do it lazily)
   useEffect(() => {
     if (isAdmin) {
@@ -119,6 +124,34 @@ export function CertificateOfAuthenticity({
       setLoadingFeatured(false);
     }
   }, [artwork.id, isAdmin]);
+
+  const client = useSupabase();
+  useEffect(() => {
+    async function checkClaimAsArtistEligibility() {
+      if (!user.data || !artwork.artist_name) {
+        setCanClaimAsArtist(false);
+        return;
+      }
+      try {
+        const { data: account } = await client
+          .from('accounts')
+          .select('id, name, public_data')
+          .eq('id', user.data.id)
+          .single();
+        if (!account) {
+          setCanClaimAsArtist(false);
+          return;
+        }
+        const userRole = getUserRole(account.public_data as Record<string, any>);
+        const nameMatches = account.name.toLowerCase() === artwork.artist_name!.toLowerCase();
+        setCanClaimAsArtist(userRole === USER_ROLES.ARTIST && nameMatches);
+      } catch (error) {
+        console.error('[Certificate] Error checking claim as artist eligibility', error);
+        setCanClaimAsArtist(false);
+      }
+    }
+    checkClaimAsArtistEligibility();
+  }, [user.data, artwork.artist_name, client]);
 
   // Handle QR code scan location tracking
   useEffect(() => {
@@ -911,7 +944,23 @@ export function CertificateOfAuthenticity({
           {/* Request Update and Edit Buttons (for non-owners) */}
           {!isOwner && user.data && (
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
-              <div className="flex gap-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {(certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP) && canClaimAsArtist && (
+                  <Button
+                    variant="default"
+                    className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                    disabled={pending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const result = await createArtistClaimRequest(artwork.id);
+                        if (result.error) toast.error(result.error);
+                        else toast.success('Claim submitted. The certificate owner will be notified and can accept in their portal.');
+                      });
+                    }}
+                  >
+                    {pending ? 'Submitting…' : 'Claim as Artist'}
+                  </Button>
+                )}
                 <EditArtworkDialog 
                   artwork={artwork} 
                   isCreator={false}

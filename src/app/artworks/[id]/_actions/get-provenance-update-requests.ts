@@ -13,7 +13,7 @@ export type ProvenanceUpdateRequest = {
   update_fields: Record<string, any>;
   request_message: string | null;
   review_message: string | null;
-  request_type: 'provenance_update' | 'ownership_request';
+  request_type: 'provenance_update' | 'ownership_request' | 'artist_claim';
   artwork: {
     id: string;
     title: string;

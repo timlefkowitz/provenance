@@ -15,6 +15,10 @@ export type NotificationType =
   | 'ownership_request'
   | 'ownership_approved'
   | 'ownership_denied'
+  | 'artist_claim_request'
+  | 'artist_claim_approved'
+  | 'artist_claim_denied'
+  | 'artist_claim_other_certificates'
   | 'artwork_favorited'
   | 'message';
 

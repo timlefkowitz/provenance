@@ -2615,3 +2615,25 @@ set certificate_type = 'ownership'
 where certificate_type = 'collection';
 
 comment on column public.artworks.certificate_type is 'Type of certificate: authenticity (artist, or after claim+verify), show (gallery), ownership (collector)';
+
+-- ========== 20250308000001_artist_claim_and_source_artwork.sql ==========
+
+/*
+ * Artist Claim flow: request type + link artist CoA to source cert
+ * DATA-SAFE: no user data wiped (constraint change + additive column only).
+ */
+
+alter table public.provenance_update_requests
+  drop constraint if exists provenance_update_requests_request_type_check;
+
+alter table public.provenance_update_requests
+  add constraint provenance_update_requests_request_type_check
+  check (request_type in ('provenance_update', 'ownership_request', 'artist_claim'));
+
+alter table public.artworks
+  add column if not exists source_artwork_id uuid references public.artworks(id) on delete set null;
+
+comment on column public.artworks.source_artwork_id is 'For artist CoA created via claim: the collector/gallery certificate this was created from';
+
+create index if not exists artworks_source_artwork_id_idx on public.artworks(source_artwork_id);
+

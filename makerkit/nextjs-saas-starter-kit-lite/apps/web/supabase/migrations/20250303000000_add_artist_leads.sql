@@ -58,6 +58,7 @@ create policy artist_leads_delete_own on public.artist_leads
 
 grant select, insert, update, delete on table public.artist_leads to authenticated;
 
+drop trigger if exists update_artist_leads_updated_at on public.artist_leads;
 create trigger update_artist_leads_updated_at
     before update on public.artist_leads
     for each row
