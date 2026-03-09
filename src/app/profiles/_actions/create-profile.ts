@@ -18,6 +18,7 @@ export interface CreateProfileInput {
   contact_email?: string;
   phone?: string;
   established_year?: number;
+  news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
 }
 
 /**
@@ -85,6 +86,7 @@ export async function createProfile(input: CreateProfileInput) {
         contact_email: input.contact_email?.trim() || null,
         phone: input.phone?.trim() || null,
         established_year: input.established_year || null,
+        news_publications: Array.isArray(input.news_publications) ? input.news_publications : [],
         is_active: true,
       })
       .select()

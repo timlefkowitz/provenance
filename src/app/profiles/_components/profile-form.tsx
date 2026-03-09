@@ -9,11 +9,11 @@ import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Plus } from 'lucide-react';
 import { createProfile } from '../_actions/create-profile';
 import { updateProfile } from '../_actions/update-profile';
 import { uploadProfilePicture } from '../_actions/upload-profile-picture';
-import { UserProfile } from '../_actions/get-user-profiles';
+import { UserProfile, type NewsPublication } from '../_actions/get-user-profiles';
 import { type UserRole } from '~/lib/user-roles';
 
 export function ProfileForm({
@@ -42,6 +42,11 @@ export function ProfileForm({
     phone: profile?.phone || '',
     established_year: profile?.established_year?.toString() || '',
   });
+  const [newsPublications, setNewsPublications] = useState<NewsPublication[]>(
+    (profile?.news_publications && Array.isArray(profile.news_publications)
+      ? profile.news_publications
+      : []) as NewsPublication[]
+  );
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,6 +137,7 @@ export function ProfileForm({
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
+            news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
           });
 
           if (result.error) {
@@ -160,6 +166,7 @@ export function ProfileForm({
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
+            news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
           });
 
           if (result.error) {
@@ -380,6 +387,132 @@ export function ProfileForm({
               />
             </div>
           )}
+
+          {/* News & Publications */}
+          <div>
+            <Label className="font-serif mb-2 block">
+              News & Publications
+            </Label>
+            <p className="text-sm text-ink/60 font-serif mb-3">
+              Add press mentions, articles, or interviews (title, link, publication, date).
+            </p>
+            <div className="space-y-4">
+              {newsPublications.map((pub, index) => (
+                <div
+                  key={index}
+                  className="p-4 border border-wine/20 rounded-md space-y-3 bg-parchment/40"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-serif text-ink/70">Publication {index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 font-serif h-8"
+                      onClick={() =>
+                        setNewsPublications((prev) => prev.filter((_, i) => i !== index))
+                      }
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <Label htmlFor={`pub-title-${index}`} className="font-serif text-xs">
+                        Title
+                      </Label>
+                      <Input
+                        id={`pub-title-${index}`}
+                        value={pub.title}
+                        onChange={(e) =>
+                          setNewsPublications((prev) =>
+                            prev.map((p, i) =>
+                              i === index ? { ...p, title: e.target.value } : p
+                            )
+                          )
+                        }
+                        className="font-serif mt-1"
+                        placeholder="Article or feature title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`pub-url-${index}`} className="font-serif text-xs">
+                        URL
+                      </Label>
+                      <Input
+                        id={`pub-url-${index}`}
+                        type="url"
+                        value={pub.url}
+                        onChange={(e) =>
+                          setNewsPublications((prev) =>
+                            prev.map((p, i) =>
+                              i === index ? { ...p, url: e.target.value } : p
+                            )
+                          )
+                        }
+                        className="font-serif mt-1"
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`pub-date-${index}`} className="font-serif text-xs">
+                        Date (optional)
+                      </Label>
+                      <Input
+                        id={`pub-date-${index}`}
+                        value={pub.date || ''}
+                        onChange={(e) =>
+                          setNewsPublications((prev) =>
+                            prev.map((p, i) =>
+                              i === index ? { ...p, date: e.target.value || undefined } : p
+                            )
+                          )
+                        }
+                        className="font-serif mt-1"
+                        placeholder="e.g., March 2024"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor={`pub-pubname-${index}`} className="font-serif text-xs">
+                        Publication name (optional)
+                      </Label>
+                      <Input
+                        id={`pub-pubname-${index}`}
+                        value={pub.publication_name || ''}
+                        onChange={(e) =>
+                          setNewsPublications((prev) =>
+                            prev.map((p, i) =>
+                              i === index
+                                ? { ...p, publication_name: e.target.value || undefined }
+                                : p
+                            )
+                          )
+                        }
+                        className="font-serif mt-1"
+                        placeholder="e.g., Artforum, The New York Times"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="font-serif border-wine/30 hover:bg-wine/10"
+                onClick={() =>
+                  setNewsPublications((prev) => [
+                    ...prev,
+                    { title: '', url: '', publication_name: undefined, date: undefined },
+                  ])
+                }
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add publication
+              </Button>
+            </div>
+          </div>
 
           {/* Contact Email */}
           <div>

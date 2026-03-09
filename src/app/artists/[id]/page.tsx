@@ -9,7 +9,7 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
 import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
 import { getUserProfileByRole, getUserProfileById } from '../../profiles/_actions/get-user-profiles';
-import { Calendar, MapPin } from 'lucide-react';
+import { Calendar, MapPin, Newspaper } from 'lucide-react';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -92,6 +92,7 @@ export default async function ArtistProfilePage({
   const website = roleProfile?.website || '';
   const establishedYear = roleProfile?.established_year;
   const pictureUrl = roleProfile?.picture_url || account.picture_url;
+  const newsPublications = (roleProfile?.news_publications as { title: string; url: string; publication_name?: string; date?: string }[] | undefined) || [];
 
   // Fetch exhibitions if this is a gallery - limit to 6 for initial load
   const allExhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
@@ -276,6 +277,37 @@ export default async function ArtistProfilePage({
             <ul className="list-disc list-inside space-y-1 text-sm md:text-base font-serif text-ink">
               {galleries.map((gallery) => (
                 <li key={gallery}>{gallery}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* News & Publications */}
+      {newsPublications.length > 0 && (
+        <Card className="mb-10 border-wine/20 bg-parchment/60">
+          <CardContent className="p-5 md:p-6">
+            <h2 className="font-display text-xl text-wine mb-3 flex items-center gap-2">
+              <Newspaper className="h-5 w-5" />
+              News & Publications
+            </h2>
+            <ul className="space-y-3">
+              {newsPublications.map((pub, index) => (
+                <li key={index} className="border-b border-wine/10 last:border-0 pb-3 last:pb-0">
+                  <a
+                    href={pub.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-wine hover:text-wine/80 hover:underline font-serif font-medium block"
+                  >
+                    {pub.title}
+                  </a>
+                  {(pub.publication_name || pub.date) && (
+                    <p className="text-sm text-ink/70 font-serif mt-1">
+                      {[pub.publication_name, pub.date].filter(Boolean).join(' • ')}
+                    </p>
+                  )}
+                </li>
               ))}
             </ul>
           </CardContent>

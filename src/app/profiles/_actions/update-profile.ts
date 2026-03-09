@@ -18,6 +18,7 @@ export interface UpdateProfileInput {
   phone?: string;
   established_year?: number;
   is_active?: boolean;
+  news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
 }
 
 /**
@@ -61,6 +62,7 @@ export async function updateProfile(input: UpdateProfileInput) {
     if (input.phone !== undefined) updateData.phone = input.phone?.trim() || null;
     if (input.established_year !== undefined) updateData.established_year = input.established_year || null;
     if (input.is_active !== undefined) updateData.is_active = input.is_active;
+    if (input.news_publications !== undefined) updateData.news_publications = Array.isArray(input.news_publications) ? input.news_publications : [];
 
     // Regenerate slug for gallery profiles when name changes
     if (input.name !== undefined && profile.role === 'gallery') {

@@ -22,10 +22,19 @@ export type UserProfile = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  /** News/press: [{ title, url, publication_name?, date? }] */
+  news_publications?: NewsPublication[];
   // Artist CV (grants feature)
   artist_cv_json?: unknown;
   artist_cv_file_url?: string | null;
   artist_cv_uploaded_at?: string | null;
+};
+
+export type NewsPublication = {
+  title: string;
+  url: string;
+  publication_name?: string;
+  date?: string;
 };
 
 /**

@@ -2,6 +2,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import Link from 'next/link';
 import { ArtworkCard } from './_components/artwork-card';
+import { ArtworksSearchBar } from './_components/artworks-search-bar';
 import { Button } from '@kit/ui/button';
 
 export const metadata = {
@@ -15,13 +16,34 @@ export const revalidate = 60;
 
 const ARTWORKS_PER_PAGE = 12;
 
+/** Escape for use in ilike: % and _ are wildcards in PostgreSQL */
+function escapeIlike(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+function applyTextAndMediumFilter<T>(qb: T, q: string, medium: string): T {
+  let chain = qb as any;
+  if (q.trim()) {
+    const escaped = escapeIlike(q.trim());
+    const pattern = `%${escaped}%`;
+    chain = chain.or(`title.ilike.${pattern},artist_name.ilike.${pattern}`);
+  }
+  if (medium.trim()) {
+    const escaped = escapeIlike(medium.trim());
+    chain = chain.ilike('medium', `%${escaped}%`);
+  }
+  return chain as T;
+}
+
 export default async function ArtworksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string; medium?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const page = parseInt(resolvedSearchParams?.page || '1', 10);
+  const q = (resolvedSearchParams?.q ?? '').trim();
+  const medium = (resolvedSearchParams?.medium ?? '').trim();
   const offset = (page - 1) * ARTWORKS_PER_PAGE;
 
   const client = getSupabaseServerClient();
@@ -43,42 +65,76 @@ export default async function ArtworksPage({
 
   const db = admin ?? (client as any);
 
+  // Fetch distinct mediums for filter dropdown (verified + visible to this user)
+  let mediums: string[] = [];
+  try {
+    const baseMediumQuery = !user
+      ? db.from('artworks').select('medium').eq('status', 'verified').eq('is_public', true)
+      : db
+          .from('artworks')
+          .select('medium')
+          .eq('status', 'verified')
+          .or(`is_public.eq.true,account_id.eq.${user.id}`);
+    const { data: mediumRows } = await baseMediumQuery.not('medium', 'is', null);
+    const set = new Set<string>();
+    (mediumRows ?? []).forEach((r: { medium: string | null }) => {
+      if (r.medium && r.medium.trim()) set.add(r.medium.trim());
+    });
+    mediums = Array.from(set).sort((a, b) => a.localeCompare(b));
+  } catch (e) {
+    console.error('[Artworks] Failed to fetch mediums', e);
+  }
+
   if (!user) {
+    const baseCount = db
+      .from('artworks')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'verified')
+      .eq('is_public', true);
+    const baseData = db
+      .from('artworks')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium')
+      .eq('status', 'verified')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + ARTWORKS_PER_PAGE - 1);
     const [countResult, artworksResult] = await Promise.all([
-      db.from('artworks').select('*', { count: 'exact', head: true }).eq('status', 'verified').eq('is_public', true),
-      db
-        .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
-        .eq('status', 'verified')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + ARTWORKS_PER_PAGE - 1),
+      applyTextAndMediumFilter(baseCount, q, medium),
+      applyTextAndMediumFilter(baseData, q, medium),
     ]);
     totalCount = countResult.count ?? 0;
     artworks = artworksResult.data ?? [];
     if (artworksResult.error) error = artworksResult.error as unknown as Error;
   } else {
+    const ownBaseCount = db
+      .from('artworks')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'verified')
+      .eq('account_id', user.id);
+    const publicBaseCount = db
+      .from('artworks')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'verified')
+      .eq('is_public', true)
+      .neq('account_id', user.id);
+    const ownBaseData = db
+      .from('artworks')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium')
+      .eq('status', 'verified')
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false });
+    const publicBaseData = db
+      .from('artworks')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium')
+      .eq('status', 'verified')
+      .eq('is_public', true)
+      .neq('account_id', user.id)
+      .order('created_at', { ascending: false });
     const [ownCountRes, publicCountRes, ownArtworksResult, publicArtworksResult] = await Promise.all([
-      db.from('artworks').select('*', { count: 'exact', head: true }).eq('status', 'verified').eq('account_id', user.id),
-      db
-        .from('artworks')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'verified')
-        .eq('is_public', true)
-        .neq('account_id', user.id),
-      db
-        .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
-        .eq('status', 'verified')
-        .eq('account_id', user.id)
-        .order('created_at', { ascending: false }),
-      db
-        .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
-        .eq('status', 'verified')
-        .eq('is_public', true)
-        .neq('account_id', user.id)
-        .order('created_at', { ascending: false }),
+      applyTextAndMediumFilter(ownBaseCount, q, medium),
+      applyTextAndMediumFilter(publicBaseCount, q, medium),
+      applyTextAndMediumFilter(ownBaseData, q, medium),
+      applyTextAndMediumFilter(publicBaseData, q, medium),
     ]);
     totalCount = (ownCountRes.count ?? 0) + (publicCountRes.count ?? 0);
     const allArtworks = [
@@ -95,6 +151,9 @@ export default async function ArtworksPage({
   if (error) {
     console.error('[Artworks] Supabase error:', error);
   }
+
+  const queryString = [q && `q=${encodeURIComponent(q)}`, medium && `medium=${encodeURIComponent(medium)}`].filter(Boolean).join('&');
+  const paginationBase = queryString ? `/artworks?${queryString}&` : '/artworks?';
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl">
@@ -129,6 +188,10 @@ export default async function ArtworksPage({
         </div>
       )}
 
+      <div className="mb-6">
+        <ArtworksSearchBar mediums={mediums} />
+      </div>
+
       {artworks && artworks.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -150,7 +213,7 @@ export default async function ArtworksPage({
                   variant="outline"
                   className="font-serif border-wine/30 hover:bg-wine/10"
                 >
-                  <Link href={`/artworks?page=${page - 1}`}>
+                  <Link href={`${paginationBase}page=${page - 1}`}>
                     Previous
                   </Link>
                 </Button>
@@ -164,7 +227,7 @@ export default async function ArtworksPage({
                   variant="outline"
                   className="font-serif border-wine/30 hover:bg-wine/10"
                 >
-                  <Link href={`/artworks?page=${page + 1}`}>
+                  <Link href={`${paginationBase}page=${page + 1}`}>
                     Next
                   </Link>
                 </Button>
