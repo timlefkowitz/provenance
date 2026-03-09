@@ -241,7 +241,7 @@ export function Navigation() {
                   className="block w-full text-left text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Trans i18nKey="account:settingsTab" defaults="Settings" />
+                  <Trans i18nKey="account:settingsTab" defaults="Account portal" />
                 </a>
                 <button
                   type="button"

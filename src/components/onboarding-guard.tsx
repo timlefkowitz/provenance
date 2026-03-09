@@ -13,7 +13,8 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
       pathname.startsWith('/onboarding') || 
       pathname.startsWith('/auth') ||
       pathname.startsWith('/about') || // Public about page
-      pathname.startsWith('/artworks/add') // Allow artwork uploads even without role
+      pathname.startsWith('/artworks/add') || // Allow artwork uploads even without role
+      pathname.startsWith('/settings') // Account/settings page (redirects to sign-in if not authenticated)
     ) {
       return <>{children}</>;
     }

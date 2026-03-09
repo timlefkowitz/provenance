@@ -10,7 +10,7 @@ import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibit
 import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
 import { getUserProfileByRole, getUserProfileById } from '../../profiles/_actions/get-user-profiles';
 import { Calendar, MapPin, Newspaper } from 'lucide-react';
-import pathsConfig from '~/config/paths.config';
+import { AccountSettingsButton } from '~/components/account-settings-button';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -206,12 +206,7 @@ export default async function ArtistProfilePage({
                 <Link href="/exhibitions">Manage Exhibitions</Link>
               </Button>
             )}
-            <Link
-              href={pathsConfig.app.profileSettings}
-              className="inline-flex items-center justify-center rounded-md text-sm font-serif border border-wine/30 bg-background hover:bg-wine/10 h-9 px-4"
-            >
-              Account Settings
-            </Link>
+            <AccountSettingsButton />
           </div>
         )}
       </div>

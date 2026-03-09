@@ -6,7 +6,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { getUnreadNotificationCount } from '~/lib/notifications';
-import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
+import { getUserGalleryProfiles } from '../artworks/add/_actions/get-user-gallery-profiles';
 import { ArtworkCard } from '../artworks/_components/artwork-card';
 import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
 import { getOpenCallSubmissionsForUser } from '../open-calls/_actions/get-open-call-submissions-for-user';
@@ -16,6 +16,7 @@ import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favo
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getLeadsForArtist } from './or/_actions/leads';
+import { GalleryMembersManager } from '../profiles/_components/gallery-members-manager';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -111,11 +112,10 @@ export default async function PortalPage() {
 
   const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
 
-  // Check if user has a gallery profile
-  const profiles = await getUserProfiles(user.id);
-  const hasGalleryProfile = profiles.some(p => p.role === USER_ROLES.GALLERY);
   const userRole = (account?.public_data as any)?.role;
   const isGallery = userRole === USER_ROLES.GALLERY;
+  const galleryProfiles = await getUserGalleryProfiles(user.id);
+  const hasGalleryProfile = galleryProfiles.length > 0;
 
   // Get provenance update requests for artworks owned by this user
   const provenanceUpdateRequests = await getProvenanceUpdateRequestsForOwner();
@@ -170,6 +170,31 @@ export default async function PortalPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Gallery team management */}
+      {isGallery && hasGalleryProfile && (
+        <div className="mb-10">
+          <h2 className="text-2xl font-display font-bold text-wine mb-2">
+            Gallery teams
+          </h2>
+          <p className="text-ink/70 font-serif mb-4">
+            Select a gallery and manage the team members who can manage collections, post Certificates of Show, and manage exhibitions.
+          </p>
+          <div className="space-y-6">
+            {galleryProfiles.map((profile: any) => (
+              <div key={profile.id} className="space-y-2">
+                <h3 className="text-lg font-display text-wine">
+                  {profile.name || 'Untitled gallery'}
+                </h3>
+                <GalleryMembersManager
+                  galleryProfileId={profile.id}
+                  userId={user.id}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Stats Cards */}

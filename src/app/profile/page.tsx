@@ -92,7 +92,7 @@ export default async function ProfilePage() {
               size="sm"
               className="bg-wine text-parchment hover:bg-wine/90 font-serif w-full sm:w-auto"
             >
-              <a href="/settings">Change Photo in Settings</a>
+              <a href="/portal">Manage Photo in Portal</a>
             </Button>
           </CardHeader>
         </Card>
