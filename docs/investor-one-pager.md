@@ -36,4 +36,4 @@ Pre-revenue / early stage. Founding team has purchased initial shares; product i
 - **Current tools** — Ongoing $188/month for stack (Vercel, Supabase, Google Workspace, Cursor, Resend, QuickBooks).
 
 **Team**  
-Franklin Brooks, Timothy Lefkowitz, Justin Parr.
+Bryson Brooks, Timothy Lefkowitz, Justin Parr.

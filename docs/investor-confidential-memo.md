@@ -67,7 +67,7 @@ At 1,000 users with a moderate mix, **~$275K–$385K ARR** is a reasonable targe
 
 ## 8. Team
 
-- Franklin Brooks
+- Bryson Brooks
 - Timothy Lefkowitz
 - Justin Parr
 
