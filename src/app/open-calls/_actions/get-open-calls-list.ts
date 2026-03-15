@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getMediumLabel } from './open-call-constants';
 
 export type OpenCallListEntry = {
   id: string;
@@ -25,9 +26,11 @@ export type OpenCallListEntry = {
 export type OpenCallsListFilters = {
   /** Filter by medium (e.g. painting, sculpture). */
   medium?: string | null;
-  /** If set, only return open calls where eligible_locations is empty or includes this (case-insensitive match). */
+  /** 'my' = only where user qualifies; 'none' = only no location requirement; otherwise all. */
+  locationFilter?: 'my' | 'none' | null;
+  /** User's location string (state/zip) for 'my' filter. */
   userLocation?: string | null;
-  /** Search in title, description, gallery name (case-insensitive). */
+  /** Search in title, description, gallery name, and medium (case-insensitive). */
   search?: string | null;
 };
 
@@ -49,7 +52,7 @@ export async function getOpenCallsList(
   const todayIso = new Date().toISOString().split('T')[0];
   console.log('[OpenCalls] getOpenCallsList started', {
     medium: filters?.medium,
-    hasUserLocation: Boolean(filters?.userLocation),
+    locationFilter: filters?.locationFilter,
     hasSearch: Boolean(filters?.search),
     today: todayIso,
   });
@@ -82,7 +85,12 @@ export async function getOpenCallsList(
 
   let list = (data || []) as OpenCallListEntry[];
 
-  if (filters?.userLocation && filters.userLocation.trim()) {
+  if (filters?.locationFilter === 'none') {
+    list = list.filter((oc) => {
+      const locs = oc.eligible_locations ?? [];
+      return locs.length === 0;
+    });
+  } else if (filters?.locationFilter === 'my' && filters?.userLocation?.trim()) {
     const locationLower = filters.userLocation.trim().toLowerCase();
     list = list.filter((oc) => {
       const locs = oc.eligible_locations ?? [];
@@ -111,14 +119,15 @@ export async function getOpenCallsList(
     gallery_name: nameById.get(oc.gallery_profile_id) ?? null,
   }));
 
-  // Search in title, description, gallery name
+  // Search in title, description, gallery name, and medium
   if (filters?.search && filters.search.trim()) {
     const term = filters.search.trim().toLowerCase();
     withNames = withNames.filter((oc) => {
       const title = (oc.exhibition?.title ?? '').toLowerCase();
       const desc = (oc.exhibition?.description ?? '').toLowerCase();
       const gallery = (oc.gallery_name ?? '').toLowerCase();
-      return title.includes(term) || desc.includes(term) || gallery.includes(term);
+      const mediumLabel = getMediumLabel(oc.medium).toLowerCase();
+      return title.includes(term) || desc.includes(term) || gallery.includes(term) || mediumLabel.includes(term);
     });
   }
 

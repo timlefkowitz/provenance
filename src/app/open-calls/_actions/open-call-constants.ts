@@ -3,6 +3,7 @@
  */
 export const OPEN_CALL_MEDIUMS = [
   { value: 'painting', label: 'Painting' },
+  { value: 'oil', label: 'Oil' },
   { value: 'sculpture', label: 'Sculpture' },
   { value: 'photography', label: 'Photography' },
   { value: 'printmaking', label: 'Printmaking' },

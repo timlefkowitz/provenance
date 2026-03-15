@@ -99,7 +99,7 @@ export default async function BrowseOpenCallsPage({
   const params = await searchParams;
   const search = params.q?.trim() || undefined;
   const medium = params.medium && params.medium !== 'all' ? params.medium : undefined;
-  const useMyLocation = params.location === 'my';
+  const locationParam = params.location; // 'all' | 'my' | 'none'
 
   let artistLocation: string | null = null;
   const client = getSupabaseServerClient();
@@ -114,10 +114,14 @@ export default async function BrowseOpenCallsPage({
     }
   }
 
+  const locationFilter: 'my' | 'none' | undefined =
+    locationParam === 'my' ? 'my' : locationParam === 'none' ? 'none' : undefined;
+
   const filters = {
     search: search ?? undefined,
     medium: medium ?? undefined,
-    userLocation: useMyLocation && artistLocation ? artistLocation : undefined,
+    locationFilter,
+    userLocation: artistLocation ?? undefined,
   };
 
   const openCalls = await getOpenCallsList(filters);
@@ -129,8 +133,7 @@ export default async function BrowseOpenCallsPage({
           Open Calls
         </h1>
         <p className="text-ink/70 font-serif mb-4">
-          Exhibition open calls currently open for submissions. Filter by location
-          to see opportunities where you qualify.
+          Exhibition open calls currently open for submissions. Search by title, description, gallery, or medium; filter by medium and location.
         </p>
         <OpenCallsBrowseFilters artistLocation={artistLocation} />
       </div>
@@ -139,7 +142,7 @@ export default async function BrowseOpenCallsPage({
         <Card className="border-wine/20 bg-parchment/60">
           <CardContent className="p-8 text-center">
             <p className="text-ink/60 font-serif">
-              No open calls match your search or filters. Try different keywords or medium.
+              No open calls match your search or filters. Try different keywords, medium, or location.
             </p>
           </CardContent>
         </Card>
