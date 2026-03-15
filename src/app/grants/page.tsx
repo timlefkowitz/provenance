@@ -65,7 +65,7 @@ export default async function GrantsPage() {
           Grants
         </h1>
         <p className="text-ink/70 font-serif">
-          Find grants and opportunities matched to your practice. Upload your CV, then use the assistant to discover options.
+          Browse grants and opportunities below. Upload your CV to get personalized recommendations from the assistant.
         </p>
       </div>
 

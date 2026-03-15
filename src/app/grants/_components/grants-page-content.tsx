@@ -26,6 +26,8 @@ export function GrantsPageContent({
 }: GrantsPageContentProps) {
   const [grants, setGrants] = useState<ArtistGrantRow[]>(initialGrants);
   const [sortField, setSortField] = useState<SortField>('deadline');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mediumFilter, setMediumFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<LocationFilter>('all');
 
   const refreshGrants = useCallback(async () => {
@@ -35,14 +37,50 @@ export function GrantsPageContent({
 
   const filteredAndSortedGrants = useMemo(() => {
     let list = [...grants];
-    if (locationFilter !== 'all') {
-      list = list.filter(
-        (g) =>
-          g.eligible_locations?.some(
-            (loc) => loc.toLowerCase() === locationFilter.toLowerCase()
-          )
+
+    // Search: name, description, discipline, amount
+    if (searchQuery.trim()) {
+      const term = searchQuery.trim().toLowerCase();
+      list = list.filter((g) => {
+        const name = (g.name ?? '').toLowerCase();
+        const desc = (g.description ?? '').toLowerCase();
+        const amount = (g.amount ?? '').toLowerCase();
+        const disciplines = (g.discipline ?? []).join(' ').toLowerCase();
+        return (
+          name.includes(term) ||
+          desc.includes(term) ||
+          amount.includes(term) ||
+          disciplines.includes(term)
+        );
+      });
+    }
+
+    // Medium / discipline filter
+    if (mediumFilter && mediumFilter !== 'all') {
+      const mediumLower = mediumFilter.toLowerCase();
+      list = list.filter((g) => {
+        const disciplines = g.discipline ?? [];
+        return disciplines.some(
+          (d) =>
+            d.toLowerCase() === mediumLower ||
+            d.toLowerCase().includes(mediumLower) ||
+            mediumLower.includes(d.toLowerCase())
+        );
+      });
+    }
+
+    // Location filter
+    if (locationFilter === 'none') {
+      list = list.filter((g) => !g.eligible_locations?.length);
+    } else if (locationFilter !== 'all') {
+      const locLower = locationFilter.toLowerCase();
+      list = list.filter((g) =>
+        g.eligible_locations?.some(
+          (loc) => loc.toLowerCase() === locLower || loc.toLowerCase().includes(locLower)
+        )
       );
     }
+
     list.sort((a, b) => {
       if (sortField === 'deadline') {
         if (!a.deadline) return 1;
@@ -57,27 +95,25 @@ export function GrantsPageContent({
       return (a.name || '').localeCompare(b.name || '');
     });
     return list;
-  }, [grants, locationFilter, sortField]);
+  }, [grants, searchQuery, mediumFilter, locationFilter, sortField]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Left: grant list */}
+      {/* Left: grant list + filters (always shown so curated grants and search are visible) */}
       <div className="lg:col-span-3 space-y-4">
-        {!hasCv ? (
-          <UploadCvForm />
-        ) : (
-          <>
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <GrantsFilters
-                grants={grants}
-                artistLocation={artistLocation}
-                onSortChange={setSortField}
-                onLocationFilterChange={setLocationFilter}
-              />
-            </div>
-            <GrantsList grants={filteredAndSortedGrants} />
-          </>
-        )}
+        {!hasCv && <UploadCvForm />}
+        <GrantsFilters
+          grants={grants}
+          artistLocation={artistLocation}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          mediumFilter={mediumFilter}
+          onMediumFilterChange={setMediumFilter}
+          locationFilter={locationFilter}
+          onLocationFilterChange={setLocationFilter}
+          onSortChange={setSortField}
+        />
+        <GrantsList grants={filteredAndSortedGrants} />
       </div>
 
       {/* Right: chatbot */}

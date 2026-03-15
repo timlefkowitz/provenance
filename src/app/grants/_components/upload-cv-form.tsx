@@ -43,10 +43,10 @@ export function UploadCvForm() {
       <CardHeader>
         <CardTitle className="font-display text-xl text-wine flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Upload your artist CV or resume
+          Get personalized grant recommendations (optional)
         </CardTitle>
         <p className="text-ink/70 font-serif text-sm">
-          Upload a PDF, Word (DOCX), or text file. We&apos;ll extract your practice and location to match you with relevant grants.
+          Upload your artist CV or resume (PDF, Word, or text). We&apos;ll use it to suggest grants that match your practice—or browse the list below without uploading.
         </p>
       </CardHeader>
       <CardContent>

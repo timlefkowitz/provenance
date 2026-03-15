@@ -22,7 +22,7 @@ export function GrantsList({ grants }: GrantsListProps) {
   if (grants.length === 0) {
     return (
       <p className="text-ink/70 font-serif text-sm py-6">
-        No grants yet. Upload your CV and click &quot;Find grants&quot; or ask the assistant to find opportunities.
+        No grants match your filters. Try adjusting search or filters—or upload your CV and ask the assistant for personalized suggestions.
       </p>
     );
   }
