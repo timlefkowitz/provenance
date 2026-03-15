@@ -20,16 +20,6 @@ export type OpenCall = {
   };
 };
 
-export function isOpenCallSubmissionExpired(openCall: OpenCall): boolean {
-  const closing = openCall.submission_closing_date;
-  if (!closing) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const closeDate = new Date(closing);
-  closeDate.setHours(0, 0, 0, 0);
-  return closeDate < today;
-}
-
 export async function getOpenCallBySlug(slug: string): Promise<OpenCall | null> {
   const client = getSupabaseServerClient();
 

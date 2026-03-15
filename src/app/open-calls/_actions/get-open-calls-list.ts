@@ -93,23 +93,3 @@ export async function getOpenCallsList(
   console.log('[OpenCalls] getOpenCallsList ok', { count: withNames.length });
   return withNames;
 }
-
-/** True if submission period has ended (used for expired section). */
-export function isOpenCallExpired(entry: OpenCallListEntry): boolean {
-  const closing = entry.submission_closing_date;
-  if (!closing) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const closeDate = new Date(closing);
-  closeDate.setHours(0, 0, 0, 0);
-  return closeDate < today;
-}
-
-/** True if user's location qualifies (empty eligible_locations = qualifies). */
-export function qualifiesByLocation(entry: OpenCallListEntry, userLocation: string | null): boolean {
-  if (!userLocation?.trim()) return false;
-  const locs = entry.eligible_locations ?? [];
-  if (locs.length === 0) return true;
-  const locationLower = userLocation.trim().toLowerCase();
-  return locs.some((loc) => loc.toLowerCase().includes(locationLower) || locationLower.includes(loc.toLowerCase()));
-}

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { getOpenCallBySlug, isOpenCallSubmissionExpired } from '../_actions/get-open-call';
+import { getOpenCallBySlug } from '../_actions/get-open-call';
+import { isOpenCallSubmissionExpired } from '../_lib/open-call-utils';
 import { getCallTypeLabel } from '../_actions/open-call-constants';
 import { OpenCallSubmissionForm } from './_components/open-call-submission-form';
 

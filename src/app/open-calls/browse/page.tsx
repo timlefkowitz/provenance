@@ -2,12 +2,8 @@ import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
-import {
-  getOpenCallsList,
-  isOpenCallExpired,
-  qualifiesByLocation,
-  type OpenCallListEntry,
-} from '../_actions/get-open-calls-list';
+import { getOpenCallsList, type OpenCallListEntry } from '../_actions/get-open-calls-list';
+import { isOpenCallSubmissionExpired, qualifiesByLocation } from '../_lib/open-call-utils';
 import { getCallTypeLabel } from '../_actions/open-call-constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
@@ -131,8 +127,8 @@ export default async function BrowseOpenCallsPage({
   };
 
   const openCalls = await getOpenCallsList(filters);
-  const active = openCalls.filter((oc) => !isOpenCallExpired(oc));
-  const expired = openCalls.filter((oc) => isOpenCallExpired(oc));
+  const active = openCalls.filter((oc) => !isOpenCallSubmissionExpired(oc));
+  const expired = openCalls.filter((oc) => isOpenCallSubmissionExpired(oc));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
