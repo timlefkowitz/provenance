@@ -1,55 +1,25 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
+
+const DEFAULT_FROM = 'Provenance <noreply@provenance.guru>';
 
 /**
- * Check if email is configured
+ * Check if email is configured (Resend API key is set).
  */
 export function isEmailConfigured(): boolean {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const password = process.env.SMTP_PASSWORD;
-  return !!(host && user && password);
+  return !!process.env.RESEND_API_KEY;
 }
 
-// Email configuration from environment variables
-const getEmailConfig = () => {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER;
-  const password = process.env.SMTP_PASSWORD;
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@provenance.guru';
-
-  if (!host || !user || !password) {
-    throw new Error('SMTP configuration is missing. Please set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD environment variables.');
+function getResendClient(): Resend {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('Resend is not configured. Set RESEND_API_KEY to enable emails.');
   }
+  return new Resend(apiKey);
+}
 
-  return {
-    host,
-    port,
-    secure,
-    auth: {
-      user,
-      pass: password,
-    },
-    from,
-  };
-};
-
-// Create reusable transporter
-let transporter: nodemailer.Transporter | null = null;
-
-const getTransporter = () => {
-  if (!transporter) {
-    const config = getEmailConfig();
-    transporter = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: config.auth,
-    });
-  }
-  return transporter;
-};
+function getFromAddress(): string {
+  return process.env.RESEND_FROM || DEFAULT_FROM;
+}
 
 export interface SendEmailOptions {
   to: string;
@@ -59,34 +29,37 @@ export interface SendEmailOptions {
 }
 
 /**
- * Send an email using SMTP
- * Returns silently if SMTP is not configured (email is optional)
+ * Send an email using Resend.
+ * Returns silently if Resend is not configured (email is optional).
  */
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
-  // Check if email is configured before attempting to send
   if (!isEmailConfigured()) {
-    console.log('Email not configured. Skipping email send. Set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD to enable emails.');
+    console.log(
+      '[Email] Not configured. Skipping send. Set RESEND_API_KEY to enable emails.',
+    );
     return;
   }
 
   try {
-    const config = getEmailConfig();
-    const mailTransporter = getTransporter();
-
-    const mailOptions = {
-      from: config.from,
+    console.log('[Email] Sending email to', options.to, options.subject);
+    const resend = getResendClient();
+    const from = getFromAddress();
+    const { data, error } = await resend.emails.send({
+      from,
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text || stripHtml(options.html),
-    };
+    });
 
-    const info = await mailTransporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
+    if (error) {
+      console.error('[Email] Send failed', error);
+      return;
+    }
+    console.log('[Email] Sent successfully', data?.id);
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('[Email] Send error', error);
     // Don't throw - email sending is optional and shouldn't break the app
-    // throw error;
   }
 }
 

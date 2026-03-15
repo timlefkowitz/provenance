@@ -1,157 +1,92 @@
 # Email Setup Guide
 
-This application uses a custom email solution built with **nodemailer** for sending transactional emails. This gives you full control over your email infrastructure without relying on third-party services like Resend.
+This application sends transactional emails via **[Resend](https://resend.com)** (free tier: 3,000 emails/month, 100/day, 1 custom domain).
 
 ## Features
 
-- ✅ Welcome email when users sign up (including Google OAuth)
-- ✅ Certification email when artworks are uploaded and certified
-- ✅ Notification email (e.g. gallery invite)
-- ✅ Summary email (e.g. activity summary)
-- ✅ Update email (product/news updates)
-- ✅ Custom email templates with HTML styling
-- ✅ SMTP-based email delivery (works with any SMTP provider)
+- Welcome email when users sign up (including Google OAuth)
+- Certification email when artworks are uploaded and certified
+- Notification email (e.g. gallery invite)
+- Summary email (e.g. activity summary)
+- Update email (product/news updates)
+- Custom HTML email templates in `src/lib/email.ts`
 
 ## Environment Variables
 
-Add these environment variables to your `.env.local` file:
+Add these to your `.env.local`:
 
 ```bash
-# SMTP Configuration
-SMTP_HOST=smtp.gmail.com          # Your SMTP server hostname
-SMTP_PORT=587                     # SMTP port (587 for TLS, 465 for SSL)
-SMTP_SECURE=false                 # true for SSL (port 465), false for TLS (port 587)
-SMTP_USER=your-email@gmail.com     # Your SMTP username/email
-SMTP_PASSWORD=your-app-password    # Your SMTP password or app-specific password
-SMTP_FROM=noreply@provenance.guru  # From email address (optional, defaults to SMTP_USER)
+# Resend (required for sending)
+RESEND_API_KEY=re_xxxxxxxxxxxx    # From https://resend.com/api-keys
+RESEND_FROM=Provenance <noreply@provenance.guru>   # Optional; defaults to Provenance <noreply@provenance.guru>
 
-# Email API Secret (optional, for securing the API route)
+# API route auth (optional)
 EMAIL_API_SECRET=your-secret-key-here
 
-# Site URL (for email links)
-NEXT_PUBLIC_SITE_URL=https://provenance.guru  # Your production URL
+# Site URL (for links in emails)
+NEXT_PUBLIC_SITE_URL=https://provenance.guru
 ```
 
-## SMTP Provider Options
+## Domain verification (sending from your domain)
 
-### Google Workspace (recommended for Provenance)
+To send from `noreply@provenance.guru` (or `dev@provenance.guru`):
 
-Use Google Workspace so emails send from your organization's domain (e.g. `noreply@provenance.guru`).
+1. Sign up at [Resend](https://resend.com) and create an API key.
+2. In the Resend dashboard, go to **Domains** and add `provenance.guru`.
+3. Add the DNS records Resend shows (SPF, DKIM, etc.) at your DNS provider (e.g. Google Domains, Cloudflare).
+4. Wait for verification. Then set `RESEND_FROM` to any address on that domain, e.g.:
+   - `noreply@provenance.guru`
+   - `Provenance <noreply@provenance.guru>`
+   - `dev@provenance.guru`
 
-**Requirements:**
-- A Google Workspace account (not personal Gmail if you want a custom "from" domain).
-- 2FA enabled on the sending account.
-- An [App Password](https://support.google.com/accounts/answer/185833) for that account (not your normal password).
+Your Google Workspace addresses (e.g. dev@provenance.guru) are separate from Resend: Resend only needs the domain verified so it can send *from* that domain. You do not need to use Google’s SMTP.
 
-```bash
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-workspace-email@yourdomain.com
-SMTP_PASSWORD=<app-password-from-google>
-SMTP_FROM=noreply@provenance.guru
-```
+- [Resend: Add and verify a domain](https://resend.com/docs/dashboard/domains/introduction)
 
-If `SMTP_FROM` uses a different domain than the Workspace account, ensure that address can send in Google Admin, or set `SMTP_FROM` to `SMTP_USER` for simplicity.
+## How it works
 
-### Gmail
-```bash
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password  # Use an App Password, not your regular password
-```
+### Welcome emails
 
-**Note:** For Gmail, you need to:
-1. Enable 2-factor authentication
-2. Generate an "App Password" in your Google Account settings
-3. Use that App Password as `SMTP_PASSWORD`
-
-### SendGrid
-```bash
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=apikey
-SMTP_PASSWORD=your-sendgrid-api-key
-SMTP_FROM=noreply@yourdomain.com
-```
-
-### Mailgun
-```bash
-SMTP_HOST=smtp.mailgun.org
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=postmaster@yourdomain.mailgun.org
-SMTP_PASSWORD=your-mailgun-password
-SMTP_FROM=noreply@yourdomain.com
-```
-
-### AWS SES
-```bash
-SMTP_HOST=email-smtp.us-east-1.amazonaws.com  # Use your region
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-ses-smtp-username
-SMTP_PASSWORD=your-ses-smtp-password
-SMTP_FROM=noreply@yourdomain.com
-```
-
-### Custom SMTP Server
-Any SMTP server that supports standard SMTP authentication will work. Just configure the host, port, and credentials accordingly.
-
-## How It Works
-
-### Welcome Emails
-When a user signs up (including via Google OAuth), the auth callback route checks if the account was created in the last 2 minutes. If so, it automatically sends a welcome email.
+When a user signs up (including Google OAuth), the auth callback checks if the account was created in the last 2 minutes and sends a welcome email.
 
 **Location:** `src/app/auth/callback/route.ts`
 
-### Certification Emails
-When an artwork is successfully uploaded and certified, the system automatically sends an email to the user with:
-- Artwork title
-- Certificate number
-- Link to view the artwork
+### Certification emails
 
-**Location:** `src/app/artworks/add/_actions/create-artwork.ts` and `create-artworks-batch.ts`
+When an artwork is uploaded and certified, the app sends an email with title, certificate number, and link to the artwork.
 
-## Email Templates
+**Location:** `src/app/artworks/add/_actions/create-artwork.ts` (and batch variant)
 
-Email templates are defined in `src/lib/email.ts`:
-- `getWelcomeEmailTemplate()` - Welcome email for new users
-- `getCertificationEmailTemplate()` - Certification email for new artworks
-- Notification, summary, and update templates - For alerts, digests, and product updates
+### Other types
 
-You can customize these templates by editing the HTML in the functions.
+Notification, summary, and update emails use the same `~/lib/email` helpers and can be triggered via the API route below.
 
-## API Route
+## Email templates
 
-There's also an API route at `/api/email/send` that can be called programmatically:
+Templates are in `src/lib/email.ts`:
+
+- Welcome, certification, notification, summary, update
+
+Edit the HTML in those functions to change content or styling.
+
+## API route
+
+`POST /api/email/send` accepts a JSON body with `type`, `email`, and type-specific fields. Secure it with `Authorization: Bearer YOUR_EMAIL_API_SECRET` if `EMAIL_API_SECRET` is set.
+
+Examples:
 
 ```typescript
-// Send welcome email
+// Welcome
 await fetch('/api/email/send', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
-  },
-  body: JSON.stringify({
-    type: 'welcome',
-    email: 'user@example.com',
-    userId: 'user-id',
-    name: 'User Name'
-  })
+  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_EMAIL_API_SECRET' },
+  body: JSON.stringify({ type: 'welcome', email: 'user@example.com', userId: 'user-id', name: 'User Name' })
 });
 
-// Send certification email
+// Certification
 await fetch('/api/email/send', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
-  },
+  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_EMAIL_API_SECRET' },
   body: JSON.stringify({
     type: 'certification',
     email: 'user@example.com',
@@ -162,59 +97,44 @@ await fetch('/api/email/send', {
   })
 });
 
-// Send notification email
+// Notification
 await fetch('/api/email/send', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
-  },
+  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_EMAIL_API_SECRET' },
   body: JSON.stringify({
     type: 'notification',
     email: 'user@example.com',
-    userId: 'user-id',
-    subject: 'Your notification',
-    title: 'Notification title',
-    body: 'Notification body text.',
+    subject: 'Title',
+    title: 'Title',
+    body: 'Body text.',
     ctaUrl: 'https://provenance.guru/portal',
     ctaLabel: 'View'
   })
 });
 
-// Send summary email
+// Summary
 await fetch('/api/email/send', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
-  },
+  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_EMAIL_API_SECRET' },
   body: JSON.stringify({
     type: 'summary',
     email: 'user@example.com',
-    userId: 'user-id',
     subject: 'Your weekly summary',
-    items: [
-      { title: 'Item one', description: 'Optional description' },
-      { title: 'Item two' }
-    ],
+    items: [{ title: 'Item one', description: 'Optional' }, { title: 'Item two' }],
     period: 'This week'
   })
 });
 
-// Send update email
+// Update
 await fetch('/api/email/send', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_EMAIL_API_SECRET'
-  },
+  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_EMAIL_API_SECRET' },
   body: JSON.stringify({
     type: 'update',
     email: 'user@example.com',
-    userId: 'user-id',
     subject: 'Product update',
     title: 'Update title',
-    body: 'Update body text.',
+    body: 'Update body.',
     link: 'https://provenance.guru/blog/update',
     linkLabel: 'Learn more'
   })
@@ -223,40 +143,26 @@ await fetch('/api/email/send', {
 
 ## Testing
 
-To test emails locally:
-
-1. Set up your SMTP credentials in `.env.local`
-2. Sign up a new user (or use Google OAuth)
-3. Check your email inbox for the welcome email
-4. Upload an artwork to trigger the certification email
+1. Set `RESEND_API_KEY` (and optionally `RESEND_FROM`) in `.env.local`.
+2. Verify your domain in Resend if you use a custom “from” address.
+3. Sign up a new user or use Google OAuth and check for the welcome email.
+4. Upload an artwork to trigger the certification email.
 
 ## Troubleshooting
 
 ### Emails not sending
-1. Check that all SMTP environment variables are set correctly
-2. Verify your SMTP credentials are correct
-3. Check server logs for error messages
-4. For Gmail, make sure you're using an App Password, not your regular password
-5. Some SMTP providers require you to verify your "from" email address first
 
-### Email goes to spam
-- Make sure your `SMTP_FROM` domain matches your sending domain
-- Set up SPF, DKIM, and DMARC records for your domain
-- Use a reputable SMTP provider (SendGrid, Mailgun, AWS SES)
-- Avoid spam trigger words in email content
+- Ensure `RESEND_API_KEY` is set and valid (see [Resend API keys](https://resend.com/api-keys)).
+- Check server logs for `[Email]` messages (send started, success, or error).
+- If using a custom domain, ensure the domain is verified in the Resend dashboard.
 
-### Development vs Production
-- In development, use a test SMTP server or your personal email
-- In production, use a professional SMTP service (SendGrid, Mailgun, AWS SES)
-- Make sure to set `NEXT_PUBLIC_SITE_URL` to your production URL
+### Emails go to spam
 
-## Alternative: Using Resend
+- Use a verified domain and the “from” address on that domain.
+- Resend sets SPF/DKIM when the domain is verified; ensure those DNS records are in place.
+- Avoid spammy wording in subject and body.
 
-If you prefer to use Resend instead of the custom SMTP solution:
+### Development vs production
 
-1. Install Resend: `pnpm add resend`
-2. Replace the email sending logic in `src/lib/email.ts` with Resend's API
-3. Set `RESEND_API_KEY` environment variable
-
-The current implementation is designed to be easily replaceable if you want to switch to Resend or another service later.
-
+- Use the same Resend API key in both, or separate keys per environment.
+- Set `NEXT_PUBLIC_SITE_URL` to your production URL so links in emails point to the right site.
