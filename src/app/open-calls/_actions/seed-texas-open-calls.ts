@@ -97,6 +97,7 @@ export async function seedTexasOpenCalls(): Promise<
         submission_closing_date: entry.submission_closing_date,
         call_type: entry.call_type,
         eligible_locations: entry.eligible_locations ?? [],
+        external_url: entry.external_url || null,
         created_by: galleryUserId,
         updated_by: galleryUserId,
       });

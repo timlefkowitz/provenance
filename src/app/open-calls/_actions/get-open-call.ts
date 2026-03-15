@@ -9,6 +9,7 @@ export type OpenCall = {
   submission_open_date: string | null;
   submission_closing_date: string | null;
   call_type: string | null;
+  external_url: string | null;
   exhibition: {
     id: string;
     title: string;
@@ -26,7 +27,7 @@ export async function getOpenCallBySlug(slug: string): Promise<OpenCall | null> 
   const { data, error } = await (client as any)
     .from('open_calls')
     .select(
-      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, exhibition:exhibition_id (id, title, description, start_date, end_date, location, gallery_id)',
+      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, external_url, exhibition:exhibition_id (id, title, description, start_date, end_date, location, gallery_id)',
     )
     .eq('slug', slug)
     .single();

@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getOpenCallsList, type OpenCallListEntry } from '../_actions/get-open-calls-list';
-import { isOpenCallSubmissionExpired, qualifiesByLocation } from '../_lib/open-call-utils';
+import { qualifiesByLocation } from '../_lib/open-call-utils';
 import { getCallTypeLabel } from '../_actions/open-call-constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
@@ -25,11 +25,9 @@ function formatDate(dateString: string) {
 function OpenCallCard({
   openCall,
   artistLocation,
-  isExpired,
 }: {
   openCall: OpenCallListEntry;
   artistLocation: string | null;
-  isExpired: boolean;
 }) {
   const qualifies = qualifiesByLocation(openCall, artistLocation);
   const subOpen = openCall.submission_open_date
@@ -49,11 +47,6 @@ function OpenCallCard({
           {qualifies && (
             <span className="text-xs font-serif px-2 py-0.5 rounded bg-wine/15 text-wine">
               Qualifies for your location
-            </span>
-          )}
-          {isExpired && (
-            <span className="text-xs font-serif px-2 py-0.5 rounded bg-ink/20 text-ink/70">
-              Closed
             </span>
           )}
         </div>
@@ -87,11 +80,8 @@ function OpenCallCard({
             asChild
             size="sm"
             className="font-serif bg-wine text-parchment hover:bg-wine/90"
-            disabled={isExpired}
           >
-            <Link href={`/open-calls/${openCall.slug}`}>
-              {isExpired ? 'View (closed)' : 'View & Submit'}
-            </Link>
+            <Link href={`/open-calls/${openCall.slug}`}>View & Submit</Link>
           </Button>
         </div>
       </CardContent>
@@ -127,8 +117,6 @@ export default async function BrowseOpenCallsPage({
   };
 
   const openCalls = await getOpenCallsList(filters);
-  const active = openCalls.filter((oc) => !isOpenCallSubmissionExpired(oc));
-  const expired = openCalls.filter((oc) => isOpenCallSubmissionExpired(oc));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -137,8 +125,8 @@ export default async function BrowseOpenCallsPage({
           Open Calls
         </h1>
         <p className="text-ink/70 font-serif mb-4">
-          Browse open calls from galleries and submit your work. Submission open
-          and closing dates, type, and location eligibility are shown.
+          Exhibition open calls currently open for submissions. Filter by location
+          to see opportunities where you qualify.
         </p>
         <OpenCallsBrowseFilters artistLocation={artistLocation} />
       </div>
@@ -153,41 +141,14 @@ export default async function BrowseOpenCallsPage({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-10">
-          {active.length > 0 && (
-            <section>
-              <h2 className="text-2xl font-display font-bold text-wine mb-4">
-                Open for submissions
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {active.map((openCall) => (
-                  <OpenCallCard
-                    key={openCall.id}
-                    openCall={openCall}
-                    artistLocation={artistLocation}
-                    isExpired={false}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-          {expired.length > 0 && (
-            <section>
-              <h2 className="text-2xl font-display font-bold text-ink/70 mb-4">
-                Expired
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {expired.map((openCall) => (
-                  <OpenCallCard
-                    key={openCall.id}
-                    openCall={openCall}
-                    artistLocation={artistLocation}
-                    isExpired
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {openCalls.map((openCall) => (
+            <OpenCallCard
+              key={openCall.id}
+              openCall={openCall}
+              artistLocation={artistLocation}
+            />
+          ))}
         </div>
       )}
     </div>

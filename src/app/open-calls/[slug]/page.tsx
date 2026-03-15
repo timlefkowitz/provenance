@@ -69,7 +69,23 @@ export default async function OpenCallPage({
         )}
       </div>
 
-      <OpenCallSubmissionForm openCallId={openCall.id} isExpired={isExpired} />
+      {openCall.external_url ? (
+        <div className="rounded-lg border border-wine/30 bg-wine/5 p-6">
+          <p className="text-ink/80 font-serif mb-3">
+            This is a curated listing. Apply or learn more at the source.
+          </p>
+          <a
+            href={openCall.external_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-md bg-wine px-4 py-2 font-serif text-parchment hover:bg-wine/90"
+          >
+            View open call
+          </a>
+        </div>
+      ) : (
+        <OpenCallSubmissionForm openCallId={openCall.id} isExpired={isExpired} />
+      )}
     </div>
   );
 }

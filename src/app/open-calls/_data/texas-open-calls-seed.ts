@@ -1,6 +1,7 @@
 /**
  * 20 Texas-focused open calls for seeding the database.
- * Based on real opportunities (Artpace, ACLU Texas, TCA) and representative Texas venues.
+ * Curated listings: when external_url is set, the detail page links out to the real open call.
+ * Some entries are based on real opportunities; others are representative examples.
  */
 
 export type TexasOpenCallSeed = {
@@ -11,8 +12,10 @@ export type TexasOpenCallSeed = {
   end_date: string | null;
   submission_open_date: string;
   submission_closing_date: string;
-  call_type: 'exhibition' | 'art' | 'residency' | 'grant';
+  call_type: 'exhibition' | 'art';
   eligible_locations: string[];
+  /** Link to the real open call / application page. Required for seed entries (curated listings). */
+  external_url: string;
 };
 
 export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
@@ -25,8 +28,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: '2026-12-31',
     submission_open_date: '2025-07-14',
     submission_closing_date: '2025-08-25',
-    call_type: 'residency',
+    call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://artpace.org/about/international-artist-in-residence/texas-open-call/',
   },
   {
     title: 'ACLU of Texas Artist-in-Residence',
@@ -37,8 +41,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: '2027-08-31',
     submission_open_date: '2025-11-01',
     submission_closing_date: '2026-02-28',
-    call_type: 'residency',
+    call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.aclutx.org/',
   },
   {
     title: 'Texas Commission on the Arts Virtual Residencies',
@@ -49,8 +54,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: null,
     submission_open_date: '2025-09-01',
     submission_closing_date: '2026-01-15',
-    call_type: 'residency',
+    call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.arts.texas.gov/jobs/virtual-art-residencies-open-call/',
   },
   {
     title: 'Houston Art League Annual Exhibition',
@@ -63,6 +69,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-01-15',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Houston'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Dallas Art Fair Open Call',
@@ -75,6 +82,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-02-01',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Dallas', 'Fort Worth'],
+    external_url: 'https://dallasartfair.com/',
   },
   {
     title: 'Austin Studio Tour Open Call',
@@ -87,6 +95,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-06-30',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Austin'],
+    external_url: 'https://www.bigmedium.org/',
   },
   {
     title: 'San Antonio Art Fund Grant',
@@ -97,8 +106,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: null,
     submission_open_date: '2025-09-15',
     submission_closing_date: '2025-12-01',
-    call_type: 'grant',
+    call_type: 'exhibition',
     eligible_locations: ['Texas', 'San Antonio', 'Bexar County'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Fort Worth Art Grant Program',
@@ -109,8 +119,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: '2026-12-31',
     submission_open_date: '2026-01-01',
     submission_closing_date: '2026-03-31',
-    call_type: 'grant',
+    call_type: 'exhibition',
     eligible_locations: ['Texas', 'Fort Worth'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Marfa Open Call',
@@ -123,6 +134,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-02-28',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Marfa'],
+    external_url: 'https://glasstire.com/',
   },
   {
     title: 'El Paso Museum of Art Biennial',
@@ -135,6 +147,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-04-30',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'El Paso', 'New Mexico', 'Arizona'],
+    external_url: 'https://epma.art/',
   },
   {
     title: 'Houston Center for Contemporary Craft Open Call',
@@ -147,6 +160,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2025-11-15',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Houston'],
+    external_url: 'https://crafthouston.org/',
   },
   {
     title: 'Texas Sculpture Symposium Open Call',
@@ -159,6 +173,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-05-31',
     call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Austin Art Alliance Residency',
@@ -169,8 +184,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: '2026-08-31',
     submission_open_date: '2025-12-01',
     submission_closing_date: '2026-02-15',
-    call_type: 'residency',
+    call_type: 'exhibition',
     eligible_locations: ['Texas', 'Austin'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Dallas Contemporary New Talent',
@@ -183,6 +199,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-04-15',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Dallas'],
+    external_url: 'https://dallascontemporary.org/',
   },
   {
     title: 'Texas Photographic Society National Call',
@@ -195,6 +212,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-03-15',
     call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.texasphoto.org/',
   },
   {
     title: 'Galveston Arts Center Open Call',
@@ -207,6 +225,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-01-31',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Galveston', 'Gulf Coast'],
+    external_url: 'https://galvestonartscenter.org/',
   },
   {
     title: 'Texas State Art Faculty Biennial',
@@ -219,6 +238,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2025-12-15',
     call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Big Medium Texas Biennial',
@@ -231,6 +251,7 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-05-01',
     call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.bigmedium.org/',
   },
   {
     title: 'Texas Emerging Artist Grant',
@@ -241,8 +262,9 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     end_date: null,
     submission_open_date: '2025-09-01',
     submission_closing_date: '2025-11-30',
-    call_type: 'grant',
+    call_type: 'exhibition',
     eligible_locations: ['Texas'],
+    external_url: 'https://www.arts.texas.gov/',
   },
   {
     title: 'Houston Print Fair Open Call',
@@ -255,5 +277,6 @@ export const TEXAS_OPEN_CALLS_SEED: TexasOpenCallSeed[] = [
     submission_closing_date: '2026-01-15',
     call_type: 'exhibition',
     eligible_locations: ['Texas', 'Houston'],
+    external_url: 'https://www.arts.texas.gov/',
   },
 ];

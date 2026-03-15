@@ -29,16 +29,25 @@ export type OpenCallsListFilters = {
 
 const LIST_PAGE_SIZE = 20;
 
+/** Only exhibition-style open calls (show artwork). Residencies/grants are excluded. */
+const EXHIBITION_CALL_TYPES = ['exhibition', 'art'];
+
 /**
  * Fetch public open calls for artists to browse.
- * Limit 20; optional filter by call type and location eligibility.
+ * Only returns exhibition open calls that are currently open for submissions.
+ * Optional filter by type (exhibition/art) and location eligibility.
  */
 export async function getOpenCallsList(
   filters?: OpenCallsListFilters,
 ): Promise<OpenCallListEntry[]> {
   const client = getSupabaseServerClient();
 
-  console.log('[OpenCalls] getOpenCallsList started', { callType: filters?.callType, hasUserLocation: Boolean(filters?.userLocation) });
+  const todayIso = new Date().toISOString().split('T')[0];
+  console.log('[OpenCalls] getOpenCallsList started', {
+    callType: filters?.callType,
+    hasUserLocation: Boolean(filters?.userLocation),
+    today: todayIso,
+  });
 
   let query = (client as any)
     .from('open_calls')
@@ -48,9 +57,15 @@ export async function getOpenCallsList(
     .order('created_at', { ascending: false })
     .limit(LIST_PAGE_SIZE);
 
-  if (filters?.callType) {
+  // Only exhibition open calls (show artwork)
+  if (filters?.callType && EXHIBITION_CALL_TYPES.includes(filters.callType)) {
     query = query.eq('call_type', filters.callType);
+  } else {
+    query = query.in('call_type', EXHIBITION_CALL_TYPES);
   }
+
+  // Only currently open for submissions (closing date in future or null)
+  query = query.or(`submission_closing_date.gte.${todayIso},submission_closing_date.is.null`);
 
   const { data, error } = await query;
 
