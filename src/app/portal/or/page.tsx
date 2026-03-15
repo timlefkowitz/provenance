@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
+import { getActiveArtistSubscription } from '~/lib/subscription';
 import { Card, CardContent } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { getLeadsForArtist } from './_actions/leads';
@@ -49,6 +50,11 @@ export default async function OpportunitiesPage() {
         </Card>
       </div>
     );
+  }
+
+  const artistSubscription = await getActiveArtistSubscription(user.id);
+  if (!artistSubscription) {
+    redirect('/subscription?upgrade=1');
   }
 
   const [leads, artworksResult] = await Promise.all([

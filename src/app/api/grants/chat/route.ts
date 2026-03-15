@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import { getUserProfileByRole as getProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { saveArtistGrants } from '~/app/grants/_actions/save-artist-grants';
 import { USER_ROLES } from '~/lib/user-roles';
+import { getActiveArtistSubscription } from '~/lib/subscription';
 import type { Grant } from '~/lib/grants';
 
 const RECOMMEND_GRANTS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
@@ -59,6 +60,15 @@ export async function POST(request: NextRequest) {
     if (!artistProfile) {
       console.error('[Grants] chat no artist profile', user.id);
       return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
+    }
+
+    const artistSubscription = await getActiveArtistSubscription(user.id);
+    if (!artistSubscription) {
+      console.error('[Grants] chat no active artist subscription', user.id);
+      return NextResponse.json(
+        { error: 'An active subscription is required to use the grants assistant. Subscribe in Toolbox → Subscription.' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json().catch(() => ({}));

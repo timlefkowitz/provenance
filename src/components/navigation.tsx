@@ -78,6 +78,11 @@ export function Navigation() {
                       OR
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/subscription" className="cursor-pointer">
+                      Subscription
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -251,6 +256,13 @@ export function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   OR
+                </Link>
+                <Link 
+                  href="/subscription" 
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Subscription
                 </Link>
               </>
             )}
