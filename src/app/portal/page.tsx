@@ -192,31 +192,6 @@ export default async function PortalPage() {
         </Card>
       )}
 
-      {/* Gallery team management */}
-      {galleryProfiles.length > 0 && (
-        <div className="mb-10">
-          <h2 className="text-2xl font-display font-bold text-wine mb-2">
-            Gallery teams
-          </h2>
-          <p className="text-ink/70 font-serif mb-4">
-            Select a gallery and manage the team members who can manage collections, post Certificates of Show, and manage exhibitions.
-          </p>
-          <div className="space-y-6">
-            {galleryProfiles.map((profile: any) => (
-              <div key={profile.id} className="space-y-2">
-                <h3 className="text-lg font-display text-wine">
-                  {profile.name || 'Untitled gallery'}
-                </h3>
-                <GalleryMembersManager
-                  galleryProfileId={profile.id}
-                  userId={user.id}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="border-wine/20 bg-parchment/60">
@@ -645,6 +620,31 @@ export default async function PortalPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Gallery teams — at bottom of portal */}
+      {galleryProfiles.length > 0 && (
+        <div className="mt-10 pt-8 border-t border-wine/20">
+          <h2 className="text-2xl font-display font-bold text-wine mb-2">
+            Gallery teams
+          </h2>
+          <p className="text-ink/70 font-serif mb-4">
+            Select a gallery and manage the team members who can manage collections, post Certificates of Show, and manage exhibitions.
+          </p>
+          <div className="space-y-6">
+            {galleryProfiles.map((profile: any) => (
+              <div key={profile.id} className="space-y-2">
+                <h3 className="text-lg font-display text-wine">
+                  {profile.name || 'Untitled gallery'}
+                </h3>
+                <GalleryMembersManager
+                  galleryProfileId={profile.id}
+                  userId={user.id}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
