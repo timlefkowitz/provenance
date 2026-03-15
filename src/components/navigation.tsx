@@ -2,11 +2,17 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 import pathsConfig from '~/config/paths.config';
 import { ProfileAccountDropdownContainer } from './personal-account-dropdown-container';
 import { NotificationBadge } from './notification-badge';
@@ -51,18 +57,24 @@ export function Navigation() {
               >
                 <Trans i18nKey="common:navigation.registry" defaults="Registry" />
               </Link>
-              <Link 
-                href="/grants" 
-                className="text-ink hover:text-wine transition-colors font-serif cursor-pointer"
-              >
-                Grants
-              </Link>
-              <Link 
-                href="/portal/or" 
-                className="text-ink hover:text-wine transition-colors font-serif"
-              >
-                OR
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1 text-ink hover:text-wine transition-colors font-serif font-medium outline-none data-[state=open]:text-wine">
+                  Toolbox
+                  <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="font-serif">
+                  <DropdownMenuItem asChild>
+                    <Link href="/grants" className="cursor-pointer">
+                      Grants
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/portal/or" className="cursor-pointer">
+                      OR
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
           <Link 
@@ -211,16 +223,19 @@ export function Navigation() {
                 >
                   <Trans i18nKey="common:navigation.registry" defaults="Registry" />
                 </Link>
+                <span className="block py-2 border-b border-wine/10 text-wine/80 font-medium text-xs uppercase tracking-wider">
+                  Toolbox
+                </span>
                 <Link 
                   href="/grants" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10 cursor-pointer"
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10 cursor-pointer"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Grants
                 </Link>
                 <Link 
                   href="/portal/or" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   OR
