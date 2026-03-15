@@ -1,9 +1,8 @@
 /**
  * Stripe price IDs by role and interval.
  * Set these in .env after creating Products and Prices in Stripe Dashboard.
+ * process.env is only read inside server-called functions so this file stays safe for client imports.
  */
-const env = process.env;
-
 export type SubscriptionInterval = 'month' | 'year';
 export type SubscriptionRole = 'artist' | 'collector' | 'gallery';
 
@@ -22,17 +21,24 @@ const PRICE_KEYS: Record<SubscriptionRole, Record<SubscriptionInterval, string>>
   },
 };
 
+function getEnv(): Record<string, string | undefined> {
+  if (typeof process === 'undefined') return {};
+  return process.env as Record<string, string | undefined>;
+}
+
 export function getStripePriceId(
   role: SubscriptionRole,
   interval: SubscriptionInterval
 ): string | null {
   const key = PRICE_KEYS[role]?.[interval];
   if (!key) return null;
+  const env = getEnv();
   const value = env[key];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 export function isStripeConfigured(): boolean {
+  const env = getEnv();
   return Boolean(
     env.STRIPE_SECRET_KEY &&
       getStripePriceId('artist', 'month') &&
