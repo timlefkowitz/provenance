@@ -29,6 +29,30 @@ type Props = {
 
 const ROLES: SubscriptionRole[] = ['artist', 'collector', 'gallery'];
 
+const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
+  artist: [
+    'Toolbox',
+    'Grant list',
+    'Open call list',
+    'Residency list',
+    '+ more',
+  ],
+  collector: [
+    'Access to the Toolbox',
+    'Collection management',
+    'Appraiser tools',
+    'Automatically get information on your artworks & artist',
+    '+ more',
+  ],
+  gallery: [
+    'Collection management',
+    'Exhibition toolset',
+    'Artist publication collection',
+    'Gallery grants',
+    'and more',
+  ],
+};
+
 export function SubscriptionContent({
   subscription,
   defaultRole,
@@ -110,6 +134,9 @@ export function SubscriptionContent({
         </h1>
         <p className="text-ink/70 font-serif">
           Manage your subscription and billing. Pay monthly or save with a yearly plan.
+        </p>
+        <p className="text-ink/60 font-serif text-sm mt-2">
+          We are currently in beta; this subscription helps support future features.
         </p>
       </div>
 
@@ -248,6 +275,20 @@ export function SubscriptionContent({
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="rounded-lg border border-ink/15 bg-parchment/40 p-4">
+                <p className="font-display font-semibold text-wine text-sm mb-2">
+                  {getRoleLabel(selectedRole)} includes:
+                </p>
+                <ul className="font-serif text-sm text-ink/80 space-y-1 list-disc list-inside">
+                  {ROLE_FEATURES[selectedRole].map((feature, i) => (
+                    <li key={i}>{feature}</li>
+                  ))}
+                </ul>
+                <p className="font-serif text-sm text-ink/60 mt-3">
+                  Lots of exciting features on the roadmap.
+                </p>
               </div>
 
               <Button

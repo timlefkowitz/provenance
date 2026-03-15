@@ -49,9 +49,12 @@ export async function POST(request: NextRequest) {
 
     const stripe = getStripe();
     if (!stripe) {
-      console.error('[Stripe] STRIPE_SECRET_KEY not set');
+      console.error('[Stripe] createCheckoutSession: STRIPE_SECRET_KEY missing or invalid in server env');
       return NextResponse.json(
-        { error: 'Billing not configured' },
+        {
+          error:
+            'Billing not configured. Add STRIPE_SECRET_KEY (and Stripe price IDs) to your deployment environment (e.g. Vercel → Project → Settings → Environment Variables).',
+        },
         { status: 503 }
       );
     }
