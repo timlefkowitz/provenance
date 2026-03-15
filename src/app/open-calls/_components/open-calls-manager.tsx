@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@kit/ui/sonner';
 import { createOpenCall } from '../_actions/create-open-call';
 import type { OpenCallListItem } from '../_actions/get-open-calls-for-gallery';
+import { OPEN_CALL_TYPES } from '../_actions/open-call-constants';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 
 export function OpenCallsManager({
@@ -33,6 +34,10 @@ export function OpenCallsManager({
     description: '',
     startDate: '',
     endDate: '',
+    submissionOpenDate: '',
+    submissionClosingDate: '',
+    callType: 'exhibition',
+    eligibleLocations: '',
     location: '',
     slug: '',
     galleryProfileId: defaultProfileId,
@@ -44,6 +49,12 @@ export function OpenCallsManager({
 
     if (!formData.title || !formData.startDate) {
       setError('Exhibition title and start date are required.');
+      return;
+    }
+    const subOpen = formData.submissionOpenDate || formData.startDate;
+    const subClose = formData.submissionClosingDate || formData.endDate;
+    if (!subOpen || !subClose) {
+      setError('Submission open date and submission closing date are required.');
       return;
     }
 
@@ -59,6 +70,10 @@ export function OpenCallsManager({
         formDataObj.append('description', formData.description);
         formDataObj.append('startDate', formData.startDate);
         formDataObj.append('endDate', formData.endDate || '');
+        formDataObj.append('submissionOpenDate', formData.submissionOpenDate || formData.startDate);
+        formDataObj.append('submissionClosingDate', formData.submissionClosingDate || formData.endDate || '');
+        formDataObj.append('callType', formData.callType);
+        formDataObj.append('eligibleLocations', formData.eligibleLocations);
         formDataObj.append('location', formData.location);
         formDataObj.append('slug', formData.slug);
         formDataObj.append('galleryProfileId', formData.galleryProfileId);
@@ -71,6 +86,10 @@ export function OpenCallsManager({
           description: '',
           startDate: '',
           endDate: '',
+          submissionOpenDate: '',
+          submissionClosingDate: '',
+          callType: 'exhibition',
+          eligibleLocations: '',
           location: '',
           slug: '',
           galleryProfileId: defaultProfileId,
@@ -202,6 +221,71 @@ export function OpenCallsManager({
                     min={formData.startDate}
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="submissionOpenDate">Submission Open Date *</Label>
+                  <Input
+                    id="submissionOpenDate"
+                    type="date"
+                    value={formData.submissionOpenDate}
+                    onChange={(event) =>
+                      setFormData({ ...formData, submissionOpenDate: event.target.value })
+                    }
+                    className="font-serif"
+                    min={formData.startDate}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="submissionClosingDate">Submission Closing Date *</Label>
+                  <Input
+                    id="submissionClosingDate"
+                    type="date"
+                    value={formData.submissionClosingDate}
+                    onChange={(event) =>
+                      setFormData({ ...formData, submissionClosingDate: event.target.value })
+                    }
+                    className="font-serif"
+                    min={formData.submissionOpenDate || formData.startDate}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="callType">Type</Label>
+                <Select
+                  value={formData.callType}
+                  onValueChange={(value) => setFormData({ ...formData, callType: value })}
+                >
+                  <SelectTrigger className="font-serif">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPEN_CALL_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="eligibleLocations">Eligible Locations (optional)</Label>
+                <Textarea
+                  id="eligibleLocations"
+                  value={formData.eligibleLocations}
+                  onChange={(event) =>
+                    setFormData({ ...formData, eligibleLocations: event.target.value })
+                  }
+                  placeholder="e.g. New York, California, USA (one per line or comma-separated)"
+                  rows={2}
+                  className="font-serif"
+                />
+                <p className="text-xs text-ink/60 font-serif">
+                  Leave empty for no location restriction. Artists can filter by &quot;qualifies in my location&quot;.
+                </p>
               </div>
 
               <div className="space-y-2">

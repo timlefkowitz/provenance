@@ -35,13 +35,25 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
 
   const { data: openCall, error: openCallError } = await (admin as any)
     .from('open_calls')
-    .select('id')
+    .select('id, submission_closing_date')
     .eq('id', openCallId)
     .single();
 
   if (openCallError || !openCall) {
-    console.error('Open call not found:', openCallError);
+    console.error('[OpenCalls] submitOpenCall: open call not found', openCallError);
     return { error: 'Open call not found.' };
+  }
+
+  const closing = openCall.submission_closing_date;
+  if (closing) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const closeDate = new Date(closing);
+    closeDate.setHours(0, 0, 0, 0);
+    if (closeDate < today) {
+      console.log('[OpenCalls] submitOpenCall: submissions closed', { openCallId });
+      return { error: 'Submissions for this open call have closed.' };
+    }
   }
 
   await ensureBucketExists(admin);

@@ -11,8 +11,10 @@ import { toast } from '@kit/ui/sonner';
 
 export function OpenCallSubmissionForm({
   openCallId,
+  isExpired = false,
 }: {
   openCallId: string;
+  isExpired?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,16 @@ export function OpenCallSubmissionForm({
       <Alert className="border-wine/30 bg-wine/5">
         <AlertDescription className="font-serif text-ink/80">
           Thanks for applying! Your submission has been received.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (isExpired) {
+    return (
+      <Alert className="border-ink/30 bg-ink/5">
+        <AlertDescription className="font-serif text-ink/80">
+          Submissions for this open call have closed. You can still view the details above.
         </AlertDescription>
       </Alert>
     );

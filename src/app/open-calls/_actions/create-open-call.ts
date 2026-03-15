@@ -31,6 +31,13 @@ export async function createOpenCall(formData: FormData) {
   const endDate = (formData.get('endDate') as string || '').trim();
   const location = (formData.get('location') as string || '').trim();
   const requestedSlug = (formData.get('slug') as string || '').trim();
+  const submissionOpenDate = (formData.get('submissionOpenDate') as string || '').trim() || startDate;
+  const submissionClosingDate = (formData.get('submissionClosingDate') as string || '').trim() || endDate || null;
+  const callType = (formData.get('callType') as string || 'exhibition').trim();
+  const eligibleLocationsRaw = (formData.get('eligibleLocations') as string || '').trim();
+  const eligibleLocations = eligibleLocationsRaw
+    ? eligibleLocationsRaw.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean)
+    : [];
 
   if (!galleryProfileId) {
     throw new Error('Gallery profile is required');
@@ -38,6 +45,9 @@ export async function createOpenCall(formData: FormData) {
 
   if (!exhibitionTitle || !startDate) {
     throw new Error('Exhibition title and start date are required');
+  }
+  if (!submissionOpenDate || !submissionClosingDate) {
+    throw new Error('Submission open date and submission closing date are required');
   }
 
   const { data: profile } = await (client as any)
@@ -91,6 +101,10 @@ export async function createOpenCall(formData: FormData) {
       exhibition_id: exhibition.id,
       gallery_profile_id: galleryProfileId,
       slug,
+      submission_open_date: submissionOpenDate || null,
+      submission_closing_date: submissionClosingDate || null,
+      call_type: callType || 'exhibition',
+      eligible_locations: eligibleLocations.length > 0 ? eligibleLocations : [],
       created_by: user.id,
       updated_by: user.id,
     })
