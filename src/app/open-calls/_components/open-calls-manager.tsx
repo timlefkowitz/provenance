@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@kit/ui/sonner';
 import { createOpenCall } from '../_actions/create-open-call';
 import type { OpenCallListItem } from '../_actions/get-open-calls-for-gallery';
-import { OPEN_CALL_TYPES } from '../_actions/open-call-constants';
+import { OPEN_CALL_MEDIUMS } from '../_actions/open-call-constants';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 
 export function OpenCallsManager({
@@ -36,7 +36,7 @@ export function OpenCallsManager({
     endDate: '',
     submissionOpenDate: '',
     submissionClosingDate: '',
-    callType: 'exhibition',
+    medium: '',
     eligibleLocations: '',
     location: '',
     slug: '',
@@ -72,7 +72,7 @@ export function OpenCallsManager({
         formDataObj.append('endDate', formData.endDate || '');
         formDataObj.append('submissionOpenDate', formData.submissionOpenDate || formData.startDate);
         formDataObj.append('submissionClosingDate', formData.submissionClosingDate || formData.endDate || '');
-        formDataObj.append('callType', formData.callType);
+        formDataObj.append('medium', formData.medium || '');
         formDataObj.append('eligibleLocations', formData.eligibleLocations);
         formDataObj.append('location', formData.location);
         formDataObj.append('slug', formData.slug);
@@ -88,7 +88,7 @@ export function OpenCallsManager({
           endDate: '',
           submissionOpenDate: '',
           submissionClosingDate: '',
-          callType: 'exhibition',
+          medium: '',
           eligibleLocations: '',
           location: '',
           slug: '',
@@ -253,18 +253,19 @@ export function OpenCallsManager({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="callType">Type</Label>
+                <Label htmlFor="medium">Medium</Label>
                 <Select
-                  value={formData.callType}
-                  onValueChange={(value) => setFormData({ ...formData, callType: value })}
+                  value={formData.medium || 'all'}
+                  onValueChange={(value) => setFormData({ ...formData, medium: value === 'all' ? '' : value })}
                 >
                   <SelectTrigger className="font-serif">
-                    <SelectValue />
+                    <SelectValue placeholder="Select medium (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {OPEN_CALL_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
+                    <SelectItem value="all">Any medium</SelectItem>
+                    {OPEN_CALL_MEDIUMS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

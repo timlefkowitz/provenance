@@ -4,7 +4,7 @@ import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles'
 import { USER_ROLES } from '~/lib/user-roles';
 import { getOpenCallsList, type OpenCallListEntry } from '../_actions/get-open-calls-list';
 import { qualifiesByLocation } from '../_lib/open-call-utils';
-import { getCallTypeLabel } from '../_actions/open-call-constants';
+import { getMediumLabel } from '../_actions/open-call-constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { OpenCallsBrowseFilters } from './_components/open-calls-browse-filters';
@@ -41,9 +41,11 @@ function OpenCallCard({
     <Card className="border-wine/20 bg-parchment/60">
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2 mb-1">
-          <span className="text-xs font-serif uppercase tracking-wider text-ink/60">
-            {getCallTypeLabel(openCall.call_type ?? 'exhibition')}
-          </span>
+          {openCall.medium && (
+            <span className="text-xs font-serif uppercase tracking-wider text-ink/60">
+              {getMediumLabel(openCall.medium)}
+            </span>
+          )}
           {qualifies && (
             <span className="text-xs font-serif px-2 py-0.5 rounded bg-wine/15 text-wine">
               Qualifies for your location
@@ -92,10 +94,11 @@ function OpenCallCard({
 export default async function BrowseOpenCallsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; location?: string }>;
+  searchParams: Promise<{ q?: string; medium?: string; location?: string }>;
 }) {
   const params = await searchParams;
-  const callType = params.type && params.type !== 'all' ? params.type : undefined;
+  const search = params.q?.trim() || undefined;
+  const medium = params.medium && params.medium !== 'all' ? params.medium : undefined;
   const useMyLocation = params.location === 'my';
 
   let artistLocation: string | null = null;
@@ -112,7 +115,8 @@ export default async function BrowseOpenCallsPage({
   }
 
   const filters = {
-    callType: callType ?? undefined,
+    search: search ?? undefined,
+    medium: medium ?? undefined,
     userLocation: useMyLocation && artistLocation ? artistLocation : undefined,
   };
 
@@ -135,8 +139,7 @@ export default async function BrowseOpenCallsPage({
         <Card className="border-wine/20 bg-parchment/60">
           <CardContent className="p-8 text-center">
             <p className="text-ink/60 font-serif">
-              No open calls match your filters. Try changing type or location
-              filter.
+              No open calls match your search or filters. Try different keywords or medium.
             </p>
           </CardContent>
         </Card>

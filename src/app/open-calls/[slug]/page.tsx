@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getOpenCallBySlug } from '../_actions/get-open-call';
 import { isOpenCallSubmissionExpired } from '../_lib/open-call-utils';
-import { getCallTypeLabel } from '../_actions/open-call-constants';
+import { getMediumLabel } from '../_actions/open-call-constants';
 import { OpenCallSubmissionForm } from './_components/open-call-submission-form';
 
 export const metadata = {
@@ -40,9 +40,11 @@ export default async function OpenCallPage({
     <div className="container mx-auto px-4 py-10 max-w-3xl">
       <div className="mb-8">
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          <p className="text-sm font-serif text-ink/60">
-            {getCallTypeLabel(openCall.call_type ?? 'exhibition')}
-          </p>
+          {openCall.medium && (
+            <p className="text-sm font-serif text-ink/60">
+              {getMediumLabel(openCall.medium)}
+            </p>
+          )}
           {isExpired && (
             <span className="text-xs font-serif px-2 py-0.5 rounded bg-ink/20 text-ink/70">
               Submissions closed

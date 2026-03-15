@@ -4,7 +4,6 @@ import { FeaturedArtworksManager } from './_components/featured-artworks-manager
 import { FixArtistNamesButton } from './_components/fix-artist-names-button';
 import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
 import { LinkArtworksToExhibitionButton } from './_components/link-artworks-to-exhibition-button';
-import { SeedTexasOpenCallsButton } from './_components/seed-texas-open-calls-button';
 import { Button } from '@kit/ui/button';
 
 export const metadata = {
@@ -96,9 +95,6 @@ export default async function AdminPage() {
 
         {/* Link Artworks to Exhibition */}
         <LinkArtworksToExhibitionButton />
-
-        {/* Seed Texas Open Calls */}
-        <SeedTexasOpenCallsButton />
       </div>
     </div>
   );

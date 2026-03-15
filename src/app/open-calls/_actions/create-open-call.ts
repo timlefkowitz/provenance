@@ -33,7 +33,7 @@ export async function createOpenCall(formData: FormData) {
   const requestedSlug = (formData.get('slug') as string || '').trim();
   const submissionOpenDate = (formData.get('submissionOpenDate') as string || '').trim() || startDate;
   const submissionClosingDate = (formData.get('submissionClosingDate') as string || '').trim() || endDate || null;
-  const callType = (formData.get('callType') as string || 'exhibition').trim();
+  const medium = (formData.get('medium') as string || '').trim() || null;
   const eligibleLocationsRaw = (formData.get('eligibleLocations') as string || '').trim();
   const eligibleLocations = eligibleLocationsRaw
     ? eligibleLocationsRaw.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean)
@@ -103,7 +103,8 @@ export async function createOpenCall(formData: FormData) {
       slug,
       submission_open_date: submissionOpenDate || null,
       submission_closing_date: submissionClosingDate || null,
-      call_type: callType || 'exhibition',
+      call_type: 'exhibition',
+      medium: medium || null,
       eligible_locations: eligibleLocations.length > 0 ? eligibleLocations : [],
       created_by: user.id,
       updated_by: user.id,

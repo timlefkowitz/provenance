@@ -9,6 +9,7 @@ export type OpenCallListEntry = {
   submission_open_date: string | null;
   submission_closing_date: string | null;
   call_type: string | null;
+  medium: string | null;
   eligible_locations: string[] | null;
   exhibition: {
     id: string;
@@ -22,9 +23,12 @@ export type OpenCallListEntry = {
 };
 
 export type OpenCallsListFilters = {
-  callType?: string | null;
+  /** Filter by medium (e.g. painting, sculpture). */
+  medium?: string | null;
   /** If set, only return open calls where eligible_locations is empty or includes this (case-insensitive match). */
   userLocation?: string | null;
+  /** Search in title, description, gallery name (case-insensitive). */
+  search?: string | null;
 };
 
 const LIST_PAGE_SIZE = 20;
@@ -44,24 +48,26 @@ export async function getOpenCallsList(
 
   const todayIso = new Date().toISOString().split('T')[0];
   console.log('[OpenCalls] getOpenCallsList started', {
-    callType: filters?.callType,
+    medium: filters?.medium,
     hasUserLocation: Boolean(filters?.userLocation),
+    hasSearch: Boolean(filters?.search),
     today: todayIso,
   });
 
   let query = (client as any)
     .from('open_calls')
     .select(
-      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, eligible_locations, exhibition:exhibition_id (id, title, start_date, end_date, location, description)',
+      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, eligible_locations, exhibition:exhibition_id (id, title, start_date, end_date, location, description)',
     )
     .order('created_at', { ascending: false })
     .limit(LIST_PAGE_SIZE);
 
   // Only exhibition open calls (show artwork)
-  if (filters?.callType && EXHIBITION_CALL_TYPES.includes(filters.callType)) {
-    query = query.eq('call_type', filters.callType);
-  } else {
-    query = query.in('call_type', EXHIBITION_CALL_TYPES);
+  query = query.in('call_type', EXHIBITION_CALL_TYPES);
+
+  // Filter by medium when provided
+  if (filters?.medium && filters.medium.trim()) {
+    query = query.eq('medium', filters.medium.trim());
   }
 
   // Only currently open for submissions (closing date in future or null)
@@ -100,10 +106,21 @@ export async function getOpenCallsList(
     (profiles || []).map((p: { id: string; name: string }) => [p.id, p.name]),
   );
 
-  const withNames = list.map((oc) => ({
+  let withNames = list.map((oc) => ({
     ...oc,
     gallery_name: nameById.get(oc.gallery_profile_id) ?? null,
   }));
+
+  // Search in title, description, gallery name
+  if (filters?.search && filters.search.trim()) {
+    const term = filters.search.trim().toLowerCase();
+    withNames = withNames.filter((oc) => {
+      const title = (oc.exhibition?.title ?? '').toLowerCase();
+      const desc = (oc.exhibition?.description ?? '').toLowerCase();
+      const gallery = (oc.gallery_name ?? '').toLowerCase();
+      return title.includes(term) || desc.includes(term) || gallery.includes(term);
+    });
+  }
 
   console.log('[OpenCalls] getOpenCallsList ok', { count: withNames.length });
   return withNames;
