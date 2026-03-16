@@ -116,8 +116,8 @@ export async function POST(request: NextRequest) {
       cancel_url: cancelUrl,
       metadata: { user_id: user.id, role },
       subscription_data: { metadata: { user_id: user.id, role } },
-      // Show Apple Pay and Google Pay when available so users can pay without filling the form
-      payment_method_types: ['card', 'apple_pay', 'google_pay'],
+      // Let Stripe offer supported wallets (Apple Pay, Google Pay, Link, etc.) on top of card
+      automatic_payment_methods: { enabled: true },
     });
 
     if (!session.url) {
