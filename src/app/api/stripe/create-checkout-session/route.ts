@@ -54,6 +54,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (!priceId.startsWith('price_')) {
+      const hint = priceId.startsWith('prod_')
+        ? 'You used a Product ID (prod_…). Use the Price ID (price_…) for the specific price under that product.'
+        : 'Use the Price ID (starts with price_…) from Stripe Dashboard → Products → [your product] → each Price has its own ID.';
+      console.error('[Stripe] Price ID must start with price_. Got:', priceId.slice(0, 24), '…');
+      return NextResponse.json(
+        {
+          error: `Invalid price configuration. ${hint} Set STRIPE_PRICE_ARTIST_MONTHLY (and other price vars) to the Price ID, not the Product ID or dollar amount.`,
+        },
+        { status: 400 }
+      );
+    }
 
     const stripe = getStripe();
     if (!stripe) {
@@ -104,6 +116,8 @@ export async function POST(request: NextRequest) {
       cancel_url: cancelUrl,
       metadata: { user_id: user.id, role },
       subscription_data: { metadata: { user_id: user.id, role } },
+      // Show Apple Pay and Google Pay when available so users can pay without filling the form
+      payment_method_types: ['card', 'apple_pay', 'google_pay'],
     });
 
     if (!session.url) {
