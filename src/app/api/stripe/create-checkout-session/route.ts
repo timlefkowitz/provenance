@@ -11,8 +11,16 @@ import { isValidRole } from '~/lib/user-roles';
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || typeof key !== 'string' || !key.startsWith('sk')) return null;
-  return new Stripe(key);
+  if (!key || typeof key !== 'string') {
+    console.error('[Stripe] STRIPE_SECRET_KEY: missing or not a string');
+    return null;
+  }
+  const trimmed = key.trim();
+  if (!trimmed.startsWith('sk')) {
+    console.error('[Stripe] STRIPE_SECRET_KEY: must start with sk_ (secret key). Got prefix:', trimmed.slice(0, 7), '…');
+    return null;
+  }
+  return new Stripe(trimmed);
 }
 
 export async function POST(request: NextRequest) {
