@@ -116,8 +116,7 @@ export async function POST(request: NextRequest) {
       cancel_url: cancelUrl,
       metadata: { user_id: user.id, role },
       subscription_data: { metadata: { user_id: user.id, role } },
-      // Let Stripe offer supported wallets (Apple Pay, Google Pay, Link, etc.) on top of card
-      automatic_payment_methods: { enabled: true },
+      // For subscriptions, Checkout picks up allowed payment methods (including Apple Pay) from Dashboard settings
     });
 
     if (!session.url) {
