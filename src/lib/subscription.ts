@@ -1,8 +1,8 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
- * Returns the current user's active Artist subscription if any.
- * Used to gate Toolbox access (Grants, Open Calls, OR) for artists.
+ * Returns the current user's eligible subscription if any.
+ * Used to gate subscription-gated features (e.g. Grants, Open Calls, grants assistant).
  * Certificates remain free for everyone.
  */
 export async function getActiveArtistSubscription(userId: string): Promise<{
@@ -17,8 +17,7 @@ export async function getActiveArtistSubscription(userId: string): Promise<{
     .from('subscriptions')
     .select('id, role, status, current_period_end')
     .eq('user_id', userId)
-    .eq('role', 'artist')
-    .eq('status', 'active')
+    .in('status', ['active', 'trialing'])
     .or(`current_period_end.is.null,current_period_end.gte.${now}`)
     .order('current_period_end', { ascending: false })
     .limit(1);

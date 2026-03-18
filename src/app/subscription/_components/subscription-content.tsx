@@ -67,7 +67,8 @@ export function SubscriptionContent({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeSubscription = subscription?.status === 'active';
+  const isActiveSubscription = subscription?.status === 'active';
+  const isTrialing = subscription?.status === 'trialing';
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString(undefined, {
         month: 'long',
@@ -163,7 +164,7 @@ export function SubscriptionContent({
         </Card>
       )}
 
-      {upgrade && !activeSubscription && (
+      {upgrade && !isActiveSubscription && !isTrialing && (
         <Card className="border-wine/30 bg-wine/5">
           <CardContent className="pt-6">
             <p className="font-serif text-wine">
@@ -181,7 +182,7 @@ export function SubscriptionContent({
         </Card>
       )}
 
-      {activeSubscription && subscription && (
+      {isActiveSubscription && subscription && (
         <Card className="border-wine/20 bg-parchment/60">
           <CardHeader>
             <CardTitle className="font-display text-xl text-wine">
@@ -211,7 +212,40 @@ export function SubscriptionContent({
         </Card>
       )}
 
-      {(!activeSubscription || !subscription) && (
+      {isTrialing && subscription && (
+        <Card className="border-wine/20 bg-wine/5">
+          <CardHeader>
+            <CardTitle className="font-display text-xl text-wine">
+              You&apos;re on a trial
+            </CardTitle>
+            <p className="text-sm text-ink/60 font-serif mt-1">
+              Access to the Toolbox is enabled for your 14-day trial.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {periodEnd && (
+              <p className="font-serif text-ink/80">
+                Your trial ends {periodEnd}.
+              </p>
+            )}
+            <Button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="w-full font-serif bg-wine text-parchment hover:bg-wine/90"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Upgrade to continue
+            </Button>
+            <p className="text-xs text-ink/50 font-serif">
+              You can upgrade anytime during your trial.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {(!isActiveSubscription && !isTrialing) && (
         <>
           <Card className="border-wine/20 bg-parchment/60">
             <CardHeader>
