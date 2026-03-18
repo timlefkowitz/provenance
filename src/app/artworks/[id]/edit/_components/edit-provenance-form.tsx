@@ -12,6 +12,7 @@ import { useCurrentUser } from '~/hooks/use-current-user';
 import { updateProvenance } from '../_actions/update-provenance';
 import { GallerySelector } from './gallery-selector';
 import { ExhibitionSelector } from './exhibition-selector';
+import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 
 type Artwork = {
   id: string;
@@ -152,13 +153,16 @@ export function EditProvenanceForm({
 
         <div className="space-y-2">
           <Label htmlFor="formerOwners">Former Owners</Label>
-          <Textarea
+          <ArtworkTextTypeahead
             id="formerOwners"
             value={formData.formerOwners}
-            onChange={(e) => setFormData({ ...formData, formerOwners: e.target.value })}
+            onChange={(next) => setFormData({ ...formData, formerOwners: next })}
             placeholder="List prominent collectors, estates, galleries, or institutions that previously held the work (e.g., Estate of John Smith, 1950-1975; Gallery XYZ, 1975-1980)"
+            kind="textarea"
             rows={4}
             className="font-serif"
+            userId={user.data?.id}
+            field="former_owners"
           />
         </div>
 
@@ -203,24 +207,30 @@ export function EditProvenanceForm({
 
         <div className="space-y-2">
           <Label htmlFor="productionLocation">Production Location</Label>
-          <Input
+          <ArtworkTextTypeahead
             id="productionLocation"
             value={formData.productionLocation}
-            onChange={(e) => setFormData({ ...formData, productionLocation: e.target.value })}
+            onChange={(next) =>
+              setFormData({ ...formData, productionLocation: next })
+            }
             placeholder="e.g., Paris, France or Studio Name, City, Country"
             className="font-serif"
+            userId={user.data?.id}
+            field="production_location"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="ownedBy">Owned By</Label>
           <div className="space-y-2">
-            <Input
+            <ArtworkTextTypeahead
               id="ownedBy"
               value={formData.ownedBy}
-              onChange={(e) => setFormData({ ...formData, ownedBy: e.target.value })}
+              onChange={(next) => setFormData({ ...formData, ownedBy: next })}
               placeholder="Current owner name or collection"
               className="font-serif"
+              userId={user.data?.id}
+              field="owned_by"
             />
             <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
               <div className="space-y-0.5">
@@ -243,12 +253,14 @@ export function EditProvenanceForm({
         <div className="space-y-2">
           <Label htmlFor="soldBy">Sold By</Label>
           <div className="space-y-2">
-            <Input
+            <ArtworkTextTypeahead
               id="soldBy"
               value={formData.soldBy}
-              onChange={(e) => setFormData({ ...formData, soldBy: e.target.value })}
+              onChange={(next) => setFormData({ ...formData, soldBy: next })}
               placeholder="Gallery, dealer, or seller name"
               className="font-serif"
+              userId={user.data?.id}
+              field="sold_by"
             />
             <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
               <div className="space-y-0.5">

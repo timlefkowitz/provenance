@@ -20,6 +20,7 @@ import type { PastArtist } from '../_actions/get-past-artists';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@kit/ui/accordion';
 import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
+import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 
 type ImagePreview = {
   id?: string;
@@ -896,12 +897,14 @@ export function AddArtworkForm({
 
         <div className="space-y-2">
           <Label htmlFor="medium">Medium</Label>
-          <Input
+          <ArtworkTextTypeahead
             id="medium"
             value={formData.medium}
-            onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
+            onChange={(next) => setFormData({ ...formData, medium: next })}
             placeholder="e.g., Oil on Canvas"
             className="font-serif"
+            userId={userId}
+            field="medium"
           />
           <p className="text-xs text-ink/60 font-serif">
             This will be applied to all artworks
@@ -956,12 +959,14 @@ export function AddArtworkForm({
           <AccordionContent>
             <div className="space-y-2">
               <Label htmlFor="ownedBy">Owned By</Label>
-              <Input
+              <ArtworkTextTypeahead
                 id="ownedBy"
                 value={formData.ownedBy}
-                onChange={(e) => setFormData({ ...formData, ownedBy: e.target.value })}
+                onChange={(next) => setFormData({ ...formData, ownedBy: next })}
                 placeholder="Current owner name or collection"
                 className="font-serif"
+                userId={userId}
+                field="owned_by"
               />
               <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
                 <div className="space-y-0.5">
@@ -994,12 +999,14 @@ export function AddArtworkForm({
           <AccordionContent>
             <div className="space-y-2">
               <Label htmlFor="soldBy">Sold By</Label>
-              <Input
+              <ArtworkTextTypeahead
                 id="soldBy"
                 value={formData.soldBy}
-                onChange={(e) => setFormData({ ...formData, soldBy: e.target.value })}
+                onChange={(next) => setFormData({ ...formData, soldBy: next })}
                 placeholder="Gallery, dealer, or seller name"
                 className="font-serif"
+                userId={userId}
+                field="sold_by"
               />
               <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
                 <div className="space-y-0.5">
@@ -1094,13 +1101,16 @@ export function AddArtworkForm({
 
               <div className="space-y-2">
                 <Label htmlFor="formerOwners">Former Owners</Label>
-                <Textarea
+                <ArtworkTextTypeahead
                   id="formerOwners"
                   value={formData.formerOwners}
-                  onChange={(e) => setFormData({ ...formData, formerOwners: e.target.value })}
+                  onChange={(next) => setFormData({ ...formData, formerOwners: next })}
                   placeholder="List prominent collectors, estates, galleries, or institutions that previously held the work..."
+                  kind="textarea"
                   rows={4}
                   className="font-serif"
+                  userId={userId}
+                  field="former_owners"
                 />
               </div>
 
@@ -1145,12 +1155,14 @@ export function AddArtworkForm({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="productionLocation">Production Location</Label>
-                  <Input
+                  <ArtworkTextTypeahead
                     id="productionLocation"
                     value={formData.productionLocation}
-                    onChange={(e) => setFormData({ ...formData, productionLocation: e.target.value })}
+                    onChange={(next) => setFormData({ ...formData, productionLocation: next })}
                     placeholder="e.g., Paris, France or Studio Name, City, Country"
                     className="font-serif"
+                    userId={userId}
+                    field="production_location"
                   />
                 </div>
               </div>
