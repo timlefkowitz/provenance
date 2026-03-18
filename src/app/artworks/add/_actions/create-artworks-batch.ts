@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
-import { getUserRole, USER_ROLES, getCertificateTypeForRole, isValidRole } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, getCertificateTypeForRole, isValidRole, type UserRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
@@ -30,6 +30,21 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const galleryProfileId = formData.get('galleryProfileId') as string || null;
     const posterRoleRaw = (formData.get('posterRole') as string | null) ?? null;
 
+    const dimensions = formData.get('dimensions') as string || '';
+    const formerOwners = formData.get('formerOwners') as string || '';
+    const auctionHistory = formData.get('auctionHistory') as string || '';
+    const exhibitionHistory = formData.get('exhibitionHistory') as string || '';
+    const historicContext = formData.get('historicContext') as string || '';
+    const celebrityNotes = formData.get('celebrityNotes') as string || '';
+    const value = formData.get('value') as string || '';
+    const valueIsPublic = formData.get('valueIsPublic') === 'true';
+    const edition = formData.get('edition') as string || '';
+    const productionLocation = formData.get('productionLocation') as string || '';
+    const ownedBy = formData.get('ownedBy') as string || '';
+    const ownedByIsPublic = formData.get('ownedByIsPublic') === 'true';
+    const soldBy = formData.get('soldBy') as string || '';
+    const soldByIsPublic = formData.get('soldByIsPublic') === 'true';
+
     logger.info('artwork_post_request_received', {
       userId,
       imageCount: images?.length ?? 0,
@@ -40,6 +55,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       hasCreationDate: Boolean(creationDate),
       hasExhibitionId: Boolean(exhibitionId),
       hasGalleryProfileId: Boolean(galleryProfileId),
+      hasOwnedBy: Boolean(ownedBy.trim()),
+      hasSoldBy: Boolean(soldBy.trim()),
+      hasAuctionHistory: Boolean(auctionHistory.trim()),
+      hasExhibitionHistory: Boolean(exhibitionHistory.trim()),
       posterRole: posterRoleRaw || 'none',
       debugUserAgent,
       debugPlatform,
@@ -204,6 +223,21 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           created_by: userId,
           updated_by: userId,
           metadata: locationData ? { certificate_location: locationData } : {},
+          // Provenance fields (filled during initial create)
+          dimensions: dimensions || null,
+          former_owners: formerOwners || null,
+          auction_history: auctionHistory || null,
+          exhibition_history: exhibitionHistory || null,
+          historic_context: historicContext || null,
+          celebrity_notes: celebrityNotes || null,
+          value: value || null,
+          value_is_public: valueIsPublic,
+          edition: edition || null,
+          production_location: productionLocation || null,
+          owned_by: ownedBy || null,
+          owned_by_is_public: ownedByIsPublic,
+          sold_by: soldBy || null,
+          sold_by_is_public: soldByIsPublic,
         };
 
         // Try to include is_public, but handle case where migration hasn't been run yet
@@ -213,7 +247,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         if (galleryProfileId && effectiveRole === USER_ROLES.GALLERY) {
           // Verify the gallery profile belongs to this user OR user is a gallery member
           try {
-            const { data: profile } = await client
+            const { data: profile } = await (client as any)
               .from('user_profiles')
               .select('id, user_id, role')
               .eq('id', galleryProfileId)
@@ -226,7 +260,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               let isMember = false;
               
               if (!isOwner) {
-                const { data: member } = await client
+                const { data: member } = await (client as any)
                   .from('gallery_members')
                   .select('id')
                   .eq('gallery_profile_id', galleryProfileId)
@@ -259,10 +293,25 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             error,
           });
           
-          // Check if error is about missing is_public column
-          if (error.message?.includes('is_public') || error.message?.includes('schema cache')) {
+          // Check if error is about missing provenance columns
+          const message = error.message ?? '';
+          if (
+            /schema cache/i.test(message) ||
+            /is_public/i.test(message) ||
+            /dimensions/i.test(message) ||
+            /former_owners/i.test(message) ||
+            /auction_history/i.test(message) ||
+            /exhibition_history/i.test(message) ||
+            /historic_context/i.test(message) ||
+            /celebrity_notes/i.test(message) ||
+            /value(_is_public)?/i.test(message) ||
+            /edition/i.test(message) ||
+            /production_location/i.test(message) ||
+            /owned_by/i.test(message) ||
+            /sold_by/i.test(message)
+          ) {
             errors.push(
-              `Database migration required: Please run the migration to add the is_public column. ` +
+              `Database migration required: Please run the migration to add the artwork/provenance columns. ` +
               `Run: cd makerkit/nextjs-saas-starter-kit-lite/apps/web && supabase db push`
             );
           } else {
@@ -276,7 +325,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           if ((effectiveRole === USER_ROLES.GALLERY || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
             try {
               // Check if unclaimed profile already exists for this artist name
-              const { data: existingProfile } = await client
+              const { data: existingProfile } = await (client as any)
                 .from('user_profiles')
                 .select('id')
                 .eq('name', artistName.trim())
@@ -287,7 +336,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               
               // Only create if it doesn't exist
               if (!existingProfile) {
-                const { error: profileError } = await client
+                const { error: profileError } = await (client as any)
                   .from('user_profiles')
                   .insert({
                     user_id: null, // Unclaimed profile
@@ -295,7 +344,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
                     name: artistName.trim(),
                     medium: medium?.trim() || null,
                     is_claimed: false,
-                    created_by_gallery_id: userRole === USER_ROLES.GALLERY ? userId : null,
+                    created_by_gallery_id: effectiveRole === USER_ROLES.GALLERY ? userId : null,
                     is_active: true,
                   });
                 if (profileError && profileError.code !== '23505') {
@@ -468,7 +517,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 }
 
 async function generateCertificateNumber(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: any,
 ): Promise<string> {
   try {
     const { data, error } = await client.rpc('generate_certificate_number');

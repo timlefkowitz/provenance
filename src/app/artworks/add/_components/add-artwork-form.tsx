@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CreateExhibitionDialog } from './create-exhibition-dialog';
 import type { PastArtist } from '../_actions/get-past-artists';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@kit/ui/accordion';
+import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
 
 type ImagePreview = {
   id?: string;
@@ -292,6 +294,21 @@ export function AddArtworkForm({
     isPublic: true, // Default to public
     exhibitionId: '',
     galleryProfileId: '',
+    // Provenance (mirrors the fields available on the edit provenance page)
+    dimensions: '',
+    formerOwners: '',
+    auctionHistory: '',
+    exhibitionHistory: '',
+    historicContext: '',
+    celebrityNotes: '',
+    value: '',
+    valueIsPublic: false,
+    edition: '',
+    productionLocation: '',
+    ownedBy: '',
+    ownedByIsPublic: false,
+    soldBy: '',
+    soldByIsPublic: false,
   });
 
   // Update local exhibitions when prop changes
@@ -561,6 +578,20 @@ export function AddArtworkForm({
           formDataToSend.append('medium', formData.medium);
           formDataToSend.append('creationDate', formData.creationDate);
           formDataToSend.append('isPublic', formData.isPublic.toString());
+          formDataToSend.append('dimensions', formData.dimensions);
+          formDataToSend.append('formerOwners', formData.formerOwners);
+          formDataToSend.append('auctionHistory', formData.auctionHistory);
+          formDataToSend.append('exhibitionHistory', formData.exhibitionHistory);
+          formDataToSend.append('historicContext', formData.historicContext);
+          formDataToSend.append('celebrityNotes', formData.celebrityNotes);
+          formDataToSend.append('value', formData.value);
+          formDataToSend.append('valueIsPublic', formData.valueIsPublic.toString());
+          formDataToSend.append('edition', formData.edition);
+          formDataToSend.append('productionLocation', formData.productionLocation);
+          formDataToSend.append('ownedBy', formData.ownedBy);
+          formDataToSend.append('ownedByIsPublic', formData.ownedByIsPublic.toString());
+          formDataToSend.append('soldBy', formData.soldBy);
+          formDataToSend.append('soldByIsPublic', formData.soldByIsPublic.toString());
 
           if (userAgent) {
             formDataToSend.append('debugUserAgent', userAgent);
@@ -906,6 +937,251 @@ export function AddArtworkForm({
           This description will be applied to all artworks
         </p>
       </div>
+
+      {/* Provenance (collapsed by default, expanded on demand) */}
+      <Accordion
+        type="single"
+        collapsible
+        className="border border-wine/20 rounded-lg bg-parchment/50 px-4 py-2"
+      >
+        <AccordionItem value="ownedBy">
+          <AccordionTrigger className="font-serif">
+            <span className="flex items-center gap-2">
+              <span>Owned By</span>
+              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
+                {formData.ownedBy.trim() ? formData.ownedBy.trim() : 'Optional'}
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              <Label htmlFor="ownedBy">Owned By</Label>
+              <Input
+                id="ownedBy"
+                value={formData.ownedBy}
+                onChange={(e) => setFormData({ ...formData, ownedBy: e.target.value })}
+                placeholder="Current owner name or collection"
+                className="font-serif"
+              />
+              <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+                <div className="space-y-0.5">
+                  <Label htmlFor="ownedByIsPublic" className="text-sm font-serif">
+                    Make ownership public
+                  </Label>
+                  <p className="text-xs text-ink/60 font-serif">
+                    By default, ownership information is private and only visible to you.
+                  </p>
+                </div>
+                <Switch
+                  id="ownedByIsPublic"
+                  checked={formData.ownedByIsPublic}
+                  onCheckedChange={(checked) => setFormData({ ...formData, ownedByIsPublic: checked })}
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="soldBy">
+          <AccordionTrigger className="font-serif">
+            <span className="flex items-center gap-2">
+              <span>Sold By</span>
+              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
+                {formData.soldBy.trim() ? formData.soldBy.trim() : 'Optional'}
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              <Label htmlFor="soldBy">Sold By</Label>
+              <Input
+                id="soldBy"
+                value={formData.soldBy}
+                onChange={(e) => setFormData({ ...formData, soldBy: e.target.value })}
+                placeholder="Gallery, dealer, or seller name"
+                className="font-serif"
+              />
+              <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+                <div className="space-y-0.5">
+                  <Label htmlFor="soldByIsPublic" className="text-sm font-serif">
+                    Make seller information public
+                  </Label>
+                  <p className="text-xs text-ink/60 font-serif">
+                    By default, seller information is private and only visible to you.
+                  </p>
+                </div>
+                <Switch
+                  id="soldByIsPublic"
+                  checked={formData.soldByIsPublic}
+                  onCheckedChange={(checked) => setFormData({ ...formData, soldByIsPublic: checked })}
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="auctionHistory">
+          <AccordionTrigger className="font-serif">
+            <span className="flex items-center gap-2">
+              <span>Auction History</span>
+              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
+                {formData.auctionHistory.trim() ? formData.auctionHistory.trim() : 'Optional'}
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              <Label htmlFor="auctionHistory">Auction History</Label>
+              <Textarea
+                id="auctionHistory"
+                value={formData.auctionHistory}
+                onChange={(e) => setFormData({ ...formData, auctionHistory: e.target.value })}
+                placeholder="Records of previous sales at auction houses including dates and lot numbers (e.g., Sotheby's, New York, May 15, 2010, Lot 45; Christie's, London, November 20, 2015, Lot 123)"
+                rows={4}
+                className="font-serif"
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="exhibitionHistory">
+          <AccordionTrigger className="font-serif">
+            <span className="flex items-center gap-2">
+              <span>Exhibition History / Literature References</span>
+              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
+                {formData.exhibitionHistory.trim() ? formData.exhibitionHistory.trim() : 'Optional'}
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              <Label htmlFor="exhibitionHistory">Exhibition History / Literature References</Label>
+              <GallerySelector
+                value={formData.exhibitionHistory}
+                onChange={(value) => setFormData({ ...formData, exhibitionHistory: value })}
+              />
+              <Textarea
+                id="exhibitionHistory"
+                value={formData.exhibitionHistory}
+                onChange={(e) => setFormData({ ...formData, exhibitionHistory: e.target.value })}
+                placeholder="List exhibitions where the work has been shown or publications where it has been discussed..."
+                rows={4}
+                className="font-serif"
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="moreProvenance">
+          <AccordionTrigger className="font-serif">
+            <span className="flex items-center gap-2">
+              <span>More Provenance Details</span>
+              <span className="text-xs text-ink/60 font-serif truncate">Optional</span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-6 pt-1">
+              <div className="space-y-2">
+                <Label htmlFor="dimensions">Dimensions</Label>
+                <Input
+                  id="dimensions"
+                  value={formData.dimensions}
+                  onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                  placeholder="e.g., 24 x 36 inches"
+                  className="font-serif"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="formerOwners">Former Owners</Label>
+                <Textarea
+                  id="formerOwners"
+                  value={formData.formerOwners}
+                  onChange={(e) => setFormData({ ...formData, formerOwners: e.target.value })}
+                  placeholder="List prominent collectors, estates, galleries, or institutions that previously held the work..."
+                  rows={4}
+                  className="font-serif"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="value">Value</Label>
+                <div className="space-y-2">
+                  <Input
+                    id="value"
+                    value={formData.value}
+                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                    placeholder="e.g., $50,000 USD"
+                    className="font-serif"
+                  />
+                  <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="valueIsPublic" className="text-sm font-serif">
+                        Make value public
+                      </Label>
+                      <p className="text-xs text-ink/60 font-serif">
+                        By default, value is private and only visible to you.
+                      </p>
+                    </div>
+                    <Switch
+                      id="valueIsPublic"
+                      checked={formData.valueIsPublic}
+                      onCheckedChange={(checked) => setFormData({ ...formData, valueIsPublic: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="edition">Edition</Label>
+                  <Input
+                    id="edition"
+                    value={formData.edition}
+                    onChange={(e) => setFormData({ ...formData, edition: e.target.value })}
+                    placeholder="e.g., 1/10, Limited Edition, Unique, AP (Artist's Proof)"
+                    className="font-serif"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productionLocation">Production Location</Label>
+                  <Input
+                    id="productionLocation"
+                    value={formData.productionLocation}
+                    onChange={(e) => setFormData({ ...formData, productionLocation: e.target.value })}
+                    placeholder="e.g., Paris, France or Studio Name, City, Country"
+                    className="font-serif"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="historicContext">Historic Context / Origin Information</Label>
+                <Textarea
+                  id="historicContext"
+                  value={formData.historicContext}
+                  onChange={(e) => setFormData({ ...formData, historicContext: e.target.value })}
+                  placeholder="How and where the work was acquired originally, including any notable historical context..."
+                  rows={4}
+                  className="font-serif"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="celebrityNotes">Special Notes on Celebrity or Notable Ownership</Label>
+                <Textarea
+                  id="celebrityNotes"
+                  value={formData.celebrityNotes}
+                  onChange={(e) => setFormData({ ...formData, celebrityNotes: e.target.value })}
+                  placeholder="Highlight any association with famous figures or important collections when relevant..."
+                  rows={4}
+                  className="font-serif"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Gallery Profile Selection (for galleries with multiple profiles) */}
       {userRole === USER_ROLES.GALLERY && galleryProfiles.length > 1 && (
