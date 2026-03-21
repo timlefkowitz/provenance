@@ -3,12 +3,11 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 
 /**
  * Approve or reject an artist profile claim
- * Gallery approves/rejects a claim request from an artist
+ * The account that created the placeholder profile (e.g. gallery or collector) approves or rejects.
  */
 export async function approveArtistProfileClaim(
   claimId: string,
@@ -34,7 +33,7 @@ export async function approveArtistProfileClaim(
       return { error: 'Claim not found' };
     }
 
-    // Verify user is the gallery that created the profile
+    // Verify user is the account that created the placeholder profile (gallery or collector)
     if (claim.gallery_id !== user.id) {
       return { error: 'You are not authorized to approve this claim' };
     }
@@ -43,7 +42,6 @@ export async function approveArtistProfileClaim(
       return { error: 'This claim has already been processed' };
     }
 
-    // Verify user is a gallery
     const { data: account } = await client
       .from('accounts')
       .select('id, public_data, name')
@@ -52,11 +50,6 @@ export async function approveArtistProfileClaim(
 
     if (!account) {
       return { error: 'Account not found' };
-    }
-
-    const userRole = getUserRole(account.public_data as Record<string, any>);
-    if (userRole !== USER_ROLES.GALLERY) {
-      return { error: 'Only galleries can approve artist profile claims' };
     }
 
     // Get the profile
@@ -138,7 +131,7 @@ export async function approveArtistProfileClaim(
           userId: claim.artist_user_id,
           type: 'artist_profile_claim_approved',
           title: `Profile Claim Approved: ${profile.name}`,
-          message: `${account.name || 'A gallery'} has approved your claim for the artist profile "${profile.name}". The profile is now linked to your account.`,
+          message: `${account.name || 'The profile creator'} has approved your claim for the artist profile "${profile.name}". The profile is now linked to your account.`,
           relatedUserId: user.id,
           metadata: {
             profileId: claim.profile_id,
@@ -166,7 +159,7 @@ export async function approveArtistProfileClaim(
           userId: claim.artist_user_id,
           type: 'artist_profile_claim_rejected',
           title: `Profile Claim Rejected: ${profile.name}`,
-          message: `${account.name || 'A gallery'} has rejected your claim for the artist profile "${profile.name}".`,
+          message: `${account.name || 'The profile creator'} has rejected your claim for the artist profile "${profile.name}".`,
           relatedUserId: user.id,
           metadata: {
             profileId: claim.profile_id,

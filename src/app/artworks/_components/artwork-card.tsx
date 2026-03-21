@@ -29,8 +29,9 @@ import { FollowButton } from './follow-button';
 import { FavoriteButton } from './favorite-button';
 import { deleteArtwork } from '../[id]/_actions/delete-artwork';
 import { SignInInvitationDialog } from '~/components/sign-in-invitation-dialog';
+import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 
-type Artwork = {
+export type ArtworkCardArtwork = {
   id: string;
   title: string;
   artist_name: string | null;
@@ -38,7 +39,11 @@ type Artwork = {
   created_at: string;
   certificate_number: string;
   account_id: string;
+  artist_account_id?: string | null;
+  artist_profile_id?: string | null;
 };
+
+type Artwork = ArtworkCardArtwork;
 
 export function ArtworkCard({ 
   artwork, 
@@ -180,22 +185,32 @@ export function ArtworkCard({
             {artwork.title}
           </h3>
         </Link>
-        {artwork.artist_name && (
-          <div className="flex items-center justify-between gap-2">
-            <Link
-              href={`/artists/${artwork.account_id}`}
-              className="text-ink/70 font-serif text-sm hover:text-wine/80 transition-colors"
-            >
-              {artwork.artist_name}
-            </Link>
-            {currentUserId && !isOwnArtwork && (
-              <FollowButton 
-                artistId={artwork.account_id}
-                currentUserId={currentUserId}
-              />
-            )}
-          </div>
-        )}
+        {artwork.artist_name && (() => {
+          const artistHref = getArtistPublicProfileHref({
+            artist_account_id: artwork.artist_account_id ?? null,
+            artist_profile_id: artwork.artist_profile_id ?? null,
+          });
+          return (
+            <div className="flex items-center justify-between gap-2">
+              {artistHref ? (
+                <Link
+                  href={artistHref}
+                  className="text-ink/70 font-serif text-sm hover:text-wine/80 transition-colors"
+                >
+                  {artwork.artist_name}
+                </Link>
+              ) : (
+                <span className="text-ink/70 font-serif text-sm">{artwork.artist_name}</span>
+              )}
+              {currentUserId && !isOwnArtwork && artwork.artist_account_id && (
+                <FollowButton
+                  artistId={artwork.artist_account_id}
+                  currentUserId={currentUserId}
+                />
+              )}
+            </div>
+          );
+        })()}
       </CardHeader>
       <CardFooter className="pt-0 pb-4">
         <div className="flex items-center justify-between w-full text-xs text-ink/50 font-serif">

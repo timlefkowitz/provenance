@@ -19,6 +19,7 @@ import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
 import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { createArtistClaimRequest } from '../../_actions/create-artist-claim-request';
+import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 
 type Artwork = {
   id: string;
@@ -26,6 +27,8 @@ type Artwork = {
   title: string;
   description: string | null;
   artist_name: string | null;
+  artist_account_id?: string | null;
+  artist_profile_id?: string | null;
   creation_date: string | null;
   medium: string | null;
   dimensions: string | null;
@@ -103,6 +106,15 @@ export function CertificateOfAuthenticity({
   }>>(initialScanLocations);
 
   const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
+
+  const artistPublicHref = useMemo(
+    () =>
+      getArtistPublicProfileHref({
+        artist_account_id: artwork.artist_account_id ?? null,
+        artist_profile_id: artwork.artist_profile_id ?? null,
+      }),
+    [artwork.artist_account_id, artwork.artist_profile_id],
+  );
 
   // Check if artwork is already featured on mount (only for admins, and do it lazily)
   useEffect(() => {
@@ -591,12 +603,18 @@ export function CertificateOfAuthenticity({
                 <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
                   Artist
                 </p>
-                <Link
-                  href={`/artists/${artwork.account_id}`}
-                  className="text-lg sm:text-xl font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
-                >
-                  {artwork.artist_name}
-                </Link>
+                {artistPublicHref ? (
+                  <Link
+                    href={artistPublicHref}
+                    className="text-lg sm:text-xl font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                  >
+                    {artwork.artist_name}
+                  </Link>
+                ) : (
+                  <p className="text-lg sm:text-xl font-serif text-wine break-words">
+                    {artwork.artist_name}
+                  </p>
+                )}
               </div>
             )}
 

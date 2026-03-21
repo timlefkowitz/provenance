@@ -9,6 +9,7 @@ import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
+import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -178,32 +179,39 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         // If artist, certificate is verified immediately
         let certificateStatus = 'verified';
         let artistAccountId: string | null = null;
-        
+        let artistProfileId: string | null = null;
+
         if (effectiveRole === USER_ROLES.COLLECTOR || effectiveRole === USER_ROLES.GALLERY) {
           certificateStatus = 'pending_artist_claim';
-          
-          // Try to find artist account by name
-          if (artistName) {
-            try {
-              const { data: artistAccount } = await client
-                .from('accounts')
-                .select('id, public_data')
-                .eq('name', artistName)
-                .single();
-              
-              if (artistAccount) {
-                const artistAccountRole = getUserRole(artistAccount.public_data as Record<string, any>);
-                if (artistAccountRole === USER_ROLES.ARTIST) {
-                  artistAccountId = artistAccount.id;
-                }
-              }
-            } catch (error) {
-              // Artist not found by name, that's okay - they can claim later
-              logger.info('create_artworks_batch_artist_not_found_by_name', {
+          if (artistName?.trim()) {
+            const ensured = await ensureArtistProfileForCertificate({
+              artistName: artistName.trim(),
+              posterAccountId: userId,
+              medium,
+              posterRole: effectiveRole,
+            });
+            artistAccountId = ensured.artistAccountId;
+            artistProfileId = ensured.artistProfileId;
+            if (!ensured.artistAccountId && !ensured.artistProfileId) {
+              logger.info('create_artworks_batch_artist_profile_unresolved', {
                 userId,
-                artistName,
+                artistName: artistName.trim(),
               });
             }
+          }
+        } else if (effectiveRole === USER_ROLES.ARTIST) {
+          artistAccountId = userId;
+          try {
+            const { data: ownArtistProfile } = await (client as any)
+              .from('user_profiles')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('role', USER_ROLES.ARTIST)
+              .eq('is_active', true)
+              .maybeSingle();
+            artistProfileId = ownArtistProfile?.id ?? null;
+          } catch (e) {
+            logger.warn('create_artworks_batch_artist_profile_lookup_failed', { userId, error: e });
           }
         }
 
@@ -221,6 +229,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           certificate_type: certificateType,
           certificate_status: certificateStatus, // New workflow status
           artist_account_id: artistAccountId,
+          artist_profile_id: artistProfileId,
           created_by: userId,
           updated_by: userId,
           metadata: locationData ? { certificate_location: locationData } : {},

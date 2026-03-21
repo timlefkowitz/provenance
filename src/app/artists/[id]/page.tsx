@@ -8,9 +8,18 @@ import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
 import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
-import { getUserProfileByRole, getUserProfileById } from '../../profiles/_actions/get-user-profiles';
+import {
+  getUserProfileByRole,
+  getUserProfileById,
+  accountHasActiveGalleryProfile,
+} from '../../profiles/_actions/get-user-profiles';
 import { Calendar, MapPin, Newspaper } from 'lucide-react';
 import { AccountSettingsButton } from '~/components/account-settings-button';
+import {
+  UnclaimedArtistPublicView,
+  type ExhibitionSummary,
+  type UnclaimedArtistProfileRow,
+} from './_components/unclaimed-artist-public-view';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -45,20 +54,123 @@ export default async function ArtistProfilePage({
     .from('accounts')
     .select('id, name, picture_url, public_data, created_at')
     .eq('id', id)
-    .single<Account>();
+    .maybeSingle<Account>();
 
   if (error || !account) {
-    redirect('/registry');
+    // schema client omits user_profiles / artworks in generated types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = client as any;
+
+    const { data: profileRow } = await sb
+      .from('user_profiles')
+      .select(
+        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active',
+      )
+      .eq('id', id)
+      .eq('role', USER_ROLES.ARTIST)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!profileRow) {
+      redirect('/registry');
+    }
+
+    if (profileRow.user_id) {
+      redirect(`/artists/${profileRow.user_id}`);
+    }
+
+    const profile = profileRow as UnclaimedArtistProfileRow;
+
+    let profileArtworksQuery = sb
+      .from('artworks')
+      .select(
+        'id, title, artist_name, image_url, created_at, certificate_number, account_id, artist_account_id, artist_profile_id, is_public, status',
+      )
+      .eq('artist_profile_id', id)
+      .eq('status', 'verified')
+      .order('created_at', { ascending: false })
+      .limit(48);
+
+    if (!user) {
+      profileArtworksQuery = profileArtworksQuery.eq('is_public', true);
+    } else {
+      profileArtworksQuery = profileArtworksQuery.or(
+        `is_public.eq.true,account_id.eq.${user.id}`,
+      );
+    }
+
+    const { data: profileArtworks } = await profileArtworksQuery;
+
+    const artworkIds = (profileArtworks || []).map((a: { id: string }) => a.id).filter(Boolean);
+    const exhibitions: ExhibitionSummary[] = [];
+
+    if (artworkIds.length > 0) {
+      const { data: exLinks } = await sb
+        .from('exhibition_artworks')
+        .select(
+          `
+          exhibition_id,
+          exhibitions!exhibition_artworks_exhibition_id_fkey (
+            id,
+            title,
+            start_date,
+            end_date,
+            location
+          )
+        `,
+        )
+        .in('artwork_id', artworkIds);
+
+      const seen = new Set<string>();
+      for (const row of exLinks || []) {
+        const ex = row.exhibitions;
+        if (ex?.id && !seen.has(ex.id)) {
+          seen.add(ex.id);
+          exhibitions.push({
+            id: ex.id,
+            title: ex.title,
+            start_date: ex.start_date,
+            end_date: ex.end_date ?? null,
+            location: ex.location ?? null,
+          });
+        }
+      }
+      exhibitions.sort(
+        (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime(),
+      );
+    }
+
+    return (
+      <UnclaimedArtistPublicView
+        profile={profile}
+        artworks={profileArtworks || []}
+        exhibitions={exhibitions}
+        currentUserId={user?.id}
+      />
+    );
   }
 
   const isOwner = user?.id === account.id;
   
-  // Use requested role from query param if provided, otherwise get from account
+  // Resolve role: never honor ?role=gallery unless this account is actually a gallery (account role or gallery profile).
+  const primaryRole = getUserRole(account.public_data as Record<string, any>);
   let userRole: string | null = null;
   if (requestedRole && ['artist', 'collector', 'gallery'].includes(requestedRole)) {
-    userRole = requestedRole;
+    if (requestedRole === USER_ROLES.GALLERY) {
+      const canPresentAsGallery =
+        primaryRole === USER_ROLES.GALLERY ||
+        (await accountHasActiveGalleryProfile(account.id));
+      if (!canPresentAsGallery) {
+        console.warn('[ArtistProfile] Ignoring role=gallery — account has no gallery capability', {
+          accountId: account.id,
+        });
+      }
+      userRole = canPresentAsGallery ? USER_ROLES.GALLERY : primaryRole;
+    } else {
+      userRole = requestedRole;
+    }
   } else {
-    userRole = getUserRole(account.public_data as Record<string, any>);
+    userRole = primaryRole;
   }
   
   const isGallery = userRole === USER_ROLES.GALLERY;
@@ -113,16 +225,28 @@ export default async function ArtistProfilePage({
       artworks = exhibitionArtworks;
     }
   } else {
-    // For artists/collectors, fetch their own artworks
+    // Artists: uploads, works credited via artist_account_id, or legacy profile link; collectors: own uploads only
     let artworksQuery = (client as any)
       .from('artworks')
       .select(
-        'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status',
+        'id, title, artist_name, image_url, created_at, certificate_number, account_id, artist_account_id, artist_profile_id, is_public, status',
       )
-      .eq('account_id', account.id)
       .eq('status', 'verified')
       .order('created_at', { ascending: false })
-      .limit(12); // Reduced from 48 to 12 for faster initial load
+      .limit(12);
+
+    if (userRole === USER_ROLES.ARTIST) {
+      const orParts = [
+        `account_id.eq.${account.id}`,
+        `artist_account_id.eq.${account.id}`,
+      ];
+      if (roleProfile?.id) {
+        orParts.push(`artist_profile_id.eq.${roleProfile.id}`);
+      }
+      artworksQuery = artworksQuery.or(orParts.join(','));
+    } else {
+      artworksQuery = artworksQuery.eq('account_id', account.id);
+    }
 
     if (!isOwner) {
       artworksQuery = artworksQuery.eq('is_public', true);

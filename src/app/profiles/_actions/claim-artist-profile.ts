@@ -51,7 +51,7 @@ export async function claimArtistProfile(profileId: string, message?: string) {
     }
 
     if (!profile.created_by_gallery_id) {
-      return { error: 'This profile cannot be claimed (no gallery creator)' };
+      return { error: 'This profile cannot be claimed (no creator account on file)' };
     }
 
     // Check if user already has an artist profile
@@ -102,7 +102,7 @@ export async function claimArtistProfile(profileId: string, message?: string) {
       return { error: claimError.message || 'Failed to create claim request' };
     }
 
-    // Notify the gallery
+    // Notify whoever created the placeholder profile (gallery or collector)
     try {
       await createNotification({
         userId: profile.created_by_gallery_id,
