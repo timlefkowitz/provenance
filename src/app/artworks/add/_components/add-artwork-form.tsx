@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { track } from '@vercel/analytics';
 import exifr from 'exifr';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -625,6 +626,11 @@ export function AddArtworkForm({
           }
         }
         setUploadProgress(null);
+        track('artwork_upload_completed', {
+          uploadedCount: allArtworkIds.length,
+          attemptedCount: imagePreviews.length,
+          batchCount: chunks.length,
+        });
         if (allArtworkIds.length === 1) {
           router.push(`/artworks/${allArtworkIds[0]}/certificate`);
         } else {
@@ -644,6 +650,11 @@ export function AddArtworkForm({
           uploaded,
           totalImages: imagePreviews.length,
         }, e);
+        track('artwork_upload_failed', {
+          uploadedCount: uploaded,
+          attemptedCount: imagePreviews.length,
+          errorMessage: message.slice(0, 120),
+        });
 
         // Best-effort: send error details to server so we can see them in Vercel logs,
         // even when debugging from mobile without a JS console.

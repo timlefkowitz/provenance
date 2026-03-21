@@ -8,6 +8,7 @@ import { getUserRole, USER_ROLES, getCertificateTypeForRole, isValidRole, type U
 import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
+import { trackUserStreakActivity } from '~/lib/streak-service';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -319,6 +320,20 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         } else if (artwork) {
           artworkIds.push(artwork.id);
+          try {
+            console.log('[Streak] Tracking artwork upload activity for streak');
+            await trackUserStreakActivity(client, {
+              userId,
+              activityType: 'artwork_uploaded',
+            });
+          } catch (streakError) {
+            console.error('[Streak] Failed to track upload streak activity', streakError);
+            logger.error('create_artworks_batch_streak_track_failed', {
+              userId,
+              artworkId: artwork.id,
+              error: streakError,
+            });
+          }
           
           // Create unclaimed artist profile in registry if gallery/collector added artwork with artist name
           // and artist doesn't have an account yet

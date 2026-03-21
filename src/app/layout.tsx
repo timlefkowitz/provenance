@@ -9,6 +9,7 @@ import { Navigation } from "~/components/navigation";
 import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { ClientAnalytics } from "~/components/client-analytics";
+import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 
 const cinzel = Cinzel({
@@ -71,6 +72,7 @@ export default async function RootLayout({
         <RootProviders lang={currentLang}>
           <OnboardingGuard>
             <Navigation />
+            <StreakActivityTracker />
             <GalleryProfileNotification />
             {children}
             <RoleSelectionModal />

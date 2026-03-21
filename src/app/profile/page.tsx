@@ -11,6 +11,8 @@ import {
 import { Button } from '@kit/ui/button';
 import { UnifiedProfileSettingsForm } from '~/components/unified-profile-settings-form';
 import { ProfileArtworksSection } from './_components/profile-artworks-section';
+import { getUserStreak } from './_actions/get-user-streak';
+import { StreakStar } from '~/components/streak-star';
 
 export const metadata = {
   title: 'Profile | Provenance',
@@ -37,6 +39,7 @@ export default async function ProfilePage() {
   const currentLinks = (publicData.links as string[]) || [];
   const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
+  const streak = await getUserStreak(user.id);
 
   // Fetch artworks user owns or can manage (via gallery team membership); RLS enforces access
   const { data: artworks } = await client
@@ -56,6 +59,14 @@ export default async function ProfilePage() {
         <p className="text-ink/70 font-serif">
           Edit your profile information. Your name and medium will be used when creating artworks.
         </p>
+        {streak ? (
+          <div className="mt-4 space-y-1">
+            <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+            <p className="text-xs text-ink/60 font-serif">
+              Longest streak: {streak.longestStreakDays} days. Uploads today: {streak.dailyUploadCount}/3.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex w-full flex-1 flex-col space-y-4">

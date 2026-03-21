@@ -8,6 +8,7 @@ import { sendCertificationEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
+import { trackUserStreakActivity } from '~/lib/streak-service';
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
@@ -125,6 +126,20 @@ export async function createArtwork(formData: FormData, userId: string) {
 
     revalidatePath('/artworks');
     revalidatePath(`/artworks/${artwork.id}`);
+    try {
+      console.log('[Streak] Tracking artwork upload activity for streak');
+      await trackUserStreakActivity(client, {
+        userId,
+        activityType: 'artwork_uploaded',
+      });
+    } catch (streakError) {
+      console.error('[Streak] Failed to track upload streak activity', streakError);
+      logger.error('create_artwork_streak_track_failed', {
+        userId,
+        artworkId: artwork.id,
+        error: streakError,
+      });
+    }
 
     // Send certification email (non-blocking)
     try {
