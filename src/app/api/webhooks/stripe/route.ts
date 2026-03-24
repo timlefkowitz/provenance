@@ -96,6 +96,9 @@ export async function POST(request: NextRequest) {
   const currentPeriodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
     : null;
+  const trialEnd = subscription.trial_end
+    ? new Date(subscription.trial_end * 1000).toISOString()
+    : null;
 
   try {
     const admin = getSupabaseServerAdminClient();
@@ -118,6 +121,7 @@ export async function POST(request: NextRequest) {
             stripe_price_id: priceId,
             status,
             current_period_end: currentPeriodEnd,
+            trial_end: trialEnd,
             role,
             updated_at: new Date().toISOString(),
           },

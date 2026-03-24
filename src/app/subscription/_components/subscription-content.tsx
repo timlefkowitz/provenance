@@ -17,6 +17,7 @@ type SubscriptionRow = {
   role: string;
   status: string;
   current_period_end: string | null;
+  trial_end: string | null;
 } | null;
 
 type Props = {
@@ -69,13 +70,25 @@ export function SubscriptionContent({
 
   const isActiveSubscription = subscription?.status === 'active';
   const isTrialing = subscription?.status === 'trialing';
-  const periodEnd = subscription?.current_period_end
-    ? new Date(subscription.current_period_end).toLocaleDateString(undefined, {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : null;
+
+  function formatLongDate(iso: string | null | undefined) {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  // During Stripe trialing, current_period_end can reflect billing-cycle boundaries; prefer trial_end.
+  const trialEndsOn =
+    isTrialing && subscription
+      ? formatLongDate(subscription.trial_end ?? subscription.current_period_end)
+      : null;
+  const activePeriodEnds =
+    isActiveSubscription && subscription
+      ? formatLongDate(subscription.current_period_end)
+      : null;
 
   async function handleCheckout() {
     setError(null);
@@ -192,9 +205,9 @@ export function SubscriptionContent({
           <CardContent className="space-y-4">
             <p className="font-serif text-ink/80">
               You have an active <strong>{getRoleLabel(subscription.role as UserRole)}</strong> subscription.
-              {periodEnd && (
+              {activePeriodEnds && (
                 <span className="block mt-1 text-sm">
-                  Current period ends {periodEnd}.
+                  Current period ends {activePeriodEnds}.
                 </span>
               )}
             </p>
@@ -222,30 +235,17 @@ export function SubscriptionContent({
               Access to the Toolbox is enabled for your 14-day trial.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {periodEnd && (
+          <CardContent>
+            {trialEndsOn && (
               <p className="font-serif text-ink/80">
-                Your trial ends {periodEnd}.
+                Your trial ends {trialEndsOn}.
               </p>
             )}
-            <Button
-              onClick={handleCheckout}
-              disabled={loading}
-              className="w-full font-serif bg-wine text-parchment hover:bg-wine/90"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Upgrade to continue
-            </Button>
-            <p className="text-xs text-ink/50 font-serif">
-              You can upgrade anytime during your trial.
-            </p>
           </CardContent>
         </Card>
       )}
 
-      {(!isActiveSubscription && !isTrialing) && (
+      {!isActiveSubscription && (
         <>
           <Card className="border-wine/20 bg-parchment/60">
             <CardHeader>
@@ -253,7 +253,9 @@ export function SubscriptionContent({
                 Choose your plan
               </CardTitle>
               <p className="text-sm text-ink/60 font-serif">
-                Professional Artist $10/mo or $99/yr. Collectors and Galleries get the same ~2 months free when you pay yearly.
+                {isTrialing
+                  ? 'Pick Artist, Collector, or Gallery and monthly or yearly billing, then continue to payment.'
+                  : 'Professional Artist $10/mo or $99/yr. Collectors and Galleries get the same ~2 months free when you pay yearly.'}
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -328,15 +330,17 @@ export function SubscriptionContent({
               <Button
                 onClick={handleCheckout}
                 disabled={loading}
-                className="w-full font-serif"
+                className={`w-full font-serif ${isTrialing ? 'bg-wine text-parchment hover:bg-wine/90' : ''}`}
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
-                Proceed to Checkout
+                {isTrialing ? 'Upgrade to continue' : 'Proceed to Checkout'}
               </Button>
               <p className="text-xs text-ink/50">
-                You&apos;ll be redirected to Stripe to complete payment. Card and Apple Pay accepted.
+                {isTrialing
+                  ? "You can upgrade anytime during your trial. You'll complete payment on Stripe."
+                  : "You'll be redirected to Stripe to complete payment. Card and Apple Pay accepted."}
               </p>
             </CardContent>
           </Card>

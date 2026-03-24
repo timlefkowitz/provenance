@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { SubscriptionContent } from './_components/subscription-content';
-import { getUserRole } from '~/lib/user-roles';
+import { getUserRole, isValidRole } from '~/lib/user-roles';
+import type { SubscriptionRole } from '~/lib/stripe-config';
 
 export const metadata = {
   title: 'Subscription | Provenance',
@@ -33,17 +34,26 @@ export default async function SubscriptionPage({
     .eq('id', user.id)
     .single();
 
-  const defaultRole = getUserRole(account?.public_data ?? null);
+  const accountDefaultRole = getUserRole(
+    (account?.public_data as Record<string, unknown> | null) ?? null
+  );
 
   const { data: subscriptionRows } = await (client as any)
     .from('subscriptions')
-    .select('id, role, status, current_period_end')
+    .select('id, role, status, current_period_end, trial_end')
     .eq('user_id', user.id)
     .in('status', ['active', 'trialing'])
     .order('current_period_end', { ascending: false })
     .limit(1);
 
   const subscription = subscriptionRows?.[0] ?? null;
+
+  const defaultRole: SubscriptionRole | null =
+    subscription?.status === 'trialing' &&
+    subscription.role &&
+    isValidRole(subscription.role)
+      ? (subscription.role as SubscriptionRole)
+      : accountDefaultRole;
 
   return (
     <div className="container py-10">

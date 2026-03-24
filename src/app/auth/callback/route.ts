@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
             stripe_price_id: null,
             status: 'trialing',
             current_period_end: trialEndIso,
+            trial_end: trialEndIso,
             role,
             updated_at: nowIso,
           });
