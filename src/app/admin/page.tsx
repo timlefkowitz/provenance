@@ -65,6 +65,26 @@ export default async function AdminPage() {
           </div>
         </div>
 
+        {/* Email templates */}
+        <div className="border-4 border-double border-wine p-6 bg-parchment">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-display font-bold text-wine mb-2">
+                Email templates
+              </h2>
+              <p className="text-ink/70 font-serif text-sm">
+                Edit transactional emails (Markdown), colors, and masthead text.
+              </p>
+            </div>
+            <Button
+              asChild
+              className="bg-wine text-parchment hover:bg-wine/90"
+            >
+              <Link href="/admin/emails">Edit emails</Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Queued Artworks */}
         <div className="border-4 border-double border-wine p-6 bg-parchment">
           <div className="flex items-center justify-between mb-4">
