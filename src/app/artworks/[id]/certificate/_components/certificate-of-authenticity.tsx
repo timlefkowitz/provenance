@@ -141,14 +141,20 @@ export function CertificateOfAuthenticity({
   const client = useSupabase();
   useEffect(() => {
     async function checkClaimAsArtistEligibility() {
-      if (!user.data || !artwork.artist_name) {
+      if (!user.data) {
+        setCanClaimAsArtist(false);
+        return;
+      }
+      const isShowOrOwnership =
+        certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP;
+      if (!isShowOrOwnership) {
         setCanClaimAsArtist(false);
         return;
       }
       try {
         const { data: account } = await client
           .from('accounts')
-          .select('id, name, public_data')
+          .select('id, public_data')
           .eq('id', user.data.id)
           .single();
         if (!account) {
@@ -156,15 +162,15 @@ export function CertificateOfAuthenticity({
           return;
         }
         const userRole = getUserRole(account.public_data as Record<string, any>);
-        const nameMatches = account.name.toLowerCase() === artwork.artist_name!.toLowerCase();
-        setCanClaimAsArtist(userRole === USER_ROLES.ARTIST && nameMatches);
+        // Any artist can request; the certificate owner approves identity. Email completes the CoA.
+        setCanClaimAsArtist(userRole === USER_ROLES.ARTIST);
       } catch (error) {
         console.error('[Certificate] Error checking claim as artist eligibility', error);
         setCanClaimAsArtist(false);
       }
     }
     checkClaimAsArtistEligibility();
-  }, [user.data, artwork.artist_name, client]);
+  }, [user.data, client, certificateType]);
 
   // Handle QR code scan location tracking
   useEffect(() => {

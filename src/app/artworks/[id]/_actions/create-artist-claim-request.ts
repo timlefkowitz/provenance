@@ -62,8 +62,11 @@ export async function createArtistClaimRequest(
       return { success: false, error: 'You cannot claim your own certificate' };
     }
 
-    if (!artwork.artist_name || account.name.toLowerCase() !== artwork.artist_name.toLowerCase()) {
-      return { success: false, error: 'Your name must match the artist name on the certificate to claim as artist' };
+    if (!artwork.artist_name?.trim()) {
+      return {
+        success: false,
+        error: 'This certificate does not list an artist name yet; ask the owner to add it before claiming.',
+      };
     }
 
     const sessionEmail = user.email ? normalizeInviteEmail(user.email) : '';
