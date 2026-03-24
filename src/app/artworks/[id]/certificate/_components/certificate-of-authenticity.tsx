@@ -18,7 +18,8 @@ import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
 import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
-import { createArtistClaimRequest } from '../../_actions/create-artist-claim-request';
+import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
+import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 
 type Artwork = {
@@ -964,20 +965,7 @@ export function CertificateOfAuthenticity({
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
               <div className="flex flex-wrap gap-2 justify-center">
                 {(certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP) && canClaimAsArtist && (
-                  <Button
-                    variant="default"
-                    className="font-serif bg-wine text-parchment hover:bg-wine/90"
-                    disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        const result = await createArtistClaimRequest(artwork.id);
-                        if (result.error) toast.error(result.error);
-                        else toast.success('Claim submitted. The certificate owner will be notified and can accept in their portal.');
-                      });
-                    }}
-                  >
-                    {pending ? 'Submitting…' : 'Claim as Artist'}
-                  </Button>
+                  <ClaimAsArtistDialog artworkId={artwork.id} />
                 )}
                 <EditArtworkDialog 
                   artwork={artwork} 
@@ -993,12 +981,20 @@ export function CertificateOfAuthenticity({
           {/* Edit Button (for owners) */}
           {isOwner && user.data && (
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
-              <EditArtworkDialog 
-                artwork={artwork} 
-                isCreator={true}
-                exhibition={exhibition}
-                creatorInfo={creatorInfo}
-              />
+              <div className="flex flex-wrap gap-2 justify-center">
+                {certificateType === CERTIFICATE_TYPES.AUTHENTICITY && (
+                  <InviteCooFromCoaDialog
+                    artworkId={artwork.id}
+                    artworkTitle={artwork.title || 'Untitled'}
+                  />
+                )}
+                <EditArtworkDialog 
+                  artwork={artwork} 
+                  isCreator={true}
+                  exhibition={exhibition}
+                  creatorInfo={creatorInfo}
+                />
+              </div>
             </div>
           )}
 

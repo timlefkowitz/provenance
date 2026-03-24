@@ -311,6 +311,7 @@ export function AddArtworkForm({
     ownedByIsPublic: false,
     soldBy: '',
     soldByIsPublic: false,
+    sourceCoaCertificateNumber: '',
   });
 
   // Update local exhibitions when prop changes
@@ -335,10 +336,10 @@ export function AddArtworkForm({
         galleryProfileId: galleryProfiles[0].id,
       }));
     } else if (userRole !== USER_ROLES.GALLERY) {
-      // Clear gallery profile selection if not in gallery mode
       setFormData(prev => ({
         ...prev,
         galleryProfileId: '',
+        sourceCoaCertificateNumber: '',
       }));
     }
   }, [userRole, galleryProfiles, formData.galleryProfileId]);
@@ -608,6 +609,12 @@ export function AddArtworkForm({
           if (formData.galleryProfileId) formDataToSend.append('galleryProfileId', formData.galleryProfileId);
           // Explicitly tell the server which perspective the user is posting from
           formDataToSend.append('posterRole', userRole ?? '');
+          if (formData.sourceCoaCertificateNumber.trim()) {
+            formDataToSend.append(
+              'sourceCoaCertificateNumber',
+              formData.sourceCoaCertificateNumber.trim(),
+            );
+          }
 
           const result = await createArtworksBatch(formDataToSend, userId);
 
@@ -1205,6 +1212,25 @@ export function AddArtworkForm({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {userRole === USER_ROLES.GALLERY && (
+        <div className="space-y-2">
+          <Label htmlFor="sourceCoaCertificateNumber">Link to Certificate of Authenticity (optional)</Label>
+          <Input
+            id="sourceCoaCertificateNumber"
+            value={formData.sourceCoaCertificateNumber}
+            onChange={(e) =>
+              setFormData({ ...formData, sourceCoaCertificateNumber: e.target.value })
+            }
+            placeholder="e.g. PROV-XXXXXXXX"
+            className="font-serif"
+          />
+          <p className="text-xs text-ink/60 font-serif">
+            Enter an artist&apos;s verified certificate number to copy provenance and link this
+            Certificate of Show to that work.
+          </p>
+        </div>
+      )}
 
       {/* Gallery Profile Selection (for galleries with multiple profiles) */}
       {userRole === USER_ROLES.GALLERY && galleryProfiles.length > 1 && (

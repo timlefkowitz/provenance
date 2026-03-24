@@ -4,7 +4,14 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
-import { getUserRole, USER_ROLES, getCertificateTypeForRole, isValidRole, type UserRole } from '~/lib/user-roles';
+import {
+  getUserRole,
+  USER_ROLES,
+  getCertificateTypeForRole,
+  isValidRole,
+  type UserRole,
+  CERTIFICATE_TYPES,
+} from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
@@ -46,6 +53,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const ownedByIsPublic = formData.get('ownedByIsPublic') === 'true';
     const soldBy = formData.get('soldBy') as string || '';
     const soldByIsPublic = formData.get('soldByIsPublic') === 'true';
+    const sourceCoaCertificateNumber = (formData.get('sourceCoaCertificateNumber') as string)?.trim() || '';
 
     logger.info('artwork_post_request_received', {
       userId,
@@ -61,6 +69,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       hasSoldBy: Boolean(soldBy.trim()),
       hasAuctionHistory: Boolean(auctionHistory.trim()),
       hasExhibitionHistory: Boolean(exhibitionHistory.trim()),
+      hasSourceCoa: Boolean(sourceCoaCertificateNumber),
       posterRole: posterRoleRaw || 'none',
       debugUserAgent,
       debugPlatform,
@@ -131,6 +140,33 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     }
 
     const effectiveRole: UserRole | null = posterRole ?? accountRole;
+
+    let sourceCoaRow: Record<string, unknown> | null = null;
+    if (sourceCoaCertificateNumber) {
+      if (effectiveRole !== USER_ROLES.GALLERY) {
+        return { error: 'Linking to an existing Certificate of Authenticity is only available when posting as a gallery.' };
+      }
+      const { data: src, error: srcErr } = await (client as any)
+        .from('artworks')
+        .select('*')
+        .eq('certificate_number', sourceCoaCertificateNumber)
+        .eq('certificate_type', CERTIFICATE_TYPES.AUTHENTICITY)
+        .eq('status', 'verified')
+        .maybeSingle();
+
+      if (srcErr || !src) {
+        logger.error('create_artworks_batch_source_coa_lookup_failed', {
+          sourceCoaCertificateNumber,
+          error: srcErr,
+        });
+        return {
+          error:
+            'Could not find a verified Certificate of Authenticity with that certificate number.',
+        };
+      }
+      sourceCoaRow = src as Record<string, unknown>;
+      console.log('[Certificates] createArtworksBatch linked to source COA', { sourceId: src.id });
+    }
 
     logger.info('artwork_post_start', {
       role: effectiveRole || accountRole || 'unknown',
@@ -287,6 +323,36 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           } catch (error) {
             console.warn('Invalid gallery profile ID provided, continuing without it:', error);
           }
+        }
+
+        if (sourceCoaRow) {
+          const s = sourceCoaRow as Record<string, any>;
+          insertData.source_artwork_id = s.id;
+          insertData.title = title.trim() || s.title || insertData.title;
+          insertData.description = description || s.description || '';
+          insertData.artist_name = artistName || s.artist_name;
+          insertData.medium = medium || s.medium;
+          insertData.creation_date = creationDate || s.creation_date;
+          insertData.dimensions = dimensions || s.dimensions;
+          insertData.former_owners = formerOwners || s.former_owners;
+          insertData.auction_history = auctionHistory || s.auction_history;
+          insertData.exhibition_history = exhibitionHistory || s.exhibition_history;
+          insertData.historic_context = historicContext || s.historic_context;
+          insertData.celebrity_notes = celebrityNotes || s.celebrity_notes;
+          insertData.value = value || s.value;
+          insertData.value_is_public = valueIsPublic ?? s.value_is_public;
+          insertData.edition = edition || s.edition;
+          insertData.production_location = productionLocation || s.production_location;
+          insertData.owned_by = ownedBy || s.owned_by;
+          insertData.owned_by_is_public = ownedByIsPublic ?? s.owned_by_is_public;
+          insertData.sold_by = soldBy || s.sold_by;
+          insertData.sold_by_is_public = soldByIsPublic ?? s.sold_by_is_public;
+          if (s.artist_account_id) insertData.artist_account_id = s.artist_account_id;
+          if (s.artist_profile_id) insertData.artist_profile_id = s.artist_profile_id;
+          const metaA =
+            insertData.metadata && typeof insertData.metadata === 'object' ? insertData.metadata : {};
+          const metaB = s.metadata && typeof s.metadata === 'object' ? s.metadata : {};
+          insertData.metadata = { ...metaB, ...metaA };
         }
 
         const { data: artwork, error } = await (client as any)

@@ -133,7 +133,7 @@ export function ProvenanceUpdateRequestsList({
                           Claim as Artist
                         </p>
                         <p className="text-xs text-ink/70 font-serif mt-1">
-                          This artist is claiming to be the artist of this work. If you accept, they will receive a Certificate of Authenticity linked to this certificate.
+                          This artist is claiming to be the artist of this work. If you accept, we email them a link to complete their Certificate of Authenticity linked to this certificate.
                         </p>
                       </div>
                     ) : (
@@ -171,7 +171,7 @@ export function ProvenanceUpdateRequestsList({
               {selectedRequest?.request_type === 'ownership_request'
                 ? `Review the ownership request for "${selectedRequest?.artwork.title}". If approved, ownership will be transferred to the artist.`
                 : selectedRequest?.request_type === 'artist_claim'
-                  ? `Review the artist claim for "${selectedRequest?.artwork.title}". If you accept, the artist will receive their own Certificate of Authenticity linked to this certificate, and you may add your other certificates for this artist to their profile from your portal.`
+                  ? `Review the artist claim for "${selectedRequest?.artwork.title}". If you accept, we send them an email to complete their Certificate of Authenticity linked to this certificate.`
                   : `Review the proposed changes for "${selectedRequest?.artwork.title}"`}
             </DialogDescription>
           </DialogHeader>
@@ -202,11 +202,18 @@ export function ProvenanceUpdateRequestsList({
               ) : selectedRequest.request_type === 'artist_claim' ? (
                 <div>
                   <Label>Claim as Artist</Label>
+                  {(selectedRequest.update_fields as { invite_email?: string })?.invite_email && (
+                    <div className="mt-2 mb-2">
+                      <p className="text-xs text-ink/60 font-serif">Completion email</p>
+                      <p className="text-sm font-serif text-ink">
+                        {(selectedRequest.update_fields as { invite_email?: string }).invite_email}
+                      </p>
+                    </div>
+                  )}
                   <div className="mt-2 p-4 bg-wine/10 border border-wine/30 rounded-md">
                     <p className="text-sm font-serif text-ink">
-                      This artist is claiming to be the artist of this work. If you accept,
-                      they will receive their own Certificate of Authenticity linked to this
-                      certificate. Your other certificates for this artist can be added to
+                      If you accept, we email them a link to sign in and complete their Certificate
+                      of Authenticity. Your other certificates for this artist can be added to
                       their profile from your portal.
                     </p>
                   </div>

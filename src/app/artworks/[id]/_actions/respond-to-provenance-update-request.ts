@@ -7,6 +7,8 @@ import { createNotification } from '~/lib/notifications';
 import { updateProvenance } from '../edit/_actions/update-provenance';
 import { logger } from '~/lib/logger';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { createArtistClaimInviteAfterApproval } from '~/lib/certificate-claims/create-artist-claim-invite';
+import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 
 export async function respondToProvenanceUpdateRequest(
   requestId: string,
@@ -47,9 +49,8 @@ export async function respondToProvenanceUpdateRequest(
     }
 
     if (action === 'approve') {
-      // Handle artist claim: create artist's CoA, link to source, notify other certs
+      // Handle artist claim: create email invite; artist completes CoA via /claim/certificate
       if (request.request_type === 'artist_claim') {
-        const adminClient = getSupabaseServerAdminClient();
         const { data: sourceArtwork, error: sourceError } = await (client as any)
           .from('artworks')
           .select('*')
@@ -61,104 +62,75 @@ export async function respondToProvenanceUpdateRequest(
           return { success: false, error: 'Could not load certificate' };
         }
 
-        const certNumber = await generateCertificateNumber(client);
-        const now = new Date().toISOString();
-        const artistId = request.requested_by;
+        const updateFields = (request.update_fields || {}) as Record<string, unknown>;
+        let inviteeEmail =
+          typeof updateFields.invite_email === 'string' ? updateFields.invite_email : null;
 
-        const { data: newArtwork, error: insertError } = await (adminClient as any)
-          .from('artworks')
-          .insert({
-            account_id: artistId,
-            title: sourceArtwork.title,
-            description: sourceArtwork.description,
-            artist_name: sourceArtwork.artist_name,
-            creation_date: sourceArtwork.creation_date,
-            medium: sourceArtwork.medium,
-            dimensions: sourceArtwork.dimensions,
-            image_url: sourceArtwork.image_url,
-            former_owners: sourceArtwork.former_owners,
-            auction_history: sourceArtwork.auction_history,
-            exhibition_history: sourceArtwork.exhibition_history,
-            historic_context: sourceArtwork.historic_context,
-            celebrity_notes: sourceArtwork.celebrity_notes,
-            value: sourceArtwork.value,
-            value_is_public: sourceArtwork.value_is_public,
-            edition: sourceArtwork.edition,
-            production_location: sourceArtwork.production_location,
-            owned_by: sourceArtwork.owned_by,
-            owned_by_is_public: sourceArtwork.owned_by_is_public,
-            sold_by: sourceArtwork.sold_by,
-            sold_by_is_public: sourceArtwork.sold_by_is_public,
-            metadata: sourceArtwork.metadata || {},
-            certificate_number: certNumber,
-            certificate_type: CERTIFICATE_TYPES.AUTHENTICITY,
-            source_artwork_id: sourceArtwork.id,
-            artist_account_id: artistId,
-            status: 'verified',
-            certificate_status: 'verified',
-            created_by: user.id,
-            updated_by: user.id,
-          })
-          .select('id')
-          .single();
-
-        if (insertError || !newArtwork) {
-          logger.error('artist_claim_create_coa_failed', { requestId, error: insertError });
-          return { success: false, error: 'Failed to create Certificate of Authenticity for the artist' };
+        if (!inviteeEmail) {
+          const adminAuth = getSupabaseServerAdminClient();
+          const { data: authUser, error: authErr } = await adminAuth.auth.admin.getUserById(
+            request.requested_by as string,
+          );
+          if (authErr || !authUser?.user?.email) {
+            logger.error('artist_claim_resolve_email_failed', { requestId, error: authErr });
+            return {
+              success: false,
+              error: 'Could not resolve artist email. Ask them to submit a new claim with an email address.',
+            };
+          }
+          inviteeEmail = authUser.user.email;
         }
 
-        const { error: updateSourceError } = await (client as any)
-          .from('artworks')
-          .update({
-            artist_account_id: artistId,
-            certificate_status: 'verified',
-            claimed_by_artist_at: now,
-            verified_by_owner_at: now,
-            updated_by: user.id,
-          })
-          .eq('id', sourceArtwork.id);
+        inviteeEmail = normalizeInviteEmail(inviteeEmail);
 
-        if (updateSourceError) {
-          logger.error('artist_claim_update_source_failed', { requestId, error: updateSourceError });
-          // CoA already created; don't fail the whole flow
+        const reviewedAt = new Date().toISOString();
+        const { error: approveFirstError } = await (client as any)
+          .from('provenance_update_requests')
+          .update({
+            status: 'approved',
+            reviewed_by: user.id,
+            reviewed_at: reviewedAt,
+            review_message: reviewMessage || null,
+          })
+          .eq('id', requestId);
+
+        if (approveFirstError) {
+          logger.error('artist_claim_approve_before_invite_failed', { requestId, error: approveFirstError });
+          return { success: false, error: 'Failed to update request status' };
+        }
+
+        const inviteResult = await createArtistClaimInviteAfterApproval({
+          sourceArtwork,
+          provenanceUpdateRequestId: requestId,
+          inviteeEmail,
+          reviewerUserId: user.id,
+        });
+
+        if (!inviteResult.success) {
+          await (client as any)
+            .from('provenance_update_requests')
+            .update({
+              status: 'pending',
+              reviewed_by: null,
+              reviewed_at: null,
+              review_message: null,
+            })
+            .eq('id', requestId);
+          return { success: false, error: inviteResult.error || 'Failed to create claim invite' };
         }
 
         try {
           await createNotification({
-            userId: artistId,
+            userId: request.requested_by,
             type: 'artist_claim_approved',
-            title: `Claim accepted: ${sourceArtwork.title}`,
-            message: `Your claim as artist for "${sourceArtwork.title}" was accepted. You now have a Certificate of Authenticity linked to this work.`,
-            artworkId: newArtwork.id,
+            title: `Claim accepted — check your email: ${sourceArtwork.title}`,
+            message: `Your claim as artist for "${sourceArtwork.title}" was accepted. We sent a link to ${inviteeEmail}. Open it and sign in with that email to complete your Certificate of Authenticity.`,
+            artworkId: sourceArtwork.id,
             relatedUserId: user.id,
             metadata: { source_artwork_id: sourceArtwork.id },
           });
         } catch (notifErr) {
           logger.error('artist_claim_notification_artist_failed', { requestId, error: notifErr });
-        }
-
-        const { data: otherCerts } = await (client as any)
-          .from('artworks')
-          .select('id, title')
-          .eq('account_id', user.id)
-          .eq('artist_name', sourceArtwork.artist_name)
-          .in('certificate_type', [CERTIFICATE_TYPES.SHOW, CERTIFICATE_TYPES.OWNERSHIP])
-          .neq('id', sourceArtwork.id);
-
-        if (otherCerts && otherCerts.length > 0) {
-          try {
-            await createNotification({
-              userId: user.id,
-              type: 'artist_claim_other_certificates',
-              title: `Add more certificates for ${sourceArtwork.artist_name}`,
-              message: `An artist claim was accepted for "${sourceArtwork.title}". You have ${otherCerts.length} other certificate(s) for this artist that you can add to their profile from your portal.`,
-              artworkId: sourceArtwork.id,
-              relatedUserId: artistId,
-              metadata: { other_artwork_ids: otherCerts.map((a: any) => a.id) },
-            });
-          } catch (notifErr) {
-            logger.error('artist_claim_notification_owner_other_failed', { requestId, error: notifErr });
-          }
         }
       } else if (request.request_type === 'ownership_request') {
         // Transfer ownership to the requester
@@ -303,25 +275,27 @@ export async function respondToProvenanceUpdateRequest(
         }
       }
 
-      // Update the request status
-      const { error: updateError } = await (client as any)
-        .from('provenance_update_requests')
-        .update({
-          status: 'approved',
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          review_message: reviewMessage || null,
-        })
-        .eq('id', requestId);
+      // Update the request status (artist_claim already approved before invite)
+      if (request.request_type !== 'artist_claim') {
+        const { error: updateError } = await (client as any)
+          .from('provenance_update_requests')
+          .update({
+            status: 'approved',
+            reviewed_by: user.id,
+            reviewed_at: new Date().toISOString(),
+            review_message: reviewMessage || null,
+          })
+          .eq('id', requestId);
 
-      if (updateError) {
-        logger.error('provenance_request_status_update_failed', {
-          requestId,
-          newStatus: 'approved',
-          reviewerId: user.id,
-          error: updateError,
-        });
-        return { success: false, error: 'Failed to update request status' };
+        if (updateError) {
+          logger.error('provenance_request_status_update_failed', {
+            requestId,
+            newStatus: 'approved',
+            reviewerId: user.id,
+            error: updateError,
+          });
+          return { success: false, error: 'Failed to update request status' };
+        }
       }
 
       // Create notification for requester (skip for artist_claim; we already notified in the block)
@@ -426,25 +400,5 @@ export async function respondToProvenanceUpdateRequest(
     });
     return { success: false, error: error.message || 'An unexpected error occurred' };
   }
-}
-
-async function generateCertificateNumber(client: any): Promise<string> {
-  try {
-    const { data, error } = await client.rpc('generate_certificate_number');
-    if (!error && data) return data;
-  } catch (err) {
-    logger.error('generate_certificate_number_failed', { error: err });
-  }
-  let certificateNumber: string;
-  let exists = true;
-  let attempts = 0;
-  while (exists && attempts < 10) {
-    certificateNumber = `PROV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    const { data } = await client.from('artworks').select('id').eq('certificate_number', certificateNumber).single();
-    exists = !!data;
-    attempts++;
-  }
-  if (exists) throw new Error('Failed to generate unique certificate number');
-  return certificateNumber!;
 }
 

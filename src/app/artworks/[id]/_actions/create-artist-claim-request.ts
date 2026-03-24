@@ -5,14 +5,19 @@ import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 
 /**
  * Artist claims a Certificate of Show or Certificate of Ownership as the artist of the work.
- * The certificate owner is notified and can approve; on approval the artist receives
- * their own Certificate of Authenticity linked to this certificate, and the owner
- * is notified about their other certificates for this artist so they can add them.
+ * The certificate owner is notified and can approve; on approval we email the artist to
+ * complete their Certificate of Authenticity (linked to this certificate).
+ *
+ * @param inviteEmail — email that will receive the completion link (defaults to your account email)
  */
-export async function createArtistClaimRequest(artworkId: string): Promise<{ success: boolean; error?: string }> {
+export async function createArtistClaimRequest(
+  artworkId: string,
+  inviteEmail?: string | null,
+): Promise<{ success: boolean; error?: string }> {
   console.log('[ArtistClaim] createArtistClaimRequest started', { artworkId });
   try {
     const client = getSupabaseServerClient();
@@ -61,6 +66,15 @@ export async function createArtistClaimRequest(artworkId: string): Promise<{ suc
       return { success: false, error: 'Your name must match the artist name on the certificate to claim as artist' };
     }
 
+    const sessionEmail = user.email ? normalizeInviteEmail(user.email) : '';
+    const resolvedInviteEmail = inviteEmail?.trim()
+      ? normalizeInviteEmail(inviteEmail)
+      : sessionEmail;
+
+    if (!resolvedInviteEmail || !resolvedInviteEmail.includes('@')) {
+      return { success: false, error: 'Provide an email address to receive your certificate completion link' };
+    }
+
     const { data: existingRequest } = await (client as any)
       .from('provenance_update_requests')
       .select('id')
@@ -79,7 +93,7 @@ export async function createArtistClaimRequest(artworkId: string): Promise<{ suc
       .insert({
         artwork_id: artworkId,
         requested_by: user.id,
-        update_fields: {},
+        update_fields: { invite_email: resolvedInviteEmail },
         request_message: null,
         status: 'pending',
         request_type: 'artist_claim',
@@ -99,7 +113,7 @@ export async function createArtistClaimRequest(artworkId: string): Promise<{ suc
         userId: artwork.account_id,
         type: 'artist_claim_request',
         title: `Artist claim: ${artwork.title}`,
-        message: `${account.name || 'An artist'} is claiming to be the artist of "${artwork.title}". Review the request in your portal to accept. If you accept, they will receive a Certificate of Authenticity linked to this certificate.`,
+        message: `${account.name || 'An artist'} is claiming to be the artist of "${artwork.title}". Review the request in your portal to accept. If you accept, they will receive an email to complete their Certificate of Authenticity linked to this certificate.`,
         artworkId: artwork.id,
         relatedUserId: user.id,
       });
