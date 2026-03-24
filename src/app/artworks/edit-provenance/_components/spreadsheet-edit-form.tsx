@@ -8,11 +8,26 @@ import { Input } from '@kit/ui/input';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
 import { Alert, AlertDescription } from '@kit/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
+
+type LinkableExhibition = {
+  id: string;
+  title: string;
+  start_date: string | null;
+  end_date: string | null;
+};
 
 type Artwork = {
   id: string;
   title: string;
+  certificate_number: string | null;
   artist_name: string | null;
   description: string | null;
   creation_date: string | null;
@@ -36,6 +51,7 @@ type Artwork = {
 };
 
 type ArtworkFormData = {
+  title: string;
   artist_name: string;
   description: string;
   creation_date: string;
@@ -43,6 +59,7 @@ type ArtworkFormData = {
   dimensions: string;
   former_owners: string;
   auction_history: string;
+  exhibition_id: string | null;
   exhibition_history: string;
   historic_context: string;
   celebrity_notes: string;
@@ -57,7 +74,15 @@ type ArtworkFormData = {
   sold_by_is_public: boolean | null;
 };
 
-export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
+export function SpreadsheetEditForm({
+  artworks,
+  linkableExhibitions,
+  initialExhibitionIdByArtworkId,
+}: {
+  artworks: Artwork[];
+  linkableExhibitions: LinkableExhibition[];
+  initialExhibitionIdByArtworkId: Record<string, string | null>;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +91,7 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
       initial[artwork.id] = {
+        title: artwork.title || '',
         artist_name: artwork.artist_name || '',
         description: artwork.description || '',
         creation_date: artwork.creation_date ? artwork.creation_date.split('T')[0] : '',
@@ -73,6 +99,7 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
         dimensions: artwork.dimensions || '',
         former_owners: artwork.former_owners || '',
         auction_history: artwork.auction_history || '',
+        exhibition_id: initialExhibitionIdByArtworkId[artwork.id] ?? null,
         exhibition_history: artwork.exhibition_history || '',
         historic_context: artwork.historic_context || '',
         celebrity_notes: artwork.celebrity_notes || '',
@@ -109,6 +136,17 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
       try {
         const updates: Array<{ artworkId: string; updates: any }> = [];
 
+        for (const artwork of artworks) {
+          const data = artworkData[artwork.id];
+          if (!data) continue;
+          if (!data.title.trim()) {
+            setError(
+              `Title is required. Add a title for the row that currently shows "${artwork.title || 'Untitled'}".`,
+            );
+            return;
+          }
+        }
+
         // Build update objects for each artwork
         for (const artwork of artworks) {
           const data = artworkData[artwork.id];
@@ -117,6 +155,9 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
           const update: any = {};
 
           // Only include fields that have changed from original
+          if (data.title.trim() !== (artwork.title || '')) {
+            update.title = data.title.trim();
+          }
           if (data.artist_name !== (artwork.artist_name || '')) {
             update.artist_name = data.artist_name.trim() || null;
           }
@@ -137,6 +178,11 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
           }
           if (data.auction_history !== (artwork.auction_history || '')) {
             update.auctionHistory = data.auction_history.trim() || null;
+          }
+          const initialExhibitionId =
+            initialExhibitionIdByArtworkId[artwork.id] ?? null;
+          if (data.exhibition_id !== initialExhibitionId) {
+            update.exhibitionId = data.exhibition_id;
           }
           if (data.exhibition_history !== (artwork.exhibition_history || '')) {
             update.exhibitionHistory = data.exhibition_history.trim() || null;
@@ -238,7 +284,7 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
 
       {/* Spreadsheet Table */}
       <div className="overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
-        <table className="w-full min-w-[2000px]">
+        <table className="w-full min-w-[2240px]">
           <thead className="bg-wine/10 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 sticky left-0 bg-wine/10 z-20 min-w-[200px]">
@@ -264,6 +310,9 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
               </th>
               <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
                 Auction History
+              </th>
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[220px]">
+                Exhibition
               </th>
               <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
                 Exhibition History
@@ -311,7 +360,7 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
                         <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden border border-wine/20">
                           <Image
                             src={artwork.image_url}
-                            alt={artwork.title}
+                            alt={data.title || artwork.title}
                             fill
                             className="object-cover"
                             sizes="64px"
@@ -322,10 +371,16 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
                           <span className="text-ink/30 text-xs">No Image</span>
                         </div>
                       )}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-display font-semibold text-wine text-sm truncate">
-                          {artwork.title}
-                        </div>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <Input
+                          value={data.title}
+                          onChange={(e) =>
+                            updateField(artwork.id, 'title', e.target.value)
+                          }
+                          className="font-display font-semibold text-wine text-sm h-8 border-wine/20"
+                          placeholder="Artwork title"
+                          aria-label="Artwork title"
+                        />
                         <div className="text-xs text-ink/60 font-serif truncate">
                           {artwork.certificate_number}
                         </div>
@@ -404,6 +459,78 @@ export function SpreadsheetEditForm({ artworks }: { artworks: Artwork[] }) {
                       placeholder="Auction history"
                       rows={2}
                     />
+                  </td>
+
+                  {/* Exhibition (link to gallery exhibition) */}
+                  <td className="px-3 py-2 border-r border-wine/10 align-top">
+                    {(() => {
+                      const rowOptions = [...linkableExhibitions];
+                      if (
+                        data.exhibition_id &&
+                        !rowOptions.some((e) => e.id === data.exhibition_id)
+                      ) {
+                        rowOptions.unshift({
+                          id: data.exhibition_id,
+                          title: 'Current linked exhibition',
+                          start_date: null,
+                          end_date: null,
+                        });
+                      }
+                      return (
+                        <Select
+                          value={data.exhibition_id ?? '__none__'}
+                          onValueChange={(v) =>
+                            updateField(
+                              artwork.id,
+                              'exhibition_id',
+                              v === '__none__' ? null : v,
+                            )
+                          }
+                          disabled={rowOptions.length === 0}
+                        >
+                          <SelectTrigger
+                            className="font-serif text-sm h-9 border-wine/20 w-[200px]"
+                            aria-label="Link to exhibition"
+                          >
+                            <SelectValue
+                              placeholder={
+                                rowOptions.length === 0
+                                  ? 'No exhibitions'
+                                  : 'Select exhibition'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__" className="font-serif">
+                              None
+                            </SelectItem>
+                            {rowOptions.map((ex) => {
+                              const startDate = ex.start_date
+                                ? new Date(ex.start_date)
+                                : null;
+                              return (
+                                <SelectItem
+                                  key={ex.id}
+                                  value={ex.id}
+                                  className="font-serif"
+                                >
+                                  {ex.title}
+                                  {startDate ? (
+                                    <span className="text-xs text-ink/60 ml-1">
+                                      ({startDate.getFullYear()})
+                                    </span>
+                                  ) : null}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                    <p className="text-[10px] text-ink/50 font-serif mt-1 max-w-[200px] leading-tight">
+                      Gallery exhibitions you can manage. Optional; use Exhibition
+                      History for text notes.
+                    </p>
                   </td>
 
                   {/* Exhibition History */}

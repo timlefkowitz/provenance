@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { SpreadsheetEditForm } from './_components/spreadsheet-edit-form';
 
 export const metadata = {
@@ -43,6 +44,43 @@ export default async function MassEditProvenancePage({
     redirect('/artworks/my');
   }
 
+  const { data: exhibitionLinks } = await client
+    .from('exhibition_artworks')
+    .select('artwork_id, exhibition_id')
+    .in('artwork_id', artworkIds);
+
+  const initialExhibitionIdByArtworkId: Record<string, string | null> = {};
+  for (const id of artworkIds) {
+    initialExhibitionIdByArtworkId[id] = null;
+  }
+  for (const row of exhibitionLinks || []) {
+    const r = row as { artwork_id: string; exhibition_id: string };
+    if (r.artwork_id && r.exhibition_id) {
+      initialExhibitionIdByArtworkId[r.artwork_id] = r.exhibition_id;
+    }
+  }
+
+  let linkableExhibitions = await getUserExhibitions(user.id);
+  const linkableIds = new Set(linkableExhibitions.map((e) => e.id));
+  const linkedIds = new Set(
+    Object.values(initialExhibitionIdByArtworkId).filter(Boolean) as string[],
+  );
+  const missingExhibitionIds = [...linkedIds].filter((id) => !linkableIds.has(id));
+
+  if (missingExhibitionIds.length > 0) {
+    const { data: extraRows } = await (client as any)
+      .from('exhibitions')
+      .select('id, title, start_date, end_date')
+      .in('id', missingExhibitionIds);
+
+    for (const row of extraRows || []) {
+      if (row?.id && !linkableIds.has(row.id)) {
+        linkableExhibitions = [...linkableExhibitions, row];
+        linkableIds.add(row.id);
+      }
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="mb-6">
@@ -54,7 +92,11 @@ export default async function MassEditProvenancePage({
         </p>
       </div>
 
-      <SpreadsheetEditForm artworks={artworks} />
+      <SpreadsheetEditForm
+        artworks={artworks}
+        linkableExhibitions={linkableExhibitions}
+        initialExhibitionIdByArtworkId={initialExhibitionIdByArtworkId}
+      />
     </div>
   );
 }

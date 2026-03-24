@@ -9,6 +9,7 @@ import { logger } from '~/lib/logger';
 export async function batchUpdateProvenance(
   artworkIds: string[],
   provenance: {
+    title?: string;
     artist_name?: string;
     description?: string;
     creationDate?: string;
@@ -28,9 +29,11 @@ export async function batchUpdateProvenance(
     ownedByIsPublic?: boolean;
     soldBy?: string;
     soldByIsPublic?: boolean;
+    exhibitionId?: string | null;
   }
 ): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
   try {
+    console.log('[BatchUpdateProvenance] started', { count: artworkIds.length });
     const client = getSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
 
@@ -100,8 +103,10 @@ export async function batchUpdateProvenance(
       };
     }
 
+    console.log('[BatchUpdateProvenance] completed', { updatedCount: successCount });
     return { success: true, updatedCount: successCount };
   } catch (error) {
+    console.error('[BatchUpdateProvenance] failed', error);
     logger.error('batch_update_provenance_failed', {
       artworkIds,
       error,

@@ -3,7 +3,10 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
-import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
+import {
+  canEditGalleryArtworks,
+  canManageExhibition,
+} from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
 
 export async function updateProvenance(
@@ -186,7 +189,11 @@ export async function updateProvenance(
               .eq('id', newExhibitionId)
               .single();
 
-            if (exhibition && exhibition.gallery_id === user.id) {
+            const canLink =
+              exhibition?.gallery_id &&
+              (await canManageExhibition(user.id, exhibition.gallery_id));
+
+            if (exhibition && canLink) {
               // Add artwork to exhibition (ignore duplicate errors)
               await (client as any)
                 .from('exhibition_artworks')
