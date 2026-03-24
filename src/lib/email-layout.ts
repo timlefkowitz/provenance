@@ -25,19 +25,25 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Matches landing masthead (`src/app/page.tsx`):
+ * title: text-6xl sm:text-8xl → 60px mobile, 96px ≥640px
+ * subtitle: text-xl sm:text-2xl → 20px mobile, 24px ≥640px
+ * both: font-bold / font-light, tracking-tight (-0.025em), font-landing stack
+ */
 export function buildEmailMastheadRows(theme: EmailTheme): string {
   const { wine, inkSubtitle, parchment, fontFamily, mastheadTitle, mastheadSubtitle } = theme;
   return `
   <tr>
     <td align="center" style="padding: 40px 24px 12px; background-color: ${parchment};">
-      <span style="display: block; font-family: ${fontFamily}; font-size: 52px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; color: ${wine}; text-align: center;">
+      <span class="email-masthead-title" style="display: block; font-family: ${fontFamily}; font-size: 60px; line-height: 1.05; font-weight: 700; letter-spacing: -0.025em; color: ${wine}; text-align: center;">
         ${escapeHtml(mastheadTitle)}
       </span>
     </td>
   </tr>
   <tr>
     <td align="center" style="padding: 0 24px 28px; background-color: ${parchment};">
-      <span style="display: block; font-family: ${fontFamily}; font-size: 22px; line-height: 1.35; font-weight: 300; letter-spacing: -0.02em; color: ${inkSubtitle}; text-align: center;">
+      <span class="email-masthead-subtitle" style="display: block; font-family: ${fontFamily}; font-size: 20px; line-height: 1.35; font-weight: 300; letter-spacing: -0.025em; color: ${inkSubtitle}; text-align: center;">
         ${escapeHtml(mastheadSubtitle)}
       </span>
     </td>
@@ -67,6 +73,13 @@ export function buildEmailHtml(pageTitle: string, innerHtml: string, theme: Emai
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>${escapeHtml(pageTitle)}</title>
+  <style type="text/css">
+    /* Match landing: sm breakpoint 640px — text-8xl / text-2xl */
+    @media only screen and (min-width: 640px) {
+      .email-masthead-title { font-size: 96px !important; line-height: 1 !important; }
+      .email-masthead-subtitle { font-size: 24px !important; line-height: 1.3 !important; }
+    }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: ${parchment};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${parchment}" style="width: 100%; background-color: ${parchment}; margin: 0; padding: 0; border-collapse: collapse;">
