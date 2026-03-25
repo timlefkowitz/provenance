@@ -45,6 +45,12 @@ export function Navigation() {
           </Link>
           {user.data && (
             <>
+              <Link
+                href="/artworks/my"
+                className="text-ink hover:text-wine transition-colors font-serif"
+              >
+                Collection
+              </Link>
               <Link 
                 href="/portal" 
                 className="text-ink hover:text-wine transition-colors font-serif"
@@ -218,6 +224,13 @@ export function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Add Artwork
+                </Link>
+                <Link 
+                  href="/artworks/my"
+                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Collection
                 </Link>
                 <Link 
                   href="/portal" 

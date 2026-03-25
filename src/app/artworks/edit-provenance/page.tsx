@@ -4,7 +4,7 @@ import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibit
 import { SpreadsheetEditForm } from './_components/spreadsheet-edit-form';
 
 export const metadata = {
-  title: 'Mass Edit Provenance | Provenance',
+  title: 'Collection Management | Provenance',
 };
 
 export default async function MassEditProvenancePage({
@@ -85,10 +85,10 @@ export default async function MassEditProvenancePage({
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="mb-6">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Mass Edit Provenance
+          Collection Management
         </h1>
         <p className="text-ink/70 font-serif mb-4">
-          Edit provenance information in the spreadsheet below. Each row represents one artwork. Scroll horizontally to see all fields.
+          Select artworks from the horizontal strip, then edit provenance information below.
         </p>
       </div>
 

@@ -74,7 +74,7 @@ export function ProfileArtworksSection({ artworks }: { artworks: Artwork[] }) {
           <div>
             <CardTitle>Your Artworks</CardTitle>
             <CardDescription>
-              Select artworks to create printable tags for art shows.
+              Select artworks to manage your collection or create printable tags.
             </CardDescription>
           </div>
           {selectedArtworkIds.size > 0 && (
@@ -90,7 +90,7 @@ export function ProfileArtworksSection({ artworks }: { artworks: Artwork[] }) {
                 variant="outline"
                 className="font-serif border-wine text-wine hover:bg-wine/10"
               >
-                Edit Provenance ({selectedArtworkIds.size})
+                Collection Management ({selectedArtworkIds.size})
               </Button>
             </div>
           )}

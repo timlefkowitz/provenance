@@ -87,6 +87,7 @@ export function SpreadsheetEditForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [activeArtworkId, setActiveArtworkId] = useState<string>(artworks[0]?.id ?? '');
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -126,6 +127,9 @@ export function SpreadsheetEditForm({
       },
     }));
   };
+
+  const activeArtwork = artworks.find((artwork) => artwork.id === activeArtworkId) ?? artworks[0];
+  const visibleArtworks = activeArtwork ? [activeArtwork] : artworks;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,6 +286,34 @@ export function SpreadsheetEditForm({
         </Alert>
       )}
 
+      <div className="space-y-2">
+        <p className="text-sm text-ink/70 font-serif">
+          Scroll to choose an artwork, then edit its details below.
+        </p>
+        <div className="overflow-x-auto pb-2">
+          <div className="flex gap-2 min-w-max">
+            {artworks.map((artwork) => {
+              const isActive = artwork.id === activeArtwork?.id;
+              return (
+                <Button
+                  key={artwork.id}
+                  type="button"
+                  variant={isActive ? 'default' : 'outline'}
+                  onClick={() => setActiveArtworkId(artwork.id)}
+                  className={
+                    isActive
+                      ? 'bg-wine text-parchment hover:bg-wine/90 font-serif'
+                      : 'font-serif border-wine/30 text-ink hover:bg-wine/10'
+                  }
+                >
+                  {artwork.title || 'Untitled'}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Spreadsheet Table */}
       <div className="overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
         <table className="w-full min-w-[2240px]">
@@ -344,7 +376,7 @@ export function SpreadsheetEditForm({
             </tr>
           </thead>
           <tbody>
-            {artworks.map((artwork, index) => {
+            {visibleArtworks.map((artwork, index) => {
               const data = artworkData[artwork.id];
               if (!data) return null;
 
@@ -646,7 +678,7 @@ export function SpreadsheetEditForm({
           disabled={pending}
           className="bg-wine text-parchment hover:bg-wine/90 font-serif"
         >
-          {pending ? 'Saving...' : `Save All Changes (${artworks.length} artworks)`}
+          {pending ? 'Saving...' : `Save All Changes (${artworks.length} artworks selected)`}
         </Button>
       </div>
     </form>
