@@ -5,7 +5,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
-import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { hashClaimToken, emailsMatch, normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import {
   insertLinkedCertificateOfOwnershipFromCoa,
@@ -145,32 +145,112 @@ export async function consumeCertificateClaim(token: string): Promise<ConsumeCer
       }
 
       const requestId = invite.provenance_update_request_id as string | null;
-      if (!requestId) {
-        return { success: false, error: 'Claim request is missing; contact support' };
+      if (requestId) {
+        const { data: provRequest, error: reqErr } = await (adminClient as any)
+          .from('provenance_update_requests')
+          .select('id, requested_by, status, request_type')
+          .eq('id', requestId)
+          .single();
+
+        if (reqErr || !provRequest || provRequest.request_type !== 'artist_claim') {
+          return { success: false, error: 'Claim request not found' };
+        }
+
+        if (provRequest.status !== 'approved') {
+          return { success: false, error: 'This claim has not been approved yet' };
+        }
+
+        if (provRequest.requested_by !== user.id) {
+          return { success: false, error: 'You must sign in as the artist who submitted this claim' };
+        }
+      } else {
+        const { data: account } = await (client as any)
+          .from('accounts')
+          .select('public_data')
+          .eq('id', user.id)
+          .single();
+
+        if (!account) {
+          return { success: false, error: 'Account not found' };
+        }
+
+        const role = getUserRole(account.public_data as Record<string, unknown>);
+        if (role !== USER_ROLES.ARTIST) {
+          return { success: false, error: 'Only artist accounts can claim this certificate' };
+        }
       }
 
-      const { data: provRequest, error: reqErr } = await (adminClient as any)
-        .from('provenance_update_requests')
-        .select('id, requested_by, status, request_type')
-        .eq('id', requestId)
-        .single();
-
-      if (reqErr || !provRequest || provRequest.request_type !== 'artist_claim') {
-        return { success: false, error: 'Claim request not found' };
-      }
-
-      if (provRequest.status !== 'approved') {
-        return { success: false, error: 'This claim has not been approved yet' };
-      }
-
-      if (provRequest.requested_by !== user.id) {
-        return { success: false, error: 'You must sign in as the artist who submitted this claim' };
-      }
-
-      const { id: newId } = await insertArtistCoaFromSourceCertificate(adminClient, sourceArtwork, {
-        artistAccountId: user.id,
-        createdByUserId: user.id,
+      console.log('[Certificates] consumeCertificateClaim bulk artist claim started', {
+        sourceArtworkId: sourceArtwork.id,
+        ownerId: sourceArtwork.account_id,
       });
+
+      const { data: candidateSources, error: candidateSourcesError } = await (adminClient as any)
+        .from('artworks')
+        .select('*')
+        .eq('account_id', sourceArtwork.account_id as string)
+        .eq('artist_name', sourceArtwork.artist_name)
+        .in('certificate_type', [CERTIFICATE_TYPES.SHOW, CERTIFICATE_TYPES.OWNERSHIP]);
+
+      if (candidateSourcesError) {
+        logger.error('consume_artist_coa_bulk_candidates_failed', { error: candidateSourcesError });
+        return { success: false, error: 'Could not load related certificates for bulk claim' };
+      }
+
+      const candidateIds = (candidateSources ?? []).map((a: { id: string }) => a.id);
+      const { data: existingCoas, error: existingCoasError } = await (adminClient as any)
+        .from('artworks')
+        .select('source_artwork_id')
+        .eq('certificate_type', CERTIFICATE_TYPES.AUTHENTICITY)
+        .eq('artist_account_id', user.id)
+        .in('source_artwork_id', candidateIds);
+
+      if (existingCoasError) {
+        logger.error('consume_artist_coa_bulk_existing_failed', { error: existingCoasError });
+      }
+
+      const existingSourceIds = new Set(
+        (existingCoas ?? [])
+          .map((row: { source_artwork_id?: string | null }) => row.source_artwork_id)
+          .filter(Boolean) as string[],
+      );
+
+      const sourcesToClaim = (candidateSources ?? []).filter(
+        (candidate: { id: string }) => !existingSourceIds.has(candidate.id),
+      );
+
+      if (sourcesToClaim.length === 0) {
+        return { success: false, error: 'These certificates were already claimed for this artist account' };
+      }
+
+      const createdCoaIds: string[] = [];
+      let primaryCoaId: string | null = null;
+
+      for (const sourceCandidate of sourcesToClaim) {
+        try {
+          const { id: createdId } = await insertArtistCoaFromSourceCertificate(adminClient, sourceCandidate, {
+            artistAccountId: user.id,
+            createdByUserId: user.id,
+          });
+          createdCoaIds.push(createdId);
+          if (sourceCandidate.id === (sourceArtwork.id as string)) {
+            primaryCoaId = createdId;
+          }
+        } catch (bulkInsertError) {
+          logger.error('consume_artist_coa_bulk_insert_failed', {
+            sourceArtworkId: sourceCandidate.id,
+            error: bulkInsertError,
+          });
+        }
+      }
+
+      if (!primaryCoaId) {
+        primaryCoaId = createdCoaIds[0] ?? null;
+      }
+
+      if (!primaryCoaId) {
+        return { success: false, error: 'Failed to create Certificate of Authenticity' };
+      }
 
       await (adminClient as any)
         .from('certificate_claim_invites')
@@ -178,7 +258,7 @@ export async function consumeCertificateClaim(token: string): Promise<ConsumeCer
           status: 'consumed',
           consumed_at: new Date().toISOString(),
           consumed_by: user.id,
-          result_artwork_id: newId,
+          result_artwork_id: primaryCoaId,
         })
         .eq('id', invite.id);
 
@@ -187,8 +267,11 @@ export async function consumeCertificateClaim(token: string): Promise<ConsumeCer
           userId: user.id,
           type: 'certificate_verified',
           title: `Certificate of Authenticity ready: ${sourceArtwork.title}`,
-          message: `Your Certificate of Authenticity for "${sourceArtwork.title}" is linked to this work.`,
-          artworkId: newId,
+            message:
+              createdCoaIds.length > 1
+                ? `Your claim completed. We created ${createdCoaIds.length} linked Certificates of Authenticity for this artist under this owner.`
+                : `Your Certificate of Authenticity for "${sourceArtwork.title}" is linked to this work.`,
+            artworkId: primaryCoaId,
           relatedUserId: sourceArtwork.account_id as string,
           metadata: { source_artwork_id: sourceArtwork.id },
         });
@@ -196,33 +279,26 @@ export async function consumeCertificateClaim(token: string): Promise<ConsumeCer
         logger.error('consume_artist_coa_notify_failed', { error: e });
       }
 
-      const { data: otherCerts } = await (adminClient as any)
-        .from('artworks')
-        .select('id, title')
-        .eq('account_id', sourceArtwork.account_id as string)
-        .eq('artist_name', sourceArtwork.artist_name)
-        .in('certificate_type', [CERTIFICATE_TYPES.SHOW, CERTIFICATE_TYPES.OWNERSHIP])
-        .neq('id', sourceArtwork.id);
-
-      if (otherCerts && otherCerts.length > 0) {
+      const autoClaimedAdditionalCount = Math.max(createdCoaIds.length - 1, 0);
+      if (autoClaimedAdditionalCount > 0) {
         try {
           await createNotification({
             userId: sourceArtwork.account_id as string,
             type: 'artist_claim_other_certificates',
-            title: `Add more certificates for ${sourceArtwork.artist_name}`,
-            message: `An artist completed their claim for "${sourceArtwork.title}". You have ${otherCerts.length} other certificate(s) for this artist that you can add to their profile from your portal.`,
+            title: `Auto-claimed certificates for ${sourceArtwork.artist_name}`,
+            message: `The artist claim for "${sourceArtwork.title}" auto-created ${autoClaimedAdditionalCount} additional linked Certificate(s) of Authenticity for this artist.`,
             artworkId: sourceArtwork.id,
             relatedUserId: user.id,
-            metadata: { other_artwork_ids: otherCerts.map((a: { id: string }) => a.id) },
+            metadata: { created_coa_ids: createdCoaIds, total_created: createdCoaIds.length },
           });
         } catch (e) {
-          logger.error('consume_artist_coa_owner_other_notify_failed', { error: e });
+          logger.error('consume_artist_coa_owner_auto_claim_notify_failed', { error: e });
         }
       }
 
       revalidatePath('/portal');
-      revalidatePath(`/artworks/${newId}/certificate`);
-      return { success: true, artworkId: newId };
+      revalidatePath(`/artworks/${primaryCoaId}/certificate`);
+      return { success: true, artworkId: primaryCoaId };
     }
 
     return { success: false, error: 'Unsupported claim type' };

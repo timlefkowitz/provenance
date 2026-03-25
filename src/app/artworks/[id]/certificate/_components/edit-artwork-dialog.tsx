@@ -22,6 +22,8 @@ import { editArtwork } from '../_actions/edit-artwork';
 import type { Artwork } from './certificate-of-authenticity';
 import Image from 'next/image';
 import { X, Upload } from 'lucide-react';
+import { sendArtistClaimInvite } from '../_actions/send-artist-claim-invite';
+import { CERTIFICATE_TYPES, type CertificateType } from '~/lib/user-roles';
 
 type Exhibition = {
   id: string;
@@ -34,7 +36,8 @@ export function EditArtworkDialog({
   artwork, 
   isCreator,
   exhibition,
-  creatorInfo
+  creatorInfo,
+  certificateType,
 }: { 
   artwork: Artwork;
   isCreator: boolean;
@@ -47,6 +50,7 @@ export function EditArtworkDialog({
     gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   } | null;
   creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
+  certificateType?: CertificateType | string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -66,6 +70,7 @@ export function EditArtworkDialog({
     exhibitionGalleryId: exhibition?.gallery?.id || '',
     request_message: '',
   });
+  const [artistInviteEmail, setArtistInviteEmail] = useState('');
 
   // Check if user owns the current exhibition
   const [userOwnsExhibition, setUserOwnsExhibition] = useState(false);
@@ -211,6 +216,9 @@ export function EditArtworkDialog({
     });
   };
 
+  const canInviteArtistFromThisCertificate =
+    certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -318,6 +326,50 @@ export function EditArtworkDialog({
                 className="font-serif"
               />
             </div>
+
+            {isCreator && canInviteArtistFromThisCertificate && (
+              <div className="space-y-2">
+                <Label htmlFor="artist_invite_email">Artist Email</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    id="artist_invite_email"
+                    type="email"
+                    autoComplete="email"
+                    value={artistInviteEmail}
+                    onChange={(e) => setArtistInviteEmail(e.target.value)}
+                    placeholder="artist@example.com"
+                    className="font-serif"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="font-serif border-wine/30 hover:bg-wine/10"
+                    disabled={pending || !artistInviteEmail.trim()}
+                    onClick={() => {
+                      startTransition(async () => {
+                        try {
+                          const result = await sendArtistClaimInvite(artwork.id, artistInviteEmail);
+                          if (!result.success) {
+                            toast.error(result.error || 'Failed to send claim invite');
+                            return;
+                          }
+                          toast.success('Claim email sent. The artist can now click Claim to create a matching Certificate of Authenticity.');
+                          setArtistInviteEmail('');
+                        } catch (error) {
+                          console.error('[Certificates] EditArtworkDialog sendArtistClaimInvite failed', error);
+                          toast.error('Failed to send claim invite');
+                        }
+                      });
+                    }}
+                  >
+                    {pending ? 'Sending...' : 'Send claim invite'}
+                  </Button>
+                </div>
+                <p className="text-xs text-ink/60 font-serif">
+                  Sends a secure claim link. The artist signs in with this email and creates a linked Certificate of Authenticity.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="created_at">Date Certified</Label>

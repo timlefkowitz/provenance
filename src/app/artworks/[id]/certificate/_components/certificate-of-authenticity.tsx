@@ -978,6 +978,7 @@ export function CertificateOfAuthenticity({
                   isCreator={false}
                   exhibition={exhibition}
                   creatorInfo={creatorInfo}
+                  certificateType={certificateType}
                 />
                 <RequestUpdateDialog artwork={artwork} />
               </div>
@@ -999,6 +1000,7 @@ export function CertificateOfAuthenticity({
                   isCreator={true}
                   exhibition={exhibition}
                   creatorInfo={creatorInfo}
+                  certificateType={certificateType}
                 />
               </div>
             </div>
