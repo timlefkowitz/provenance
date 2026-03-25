@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { Check } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Textarea } from '@kit/ui/textarea';
@@ -87,7 +88,12 @@ export function SpreadsheetEditForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [activeArtworkId, setActiveArtworkId] = useState<string>(artworks[0]?.id ?? '');
+  const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(() => {
+    if (artworks.length === 0) {
+      return new Set();
+    }
+    return new Set([artworks[0].id]);
+  });
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -128,8 +134,29 @@ export function SpreadsheetEditForm({
     }));
   };
 
-  const activeArtwork = artworks.find((artwork) => artwork.id === activeArtworkId) ?? artworks[0];
-  const visibleArtworks = activeArtwork ? [activeArtwork] : artworks;
+  const visibleArtworks = artworks.filter((artwork) =>
+    selectedArtworkIds.has(artwork.id),
+  );
+
+  const toggleArtworkSelection = (artworkId: string) => {
+    setSelectedArtworkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artworkId)) {
+        next.delete(artworkId);
+      } else {
+        next.add(artworkId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedArtworkIds(new Set(artworks.map((artwork) => artwork.id)));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedArtworkIds(new Set());
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,8 +166,14 @@ export function SpreadsheetEditForm({
     startTransition(async () => {
       try {
         const updates: Array<{ artworkId: string; updates: any }> = [];
+        const targetArtworks = visibleArtworks;
 
-        for (const artwork of artworks) {
+        if (targetArtworks.length === 0) {
+          setError('Select at least one artwork to edit.');
+          return;
+        }
+
+        for (const artwork of targetArtworks) {
           const data = artworkData[artwork.id];
           if (!data) continue;
           if (!data.title.trim()) {
@@ -152,7 +185,7 @@ export function SpreadsheetEditForm({
         }
 
         // Build update objects for each artwork
-        for (const artwork of artworks) {
+        for (const artwork of targetArtworks) {
           const data = artworkData[artwork.id];
           if (!data) continue;
 
@@ -293,18 +326,18 @@ export function SpreadsheetEditForm({
         <div className="overflow-x-auto pb-2">
           <div className="flex gap-3 min-w-max">
             {artworks.map((artwork) => {
-              const isActive = artwork.id === activeArtwork?.id;
+              const isSelected = selectedArtworkIds.has(artwork.id);
               return (
                 <button
                   key={artwork.id}
                   type="button"
-                  onClick={() => setActiveArtworkId(artwork.id)}
+                  onClick={() => toggleArtworkSelection(artwork.id)}
                   className={`w-[132px] p-2 rounded-md border text-left transition-colors ${
-                    isActive
+                    isSelected
                       ? 'border-wine bg-wine/10'
-                      : 'border-wine/25 bg-parchment hover:bg-wine/5'
+                      : 'border-wine/25 bg-parchment hover:bg-wine/5 opacity-70'
                   }`}
-                  aria-pressed={isActive}
+                  aria-pressed={isSelected}
                 >
                   <div className="relative w-full h-[92px] rounded overflow-hidden border border-wine/20 bg-ink/5">
                     {artwork.image_url ? (
@@ -320,6 +353,11 @@ export function SpreadsheetEditForm({
                         <span className="text-ink/40 text-xs font-serif">No Image</span>
                       </div>
                     )}
+                    {isSelected ? (
+                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-wine text-parchment flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-xs font-serif text-ink truncate">
                     {artwork.title || 'Untitled'}
@@ -329,10 +367,40 @@ export function SpreadsheetEditForm({
             })}
           </div>
         </div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-ink/60 font-serif">
+            {visibleArtworks.length} selected of {artworks.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSelectAll}
+              className="h-7 px-2 text-xs font-serif"
+            >
+              Select all
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearSelection}
+              className="h-7 px-2 text-xs font-serif"
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Spreadsheet Table */}
       <div className="overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
+        {visibleArtworks.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-ink/70 font-serif">
+              Select one or more artworks above to edit.
+            </p>
+          </div>
+        ) : (
         <table className="w-full min-w-[2240px]">
           <thead className="bg-wine/10 sticky top-0 z-10">
             <tr>
@@ -677,6 +745,7 @@ export function SpreadsheetEditForm({
             })}
           </tbody>
         </table>
+        )}
       </div>
 
       {/* Submit Button */}
@@ -692,10 +761,12 @@ export function SpreadsheetEditForm({
         </Button>
         <Button
           type="submit"
-          disabled={pending}
+          disabled={pending || visibleArtworks.length === 0}
           className="bg-wine text-parchment hover:bg-wine/90 font-serif"
         >
-          {pending ? 'Saving...' : `Save All Changes (${artworks.length} artworks selected)`}
+          {pending
+            ? 'Saving...'
+            : `Save All Changes (${visibleArtworks.length} artworks selected)`}
         </Button>
       </div>
     </form>
