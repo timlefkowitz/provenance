@@ -9,6 +9,21 @@ import {
 } from '~/lib/stripe-config';
 import { isValidRole } from '~/lib/user-roles';
 
+const PRICE_ENV_KEYS: Record<SubscriptionRole, Record<SubscriptionInterval, string>> = {
+  artist: {
+    month: 'STRIPE_PRICE_ARTIST_MONTHLY',
+    year: 'STRIPE_PRICE_ARTIST_YEARLY',
+  },
+  collector: {
+    month: 'STRIPE_PRICE_COLLECTOR_MONTHLY',
+    year: 'STRIPE_PRICE_COLLECTOR_YEARLY',
+  },
+  gallery: {
+    month: 'STRIPE_PRICE_GALLERY_MONTHLY',
+    year: 'STRIPE_PRICE_GALLERY_YEARLY',
+  },
+};
+
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key || typeof key !== 'string') {
@@ -76,6 +91,30 @@ export async function POST(request: NextRequest) {
             'Billing not configured. Add STRIPE_SECRET_KEY (and Stripe price IDs) to your deployment environment (e.g. Vercel → Project → Settings → Environment Variables).',
         },
         { status: 503 }
+      );
+    }
+
+    console.log('[Stripe] Validating selected price', {
+      role,
+      interval: intervalNorm,
+      priceId,
+    });
+    const selectedPrice = await stripe.prices.retrieve(priceId);
+    if (!selectedPrice.recurring) {
+      const envKey = PRICE_ENV_KEYS[role as SubscriptionRole][
+        intervalNorm as SubscriptionInterval
+      ];
+      console.error('[Stripe] Non-recurring price used for subscription mode', {
+        role,
+        interval: intervalNorm,
+        priceId,
+        envKey,
+      });
+      return NextResponse.json(
+        {
+          error: `Invalid ${intervalNorm} plan configuration for ${role}. ${envKey} must be a recurring Stripe price (not one-time).`,
+        },
+        { status: 400 }
       );
     }
 
