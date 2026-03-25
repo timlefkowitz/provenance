@@ -291,23 +291,40 @@ export function SpreadsheetEditForm({
           Scroll to choose an artwork, then edit its details below.
         </p>
         <div className="overflow-x-auto pb-2">
-          <div className="flex gap-2 min-w-max">
+          <div className="flex gap-3 min-w-max">
             {artworks.map((artwork) => {
               const isActive = artwork.id === activeArtwork?.id;
               return (
-                <Button
+                <button
                   key={artwork.id}
                   type="button"
-                  variant={isActive ? 'default' : 'outline'}
                   onClick={() => setActiveArtworkId(artwork.id)}
-                  className={
+                  className={`w-[132px] p-2 rounded-md border text-left transition-colors ${
                     isActive
-                      ? 'bg-wine text-parchment hover:bg-wine/90 font-serif'
-                      : 'font-serif border-wine/30 text-ink hover:bg-wine/10'
-                  }
+                      ? 'border-wine bg-wine/10'
+                      : 'border-wine/25 bg-parchment hover:bg-wine/5'
+                  }`}
+                  aria-pressed={isActive}
                 >
-                  {artwork.title || 'Untitled'}
-                </Button>
+                  <div className="relative w-full h-[92px] rounded overflow-hidden border border-wine/20 bg-ink/5">
+                    {artwork.image_url ? (
+                      <Image
+                        src={artwork.image_url}
+                        alt={artwork.title || 'Artwork'}
+                        fill
+                        className="object-cover"
+                        sizes="132px"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-ink/40 text-xs font-serif">No Image</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs font-serif text-ink truncate">
+                    {artwork.title || 'Untitled'}
+                  </p>
+                </button>
               );
             })}
           </div>
@@ -319,7 +336,7 @@ export function SpreadsheetEditForm({
         <table className="w-full min-w-[2240px]">
           <thead className="bg-wine/10 sticky top-0 z-10">
             <tr>
-              <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 sticky left-0 bg-wine/10 z-20 min-w-[200px]">
+              <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 min-w-[200px]">
                 Image & Title
               </th>
               <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
@@ -385,8 +402,8 @@ export function SpreadsheetEditForm({
                   key={artwork.id}
                   className={`border-b border-wine/10 hover:bg-wine/5 ${index % 2 === 0 ? 'bg-parchment/30' : 'bg-parchment/50'}`}
                 >
-                  {/* Image & Title - Sticky Column */}
-                  <td className="px-4 py-4 border-r border-wine/10 sticky left-0 bg-inherit z-10">
+                  {/* Image & Title */}
+                  <td className="px-4 py-4 border-r border-wine/10">
                     <div className="flex items-center gap-3">
                       {artwork.image_url ? (
                         <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden border border-wine/20">
