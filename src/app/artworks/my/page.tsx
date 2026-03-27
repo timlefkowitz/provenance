@@ -31,7 +31,7 @@ export default async function MyArtworksPage() {
 
   if (!artworks || artworks.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl w-full min-w-0 overflow-x-hidden">
         <div className="mb-8">
           <h1 className="text-4xl font-display font-bold text-wine mb-2">
             Collection Management
@@ -83,7 +83,7 @@ export default async function MyArtworksPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl w-full min-w-0 overflow-x-hidden">
       <div className="mb-8">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
           Collection Management

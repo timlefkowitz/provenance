@@ -82,7 +82,7 @@ export default async function MassEditProvenancePage({
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl w-full min-w-0 overflow-x-hidden">
       <div className="mb-6">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
           Collection Management
