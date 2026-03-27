@@ -353,7 +353,7 @@ export function SpreadsheetEditForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-full overflow-x-hidden">
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{error}</AlertDescription>
@@ -414,7 +414,7 @@ export function SpreadsheetEditForm({
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto pb-2">
+        <div className="max-w-full overflow-x-auto pb-2">
           {filteredArtworks.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-sm text-ink/60 font-serif">
@@ -492,7 +492,7 @@ export function SpreadsheetEditForm({
       </div>
 
       {/* Spreadsheet Table */}
-      <div className="overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
+      <div className="max-w-full overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
         {visibleArtworks.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-ink/70 font-serif">
