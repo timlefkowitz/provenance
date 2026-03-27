@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
@@ -21,6 +22,21 @@ import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
+
+const ScanLocationsMap = dynamic(
+  () => import('./scan-locations-map').then((mod) => mod.ScanLocationsMap),
+  { ssr: false },
+);
+
+type ScanLocation = {
+  latitude: number;
+  longitude: number;
+  city?: string;
+  region?: string;
+  country?: string;
+  formatted?: string;
+  scanned_at: string;
+};
 
 type Artwork = {
   id: string;
@@ -96,15 +112,7 @@ export function CertificateOfAuthenticity({
   const [imageError, setImageError] = useState(false);
   // Initialize scan locations from artwork metadata
   const initialScanLocations = (artwork.metadata as any)?.scan_locations || [];
-  const [scanLocations, setScanLocations] = useState<Array<{
-    latitude: number;
-    longitude: number;
-    city?: string;
-    region?: string;
-    country?: string;
-    formatted?: string;
-    scanned_at: string;
-  }>>(initialScanLocations);
+  const [scanLocations, setScanLocations] = useState<ScanLocation[]>(initialScanLocations);
 
   const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
 
@@ -116,6 +124,20 @@ export function CertificateOfAuthenticity({
       }),
     [artwork.artist_account_id, artwork.artist_profile_id],
   );
+
+  const scanLocationsWithCoordinates = useMemo(
+    () =>
+      scanLocations.filter(
+        (scan) =>
+          Number.isFinite(scan.latitude) &&
+          Number.isFinite(scan.longitude) &&
+          Math.abs(scan.latitude) <= 90 &&
+          Math.abs(scan.longitude) <= 180,
+      ),
+    [scanLocations],
+  );
+
+  const canViewScanMap = isOwner || isAdmin;
 
   // Check if artwork is already featured on mount (only for admins, and do it lazily)
   useEffect(() => {
@@ -914,6 +936,11 @@ export function CertificateOfAuthenticity({
                     <Scan className="h-4 w-4 text-wine" />
                     <p className="text-xs sm:text-sm text-ink/60 font-serif font-semibold">QR Code Scan Locations</p>
                   </div>
+                  {canViewScanMap && scanLocationsWithCoordinates.length > 0 && (
+                    <div className="mb-3">
+                      <ScanLocationsMap locations={scanLocationsWithCoordinates} />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {scanLocations.map((scan, index) => (
                       <div key={index} className="text-sm sm:text-base font-serif text-ink bg-wine/5 p-2 sm:p-3 rounded border border-wine/30">
