@@ -422,7 +422,7 @@ export function SpreadsheetEditForm({
               </p>
             </div>
           ) : (
-            <div className="flex w-max gap-3">
+            <div className="flex gap-3">
               {filteredArtworks.map((artwork) => {
                 const isSelected = selectedArtworkIds.has(artwork.id);
                 return (
