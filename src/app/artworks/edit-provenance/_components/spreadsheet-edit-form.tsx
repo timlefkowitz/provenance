@@ -88,6 +88,8 @@ export function SpreadsheetEditForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [selectedCollectionFilter, setSelectedCollectionFilter] = useState('__all__');
+  const [artworkSearchTerm, setArtworkSearchTerm] = useState('');
   const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(() => {
     if (artworks.length === 0) {
       return new Set();
@@ -134,7 +136,48 @@ export function SpreadsheetEditForm({
     }));
   };
 
-  const visibleArtworks = artworks.filter((artwork) =>
+  const collectionOptions = [...linkableExhibitions];
+  const seenCollectionIds = new Set(linkableExhibitions.map((exhibition) => exhibition.id));
+  for (const artwork of artworks) {
+    const currentCollectionId = artworkData[artwork.id]?.exhibition_id ?? null;
+    if (currentCollectionId && !seenCollectionIds.has(currentCollectionId)) {
+      collectionOptions.push({
+        id: currentCollectionId,
+        title: 'Current linked exhibition',
+        start_date: null,
+        end_date: null,
+      });
+      seenCollectionIds.add(currentCollectionId);
+    }
+  }
+
+  const collectionFilteredArtworks = artworks.filter((artwork) => {
+    const collectionId = artworkData[artwork.id]?.exhibition_id ?? null;
+    if (selectedCollectionFilter === '__all__') {
+      return true;
+    }
+    if (selectedCollectionFilter === '__unassigned__') {
+      return !collectionId;
+    }
+    return collectionId === selectedCollectionFilter;
+  });
+
+  const normalizedSearchTerm = artworkSearchTerm.trim().toLowerCase();
+  const filteredArtworks = collectionFilteredArtworks.filter((artwork) => {
+    if (!normalizedSearchTerm) {
+      return true;
+    }
+    const title = (artwork.title || '').toLowerCase();
+    const artistName = (artwork.artist_name || '').toLowerCase();
+    const certificateNumber = (artwork.certificate_number || '').toLowerCase();
+    return (
+      title.includes(normalizedSearchTerm) ||
+      artistName.includes(normalizedSearchTerm) ||
+      certificateNumber.includes(normalizedSearchTerm)
+    );
+  });
+
+  const visibleArtworks = filteredArtworks.filter((artwork) =>
     selectedArtworkIds.has(artwork.id),
   );
 
@@ -151,7 +194,7 @@ export function SpreadsheetEditForm({
   };
 
   const handleSelectAll = () => {
-    setSelectedArtworkIds(new Set(artworks.map((artwork) => artwork.id)));
+    setSelectedArtworkIds(new Set(filteredArtworks.map((artwork) => artwork.id)));
   };
 
   const handleClearSelection = () => {
@@ -320,12 +363,54 @@ export function SpreadsheetEditForm({
       )}
 
       <div className="space-y-2">
-        <p className="text-sm text-ink/70 font-serif">
-          Scroll to choose an artwork, then edit its details below.
-        </p>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <p className="text-sm text-ink/70 font-serif">
+            Scroll to choose an artwork, then edit its details below.
+          </p>
+          <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto">
+            <div className="w-full sm:w-[280px]">
+              <p className="text-xs text-ink/60 font-serif mb-1">Collection in viewer</p>
+              <Select
+                value={selectedCollectionFilter}
+                onValueChange={setSelectedCollectionFilter}
+              >
+                <SelectTrigger className="font-serif h-9 border-wine/20">
+                  <SelectValue placeholder="All collections" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__" className="font-serif">
+                    All collections
+                  </SelectItem>
+                  <SelectItem value="__unassigned__" className="font-serif">
+                    Unassigned artworks
+                  </SelectItem>
+                  {collectionOptions.map((collection) => (
+                    <SelectItem
+                      key={collection.id}
+                      value={collection.id}
+                      className="font-serif"
+                    >
+                      {collection.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-[280px]">
+              <p className="text-xs text-ink/60 font-serif mb-1">Search artworks</p>
+              <Input
+                value={artworkSearchTerm}
+                onChange={(e) => setArtworkSearchTerm(e.target.value)}
+                className="font-serif h-9 border-wine/20"
+                placeholder="Title, artist, or cert #"
+                aria-label="Search artworks in viewer"
+              />
+            </div>
+          </div>
+        </div>
         <div className="overflow-x-auto pb-2">
           <div className="flex gap-3 min-w-max">
-            {artworks.map((artwork) => {
+            {filteredArtworks.map((artwork) => {
               const isSelected = selectedArtworkIds.has(artwork.id);
               return (
                 <button
@@ -365,11 +450,18 @@ export function SpreadsheetEditForm({
                 </button>
               );
             })}
+            {filteredArtworks.length === 0 ? (
+              <div className="w-full py-6 text-center">
+                <p className="text-sm text-ink/60 font-serif">
+                  No artworks found for this collection filter.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-ink/60 font-serif">
-            {visibleArtworks.length} selected of {artworks.length}
+            {visibleArtworks.length} selected of {filteredArtworks.length} in view
           </p>
           <div className="flex items-center gap-2">
             <Button
