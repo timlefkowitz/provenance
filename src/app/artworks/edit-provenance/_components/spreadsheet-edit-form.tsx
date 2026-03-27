@@ -433,7 +433,7 @@ export function SpreadsheetEditForm({
                     className={`w-[132px] p-2 rounded-md border text-left transition-colors ${
                       isSelected
                         ? 'border-wine bg-wine/10'
-                        : 'border-wine/25 bg-parchment hover:bg-wine/5 opacity-70'
+                        : 'border-wine/25 bg-wine/10 hover:bg-wine/10 opacity-70'
                     }`}
                     aria-pressed={isSelected}
                   >
@@ -560,14 +560,14 @@ export function SpreadsheetEditForm({
             </tr>
           </thead>
           <tbody>
-            {visibleArtworks.map((artwork, index) => {
+            {visibleArtworks.map((artwork) => {
               const data = artworkData[artwork.id];
               if (!data) return null;
 
               return (
                 <tr
                   key={artwork.id}
-                  className={`border-b border-wine/10 hover:bg-wine/5 ${index % 2 === 0 ? 'bg-parchment/30' : 'bg-parchment/50'}`}
+                  className={`border-b border-wine/10 bg-wine/10 hover:bg-wine/10`}
                 >
                   {/* Image & Title */}
                   <td className="px-4 py-4 border-r border-wine/10">
