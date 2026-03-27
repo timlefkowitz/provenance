@@ -503,58 +503,58 @@ export function SpreadsheetEditForm({
         <table className="w-full min-w-[2240px]">
           <thead className="bg-wine/10 sticky top-0 z-10">
             <tr>
-              <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 min-w-[200px]">
+              <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 w-[200px]">
                 Image & Title
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
                 Artist
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
                 Description
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[120px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[120px]">
                 Date
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
                 Medium
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
                 Dimensions
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
                 Former Owners
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
                 Auction History
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[220px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[220px]">
                 Exhibition
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
                 Exhibition History
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
                 Historic Context
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[200px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
                 Celebrity Notes
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[120px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[120px]">
                 Value
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[100px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[100px]">
                 Edition
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
                 Production Location
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
                 Owned By
               </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[150px]">
+              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
                 Sold By
               </th>
-              <th className="px-3 py-3 text-center font-serif text-sm text-wine font-semibold border-b border-wine/20 min-w-[100px]">
+              <th className="px-3 py-3 text-center font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[100px]">
                 Public
               </th>
             </tr>
