@@ -500,7 +500,7 @@ export function SpreadsheetEditForm({
             </p>
           </div>
         ) : (
-        <table className="w-max min-w-full">
+        <table className="w-full table-fixed">
           <thead className="bg-wine/10 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 w-[200px]">
