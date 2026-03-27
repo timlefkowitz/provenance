@@ -13,10 +13,14 @@ import { updateProvenance } from '../_actions/update-provenance';
 import { GallerySelector } from './gallery-selector';
 import { ExhibitionSelector } from './exhibition-selector';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
+import { sendArtistClaimInvite } from '../../certificate/_actions/send-artist-claim-invite';
+import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
 type Artwork = {
   id: string;
   title: string;
+  artist_name: string | null;
+  certificate_type: string | null;
   creation_date: string | null;
   dimensions: string | null;
   former_owners: string | null;
@@ -47,8 +51,13 @@ export function EditProvenanceForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [invitePending, startInviteTransition] = useTransition();
   const [formData, setFormData] = useState({
     title: artwork.title || '',
+    artist_name: artwork.artist_name || '',
+    artistInviteEmail: '',
     creationDate: artwork.creation_date || '',
     dimensions: artwork.dimensions || '',
     formerOwners: artwork.former_owners || '',
@@ -98,6 +107,10 @@ export function EditProvenanceForm({
     });
   };
 
+  const canSendArtistInvite =
+    artwork.certificate_type === CERTIFICATE_TYPES.SHOW ||
+    artwork.certificate_type === CERTIFICATE_TYPES.OWNERSHIP;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -116,6 +129,20 @@ export function EditProvenanceForm({
         </Alert>
       )}
 
+      {inviteError && (
+        <Alert variant="destructive">
+          <AlertTitle>Invite failed</AlertTitle>
+          <AlertDescription>{inviteError}</AlertDescription>
+        </Alert>
+      )}
+
+      {inviteSuccess && (
+        <Alert>
+          <AlertTitle>Invite sent</AlertTitle>
+          <AlertDescription>{inviteSuccess}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>
@@ -128,6 +155,68 @@ export function EditProvenanceForm({
             required
           />
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="artistName">Artist</Label>
+          <Input
+            id="artistName"
+            value={formData.artist_name}
+            onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
+            placeholder="Artist name"
+            className="font-serif"
+          />
+        </div>
+
+        {canSendArtistInvite && (
+          <div className="space-y-2">
+            <Label htmlFor="artistInviteEmail">Artist Email</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                id="artistInviteEmail"
+                type="email"
+                autoComplete="email"
+                value={formData.artistInviteEmail}
+                onChange={(e) =>
+                  setFormData({ ...formData, artistInviteEmail: e.target.value })
+                }
+                placeholder="artist@example.com"
+                className="font-serif"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="font-serif border-wine/30 hover:bg-wine/10"
+                disabled={invitePending || !formData.artistInviteEmail.trim()}
+                onClick={() => {
+                  setInviteError(null);
+                  setInviteSuccess(null);
+                  startInviteTransition(async () => {
+                    console.log('[EditProvenanceForm] sendArtistClaimInvite started', {
+                      artworkId: artwork.id,
+                    });
+                    const result = await sendArtistClaimInvite(
+                      artwork.id,
+                      formData.artistInviteEmail,
+                    );
+                    if (!result.success) {
+                      setInviteError(result.error || 'Failed to send artist invite');
+                      return;
+                    }
+                    setInviteSuccess(
+                      'Claim email sent. The artist can use it to claim and create linked Certificates of Authenticity.',
+                    );
+                    setFormData((prev) => ({ ...prev, artistInviteEmail: '' }));
+                  });
+                }}
+              >
+                {invitePending ? 'Sending...' : 'Send claim invite'}
+              </Button>
+            </div>
+            <p className="text-xs text-ink/60 font-serif">
+              Sends a secure claim link to the artist. They sign in with that email to claim.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="creationDate">Creation Date</Label>
