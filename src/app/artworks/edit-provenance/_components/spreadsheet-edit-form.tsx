@@ -136,20 +136,26 @@ export function SpreadsheetEditForm({
     }));
   };
 
-  const collectionOptions = [...linkableExhibitions];
-  const seenCollectionIds = new Set(linkableExhibitions.map((exhibition) => exhibition.id));
+  const linkableExhibitionById = new Map(
+    linkableExhibitions.map((exhibition) => [exhibition.id, exhibition]),
+  );
+  const collectionIdsInUserArtworks = new Set<string>();
   for (const artwork of artworks) {
     const currentCollectionId = artworkData[artwork.id]?.exhibition_id ?? null;
-    if (currentCollectionId && !seenCollectionIds.has(currentCollectionId)) {
-      collectionOptions.push({
-        id: currentCollectionId,
+    if (currentCollectionId) {
+      collectionIdsInUserArtworks.add(currentCollectionId);
+    }
+  }
+  const collectionOptions = [...collectionIdsInUserArtworks].map((collectionId) => {
+    return (
+      linkableExhibitionById.get(collectionId) ?? {
+        id: collectionId,
         title: 'Current linked exhibition',
         start_date: null,
         end_date: null,
-      });
-      seenCollectionIds.add(currentCollectionId);
-    }
-  }
+      }
+    );
+  });
 
   const collectionFilteredArtworks = artworks.filter((artwork) => {
     const collectionId = artworkData[artwork.id]?.exhibition_id ?? null;
@@ -409,55 +415,56 @@ export function SpreadsheetEditForm({
           </div>
         </div>
         <div className="overflow-x-auto pb-2">
-          <div className="flex gap-3 min-w-max">
-            {filteredArtworks.map((artwork) => {
-              const isSelected = selectedArtworkIds.has(artwork.id);
-              return (
-                <button
-                  key={artwork.id}
-                  type="button"
-                  onClick={() => toggleArtworkSelection(artwork.id)}
-                  className={`w-[132px] p-2 rounded-md border text-left transition-colors ${
-                    isSelected
-                      ? 'border-wine bg-wine/10'
-                      : 'border-wine/25 bg-parchment hover:bg-wine/5 opacity-70'
-                  }`}
-                  aria-pressed={isSelected}
-                >
-                  <div className="relative w-full h-[92px] rounded overflow-hidden border border-wine/20 bg-ink/5">
-                    {artwork.image_url ? (
-                      <Image
-                        src={artwork.image_url}
-                        alt={artwork.title || 'Artwork'}
-                        fill
-                        className="object-cover"
-                        sizes="132px"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-ink/40 text-xs font-serif">No Image</span>
-                      </div>
-                    )}
-                    {isSelected ? (
-                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-wine text-parchment flex items-center justify-center">
-                        <Check className="w-3.5 h-3.5" />
-                      </div>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-xs font-serif text-ink truncate">
-                    {artwork.title || 'Untitled'}
-                  </p>
-                </button>
-              );
-            })}
-            {filteredArtworks.length === 0 ? (
-              <div className="w-full py-6 text-center">
-                <p className="text-sm text-ink/60 font-serif">
-                  No artworks found for this collection filter.
-                </p>
-              </div>
-            ) : null}
-          </div>
+          {filteredArtworks.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className="text-sm text-ink/60 font-serif">
+                No artworks found for this collection filter.
+              </p>
+            </div>
+          ) : (
+            <div className="flex w-max gap-3">
+              {filteredArtworks.map((artwork) => {
+                const isSelected = selectedArtworkIds.has(artwork.id);
+                return (
+                  <button
+                    key={artwork.id}
+                    type="button"
+                    onClick={() => toggleArtworkSelection(artwork.id)}
+                    className={`w-[132px] p-2 rounded-md border text-left transition-colors ${
+                      isSelected
+                        ? 'border-wine bg-wine/10'
+                        : 'border-wine/25 bg-parchment hover:bg-wine/5 opacity-70'
+                    }`}
+                    aria-pressed={isSelected}
+                  >
+                    <div className="relative w-full h-[92px] rounded overflow-hidden border border-wine/20 bg-ink/5">
+                      {artwork.image_url ? (
+                        <Image
+                          src={artwork.image_url}
+                          alt={artwork.title || 'Artwork'}
+                          fill
+                          className="object-cover"
+                          sizes="132px"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-ink/40 text-xs font-serif">No Image</span>
+                        </div>
+                      )}
+                      {isSelected ? (
+                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-wine text-parchment flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5" />
+                        </div>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs font-serif text-ink truncate">
+                      {artwork.title || 'Untitled'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-ink/60 font-serif">
