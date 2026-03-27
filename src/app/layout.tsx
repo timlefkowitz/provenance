@@ -67,7 +67,7 @@ export default async function RootLayout({
   return (
     <html lang={currentLang} suppressHydrationWarning>
       <body
-        className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased bg-parchment text-ink`}
+        className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased bg-parchment text-ink overflow-x-hidden`}
       >
         <RootProviders lang={currentLang}>
           <OnboardingGuard>
