@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import type { KeyboardEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -37,7 +38,13 @@ import {
 import { Textarea } from '@kit/ui/textarea';
 import { toast } from '@kit/ui/sonner';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
-import { createLead, updateLeadStage, deleteLead, getLeadsForArtist } from '../_actions/leads';
+import {
+  createLead,
+  updateLead,
+  updateLeadStage,
+  deleteLead,
+  getLeadsForArtist,
+} from '../_actions/leads';
 import { LEAD_STAGES, type LeadStage, type ArtistLead } from '../_actions/leads-constants';
 
 const STAGE_LABELS: Record<LeadStage, string> = {
@@ -52,30 +59,57 @@ function LeadCard({
   onMove,
   onDelete,
   isDragging,
+  onOpenEdit,
 }: {
   lead: ArtistLead;
   onMove: (stage: LeadStage) => void;
   onDelete: () => void;
   isDragging?: boolean;
+  onOpenEdit?: () => void;
 }) {
   const displayName =
     lead.contact_name?.trim() || lead.contact_email || 'No name';
   const otherStages = LEAD_STAGES.filter((s) => s !== lead.stage);
+
+  const openEdit = () => {
+    if (!onOpenEdit || isDragging) return;
+    onOpenEdit();
+  };
+
+  const onEditKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    openEdit();
+  };
 
   return (
     <Card
       className={`border-wine/20 bg-white shadow-sm transition-shadow ${isDragging ? 'opacity-90 shadow-lg ring-2 ring-wine/30' : ''}`}
     >
       <CardContent className="p-3">
-        <div className="flex items-start gap-2">
-          <div className="flex flex-col gap-1 flex-1 min-w-0">
-            <p className="font-medium text-ink text-sm truncate" title={displayName}>
+        <div className="flex flex-col gap-2 min-w-0">
+          <div
+            role={onOpenEdit && !isDragging ? 'button' : undefined}
+            tabIndex={onOpenEdit && !isDragging ? 0 : undefined}
+            className={
+              onOpenEdit && !isDragging
+                ? 'rounded-md -m-0.5 p-0.5 min-w-0 cursor-pointer hover:bg-wine/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-wine/30'
+                : 'min-w-0'
+            }
+            onClick={onOpenEdit && !isDragging ? openEdit : undefined}
+            onKeyDown={onOpenEdit && !isDragging ? onEditKeyDown : undefined}
+          >
+            <p
+              className="font-display font-semibold text-wine text-base leading-snug line-clamp-2 break-words"
+              title={displayName}
+            >
               {displayName}
             </p>
             {lead.contact_email && (
               <a
                 href={`mailto:${lead.contact_email}`}
-                className="text-xs text-wine hover:underline truncate"
+                className="text-xs text-wine hover:underline break-all block mt-1"
+                onClick={(e) => e.stopPropagation()}
               >
                 {lead.contact_email}
               </a>
@@ -83,7 +117,8 @@ function LeadCard({
             {lead.artwork && (
               <Link
                 href={`/artworks/${lead.artwork.id}/certificate`}
-                className="flex items-center gap-1.5 mt-1 text-xs text-ink/70 hover:text-wine"
+                className="flex items-center gap-1.5 mt-1 text-xs text-ink/70 hover:text-wine min-w-0"
+                onClick={(e) => e.stopPropagation()}
               >
                 {lead.artwork.image_url ? (
                   <span className="relative w-6 h-6 rounded overflow-hidden flex-shrink-0 bg-parchment">
@@ -96,35 +131,43 @@ function LeadCard({
                     />
                   </span>
                 ) : null}
-                <span className="truncate">{lead.artwork.title}</span>
+                <span className="line-clamp-2 break-words min-w-0">{lead.artwork.title}</span>
               </Link>
             )}
           </div>
-          <div className="flex flex-col gap-1 flex-shrink-0">
+          <div className="flex items-center gap-2 pt-0.5 border-t border-wine/10">
             {otherStages.length > 0 && (
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  if (LEAD_STAGES.includes(value as LeadStage)) onMove(value as LeadStage);
-                }}
-              >
-                <SelectTrigger className="h-7 text-xs w-[100px]">
-                  <SelectValue placeholder="Move to…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {otherStages.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {STAGE_LABELS[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex-1 min-w-0">
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    if (LEAD_STAGES.includes(value as LeadStage)) onMove(value as LeadStage);
+                  }}
+                >
+                  <SelectTrigger
+                    className="h-7 text-xs w-full min-w-0 max-w-[160px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <SelectValue placeholder="Move to…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {otherStages.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {STAGE_LABELS[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-ink/50 hover:text-red-600"
-              onClick={onDelete}
+              className="h-7 w-7 flex-shrink-0 ml-auto text-ink/50 hover:text-red-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               aria-label="Delete lead"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -140,10 +183,12 @@ function SortableLeadCard({
   lead,
   onMove,
   onDelete,
+  onOpenEdit,
 }: {
   lead: ArtistLead;
   onMove: (stage: LeadStage) => void;
   onDelete: () => void;
+  onOpenEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: lead.id,
@@ -167,6 +212,7 @@ function SortableLeadCard({
             onMove={onMove}
             onDelete={onDelete}
             isDragging={isDragging}
+            onOpenEdit={onOpenEdit}
           />
         </div>
       </div>
@@ -179,16 +225,18 @@ function DroppableColumn({
   leads,
   onMove,
   onDelete,
+  onOpenEdit,
 }: {
   stage: LeadStage;
   leads: ArtistLead[];
   onMove: (leadId: string, stage: LeadStage) => void;
   onDelete: (leadId: string) => void;
+  onOpenEdit: (lead: ArtistLead) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
 
   return (
-    <div className="flex flex-col min-w-[220px] w-[220px] flex-shrink-0">
+    <div className="flex flex-col min-w-[240px] w-[240px] flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-display font-semibold text-wine text-sm uppercase tracking-wide">
           {STAGE_LABELS[stage]}
@@ -209,6 +257,7 @@ function DroppableColumn({
             lead={lead}
             onMove={(newStage) => onMove(lead.id, newStage)}
             onDelete={() => onDelete(lead.id)}
+            onOpenEdit={() => onOpenEdit(lead)}
           />
         ))}
       </div>
@@ -225,6 +274,7 @@ export function LeadsKanban({
 }) {
   const [leads, setLeads] = useState<ArtistLead[]>(initialLeads);
   const [addOpen, setAddOpen] = useState(false);
+  const [editLead, setEditLead] = useState<ArtistLead | null>(null);
   const [pending, startTransition] = useTransition();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [formContactName, setFormContactName] = useState('');
@@ -232,6 +282,11 @@ export function LeadsKanban({
   const [formContactPhone, setFormContactPhone] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formArtworkId, setFormArtworkId] = useState<string>('');
+  const [editContactName, setEditContactName] = useState('');
+  const [editContactEmail, setEditContactEmail] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editArtworkId, setEditArtworkId] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -319,6 +374,39 @@ export function LeadsKanban({
     });
   };
 
+  const openEditLead = (lead: ArtistLead) => {
+    setEditLead(lead);
+    setEditContactName(lead.contact_name ?? '');
+    setEditContactEmail(lead.contact_email ?? '');
+    setEditContactPhone(lead.contact_phone ?? '');
+    setEditNotes(lead.notes ?? '');
+    setEditArtworkId(lead.artwork_id ?? '');
+  };
+
+  const handleEditLeadSave = () => {
+    if (!editLead) return;
+    console.log('[Leads] handleEditLeadSave started', editLead.id);
+    startTransition(async () => {
+      const result = await updateLead(editLead.id, {
+        contact_name: editContactName.trim() || null,
+        contact_email: editContactEmail.trim() || null,
+        contact_phone: editContactPhone.trim() || null,
+        notes: editNotes.trim() || null,
+        artwork_id: editArtworkId || null,
+      });
+      if (result.success) {
+        console.log('[Leads] handleEditLeadSave success');
+        const fresh = await getLeadsForArtist();
+        setLeads(fresh);
+        setEditLead(null);
+        toast.success('Lead updated');
+      } else {
+        console.error('[Leads] handleEditLeadSave failed', result.error);
+        toast.error(result.error);
+      }
+    });
+  };
+
   const activeLead = activeId ? leads.find((l) => l.id === activeId) : null;
 
   return (
@@ -351,13 +439,14 @@ export function LeadsKanban({
               leads={leadsByStage[stage]}
               onMove={handleMove}
               onDelete={handleDelete}
+              onOpenEdit={openEditLead}
             />
           ))}
         </div>
 
         <DragOverlay>
           {activeLead ? (
-            <div className="w-[220px]">
+            <div className="w-[240px]">
               <LeadCard
                 lead={activeLead}
                 onMove={(s) => handleMove(activeLead.id, s)}
@@ -446,6 +535,97 @@ export function LeadsKanban({
               disabled={pending || (!formContactName.trim() && !formContactEmail.trim())}
             >
               {pending ? 'Adding…' : 'Add lead'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editLead !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditLead(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-wine">Edit lead</DialogTitle>
+            <DialogDescription>
+              Update contact details, linked artwork, or notes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-lead-name">Name</Label>
+              <Input
+                id="edit-lead-name"
+                placeholder="e.g. Jane Collector"
+                value={editContactName}
+                onChange={(e) => setEditContactName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-lead-email">Email</Label>
+              <Input
+                id="edit-lead-email"
+                type="email"
+                placeholder="jane@example.com"
+                value={editContactEmail}
+                onChange={(e) => setEditContactEmail(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-lead-phone">Phone</Label>
+              <Input
+                id="edit-lead-phone"
+                type="tel"
+                placeholder="Optional"
+                value={editContactPhone}
+                onChange={(e) => setEditContactPhone(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-lead-artwork">Interested in artwork (optional)</Label>
+              <Select
+                value={editArtworkId || 'none'}
+                onValueChange={(v) => setEditArtworkId(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger id="edit-lead-artwork">
+                  <SelectValue placeholder="Select artwork" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None / General inquiry</SelectItem>
+                  {artistArtworks.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-lead-notes">Notes</Label>
+              <Textarea
+                id="edit-lead-notes"
+                placeholder="e.g. Met at fair, interested in large works"
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditLead(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-wine text-parchment hover:bg-wine/90"
+              onClick={handleEditLeadSave}
+              disabled={
+                pending ||
+                (!editContactName.trim() && !editContactEmail.trim())
+              }
+            >
+              {pending ? 'Saving…' : 'Save changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
