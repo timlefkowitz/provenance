@@ -8,7 +8,7 @@ import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { cn } from '@kit/ui/utils';
-import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
+import type { AppDatabase } from '~/lib/supabase-app-database';
 import { getPerspective } from './perspective-switcher';
 import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 
@@ -17,7 +17,7 @@ const SELECTED_PROFILE_KEY = 'selected_profile_id';
 export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { data: user } = useCurrentUser();
-  const client = useSupabase();
+  const client = useSupabase<AppDatabase>();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [currentPerspective, setCurrentPerspective] = useState<string>(USER_ROLES.ARTIST);
 
@@ -51,7 +51,7 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
         return [];
       }
 
-      return (data || []) as UserProfile[];
+      return data ?? [];
     },
     enabled: !!user?.sub,
   });

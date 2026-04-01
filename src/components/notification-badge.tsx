@@ -5,10 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import type { AppDatabase } from '~/lib/supabase-app-database';
 
 export function NotificationBadge() {
   const { data: user } = useCurrentUser();
-  const client = useSupabase();
+  const client = useSupabase<AppDatabase>();
 
   const { data: unreadCount } = useQuery({
     queryKey: ['notifications:unread-count', user?.sub],

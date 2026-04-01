@@ -26,6 +26,7 @@ import { ProfileAvatar } from '@kit/ui/profile-avatar';
 import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
 import { usePersonalAccountData } from '@kit/accounts/hooks/use-personal-account-data';
+import type { AppDatabase } from '~/lib/supabase-app-database';
 import { AdminMenuItem } from './admin-menu-item';
 import { LanguageSwitcher } from './language-switcher';
 import { getPerspective } from './perspective-switcher';
@@ -61,7 +62,7 @@ export function ProfileAccountDropdownContainer(props: {
   const signOut = useSignOut();
   const user = useCurrentUser(props.user);
   const userData = user.data;
-  const client = useSupabase();
+  const client = useSupabase<AppDatabase>();
   const personalAccountData = usePersonalAccountData(userData?.id || '', props.account);
 
   // Fetch all user profiles
