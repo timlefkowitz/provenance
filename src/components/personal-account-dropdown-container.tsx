@@ -102,14 +102,17 @@ export function ProfileAccountDropdownContainer(props: {
   }, [profiles]);
 
   // Current role/perspective (synced with PerspectiveSwitcher)
-  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
+  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(
+    USER_ROLES.ARTIST,
+  );
   const router = useRouter();
 
+  // After hydration, align with localStorage (matches PerspectiveSwitcher).
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    queueMicrotask(() => {
       const p = getPerspective();
-      setCurrentPerspective(p);
-    }
+      setCurrentPerspective((prev) => (prev === p ? prev : p));
+    });
   }, []);
 
   const switchRole = useCallback(
@@ -142,6 +145,15 @@ export function ProfileAccountDropdownContainer(props: {
     return email ?? phone;
   }, [userData]);
 
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
+      console.log(
+        '[Profile]',
+        open ? 'account menu open' : 'account menu closed',
+      );
+    }
+  }, []);
+
   if (!userData) {
     return null;
   }
@@ -156,7 +168,7 @@ export function ProfileAccountDropdownContainer(props: {
     null;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleMenuOpenChange}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

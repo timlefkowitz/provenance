@@ -1,5 +1,3 @@
-import { InvestorsNav } from './_components/investors-nav';
-
 export default function InvestorsLayout({
   children,
 }: {
@@ -7,7 +5,6 @@ export default function InvestorsLayout({
 }) {
   return (
     <div className="min-h-screen bg-parchment text-ink">
-      <InvestorsNav />
       {children}
     </div>
   );

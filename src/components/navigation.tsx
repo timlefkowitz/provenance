@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useCurrentUser } from '~/hooks/use-current-user';
@@ -19,14 +20,18 @@ import { NotificationBadge } from './notification-badge';
 import { PerspectiveSwitcher } from './perspective-switcher';
 import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
+import { INVESTOR_NAV_LINKS } from '~/app/investors/_components/investor-nav-links';
 
 export function Navigation() {
+  const pathname = usePathname();
   const user = useCurrentUser();
   const signOut = useSignOut();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const showInvestorSubnav = pathname?.startsWith('/investors') ?? false;
 
   return (
-    <nav className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+    <header className="sticky top-0 z-50 shadow-sm">
+    <nav className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm">
       <div className="flex items-center gap-8 min-w-0">
         <Link 
           href="/" 
@@ -130,7 +135,7 @@ export function Navigation() {
                 <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
               </Link>
             </Button>
-            <ProfileAccountDropdownContainer />
+            <ProfileAccountDropdownContainer user={user.data} />
           </>
         ) : (
           <>
@@ -163,7 +168,7 @@ export function Navigation() {
             {user.data ? (
               <>
                 <NotificationBadge />
-                <ProfileAccountDropdownContainer />
+                <ProfileAccountDropdownContainer user={user.data} />
               </>
             ) : (
               <>
@@ -304,6 +309,38 @@ export function Navigation() {
         </div>
       )}
     </nav>
+    {showInvestorSubnav && (
+      <nav
+        className="border-b border-wine/30 bg-parchment/95"
+        aria-label="Investor materials"
+      >
+        <div className="max-w-3xl mx-auto px-6 sm:px-10 py-3">
+          <ul className="flex flex-wrap gap-x-6 gap-y-2 font-body text-sm">
+            {INVESTOR_NAV_LINKS.map(({ href, label }) => {
+              const isActive =
+                href === '/investors'
+                  ? pathname === '/investors'
+                  : pathname === href;
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className={
+                      isActive
+                        ? 'text-wine font-semibold underline underline-offset-4'
+                        : 'text-ink/80 hover:text-wine hover:underline underline-offset-4'
+                    }
+                  >
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </nav>
+    )}
+    </header>
   );
 }
 

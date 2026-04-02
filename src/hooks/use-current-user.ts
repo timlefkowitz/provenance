@@ -11,50 +11,61 @@ import { useSupabase } from '@kit/supabase/hooks/use-supabase';
  * for @kit/supabase than the app's QueryClientProvider). Production/Vercel
  * often works because the build deduplicates to a single instance.
  *
+ * When `initialData` is passed (not `undefined`), `data` follows that prop so
+ * parents can be the single source of truth. When omitted, claims are fetched.
+ *
  * Returns a shape compatible with the kit's useUser: { data, isPending, error }.
  */
 export function useCurrentUser(initialData?: JwtPayload | null) {
   const client = useSupabase();
-  const [data, setData] = useState<JwtPayload | undefined | null>(
-    () => initialData ?? undefined
+  const [fetchedData, setFetchedData] = useState<JwtPayload | undefined | null>(
+    undefined,
   );
-  const [isPending, setIsPending] = useState(!initialData);
+  const [fetchPending, setFetchPending] = useState(initialData === undefined);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchClaims = useCallback(async () => {
     const response = await client.auth.getClaims();
     if (response.error) {
-      setData(undefined);
+      setFetchedData(undefined);
       setError(response.error);
       return;
     }
     if (response.data?.claims) {
-      setData(response.data.claims);
+      setFetchedData(response.data.claims);
       setError(null);
     } else {
-      setData(undefined);
+      setFetchedData(undefined);
       setError(new Error('Unexpected result format'));
     }
   }, [client]);
 
+  const data =
+    initialData !== undefined ? (initialData ?? undefined) : fetchedData;
+
+  const isPending =
+    initialData !== undefined ? false : fetchPending;
+
   useEffect(() => {
     if (initialData !== undefined) {
-      setIsPending(false);
       return;
     }
     let cancelled = false;
-    setError(null);
-    setIsPending(true);
-    fetchClaims()
-      .then(() => {
-        if (!cancelled) setIsPending(false);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err : new Error(String(err)));
-          setIsPending(false);
-        }
-      });
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setError(null);
+      setFetchPending(true);
+      fetchClaims()
+        .then(() => {
+          if (!cancelled) setFetchPending(false);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setError(err instanceof Error ? err : new Error(String(err)));
+            setFetchPending(false);
+          }
+        });
+    });
     return () => {
       cancelled = true;
     };
