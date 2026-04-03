@@ -176,38 +176,34 @@ export function ProfileAccountDropdownContainer(props: {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label="Open your profile menu"
-          className={cn(
-            'focus:outline-primary flex cursor-pointer items-center',
-            {
-              ['active:bg-secondary/50 items-center gap-x-4 rounded-md' +
-              ' hover:bg-secondary p-2 transition-colors']: props.showProfileName,
-            },
-          )}
-        >
-          <ProfileAvatar
-            className={'rounded-md'}
-            fallbackClassName={'rounded-md border'}
-            displayName={displayName ?? userData?.email ?? ''}
-            pictureUrl={profilePictureUrl}
-          />
+      <DropdownMenuTrigger
+        aria-label="Open your profile menu"
+        className={cn(
+          'focus:outline-primary flex cursor-pointer items-center outline-none',
+          {
+            ['active:bg-secondary/50 gap-x-4 rounded-md' +
+            ' hover:bg-secondary p-2 transition-colors']: props.showProfileName,
+          },
+        )}
+      >
+        <ProfileAvatar
+          className={'rounded-md'}
+          fallbackClassName={'rounded-md border'}
+          displayName={displayName ?? userData?.email ?? ''}
+          pictureUrl={profilePictureUrl}
+        />
 
-          <If condition={props.showProfileName}>
-            <div className={'fade-in animate-in flex w-full flex-col truncate text-left'}>
-              <span className={'truncate text-sm'}>
-                {displayName}
-              </span>
+        {props.showProfileName && (
+          <>
+            <div className={'flex w-full flex-col truncate text-left'}>
+              <span className={'truncate text-sm'}>{displayName}</span>
               <span className={'text-muted-foreground truncate text-xs'}>
                 {signedInAsLabel}
               </span>
             </div>
-
             <ChevronsUpDown className={'text-muted-foreground mr-1 h-8'} />
-          </If>
-        </button>
+          </>
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className={'xl:!min-w-[15rem]'}>
