@@ -181,7 +181,7 @@ export function ProfileAccountDropdownContainer(props: {
           type="button"
           aria-label="Open your profile menu"
           className={cn(
-            'animate-in fade-in focus:outline-primary flex cursor-pointer items-center duration-500',
+            'focus:outline-primary flex cursor-pointer items-center',
             {
               ['active:bg-secondary/50 items-center gap-x-4 rounded-md' +
               ' hover:bg-secondary p-2 transition-colors']: props.showProfileName,
@@ -211,8 +211,6 @@ export function ProfileAccountDropdownContainer(props: {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className={'xl:!min-w-[15rem]'}>
-        <DropdownMenuSeparator />
-
         <DropdownMenuItem asChild>
           <Link
             className={'flex cursor-pointer items-center space-x-2'}
