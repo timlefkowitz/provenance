@@ -16,6 +16,7 @@ import { uploadProfilePicture } from '../_actions/upload-profile-picture';
 import { UserProfile, type NewsPublication } from '../_actions/get-user-profiles';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { PressArticleDiscovery } from './press-article-discovery';
+import appConfig from '~/config/app.config';
 
 export function ProfileForm({
   role,
@@ -48,6 +49,7 @@ export function ProfileForm({
       ? profile.news_publications
       : []) as NewsPublication[]
   );
+  const [publicSlug, setPublicSlug] = useState(profile?.slug ?? '');
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,6 +140,7 @@ export function ProfileForm({
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
+            ...(profile.role === USER_ROLES.GALLERY ? { slug: publicSlug } : {}),
             news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
           });
 
@@ -167,6 +170,9 @@ export function ProfileForm({
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
+            ...(role === USER_ROLES.GALLERY && publicSlug.trim()
+              ? { slug: publicSlug.trim() }
+              : {}),
             news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
           });
 
@@ -339,6 +345,63 @@ export function ProfileForm({
                 min="1000"
                 max={new Date().getFullYear()}
               />
+            </div>
+          )}
+
+          {/* Public URL slug (galleries) */}
+          {(role === 'gallery' || profile?.role === 'gallery') && (
+            <div className="rounded-md border border-wine/15 bg-parchment/40 p-4 space-y-3">
+              <div>
+                <Label htmlFor="gallery_public_slug" className="font-serif">
+                  Public URL slug
+                </Label>
+                <Input
+                  id="gallery_public_slug"
+                  value={publicSlug}
+                  onChange={(e) => setPublicSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  className="font-serif mt-1"
+                  placeholder="e.g. flight"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-ink/60 font-serif mt-2">
+                  Lowercase letters, numbers, and hyphens only. Used for short links. Changing this changes your
+                  public URL; old bookmarks may break.
+                </p>
+                {!profile && (
+                  <p className="text-xs text-ink/55 font-serif mt-1">
+                    Leave blank to auto-generate from your gallery name.
+                  </p>
+                )}
+              </div>
+              {profile?.id ? (
+                <div className="text-xs font-serif space-y-2 pt-1 border-t border-wine/10">
+                  <p className="text-ink/70 font-medium">Share your gallery</p>
+                  {publicSlug.trim() ? (
+                    <p className="break-all">
+                      <span className="text-ink/55">Short: </span>
+                      <a
+                        href={`${appConfig.url.replace(/\/$/, '')}/g/${encodeURIComponent(publicSlug.trim())}`}
+                        className="text-wine hover:underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {appConfig.url.replace(/\/$/, '')}/g/{publicSlug.trim()}
+                      </a>
+                    </p>
+                  ) : null}
+                  <p className="break-all">
+                    <span className="text-ink/55">Stable (profile id): </span>
+                    <a
+                      href={`${appConfig.url.replace(/\/$/, '')}/gallery/${profile.id}`}
+                      className="text-wine hover:underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {appConfig.url.replace(/\/$/, '')}/gallery/{profile.id}
+                    </a>
+                  </p>
+                </div>
+              ) : null}
             </div>
           )}
 

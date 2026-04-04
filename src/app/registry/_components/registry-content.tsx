@@ -15,6 +15,7 @@ type Account = {
   created_at: string | null;
   role?: string; // For gallery profiles, this will be set
   profileId?: string; // For gallery profiles, this is the profile ID
+  profileSlug?: string | null;
 };
 
 type FilterType = 'all' | 'artist' | 'gallery';
@@ -62,10 +63,13 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
               : account.id;
             const artworkCount = artworkCounts[artworkCountKey] || 0;
             
-            // Build the link URL - for galleries with profileId, include it in the query
-            const linkUrl = account.profileId && role === USER_ROLES.GALLERY
-              ? `/artists/${account.id}?role=gallery&profileId=${account.profileId}`
-              : `/artists/${account.id}${role ? `?role=${role}` : ''}`;
+            // Build the link URL — prefer short /g/{slug} for galleries when set
+            const linkUrl =
+              role === USER_ROLES.GALLERY && account.profileSlug
+                ? `/g/${encodeURIComponent(account.profileSlug)}`
+                : account.profileId && role === USER_ROLES.GALLERY
+                  ? `/artists/${account.id}?role=gallery&profileId=${account.profileId}`
+                  : `/artists/${account.id}${role ? `?role=${role}` : ''}`;
             
             return (
               <Card 

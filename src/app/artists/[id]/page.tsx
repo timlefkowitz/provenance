@@ -20,6 +20,7 @@ import {
   type ExhibitionSummary,
   type UnclaimedArtistProfileRow,
 } from './_components/unclaimed-artist-public-view';
+import { GalleryPublicLinks } from './_components/gallery-public-links';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -310,27 +311,32 @@ export default async function ArtistProfilePage({
         </div>
 
         {isOwner && (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              asChild
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-              size="sm"
-            >
-              <Link href={requestedProfileId && roleProfile ? `/profiles/${roleProfile.id}/edit` : '/profile'}>
-                Edit Profile
-              </Link>
-            </Button>
-            {isGallery && (
+          <div className="flex flex-col gap-3 w-full md:max-w-md">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 asChild
-                variant="outline"
-                className="font-serif border-wine/30 hover:bg-wine/10"
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
                 size="sm"
               >
-                <Link href="/exhibitions">Manage Exhibitions</Link>
+                <Link href={requestedProfileId && roleProfile ? `/profiles/${roleProfile.id}/edit` : '/profile'}>
+                  Edit Profile
+                </Link>
               </Button>
-            )}
-            <AccountSettingsButton />
+              {isGallery && (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="font-serif border-wine/30 hover:bg-wine/10"
+                  size="sm"
+                >
+                  <Link href="/exhibitions">Manage Exhibitions</Link>
+                </Button>
+              )}
+              <AccountSettingsButton />
+            </div>
+            {isGallery && roleProfile?.id ? (
+              <GalleryPublicLinks profileId={roleProfile.id} slug={roleProfile.slug} />
+            ) : null}
           </div>
         )}
       </div>

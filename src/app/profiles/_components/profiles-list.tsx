@@ -61,6 +61,13 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
     });
   };
 
+  const publicProfileHref = (profile: UserProfile) => {
+    if (profile.role === 'gallery' && profile.slug) {
+      return `/g/${encodeURIComponent(profile.slug)}`;
+    }
+    return `/artists/${profile.user_id}?role=${profile.role}${profile.role === 'gallery' ? `&profileId=${profile.id}` : ''}`;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {profiles.map((profile) => (
@@ -70,7 +77,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
         >
           <CardContent className="p-6">
             <Link
-              href={`/artists/${profile.user_id}?role=${profile.role}${profile.role === 'gallery' ? `&profileId=${profile.id}` : ''}`}
+              href={publicProfileHref(profile)}
               className="block"
             >
               <div className="flex items-start gap-4 mb-4">
@@ -135,7 +142,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
                 size="sm"
                 className="font-serif"
               >
-                <Link href={`/artists/${profile.user_id}?role=${profile.role}${profile.role === 'gallery' ? `&profileId=${profile.id}` : ''}`}>
+                <Link href={publicProfileHref(profile)}>
                   <ExternalLink className="h-3 w-3" />
                 </Link>
               </Button>

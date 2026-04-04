@@ -2,12 +2,15 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { isValidRole, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, isValidRole, type UserRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
+import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 
 export interface CreateProfileInput {
   role: string;
   name: string;
+  /** Optional for new galleries; otherwise generated from name */
+  slug?: string;
   picture_url?: string;
   bio?: string;
   medium?: string;
@@ -52,19 +55,40 @@ export async function createProfile(input: CreateProfileInput) {
       }
     }
 
-    // Generate slug for gallery profiles
+    // Slug for gallery profiles: optional custom, else generated from name
     let slug: string | null = null;
-    if (input.role === 'gallery') {
-      try {
-        const { data: generatedSlug, error: slugError } = await client
-          .rpc('generate_unique_gallery_slug', { base_name: input.name.trim() });
-        
-        if (!slugError && generatedSlug) {
-          slug = generatedSlug;
+    if (input.role === USER_ROLES.GALLERY) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = client as any;
+      if (input.slug !== undefined && input.slug.trim() !== '') {
+        const validated = validateGalleryPublicSlug(input.slug);
+        if (!validated.ok) {
+          return { error: validated.error };
         }
-      } catch (error) {
-        console.error('Error generating slug, will create without slug:', error);
-        // Continue without slug - migration will generate it later
+        const { data: taken } = await sb
+          .from('user_profiles')
+          .select('id')
+          .eq('role', USER_ROLES.GALLERY)
+          .eq('slug', validated.normalized)
+          .maybeSingle();
+        if (taken) {
+          return { error: 'That public URL is already taken by another gallery' };
+        }
+        slug = validated.normalized;
+        console.log('[Profiles] createProfile gallery custom slug', { slug });
+      } else {
+        try {
+          const { data: generatedSlug, error: slugError } = await sb.rpc(
+            'generate_unique_gallery_slug',
+            { base_name: input.name.trim() },
+          );
+
+          if (!slugError && generatedSlug) {
+            slug = generatedSlug;
+          }
+        } catch (error) {
+          console.error('Error generating slug, will create without slug:', error);
+        }
       }
     }
 
@@ -94,11 +118,14 @@ export async function createProfile(input: CreateProfileInput) {
 
     if (error) {
       console.error('Error creating profile:', error);
+      if (error.code === '23505' && String(error.message || '').includes('slug')) {
+        return { error: 'That public URL is already taken by another gallery' };
+      }
       return { error: error.message || 'Failed to create profile' };
     }
 
     // Create a notification for gallery profile creation
-    if (input.role === 'gallery') {
+    if (input.role === USER_ROLES.GALLERY) {
       try {
         await createNotification({
           userId: user.id,

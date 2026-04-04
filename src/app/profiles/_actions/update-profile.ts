@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { USER_ROLES } from '~/lib/user-roles';
 import { dedupeNewsPublications } from '~/lib/news-publications';
 import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
+import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 
 export interface UpdateProfileInput {
   profileId: string;
@@ -20,6 +21,8 @@ export interface UpdateProfileInput {
   phone?: string;
   established_year?: number;
   is_active?: boolean;
+  /** Gallery only: public URL segment for /g/{slug} and /gallery/{slug} */
+  slug?: string;
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
 }
 
@@ -40,7 +43,7 @@ export async function updateProfile(input: UpdateProfileInput) {
     const sb = client as any;
     const { data: profile, error: fetchError } = await sb
       .from('user_profiles')
-      .select('user_id, role')
+      .select('user_id, role, slug')
       .eq('id', input.profileId)
       .single();
 
@@ -78,20 +81,27 @@ export async function updateProfile(input: UpdateProfileInput) {
       );
     }
 
-    // Regenerate slug for gallery profiles when name changes
-    if (input.name !== undefined && profile.role === 'gallery') {
-      try {
-        const { data: generatedSlug, error: slugError } = await sb.rpc(
-          'generate_unique_gallery_slug',
-          { base_name: input.name.trim() },
-        );
-        
-        if (!slugError && generatedSlug) {
-          updateData.slug = generatedSlug;
+    if (input.slug !== undefined && profile.role === USER_ROLES.GALLERY) {
+      const validated = validateGalleryPublicSlug(input.slug);
+      if (!validated.ok) {
+        return { error: validated.error };
+      }
+      const currentSlug = (profile.slug as string | null)?.toLowerCase() ?? null;
+      if (validated.normalized !== currentSlug) {
+        const { data: taken } = await sb
+          .from('user_profiles')
+          .select('id')
+          .eq('role', USER_ROLES.GALLERY)
+          .eq('slug', validated.normalized)
+          .neq('id', input.profileId)
+          .maybeSingle();
+        if (taken) {
+          return { error: 'That public URL is already taken by another gallery' };
         }
-      } catch (error) {
-        console.error('Error generating slug, will update without changing slug:', error);
-        // Continue without updating slug
+        updateData.slug = validated.normalized;
+        console.log('[Profiles] updateProfile gallery slug changed', {
+          profileId: input.profileId,
+        });
       }
     }
 
@@ -105,6 +115,9 @@ export async function updateProfile(input: UpdateProfileInput) {
 
     if (error) {
       console.error('Error updating profile:', error);
+      if (error.code === '23505' && String(error.message || '').includes('slug')) {
+        return { error: 'That public URL is already taken by another gallery' };
+      }
       return { error: error.message || 'Failed to update profile' };
     }
 

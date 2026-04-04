@@ -15,6 +15,8 @@ type Account = {
   created_at: string | null;
   role?: string; // For gallery profiles, this will be set
   profileId?: string; // For gallery profiles, this is the profile ID
+  /** Gallery public slug for /g/{slug} when present */
+  profileSlug?: string | null;
 };
 
 export default async function RegistryPage() {
@@ -37,7 +39,7 @@ export default async function RegistryPage() {
   // Fetch gallery profiles from user_profiles table
   const { data: galleryProfiles, error: profilesError } = await client
     .from('user_profiles')
-    .select('id, user_id, name, picture_url, role, created_at')
+    .select('id, user_id, name, picture_url, role, created_at, slug')
     .eq('role', USER_ROLES.GALLERY)
     .eq('is_active', true)
     .order('name', { ascending: true })
@@ -62,6 +64,7 @@ export default async function RegistryPage() {
         created_at: profile.created_at,
         role: USER_ROLES.GALLERY,
         profileId: profile.id,
+        profileSlug: (profile as { slug?: string | null }).slug ?? null,
       });
     });
   }
