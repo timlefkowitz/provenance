@@ -14,7 +14,8 @@ import { createProfile } from '../_actions/create-profile';
 import { updateProfile } from '../_actions/update-profile';
 import { uploadProfilePicture } from '../_actions/upload-profile-picture';
 import { UserProfile, type NewsPublication } from '../_actions/get-user-profiles';
-import { type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, type UserRole } from '~/lib/user-roles';
+import { PressArticleDiscovery } from './press-article-discovery';
 
 export function ProfileForm({
   role,
@@ -91,9 +92,9 @@ export function ProfileForm({
         setSelectedFile(null);
         setImagePreview(formData.picture_url || null);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading image:', error);
-      toast.error(error.message || 'Failed to upload image');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
       setSelectedFile(null);
       setImagePreview(formData.picture_url || null);
     } finally {
@@ -396,6 +397,16 @@ export function ProfileForm({
             <p className="text-sm text-ink/60 font-serif mb-3">
               Add press mentions, articles, or interviews (title, link, publication, date).
             </p>
+            {profile?.id &&
+              (profile.role === USER_ROLES.GALLERY || profile.role === USER_ROLES.ARTIST) && (
+                <div className="mb-6">
+                  <PressArticleDiscovery
+                    profileId={profile.id}
+                    existingPublications={newsPublications}
+                    onPublicationsChange={setNewsPublications}
+                  />
+                </div>
+              )}
             <div className="space-y-4">
               {newsPublications.map((pub, index) => (
                 <div

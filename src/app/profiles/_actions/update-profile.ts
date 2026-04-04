@@ -2,7 +2,9 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { isValidRole, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES } from '~/lib/user-roles';
+import { dedupeNewsPublications } from '~/lib/news-publications';
+import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 
 export interface UpdateProfileInput {
   profileId: string;
@@ -33,8 +35,10 @@ export async function updateProfile(input: UpdateProfileInput) {
       return { error: 'You must be signed in to update a profile' };
     }
 
-    // Verify the profile belongs to the user
-    const { data: profile, error: fetchError } = await client
+    // user_profiles not in generated DB types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = client as any;
+    const { data: profile, error: fetchError } = await sb
       .from('user_profiles')
       .select('user_id, role')
       .eq('id', input.profileId)
@@ -44,12 +48,17 @@ export async function updateProfile(input: UpdateProfileInput) {
       return { error: 'Profile not found' };
     }
 
-    if (profile.user_id !== user.id) {
+    const isOwner = profile.user_id === user.id;
+    const isGalleryTeamMember =
+      profile.role === USER_ROLES.GALLERY &&
+      (await isGalleryMember(user.id, input.profileId));
+
+    if (!isOwner && !isGalleryTeamMember) {
       return { error: 'You do not have permission to update this profile' };
     }
 
     // Build update object
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (input.name !== undefined) updateData.name = input.name.trim();
     if (input.picture_url !== undefined) updateData.picture_url = input.picture_url || null;
     if (input.bio !== undefined) updateData.bio = input.bio?.trim() || null;
@@ -62,13 +71,20 @@ export async function updateProfile(input: UpdateProfileInput) {
     if (input.phone !== undefined) updateData.phone = input.phone?.trim() || null;
     if (input.established_year !== undefined) updateData.established_year = input.established_year || null;
     if (input.is_active !== undefined) updateData.is_active = input.is_active;
-    if (input.news_publications !== undefined) updateData.news_publications = Array.isArray(input.news_publications) ? input.news_publications : [];
+    if (input.news_publications !== undefined) {
+      const raw = Array.isArray(input.news_publications) ? input.news_publications : [];
+      updateData.news_publications = dedupeNewsPublications(
+        raw.filter((p) => p.title?.trim() && p.url?.trim()),
+      );
+    }
 
     // Regenerate slug for gallery profiles when name changes
     if (input.name !== undefined && profile.role === 'gallery') {
       try {
-        const { data: generatedSlug, error: slugError } = await client
-          .rpc('generate_unique_gallery_slug', { base_name: input.name.trim() });
+        const { data: generatedSlug, error: slugError } = await sb.rpc(
+          'generate_unique_gallery_slug',
+          { base_name: input.name.trim() },
+        );
         
         if (!slugError && generatedSlug) {
           updateData.slug = generatedSlug;
@@ -80,7 +96,7 @@ export async function updateProfile(input: UpdateProfileInput) {
     }
 
     // Update the profile
-    const { data, error } = await client
+    const { data, error } = await sb
       .from('user_profiles')
       .update(updateData)
       .eq('id', input.profileId)
@@ -94,7 +110,10 @@ export async function updateProfile(input: UpdateProfileInput) {
 
     revalidatePath('/profile');
     revalidatePath('/profiles');
-    revalidatePath(`/artists/${user.id}`);
+    revalidatePath(`/profiles/${input.profileId}/edit`);
+    if (profile.user_id) {
+      revalidatePath(`/artists/${profile.user_id}`);
+    }
 
     return { success: true, profile: data };
   } catch (error) {
