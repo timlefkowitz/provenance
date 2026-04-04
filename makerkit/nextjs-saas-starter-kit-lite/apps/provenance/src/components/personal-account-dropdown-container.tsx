@@ -94,7 +94,7 @@ export function ProfileAccountDropdownContainer(props: {
         </If>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className={'xl:!min-w-[15rem]'}>
+      <DropdownMenuContent align="end" className={'xl:!min-w-[15rem]'}>
         <DropdownMenuItem className={'!h-10 rounded-none'}>
           <div className={'flex flex-col justify-start truncate text-left text-xs'}>
             <div className={'text-muted-foreground'}>
