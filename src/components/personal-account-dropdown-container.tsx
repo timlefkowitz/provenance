@@ -121,9 +121,6 @@ export function ProfileAccountDropdownContainer(props: {
       if (typeof window !== 'undefined') {
         localStorage.setItem(PERSPECTIVE_KEY, role);
         localStorage.removeItem(SELECTED_PROFILE_KEY);
-        window.dispatchEvent(
-          new CustomEvent('user_perspective_changed', { detail: role }),
-        );
       }
       setCurrentPerspective(role);
       router.refresh();
@@ -178,18 +175,13 @@ export function ProfileAccountDropdownContainer(props: {
   })();
 
   return (
-    <DropdownMenu modal={false}>
-      {/*
-        Do not use asChild here: Radix Slot + ref merge can fail on React 19,
-        leaving the trigger inert. Let DropdownMenuTrigger render its own button.
-      */}
+    <DropdownMenu>
       <DropdownMenuTrigger
-        type="button"
         aria-label="Open your profile menu"
         className={cn(
-          'focus:outline-primary relative z-10 flex cursor-pointer items-center border-0 bg-transparent p-0 outline-none',
+          'focus:outline-primary flex cursor-pointer items-center outline-none',
           {
-            ['active:bg-secondary/50 items-center gap-x-4 rounded-md' +
+            ['active:bg-secondary/50 gap-x-4 rounded-md' +
             ' hover:bg-secondary p-2 transition-colors']: props.showProfileName,
           },
         )}
@@ -201,25 +193,20 @@ export function ProfileAccountDropdownContainer(props: {
           pictureUrl={profilePictureUrl}
         />
 
-        <If condition={props.showProfileName}>
-          <div className={'fade-in animate-in flex w-full flex-col truncate text-left'}>
-            <span className={'truncate text-sm'}>
-              {displayName}
-            </span>
-            <span className={'text-muted-foreground truncate text-xs'}>
-              {signedInAsLabel}
-            </span>
-          </div>
-
-          <ChevronsUpDown className={'text-muted-foreground mr-1 h-8'} />
-        </If>
+        {props.showProfileName && (
+          <>
+            <div className={'flex w-full flex-col truncate text-left'}>
+              <span className={'truncate text-sm'}>{displayName}</span>
+              <span className={'text-muted-foreground truncate text-xs'}>
+                {signedInAsLabel}
+              </span>
+            </div>
+            <ChevronsUpDown className={'text-muted-foreground mr-1 h-8'} />
+          </>
+        )}
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent
-        align="end"
-        sideOffset={16}
-        className="z-[100] min-w-[14rem]"
-      >
+      <DropdownMenuContent align="end" sideOffset={16} className={'xl:!min-w-[15rem]'}>
         <DropdownMenuItem asChild>
           <Link
             className={'flex cursor-pointer items-center space-x-2'}
@@ -239,7 +226,7 @@ export function ProfileAccountDropdownContainer(props: {
               {getRoleLabel(currentPerspective)}
             </span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="z-[110] min-w-[12rem]">
+          <DropdownMenuSubContent className="min-w-[12rem]">
             <DropdownMenuLabel className="text-muted-foreground font-normal">
               Viewing as: {getRoleLabel(currentPerspective)}
             </DropdownMenuLabel>
