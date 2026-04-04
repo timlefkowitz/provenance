@@ -61,7 +61,9 @@ export default async function MyArtworksPage() {
     }
   }
 
-  let linkableExhibitions = await getUserExhibitions(user.id);
+  let linkableExhibitions = await getUserExhibitions(user.id, {
+    forCollectionManagement: true,
+  });
   const linkableIds = new Set(linkableExhibitions.map((e) => e.id));
   const linkedIds = new Set(
     Object.values(initialExhibitionIdByArtworkId).filter(Boolean) as string[],

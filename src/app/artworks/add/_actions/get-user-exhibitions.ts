@@ -10,8 +10,24 @@ export type UserExhibition = {
   end_date: string | null;
 };
 
-export async function getUserExhibitions(userId: string): Promise<UserExhibition[]> {
+export type GetUserExhibitionsOptions = {
+  /**
+   * When true (Collection Management / mass provenance edit), only list:
+   * - exhibitions linked to the user's own artworks, and
+   * - exhibitions owned by this account when the user is a gallery (gallery_id = userId).
+   * Does not attach every exhibition for galleries where the user is only a team member,
+   * so personal collections are not flooded with unrelated shows or open-call listings.
+   */
+  forCollectionManagement?: boolean;
+};
+
+export async function getUserExhibitions(
+  userId: string,
+  options?: GetUserExhibitionsOptions,
+): Promise<UserExhibition[]> {
   const client = getSupabaseServerClient();
+  const forCollectionManagement = options?.forCollectionManagement === true;
+  console.log('[getUserExhibitions] started', { forCollectionManagement });
 
   const galleryAccountIds = new Set<string>();
 
@@ -28,25 +44,45 @@ export async function getUserExhibitions(userId: string): Promise<UserExhibition
     }
   }
 
-  // Gallery team members: exhibitions belong to the gallery account, not the member's personal account
-  const { data: memberships } = await (client as any)
-    .from('gallery_members')
-    .select('gallery_profile_id')
-    .eq('user_id', userId);
+  // Gallery team members: exhibitions belong to the gallery account (for Add Artwork / API only).
+  // Skip when editing personal collection so unrelated gallery shows do not appear.
+  if (!forCollectionManagement) {
+    const { data: memberships } = await (client as any)
+      .from('gallery_members')
+      .select('gallery_profile_id')
+      .eq('user_id', userId);
 
-  if (memberships?.length) {
-    const profileIds = memberships.map((m: { gallery_profile_id: string }) => m.gallery_profile_id);
-    const { data: profiles } = await (client as any)
-      .from('user_profiles')
-      .select('user_id')
-      .in('id', profileIds)
-      .eq('role', 'gallery');
+    if (memberships?.length) {
+      const profileIds = memberships.map((m: { gallery_profile_id: string }) => m.gallery_profile_id);
+      const { data: profiles } = await (client as any)
+        .from('user_profiles')
+        .select('user_id')
+        .in('id', profileIds)
+        .eq('role', 'gallery');
 
-    profiles?.forEach((p: { user_id: string | null }) => {
-      if (p.user_id) {
-        galleryAccountIds.add(p.user_id);
-      }
-    });
+      profiles?.forEach((p: { user_id: string | null }) => {
+        if (p.user_id) {
+          galleryAccountIds.add(p.user_id);
+        }
+      });
+    }
+  }
+
+  // Exhibitions created for open calls / programs share the exhibitions table; hide them from
+  // pickers unless already linked to the user's artwork (linked path below still adds them).
+  let openCallExhibitionIds = new Set<string>();
+  const { data: openCallRows, error: openCallErr } = await (client as any)
+    .from('open_calls')
+    .select('exhibition_id');
+
+  if (openCallErr) {
+    console.error('[getUserExhibitions] Error fetching open_calls exhibition ids:', openCallErr);
+  } else {
+    openCallExhibitionIds = new Set(
+      (openCallRows || [])
+        .map((r: { exhibition_id: string }) => r.exhibition_id)
+        .filter(Boolean),
+    );
   }
 
   const seen = new Set<string>();
@@ -64,7 +100,7 @@ export async function getUserExhibitions(userId: string): Promise<UserExhibition
     }
 
     for (const row of data || []) {
-      if (row?.id && !seen.has(row.id)) {
+      if (row?.id && !seen.has(row.id) && !openCallExhibitionIds.has(row.id)) {
         seen.add(row.id);
         deduped.push(row);
       }
