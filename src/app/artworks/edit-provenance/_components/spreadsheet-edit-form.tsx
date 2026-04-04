@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Check } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Textarea } from '@kit/ui/textarea';
@@ -16,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kit/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@kit/ui/command';
+import { cn } from '@kit/ui/utils';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
 
 type LinkableExhibition = {
@@ -74,6 +84,101 @@ type ArtworkFormData = {
   sold_by: string;
   sold_by_is_public: boolean | null;
 };
+
+function ExhibitionCombobox({
+  artworkId,
+  value,
+  options,
+  onChange,
+}: {
+  artworkId: string;
+  value: string | null;
+  options: LinkableExhibition[];
+  onChange: (value: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const allOptions = [...options];
+  if (value && !allOptions.some((e) => e.id === value)) {
+    allOptions.unshift({
+      id: value,
+      title: 'Current linked exhibition',
+      start_date: null,
+      end_date: null,
+    });
+  }
+
+  const selected = allOptions.find((e) => e.id === value) ?? null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          role="combobox"
+          aria-expanded={open}
+          aria-label="Link to exhibition"
+          className={cn(
+            'font-serif text-sm h-9 w-[200px] flex items-center justify-between rounded-md border border-wine/20 bg-background px-3 py-2 text-left',
+            'hover:border-wine/40 focus:outline-none focus:ring-1 focus:ring-wine/30',
+            !selected && 'text-ink/50',
+          )}
+        >
+          <span className="truncate">
+            {selected
+              ? `${selected.title}${selected.start_date ? ` (${new Date(selected.start_date).getFullYear()})` : ''}`
+              : allOptions.length === 0
+                ? 'No exhibitions'
+                : 'Select exhibition'}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search exhibitions..." className="font-serif text-sm" />
+          <CommandList>
+            <CommandEmpty className="font-serif text-sm py-3 text-center text-ink/60">
+              No exhibitions found.
+            </CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__none__"
+                onSelect={() => {
+                  onChange(null);
+                  setOpen(false);
+                }}
+                className="font-serif text-sm"
+              >
+                <Check className={cn('mr-2 h-4 w-4', value === null ? 'opacity-100' : 'opacity-0')} />
+                None
+              </CommandItem>
+              {allOptions.map((ex) => {
+                const year = ex.start_date ? new Date(ex.start_date).getFullYear() : null;
+                return (
+                  <CommandItem
+                    key={ex.id}
+                    value={`${ex.title}${year ? ` ${year}` : ''}`}
+                    onSelect={() => {
+                      onChange(ex.id);
+                      setOpen(false);
+                    }}
+                    className="font-serif text-sm"
+                  >
+                    <Check className={cn('mr-2 h-4 w-4 shrink-0', value === ex.id ? 'opacity-100' : 'opacity-0')} />
+                    <span className="truncate">
+                      {ex.title}
+                      {year ? <span className="text-xs text-ink/60 ml-1">({year})</span> : null}
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function SpreadsheetEditForm({
   artworks,
@@ -677,74 +782,16 @@ export function SpreadsheetEditForm({
                     />
                   </td>
 
-                  {/* Exhibition (link to gallery exhibition) */}
+                  {/* Exhibition (link to exhibition) */}
                   <td className="px-3 py-2 border-r border-wine/10 align-top">
-                    {(() => {
-                      const rowOptions = [...linkableExhibitions];
-                      if (
-                        data.exhibition_id &&
-                        !rowOptions.some((e) => e.id === data.exhibition_id)
-                      ) {
-                        rowOptions.unshift({
-                          id: data.exhibition_id,
-                          title: 'Current linked exhibition',
-                          start_date: null,
-                          end_date: null,
-                        });
-                      }
-                      return (
-                        <Select
-                          value={data.exhibition_id ?? '__none__'}
-                          onValueChange={(v) =>
-                            updateField(
-                              artwork.id,
-                              'exhibition_id',
-                              v === '__none__' ? null : v,
-                            )
-                          }
-                          disabled={rowOptions.length === 0}
-                        >
-                          <SelectTrigger
-                            className="font-serif text-sm h-9 border-wine/20 w-[200px]"
-                            aria-label="Link to exhibition"
-                          >
-                            <SelectValue
-                              placeholder={
-                                rowOptions.length === 0
-                                  ? 'No exhibitions'
-                                  : 'Select exhibition'
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__" className="font-serif">
-                              None
-                            </SelectItem>
-                            {rowOptions.map((ex) => {
-                              const startDate = ex.start_date
-                                ? new Date(ex.start_date)
-                                : null;
-                              return (
-                                <SelectItem
-                                  key={ex.id}
-                                  value={ex.id}
-                                  className="font-serif"
-                                >
-                                  {ex.title}
-                                  {startDate ? (
-                                    <span className="text-xs text-ink/60 ml-1">
-                                      ({startDate.getFullYear()})
-                                    </span>
-                                  ) : null}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
+                    <ExhibitionCombobox
+                      artworkId={artwork.id}
+                      value={data.exhibition_id ?? null}
+                      options={linkableExhibitions}
+                      onChange={(v) => updateField(artwork.id, 'exhibition_id', v)}
+                    />
                     <p className="text-[10px] text-ink/50 font-serif mt-1 max-w-[200px] leading-tight">
-                      Gallery exhibitions you can manage. Optional; use Exhibition
+                      Linked exhibition. Type to search. Optional; use Exhibition
                       History for text notes.
                     </p>
                   </td>

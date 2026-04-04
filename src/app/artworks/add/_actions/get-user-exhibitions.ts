@@ -49,27 +49,67 @@ export async function getUserExhibitions(userId: string): Promise<UserExhibition
     });
   }
 
-  if (galleryAccountIds.size === 0) {
-    return [];
-  }
-
-  const { data, error } = await (client as any)
-    .from('exhibitions')
-    .select('id, title, start_date, end_date')
-    .in('gallery_id', [...galleryAccountIds])
-    .order('start_date', { ascending: false });
-
-  if (error) {
-    console.error('[getUserExhibitions] Error fetching exhibitions:', error);
-    return [];
-  }
-
   const seen = new Set<string>();
   const deduped: UserExhibition[] = [];
-  for (const row of data || []) {
-    if (row?.id && !seen.has(row.id)) {
-      seen.add(row.id);
-      deduped.push(row);
+
+  if (galleryAccountIds.size > 0) {
+    const { data, error } = await (client as any)
+      .from('exhibitions')
+      .select('id, title, start_date, end_date')
+      .in('gallery_id', [...galleryAccountIds])
+      .order('start_date', { ascending: false });
+
+    if (error) {
+      console.error('[getUserExhibitions] Error fetching gallery exhibitions:', error);
+    }
+
+    for (const row of data || []) {
+      if (row?.id && !seen.has(row.id)) {
+        seen.add(row.id);
+        deduped.push(row);
+      }
+    }
+  }
+
+  // Also include exhibitions linked to any of the user's own artworks via exhibition_artworks
+  const { data: userArtworks } = await (client as any)
+    .from('artworks')
+    .select('id')
+    .eq('account_id', userId);
+
+  const artworkIds = (userArtworks || []).map((a: { id: string }) => a.id);
+
+  if (artworkIds.length > 0) {
+    const { data: links } = await (client as any)
+      .from('exhibition_artworks')
+      .select('exhibition_id')
+      .in('artwork_id', artworkIds);
+
+    const linkedExhibitionIds = [
+      ...new Set(
+        (links || [])
+          .map((l: { exhibition_id: string }) => l.exhibition_id)
+          .filter(Boolean),
+      ),
+    ].filter((id) => !seen.has(id as string)) as string[];
+
+    if (linkedExhibitionIds.length > 0) {
+      const { data: linkedExhibitions, error: linkedError } = await (client as any)
+        .from('exhibitions')
+        .select('id, title, start_date, end_date')
+        .in('id', linkedExhibitionIds)
+        .order('start_date', { ascending: false });
+
+      if (linkedError) {
+        console.error('[getUserExhibitions] Error fetching artwork-linked exhibitions:', linkedError);
+      }
+
+      for (const row of linkedExhibitions || []) {
+        if (row?.id && !seen.has(row.id)) {
+          seen.add(row.id);
+          deduped.push(row);
+        }
+      }
     }
   }
 
