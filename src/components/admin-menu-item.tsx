@@ -3,17 +3,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCurrentUser } from '~/hooks/use-current-user';
-import { DropdownMenuItem } from '@kit/ui/dropdown-menu';
 import { Shield } from 'lucide-react';
+import { cn } from '@kit/ui/utils';
 
-export function AdminMenuItem() {
+const rowClass =
+  'focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-pointer items-center rounded-xs px-2 py-1.5 text-sm outline-none transition-colors select-none hover:bg-accent hover:text-accent-foreground';
+
+export function AdminMenuItem({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
+  const userId = user.data?.sub ?? (user.data as { id?: string } | undefined)?.id;
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function checkAdmin() {
-      if (!user.data?.id) {
+      if (!userId) {
         setIsAdmin(false);
         setLoading(false);
         return;
@@ -26,32 +30,28 @@ export function AdminMenuItem() {
           setIsAdmin(data.isAdmin === true);
         }
       } catch (error) {
-        console.error('Error checking admin status:', error);
+        console.error('[AdminMenuItem] Error checking admin status:', error);
         setIsAdmin(false);
       } finally {
         setLoading(false);
       }
     }
 
-    checkAdmin();
-  }, [user.data?.id]);
+    void checkAdmin();
+  }, [userId]);
 
   if (loading || !isAdmin) {
     return null;
   }
 
   return (
-    <>
-      <DropdownMenuItem asChild>
-        <Link
-          className={'flex cursor-pointer items-center space-x-2'}
-          href="/admin"
-        >
-          <Shield className={'h-5'} />
-          <span>Admin</span>
-        </Link>
-      </DropdownMenuItem>
-    </>
+    <Link
+      href="/admin"
+      className={cn(rowClass, 'flex items-center space-x-2')}
+      onClick={onNavigate}
+    >
+      <Shield className="h-5" />
+      <span>Admin</span>
+    </Link>
   );
 }
-

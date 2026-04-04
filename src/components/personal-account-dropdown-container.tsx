@@ -1,34 +1,41 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, startTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
-import { ChevronsUpDown, Home, LogOut, Settings, User, Check } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  Computer,
+  Home,
+  LogOut,
+  Moon,
+  Settings,
+  Sun,
+  User,
+} from 'lucide-react';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
+import { useTheme } from 'next-themes';
+import { useTranslation } from 'react-i18next';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuLabel,
-} from '@kit/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { If } from '@kit/ui/if';
-import { SubMenuModeToggle } from '@kit/ui/mode-toggle';
 import { ProfileAvatar } from '@kit/ui/profile-avatar';
+import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@kit/ui/collapsible';
 import type { AppDatabase } from '~/lib/supabase-app-database';
 import { AdminMenuItem } from './admin-menu-item';
-import { LanguageSwitcher } from './language-switcher';
 import { getPerspective } from './perspective-switcher';
 import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { languages, I18N_COOKIE_NAME } from '~/lib/i18n/i18n.settings';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
@@ -46,6 +53,35 @@ const features = {
   enableThemeToggle: featuresFlagConfig.enableThemeToggle,
 };
 
+const MODES = ['light', 'dark', 'system'] as const;
+
+/** Matches DropdownMenuItem surface so the popover menu feels the same */
+const rowClass =
+  'focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-pointer items-center rounded-xs px-2 py-1.5 text-sm outline-none transition-colors select-none hover:bg-accent hover:text-accent-foreground';
+
+const sepClass = 'bg-muted -mx-1 my-1 h-px';
+
+function setCookieTheme(theme: string) {
+  document.cookie = `theme=${theme}; path=/; max-age=31536000`;
+}
+
+function ThemeIcon({ theme }: { theme: string | undefined }) {
+  switch (theme) {
+    case 'light':
+      return <Sun className="h-4 w-4" />;
+    case 'dark':
+      return <Moon className="h-4 w-4" />;
+    case 'system':
+      return <Computer className="h-4 w-4" />;
+    default:
+      return <Sun className="h-4 w-4" />;
+  }
+}
+
+function capitalize(str: string) {
+  return str.slice(0, 1).toUpperCase() + str.slice(1);
+}
+
 export function ProfileAccountDropdownContainer(props: {
   user?: JwtPayload;
   showProfileName?: boolean;
@@ -60,21 +96,32 @@ export function ProfileAccountDropdownContainer(props: {
   const user = useCurrentUser(props.user);
   const userData = user.data;
   const client = useSupabase<AppDatabase>();
+  const router = useRouter();
+  const { i18n } = useTranslation();
+  const { setTheme, theme, resolvedTheme } = useTheme();
 
-  // Fetch account display data (name, picture) directly — avoids React Query monorepo
-  // instance mismatch that can occur with kit hooks like usePersonalAccountData.
+  const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  const userId =
+    userData?.sub ?? (userData as { id?: string } | undefined)?.id ?? '';
+
   const [accountData, setAccountData] = useState<{
     name: string | null;
     picture_url: string | null;
   } | null>(null);
 
   useEffect(() => {
-    if (!userData?.id) return;
-    console.log('[ProfileDropdown] Fetching account data for', userData.id);
+    if (!userId) return;
+    console.log('[ProfileDropdown] Fetching account data');
     client
       .from('accounts')
       .select('name, picture_url')
-      .eq('id', userData.id)
+      .eq('id', userId)
       .single()
       .then(({ data, error }) => {
         if (error) {
@@ -83,18 +130,17 @@ export function ProfileAccountDropdownContainer(props: {
         }
         if (data) setAccountData(data);
       });
-  }, [userData?.id, client]);
+  }, [userId, client]);
 
-  // Fetch all user profiles directly — same reason as above.
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
 
   useEffect(() => {
-    if (!userData?.id) return;
-    console.log('[ProfileDropdown] Fetching user profiles for', userData.id);
+    if (!userId) return;
+    console.log('[ProfileDropdown] Fetching user profiles');
     client
       .from('user_profiles')
       .select('*')
-      .eq('user_id', userData.id)
+      .eq('user_id', userId)
       .eq('is_active', true)
       .order('created_at', { ascending: true })
       .then(({ data, error }) => {
@@ -104,16 +150,17 @@ export function ProfileAccountDropdownContainer(props: {
         }
         setProfiles((data || []) as UserProfile[]);
       });
-  }, [userData?.id, client]);
+  }, [userId, client]);
 
-  // Current role/perspective (synced with PerspectiveSwitcher)
-  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
-  const router = useRouter();
+  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(
+    USER_ROLES.ARTIST,
+  );
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    startTransition(() => {
       setCurrentPerspective(getPerspective());
-    }
+    });
   }, []);
 
   const switchRole = useCallback(
@@ -123,6 +170,8 @@ export function ProfileAccountDropdownContainer(props: {
         localStorage.removeItem(SELECTED_PROFILE_KEY);
       }
       setCurrentPerspective(role);
+      setOpen(false);
+      setProfileOpen(false);
       router.refresh();
     },
     [router],
@@ -145,6 +194,32 @@ export function ProfileAccountDropdownContainer(props: {
     return email ?? phone;
   }, [userData]);
 
+  const languageNames = useMemo(() => {
+    return new Intl.DisplayNames([i18n.language], { type: 'language' });
+  }, [i18n.language]);
+
+  const languageChanged = useCallback(
+    async (locale: string) => {
+      if (locale === i18n.language) {
+        close();
+        return;
+      }
+      await i18n.changeLanguage(locale);
+      const cookieValue = `${I18N_COOKIE_NAME}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = cookieValue;
+      if (document.documentElement) {
+        document.documentElement.lang = locale;
+      }
+      window.location.reload();
+    },
+    [i18n, close],
+  );
+
+  const getLanguageLabel = (locale: string) => {
+    const name = languageNames.of(locale) || locale;
+    return capitalize(name);
+  };
+
   if (!userData) {
     return null;
   }
@@ -152,8 +227,6 @@ export function ProfileAccountDropdownContainer(props: {
   const displayName =
     accountData?.name ?? props.account?.name ?? userData?.email ?? '';
 
-  // When in gallery mode, show the active gallery's picture; otherwise show the
-  // Google OAuth avatar so the icon clearly reflects the current context.
   const profilePictureUrl = (() => {
     if (currentPerspective === USER_ROLES.GALLERY) {
       const selectedId =
@@ -176,168 +249,279 @@ export function ProfileAccountDropdownContainer(props: {
 
   return (
     <div className="relative z-[110] shrink-0">
-      {/* modal={false}: avoids a full-viewport pointer-capture layer that can fight sticky headers / overlays */}
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
-          type="button"
-          aria-label="Open your profile menu"
-          className={cn(
-            'touch-manipulation flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
-            'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
-            'data-[state=open]:bg-secondary/50',
-            {
-              ['active:bg-secondary/50 items-center gap-x-4 p-2 transition-colors hover:bg-secondary']:
-                props.showProfileName,
-            },
-          )}
-        >
-          <ProfileAvatar
-            className={'rounded-md'}
-            fallbackClassName={'rounded-md border'}
-            displayName={displayName ?? userData?.email ?? ''}
-            pictureUrl={profilePictureUrl}
-          />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Open your profile menu"
+            aria-expanded={open}
+            className={cn(
+              'touch-manipulation flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
+              'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
+              'data-[state=open]:bg-secondary/50',
+              {
+                'active:bg-secondary/50 items-center gap-x-4 p-2 transition-colors hover:bg-secondary':
+                  props.showProfileName,
+              },
+            )}
+          >
+            <ProfileAvatar
+              className="rounded-md"
+              fallbackClassName="rounded-md border"
+              displayName={displayName ?? userData?.email ?? ''}
+              pictureUrl={profilePictureUrl}
+            />
 
-          <If condition={props.showProfileName}>
-            <div className={'fade-in animate-in flex w-full flex-col truncate text-left'}>
-              <span className={'truncate text-sm'}>
-                {displayName}
-              </span>
-              <span className={'text-muted-foreground truncate text-xs'}>
+            <If condition={props.showProfileName ?? false}>
+              <div className="fade-in animate-in flex w-full flex-col truncate text-left">
+                <span className="truncate text-sm">{displayName}</span>
+                <span className="text-muted-foreground truncate text-xs">
+                  {signedInAsLabel}
+                </span>
+              </div>
+
+              <ChevronDown className="text-muted-foreground mr-1 h-8" />
+            </If>
+          </button>
+        </PopoverTrigger>
+
+        <PopoverContent
+          align="end"
+          side="bottom"
+          sideOffset={8}
+          collisionPadding={16}
+          className="z-[300] min-w-[14rem] max-w-[calc(100vw-1.5rem)] p-1 font-serif"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className={cn(rowClass, '!h-auto min-h-10 cursor-default rounded-none py-2')}>
+            <div className="flex flex-col justify-start truncate text-left text-xs">
+              <div className="text-muted-foreground">
+                <Trans i18nKey="common:signedInAs" />
+              </div>
+              <span className="block truncate font-medium text-ink">
                 {signedInAsLabel}
               </span>
             </div>
+          </div>
 
-            <ChevronsUpDown className={'text-muted-foreground mr-1 h-8'} />
-          </If>
-        </DropdownMenuTrigger>
+          <div className={sepClass} />
 
-      <DropdownMenuContent align="end" className={'z-[200] min-w-[14rem]'}>
-        <DropdownMenuItem asChild>
           <Link
-            className={'flex cursor-pointer items-center space-x-2'}
             href={paths.home}
+            className={cn(rowClass, 'flex items-center space-x-2')}
+            onClick={close}
           >
-            <Home className={'h-5'} />
-            <span>Home</span>
-          </Link>
-        </DropdownMenuItem>
-
-        {/* Profile submenu: show current role (Artist/Collector/Gallery) and switch + profiles */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="flex cursor-pointer items-center space-x-2">
-            <User className={'h-5'} />
-            <span>Profile</span>
-            <span className="ml-auto text-xs text-muted-foreground font-normal">
-              {getRoleLabel(currentPerspective)}
+            <Home className="h-5" />
+            <span>
+              <Trans i18nKey="common:routes.home" />
             </span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="min-w-[12rem]">
-            <DropdownMenuLabel className="text-muted-foreground font-normal">
-              Viewing as: {getRoleLabel(currentPerspective)}
-            </DropdownMenuLabel>
-            <DropdownMenuItem
-              className={cn(
-                'flex cursor-pointer items-center justify-between',
-                currentPerspective === USER_ROLES.ARTIST && 'bg-muted',
-              )}
-              onClick={() => switchRole(USER_ROLES.ARTIST)}
+          </Link>
+
+          <Collapsible open={profileOpen} onOpenChange={setProfileOpen}>
+            <CollapsibleTrigger
+              className={cn(rowClass, 'flex w-full items-center justify-between gap-2')}
             >
-              <span>{getRoleLabel(USER_ROLES.ARTIST)}</span>
-              {currentPerspective === USER_ROLES.ARTIST && (
-                <Check className="h-4 w-4" />
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className={cn(
-                'flex cursor-pointer items-center justify-between',
-                currentPerspective === USER_ROLES.COLLECTOR && 'bg-muted',
-              )}
-              onClick={() => switchRole(USER_ROLES.COLLECTOR)}
-            >
-              <span>{getRoleLabel(USER_ROLES.COLLECTOR)}</span>
-              {currentPerspective === USER_ROLES.COLLECTOR && (
-                <Check className="h-4 w-4" />
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className={cn(
-                'flex cursor-pointer items-center justify-between',
-                currentPerspective === USER_ROLES.GALLERY && 'bg-muted',
-              )}
-              onClick={() => switchRole(USER_ROLES.GALLERY)}
-            >
-              <span>{getRoleLabel(USER_ROLES.GALLERY)}</span>
-              {currentPerspective === USER_ROLES.GALLERY && (
-                <Check className="h-4 w-4" />
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
+              <span className="flex items-center space-x-2">
+                <User className="h-5" />
+                <span>Profile</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-xs font-normal text-muted-foreground">
+                  {getRoleLabel(currentPerspective)}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                    profileOpen && 'rotate-180',
+                  )}
+                />
+              </span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-0.5 pb-1 pl-1 pt-0">
+              <p className="px-2 py-1 text-xs text-muted-foreground">
+                Viewing as: {getRoleLabel(currentPerspective)}
+              </p>
+              {(
+                [
+                  USER_ROLES.ARTIST,
+                  USER_ROLES.COLLECTOR,
+                  USER_ROLES.GALLERY,
+                ] as const
+              ).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  className={cn(
+                    rowClass,
+                    'flex items-center justify-between',
+                    currentPerspective === role && 'bg-muted',
+                  )}
+                  onClick={() => switchRole(role)}
+                >
+                  <span>{getRoleLabel(role)}</span>
+                  {currentPerspective === role ? (
+                    <Check className="h-4 w-4" />
+                  ) : null}
+                </button>
+              ))}
+              <div className={sepClass} />
               <Link
-                className={'flex cursor-pointer items-center space-x-2'}
                 href={paths.profile}
+                className={cn(rowClass, 'flex items-center space-x-2')}
+                onClick={close}
               >
-                <User className={'h-4'} />
+                <User className="h-4" />
                 <span>My Profile</span>
               </Link>
-            </DropdownMenuItem>
-            {profilesForCurrentRole.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                {profilesForCurrentRole.map((profile) => (
-                  <DropdownMenuItem key={profile.id} asChild>
+              {profilesForCurrentRole.length > 0
+                ? profilesForCurrentRole.map((profile) => (
                     <Link
-                      className={'flex cursor-pointer items-center space-x-2'}
+                      key={profile.id}
                       href={
                         currentPerspective === USER_ROLES.GALLERY
-                          ? `/artists/${userData.id}?role=gallery&profileId=${profile.id}`
-                          : `/artists/${userData.id}?role=${currentPerspective}`
+                          ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
+                          : `/artists/${userId}?role=${currentPerspective}`
                       }
-                      onClick={() => setSelectedProfileAndNavigate(profile.id)}
+                      className={cn(rowClass, 'flex items-center space-x-2')}
+                      onClick={() => {
+                        setSelectedProfileAndNavigate(profile.id);
+                        close();
+                      }}
                     >
-                      <User className={'h-4'} />
+                      <User className="h-4" />
                       <span className="truncate">{profile.name}</span>
                     </Link>
-                  </DropdownMenuItem>
-                ))}
-              </>
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+                  ))
+                : null}
+            </CollapsibleContent>
+          </Collapsible>
 
-        <AdminMenuItem />
+          <div className={sepClass} />
 
-        <DropdownMenuSeparator />
+          <AdminMenuItem onNavigate={close} />
 
-        <If condition={features.enableThemeToggle}>
-          <SubMenuModeToggle />
-        </If>
+          <If condition={features.enableThemeToggle}>
+            <>
+              <div className={sepClass} />
+              <Collapsible open={themeOpen} onOpenChange={setThemeOpen}>
+                <CollapsibleTrigger
+                  className={cn(
+                    rowClass,
+                    'flex w-full items-center justify-between gap-2',
+                  )}
+                >
+                  <span className="flex items-center space-x-2">
+                    <ThemeIcon theme={resolvedTheme} />
+                    <span>
+                      <Trans i18nKey="common:theme" />
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                      themeOpen && 'rotate-180',
+                    )}
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pb-1 pl-1">
+                  {MODES.map((mode) => {
+                    const isSelected = theme === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={cn(
+                          rowClass,
+                          'flex items-center space-x-2',
+                          isSelected && 'bg-muted',
+                        )}
+                        onClick={() => {
+                          setTheme(mode);
+                          setCookieTheme(mode);
+                        }}
+                      >
+                        <ThemeIcon theme={mode} />
+                        <span>
+                          <Trans i18nKey={`common:${mode}Theme`} />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          </If>
 
-        <LanguageSwitcher />
+          <div className={sepClass} />
 
-        <DropdownMenuSeparator />
+          <Collapsible open={languageOpen} onOpenChange={setLanguageOpen}>
+            <CollapsibleTrigger
+              className={cn(
+                rowClass,
+                'flex w-full items-center justify-between gap-2',
+              )}
+            >
+              <span className="text-sm font-medium">
+                <Trans i18nKey="common:language" defaults="Language" />
+              </span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                  languageOpen && 'rotate-180',
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-0.5 pb-1 pl-1">
+              {languages.map((locale) => {
+                const isSelected = locale === i18n.language;
+                return (
+                  <button
+                    key={locale}
+                    type="button"
+                    className={cn(
+                      rowClass,
+                      'flex w-full items-center justify-between',
+                      isSelected && 'bg-muted',
+                    )}
+                    onClick={() => void languageChanged(locale)}
+                  >
+                    <span>{getLanguageLabel(locale)}</span>
+                    {isSelected ? <span className="text-xs">✓</span> : null}
+                  </button>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
 
-        <DropdownMenuItem
-          className="flex cursor-pointer items-center space-x-2"
-          onSelect={() => router.push(paths.profileSettings)}
-        >
-          <Settings className="h-5" />
-          <span>Settings</span>
-        </DropdownMenuItem>
+          <div className={sepClass} />
 
-        <DropdownMenuItem
-          role={'button'}
-          className={'cursor-pointer'}
-          onClick={() => signOut.mutateAsync()}
-        >
-          <span className={'flex w-full items-center space-x-2'}>
-            <LogOut className={'h-5'} />
-            <span>Sign Out</span>
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <button
+            type="button"
+            className={cn(rowClass, 'flex items-center space-x-2 text-left')}
+            onClick={() => {
+              close();
+              router.push(paths.profileSettings);
+            }}
+          >
+            <Settings className="h-5" />
+            <span>Settings</span>
+          </button>
+
+          <button
+            type="button"
+            className={cn(rowClass, 'flex w-full items-center space-x-2 text-left')}
+            onClick={() => {
+              close();
+              void signOut.mutateAsync();
+            }}
+          >
+            <LogOut className="h-5" />
+            <span>
+              <Trans i18nKey="auth:signOut" />
+            </span>
+          </button>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
