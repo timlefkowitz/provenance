@@ -34,7 +34,7 @@ export default async function Home() {
 
       {/* Footer */}
       <footer className="w-full max-w-4xl text-center text-sm text-ink/60 font-landing py-8">
-        <p>© {new Date().getFullYear()} Provence Platform.</p>
+        <p>© {new Date().getFullYear()} Provence Platform. Patent Pending.</p>
       </footer>
     </main>
   );
