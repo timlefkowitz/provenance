@@ -121,6 +121,9 @@ export function ProfileAccountDropdownContainer(props: {
       if (typeof window !== 'undefined') {
         localStorage.setItem(PERSPECTIVE_KEY, role);
         localStorage.removeItem(SELECTED_PROFILE_KEY);
+        window.dispatchEvent(
+          new CustomEvent('user_perspective_changed', { detail: role }),
+        );
       }
       setCurrentPerspective(role);
       router.refresh();
@@ -210,7 +213,11 @@ export function ProfileAccountDropdownContainer(props: {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className={'z-[200] min-w-[14rem]'}>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={12}
+        className={'z-[200] min-w-[14rem]'}
+      >
         <DropdownMenuItem asChild>
           <Link
             className={'flex cursor-pointer items-center space-x-2'}
@@ -230,7 +237,7 @@ export function ProfileAccountDropdownContainer(props: {
               {getRoleLabel(currentPerspective)}
             </span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="min-w-[12rem]">
+          <DropdownMenuSubContent className="z-[220] min-w-[12rem]">
             <DropdownMenuLabel className="text-muted-foreground font-normal">
               Viewing as: {getRoleLabel(currentPerspective)}
             </DropdownMenuLabel>
