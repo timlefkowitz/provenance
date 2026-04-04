@@ -178,7 +178,7 @@ export function ProfileAccountDropdownContainer(props: {
   })();
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -216,7 +216,7 @@ export function ProfileAccountDropdownContainer(props: {
       <DropdownMenuContent
         align="end"
         sideOffset={12}
-        className={'z-[200] min-w-[14rem]'}
+        className="z-[100] min-w-[14rem]"
       >
         <DropdownMenuItem asChild>
           <Link
@@ -237,7 +237,7 @@ export function ProfileAccountDropdownContainer(props: {
               {getRoleLabel(currentPerspective)}
             </span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="z-[220] min-w-[12rem]">
+          <DropdownMenuSubContent className="z-[110] min-w-[12rem]">
             <DropdownMenuLabel className="text-muted-foreground font-normal">
               Viewing as: {getRoleLabel(currentPerspective)}
             </DropdownMenuLabel>
