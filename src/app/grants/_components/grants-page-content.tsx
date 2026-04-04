@@ -7,7 +7,7 @@ import type { SortField, LocationFilter } from './grants-filters';
 import { UploadCvForm } from './upload-cv-form';
 import { GrantsFilters } from './grants-filters';
 import { GrantsList } from './grants-list';
-import { GrantsChatbot } from './grants-chatbot';
+import { OpportunitiesChatbot } from './opportunities-chatbot';
 
 type GrantsPageContentProps = {
   userId: string;
@@ -119,7 +119,7 @@ export function GrantsPageContent({
       {/* Right: chatbot */}
       <div className="lg:col-span-2">
         <div className="lg:sticky lg:top-24">
-          <GrantsChatbot hasCv={hasCv} onGrantsUpdated={refreshGrants} />
+          <OpportunitiesChatbot hasCv={hasCv} onOpportunitiesUpdated={refreshGrants} />
         </div>
       </div>
     </div>

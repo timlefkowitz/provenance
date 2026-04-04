@@ -3,6 +3,8 @@
  * Used by API routes, server actions, and UI.
  */
 
+export type OpportunityType = 'grant' | 'open_call' | 'residency';
+
 export type Grant = {
   id?: string;
   user_id?: string;
@@ -14,6 +16,7 @@ export type Grant = {
   eligible_locations: string[];
   url: string | null;
   discipline: string[];
+  type?: OpportunityType;
   source?: string | null;
   raw_response?: unknown;
   created_at?: string;
