@@ -175,16 +175,19 @@ export function ProfileAccountDropdownContainer(props: {
   })();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
+    <div className="relative z-[110] shrink-0">
+      {/* modal={false}: avoids a full-viewport pointer-capture layer that can fight sticky headers / overlays */}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger
           type="button"
           aria-label="Open your profile menu"
           className={cn(
-            'focus:outline-primary flex cursor-pointer items-center',
+            'touch-manipulation flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
+            'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
+            'data-[state=open]:bg-secondary/50',
             {
-              ['active:bg-secondary/50 items-center gap-x-4 rounded-md' +
-              ' hover:bg-secondary p-2 transition-colors']: props.showProfileName,
+              ['active:bg-secondary/50 items-center gap-x-4 p-2 transition-colors hover:bg-secondary']:
+                props.showProfileName,
             },
           )}
         >
@@ -207,8 +210,7 @@ export function ProfileAccountDropdownContainer(props: {
 
             <ChevronsUpDown className={'text-muted-foreground mr-1 h-8'} />
           </If>
-        </button>
-      </DropdownMenuTrigger>
+        </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className={'z-[200] min-w-[14rem]'}>
         <DropdownMenuItem asChild>
@@ -336,5 +338,6 @@ export function ProfileAccountDropdownContainer(props: {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </div>
   );
 }

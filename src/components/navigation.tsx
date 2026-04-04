@@ -31,7 +31,7 @@ export function Navigation() {
   }
 
   return (
-    <nav className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+    <nav className="relative z-[100] flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 shadow-sm">
       <div className="flex items-center gap-8 min-w-0">
         <Link 
           href="/" 
@@ -107,8 +107,8 @@ export function Navigation() {
         </div>
       </div>
 
-      {/* Mobile Menu Button */}
-      <div className="flex items-center gap-3">
+      {/* Mobile Menu Button — shrink-0 so avatar/notifications never collapse under flex squeeze */}
+      <div className="flex shrink-0 items-center gap-3">
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden p-2 text-wine hover:text-wine/80 transition-colors"
@@ -122,7 +122,7 @@ export function Navigation() {
         </button>
 
         {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex shrink-0 items-center gap-3">
         {user.data ? (
           <>
             <NotificationBadge />
@@ -164,7 +164,7 @@ export function Navigation() {
 
         {/* Mobile Auth Buttons (when menu is closed) */}
         {!mobileMenuOpen && (
-          <div className="md:hidden flex items-center gap-2">
+          <div className="md:hidden flex shrink-0 items-center gap-2">
             {user.data ? (
               <>
                 <NotificationBadge />
@@ -199,7 +199,7 @@ export function Navigation() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-50">
+        <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-[90]">
           <div className="flex flex-col px-6 py-4 gap-4">
             {/* Role Switcher */}
             {user.data && (
