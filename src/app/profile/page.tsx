@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -13,6 +14,8 @@ import { UnifiedProfileSettingsForm } from '~/components/unified-profile-setting
 import { ProfileArtworksSection } from './_components/profile-artworks-section';
 import { getUserStreak } from './_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
+import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
+import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 
 export const metadata = {
   title: 'Profile | Provenance',
@@ -40,6 +43,10 @@ export default async function ProfilePage() {
   const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
   const streak = await getUserStreak(user.id);
+
+  const roleProfiles = (await getUserProfiles(user.id)).filter(
+    (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
+  );
 
   // Fetch artworks user owns or can manage (via gallery team membership); RLS enforces access
   const { data: artworks } = await client
@@ -107,6 +114,47 @@ export default async function ProfilePage() {
             </Button>
           </CardHeader>
         </Card>
+
+        {roleProfiles.length > 0 && (
+          <Card className="border-wine/20 bg-parchment/60">
+            <CardHeader>
+              <CardTitle className="font-display text-wine">
+                Gallery &amp; artist profiles
+              </CardTitle>
+              <CardDescription className="font-serif">
+                Bio, location, and <strong className="font-medium text-ink">News &amp; Publications</strong> (including the <strong className="font-medium text-ink">Find articles</strong> tool) are edited per role profile—not on this page.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {roleProfiles.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border border-wine/15 bg-parchment/50 px-4 py-3"
+                >
+                  <div>
+                    <p className="font-serif font-medium text-ink">{p.name}</p>
+                    <p className="text-xs text-ink/60 font-serif">
+                      {getRoleLabel(p.role)}
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="font-serif border-wine/30 shrink-0"
+                  >
+                    <Link href={`/profiles/${p.id}/edit`}>
+                      Edit profile &amp; press articles
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+              <p className="text-xs text-ink/55 font-serif pt-1">
+                You can also open <Link href="/profiles" className="text-wine underline hover:text-wine/80">Manage profiles</Link> from the Toolbox menu.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Profile Settings */}
         <Card>

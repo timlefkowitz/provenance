@@ -375,22 +375,37 @@ export function ProfileAccountDropdownContainer(props: {
               </Link>
               {profilesForCurrentRole.length > 0
                 ? profilesForCurrentRole.map((profile) => (
-                    <Link
-                      key={profile.id}
-                      href={
-                        currentPerspective === USER_ROLES.GALLERY
-                          ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
-                          : `/artists/${userId}?role=${currentPerspective}`
-                      }
-                      className={cn(rowClass, 'flex items-center space-x-2')}
-                      onClick={() => {
-                        setSelectedProfileAndNavigate(profile.id);
-                        close();
-                      }}
-                    >
-                      <User className="h-4" />
-                      <span className="truncate">{profile.name}</span>
-                    </Link>
+                    <div key={profile.id} className="space-y-0.5">
+                      <Link
+                        href={
+                          currentPerspective === USER_ROLES.GALLERY
+                            ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
+                            : `/artists/${userId}?role=${currentPerspective}`
+                        }
+                        className={cn(rowClass, 'flex items-center space-x-2')}
+                        onClick={() => {
+                          setSelectedProfileAndNavigate(profile.id);
+                          close();
+                        }}
+                      >
+                        <User className="h-4" />
+                        <span className="truncate">{profile.name}</span>
+                      </Link>
+                      {(profile.role === USER_ROLES.GALLERY ||
+                        profile.role === USER_ROLES.ARTIST) && (
+                        <Link
+                          href={`/profiles/${profile.id}/edit`}
+                          className={cn(
+                            rowClass,
+                            'flex items-center space-x-2 pl-6 text-xs text-muted-foreground',
+                          )}
+                          onClick={close}
+                        >
+                          <Settings className="h-3.5 w-3.5 shrink-0" />
+                          <span>Edit settings &amp; Find articles</span>
+                        </Link>
+                      )}
+                    </div>
                   ))
                 : null}
             </CollapsibleContent>
