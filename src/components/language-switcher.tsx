@@ -93,7 +93,9 @@ export function LanguageSwitcher() {
           </span>
         </DropdownMenuSubTrigger>
 
-        <DropdownMenuSubContent>{MenuItems}</DropdownMenuSubContent>
+        <DropdownMenuSubContent className="z-[110]">
+          {MenuItems}
+        </DropdownMenuSubContent>
       </DropdownMenuSub>
 
       <div className={'lg:hidden'}>

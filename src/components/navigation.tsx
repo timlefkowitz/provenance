@@ -121,8 +121,8 @@ export function Navigation() {
           )}
         </button>
 
-        {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Desktop Auth Buttons — keep above page content that may sit under the nav */}
+        <div className="relative z-20 hidden md:flex items-center gap-3">
         {user.data ? (
           <>
             <NotificationBadge />
@@ -164,7 +164,7 @@ export function Navigation() {
 
         {/* Mobile Auth Buttons (when menu is closed) */}
         {!mobileMenuOpen && (
-          <div className="md:hidden flex items-center gap-2">
+          <div className="relative z-20 md:hidden flex items-center gap-2">
             {user.data ? (
               <>
                 <NotificationBadge />
