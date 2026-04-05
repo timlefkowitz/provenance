@@ -8,7 +8,6 @@ import type { ArtistCvJson, Grant } from '~/lib/grants';
 import { ALL_TOOLS } from './tools';
 import {
   handleSearchOpenCalls,
-  handleSearchWeb,
   handleRecommendOpportunities,
 } from './tool-handlers';
 
@@ -55,11 +54,10 @@ function buildSystemPrompt(
     ``,
     `STRATEGY:`,
     `1. Always start by calling search_open_calls to surface curated platform opportunities first.`,
-    `2. Then call search_web_opportunities with targeted queries for grants and residencies relevant to this artist's medium and location. Build 1-2 specific queries (e.g. "${disciplines} grants open applications 2026 ${location ?? 'US'}", "${disciplines} artist residency open call 2026").`,
-    `3. After gathering results, call recommend_opportunities with ALL relevant opportunities you found (both from the platform and the web). Classify each as "grant", "open_call", or "residency".`,
-    `4. Finally, give the artist a friendly, concise summary of what you found and any advice on which to prioritize.`,
+    `2. Using your knowledge, recommend relevant grants, artist residencies, and open calls that match this artist's medium, location, and career stage. Draw on well-known funding bodies, arts councils, foundations, and residency programs. Call recommend_opportunities with ALL relevant opportunities you identified — both from the platform and from your knowledge. Classify each as "grant", "open_call", or "residency".`,
+    `3. Finally, give the artist a friendly, concise summary of what you found and any advice on which to prioritize.`,
     ``,
-    `Be specific and honest — only recommend real opportunities you found. If search results are thin, say so and suggest the artist check specific organisations directly.`,
+    `Be specific and honest. Only recommend real, established programs you know with confidence. If your knowledge of a specific deadline is uncertain, omit the deadline field rather than guessing. Always suggest the artist verify current deadlines on the program's official website.`,
     `Always respond in a warm, professional tone. Keep your conversational reply concise (3-5 sentences).`,
   ].filter(Boolean);
 
@@ -175,8 +173,6 @@ export async function POST(request: NextRequest) {
 
           if (tc.function.name === 'search_open_calls') {
             result = await handleSearchOpenCalls(args, artistLocation);
-          } else if (tc.function.name === 'search_web_opportunities') {
-            result = await handleSearchWeb(args);
           } else if (tc.function.name === 'recommend_opportunities') {
             const outcome = await handleRecommendOpportunities(
               args,

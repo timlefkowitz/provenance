@@ -32,35 +32,6 @@ export const SEARCH_OPEN_CALLS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool 
 };
 
 /**
- * Tool: search the web for grants, residencies, and open calls using Tavily.
- * The agent should build targeted queries based on the artist's medium, location,
- * and career stage.
- */
-export const SEARCH_WEB_OPPORTUNITIES_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: 'search_web_opportunities',
-    description:
-      'Search the web for grants, artist residencies, and open calls using real-time results. Build a specific search query based on the artist profile. Good queries include the medium, location, and current year.',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description:
-            'Search query for finding grants or residencies. E.g. "painting grants open applications 2026 New York" or "artist residencies sculpture open call 2026".',
-        },
-        max_results: {
-          type: 'number',
-          description: 'Number of results to return. Between 3 and 10. Defaults to 6.',
-        },
-      },
-      required: ['query'],
-    },
-  },
-};
-
-/**
  * Tool: save a curated list of recommended opportunities to the artist's profile.
  * The agent calls this after gathering results from the platform DB and/or web.
  */
@@ -116,6 +87,5 @@ export const RECOMMEND_OPPORTUNITIES_TOOL: OpenAI.Chat.Completions.ChatCompletio
 
 export const ALL_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   SEARCH_OPEN_CALLS_TOOL,
-  SEARCH_WEB_OPPORTUNITIES_TOOL,
   RECOMMEND_OPPORTUNITIES_TOOL,
 ];

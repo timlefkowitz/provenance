@@ -1,6 +1,5 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getOpenCallsList } from '~/app/open-calls/_actions/get-open-calls-list';
-import { tavilySearch } from '~/lib/tavily-search';
 import type { Grant, OpportunityType } from '~/lib/grants';
 
 type SaveableOpportunity = Omit<
@@ -49,29 +48,6 @@ export async function handleSearchOpenCalls(
 
   console.log('[Opportunities] handleSearchOpenCalls found', simplified.length);
   return { open_calls: simplified, count: simplified.length };
-}
-
-// ─── search_web_opportunities ─────────────────────────────────────────────────
-
-type SearchWebArgs = {
-  query: string;
-  max_results?: number;
-};
-
-export async function handleSearchWeb(
-  args: SearchWebArgs,
-): Promise<{ results: object[]; count: number; error: string | null }> {
-  console.log('[Opportunities] handleSearchWeb', args.query);
-
-  const { results, error } = await tavilySearch(args.query, args.max_results ?? 6);
-
-  if (error) {
-    console.error('[Opportunities] handleSearchWeb error', error);
-    return { results: [], count: 0, error };
-  }
-
-  console.log('[Opportunities] handleSearchWeb found', results.length, 'results');
-  return { results, count: results.length, error: null };
 }
 
 // ─── recommend_opportunities ──────────────────────────────────────────────────

@@ -87,9 +87,7 @@ export function PressArticleDiscovery({
         <div>
           <p className="font-serif font-medium text-wine">Find articles online</p>
           <p className="text-sm text-ink/60 font-serif mt-1">
-            Search the web using your profile name and location, then add press links to the list below. Requires{' '}
-            <code className="text-xs bg-parchment px-1 rounded">TAVILY_API_KEY</code> and{' '}
-            <code className="text-xs bg-parchment px-1 rounded">OPENAI_API_KEY</code>.
+            Search the web for press coverage, interviews, and exhibition reviews to add to your profile.
           </p>
         </div>
         <Button
