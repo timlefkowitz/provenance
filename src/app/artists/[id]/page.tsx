@@ -311,9 +311,14 @@ export default async function ArtistProfilePage({
                 })}
               </p>
             )}
-            {streak && streak.currentStreakDays > 0 && (
-              <div className="mt-2">
+            {streak && (
+              <div className="mt-2 space-y-1">
                 <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+                {streak.longestStreakDays > 0 ? (
+                  <p className="text-xs text-ink/60 font-serif">
+                    Longest streak: {streak.longestStreakDays} days
+                  </p>
+                ) : null}
               </div>
             )}
           </div>

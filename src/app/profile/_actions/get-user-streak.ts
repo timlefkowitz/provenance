@@ -19,7 +19,12 @@ export async function getUserStreak(userId: string): Promise<UserStreakView | nu
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    console.error('[Streak] getUserStreak query failed', { userId, error });
+    return null;
+  }
+
+  if (!data) {
     return null;
   }
 
