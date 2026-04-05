@@ -21,6 +21,8 @@ import {
   type UnclaimedArtistProfileRow,
 } from './_components/unclaimed-artist-public-view';
 import { GalleryPublicLinks } from './_components/gallery-public-links';
+import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
+import { StreakStar } from '~/components/streak-star';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -208,6 +210,8 @@ export default async function ArtistProfilePage({
   const pictureUrl = roleProfile?.picture_url || account.picture_url;
   const newsPublications = (roleProfile?.news_publications as { title: string; url: string; publication_name?: string; date?: string }[] | undefined) || [];
 
+  const streak = !isGallery ? await getUserStreak(account.id) : null;
+
   // Fetch exhibitions if this is a gallery - limit to 6 for initial load
   const allExhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
   const exhibitions = allExhibitions.slice(0, 6); // Show only first 6 initially
@@ -306,6 +310,11 @@ export default async function ArtistProfilePage({
                   month: 'long',
                 })}
               </p>
+            )}
+            {streak && streak.currentStreakDays > 0 && (
+              <div className="mt-2">
+                <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+              </div>
             )}
           </div>
         </div>
