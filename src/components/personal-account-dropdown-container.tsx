@@ -105,17 +105,6 @@ export function ProfileAccountDropdownContainer(props: {
   const { i18n } = useTranslation();
   const { setTheme, theme, resolvedTheme } = useTheme();
 
-  const [open, setOpen] = useState(false);
-
-  const close = useCallback(() => setOpen(false), []);
-
-  const onMenuOpenChange = useCallback((next: boolean) => {
-    if (next) {
-      console.log('[ProfileDropdown] menu opened');
-    }
-    setOpen(next);
-  }, []);
-
   const userId =
     userData?.sub ?? (userData as { id?: string } | undefined)?.id ?? '';
 
@@ -179,7 +168,6 @@ export function ProfileAccountDropdownContainer(props: {
         localStorage.removeItem(SELECTED_PROFILE_KEY);
       }
       setCurrentPerspective(role);
-      setOpen(false);
       router.refresh();
     },
     [router],
@@ -209,7 +197,6 @@ export function ProfileAccountDropdownContainer(props: {
   const languageChanged = useCallback(
     async (locale: string) => {
       if (locale === i18n.language) {
-        close();
         return;
       }
       await i18n.changeLanguage(locale);
@@ -220,7 +207,7 @@ export function ProfileAccountDropdownContainer(props: {
       }
       window.location.reload();
     },
-    [i18n, close],
+    [i18n],
   );
 
   const getLanguageLabel = (locale: string) => {
@@ -258,42 +245,45 @@ export function ProfileAccountDropdownContainer(props: {
   const showName = props.showProfileName ?? false;
 
   return (
-    <div className="relative z-[110] shrink-0">
-      <DropdownMenu open={open} onOpenChange={onMenuOpenChange} modal={false}>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label="Open your profile menu"
-            aria-expanded={open}
-            className={cn(
-              'touch-manipulation flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
-              'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
-              'data-[state=open]:bg-secondary/50',
-              !showName && 'min-h-11 min-w-11 justify-center sm:min-h-[44px] sm:min-w-[44px]',
-              {
-                'active:bg-secondary/50 items-center gap-x-4 p-2 transition-colors hover:bg-secondary':
-                  showName,
-              },
-            )}
-          >
-            <ProfileAvatar
-              className="rounded-md"
-              fallbackClassName="rounded-md border"
-              displayName={displayName ?? userData?.email ?? ''}
-              pictureUrl={profilePictureUrl}
-            />
+    <div className="relative isolate z-[120] shrink-0">
+      <DropdownMenu
+        onOpenChange={(next) => {
+          if (next) {
+            console.log('[ProfileDropdown] menu opened');
+          }
+        }}
+      >
+        <DropdownMenuTrigger
+          type="button"
+          aria-label="Open your profile menu"
+          className={cn(
+            'touch-manipulation inline-flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
+            'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
+            'data-[state=open]:bg-secondary/50',
+            !showName && 'min-h-11 min-w-11 justify-center sm:min-h-[44px] sm:min-w-[44px]',
+            {
+              'active:bg-secondary/50 items-center gap-x-4 p-2 transition-colors hover:bg-secondary':
+                showName,
+            },
+          )}
+        >
+          <ProfileAvatar
+            className="rounded-md"
+            fallbackClassName="rounded-md border"
+            displayName={displayName ?? userData?.email ?? ''}
+            pictureUrl={profilePictureUrl}
+          />
 
-            <If condition={showName}>
-              <div className="fade-in animate-in flex w-full flex-col truncate text-left">
-                <span className="truncate text-sm">{displayName}</span>
-                <span className="text-muted-foreground truncate text-xs">
-                  {signedInAsLabel}
-                </span>
-              </div>
+          <If condition={showName}>
+            <div className="fade-in animate-in flex w-full flex-col truncate text-left">
+              <span className="truncate text-sm">{displayName}</span>
+              <span className="text-muted-foreground truncate text-xs">
+                {signedInAsLabel}
+              </span>
+            </div>
 
-              <ChevronDown className="text-muted-foreground mr-1 h-8" />
-            </If>
-          </button>
+            <ChevronDown className="text-muted-foreground mr-1 h-8" />
+          </If>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
@@ -301,7 +291,7 @@ export function ProfileAccountDropdownContainer(props: {
           side="bottom"
           sideOffset={8}
           collisionPadding={16}
-          className="z-[300] min-w-[14rem] max-w-[calc(100vw-1.5rem)] p-1 font-serif"
+          className="z-[400] min-w-[14rem] p-1 font-serif"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DropdownMenuLabel
@@ -323,7 +313,6 @@ export function ProfileAccountDropdownContainer(props: {
             <Link
               href={paths.home}
               className={cn(rowClass, 'flex cursor-pointer items-center space-x-2')}
-              onClick={close}
             >
               <Home className="h-5" />
               <span>
@@ -345,7 +334,7 @@ export function ProfileAccountDropdownContainer(props: {
               </span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent
-              className="z-[320] max-h-[min(70vh,24rem)] min-w-[12rem] overflow-y-auto p-1 font-serif"
+              className="z-[410] max-h-[min(70vh,24rem)] min-w-[12rem] overflow-y-auto p-1 font-serif"
               sideOffset={6}
               collisionPadding={16}
             >
@@ -366,8 +355,7 @@ export function ProfileAccountDropdownContainer(props: {
                     'cursor-pointer justify-between font-serif',
                     currentPerspective === role && 'bg-muted',
                   )}
-                  onSelect={(e) => {
-                    e.preventDefault();
+                  onSelect={() => {
                     switchRole(role);
                   }}
                 >
@@ -382,7 +370,6 @@ export function ProfileAccountDropdownContainer(props: {
                 <Link
                   href={paths.profile}
                   className={cn(rowClass, 'flex cursor-pointer items-center space-x-2 font-serif')}
-                  onClick={close}
                 >
                   <User className="h-4" />
                   <span>My Profile</span>
@@ -404,7 +391,6 @@ export function ProfileAccountDropdownContainer(props: {
                           )}
                           onClick={() => {
                             setSelectedProfileAndNavigate(profile.id);
-                            close();
                           }}
                         >
                           <User className="h-4" />
@@ -420,7 +406,6 @@ export function ProfileAccountDropdownContainer(props: {
                               rowClass,
                               'flex cursor-pointer items-center space-x-2 pl-6 text-xs text-muted-foreground',
                             )}
-                            onClick={close}
                           >
                             <Settings className="h-3.5 w-3.5 shrink-0" />
                             <span>Edit settings &amp; Find articles</span>
@@ -435,7 +420,7 @@ export function ProfileAccountDropdownContainer(props: {
 
           <DropdownMenuSeparator className={sepClass} />
 
-          <AdminMenuItem onNavigate={close} />
+          <AdminMenuItem />
 
           <If condition={features.enableThemeToggle}>
             <>
@@ -452,7 +437,7 @@ export function ProfileAccountDropdownContainer(props: {
                   </span>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent
-                  className="z-[320] min-w-[10rem] p-1 font-serif"
+                  className="z-[410] min-w-[10rem] p-1 font-serif"
                   sideOffset={6}
                   collisionPadding={16}
                 >
@@ -495,7 +480,7 @@ export function ProfileAccountDropdownContainer(props: {
               </span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent
-              className="z-[320] max-h-[min(50vh,20rem)] min-w-[10rem] overflow-y-auto p-1 font-serif"
+              className="z-[410] max-h-[min(50vh,20rem)] min-w-[10rem] overflow-y-auto p-1 font-serif"
               sideOffset={6}
               collisionPadding={16}
             >
@@ -527,7 +512,6 @@ export function ProfileAccountDropdownContainer(props: {
           <DropdownMenuItem
             className={cn(rowClass, 'cursor-pointer font-serif')}
             onSelect={() => {
-              close();
               router.push(paths.profileSettings);
             }}
           >
@@ -538,7 +522,6 @@ export function ProfileAccountDropdownContainer(props: {
           <DropdownMenuItem
             className={cn(rowClass, 'cursor-pointer font-serif')}
             onSelect={() => {
-              close();
               void signOut.mutateAsync();
             }}
           >
