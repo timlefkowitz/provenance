@@ -66,6 +66,42 @@ const rowClass =
 
 const sepClass = 'bg-muted -mx-1 my-1 h-px';
 
+/** Browser console: NEXT_PUBLIC_DEBUG_APP=1 or NEXT_PUBLIC_ACCOUNT_MENU_DEBUG=1 */
+function accountMenuConsoleDebugEnabled() {
+  return (
+    process.env.NEXT_PUBLIC_ACCOUNT_MENU_DEBUG === '1' ||
+    process.env.NEXT_PUBLIC_DEBUG_APP === '1'
+  );
+}
+
+/** POST /api/debug/account-menu (Vercel logs): NEXT_PUBLIC_ACCOUNT_MENU_DEBUG=1 + server ACCOUNT_MENU_DEBUG=1 */
+function accountMenuServerDebugEnabled() {
+  return process.env.NEXT_PUBLIC_ACCOUNT_MENU_DEBUG === '1';
+}
+
+function logAccountMenuClient(
+  message: string,
+  detail?: Record<string, unknown>,
+) {
+  if (!accountMenuConsoleDebugEnabled()) return;
+  console.log('[ProfileDropdown]', message, detail ?? '');
+}
+
+function pingAccountMenuServer(payload: {
+  event: 'trigger_pointerdown' | 'menu_open_change';
+  open?: boolean;
+}) {
+  if (!accountMenuServerDebugEnabled()) return;
+  void fetch('/api/debug/account-menu', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch((err) => {
+    console.error('[ProfileDropdown] debug server ping failed', err);
+  });
+}
+
 function setCookieTheme(theme: string) {
   document.cookie = `theme=${theme}; path=/; max-age=31536000`;
 }
@@ -248,14 +284,23 @@ export function ProfileAccountDropdownContainer(props: {
     <div className="relative isolate z-[120] shrink-0">
       <DropdownMenu
         onOpenChange={(next) => {
-          if (next) {
-            console.log('[ProfileDropdown] menu opened');
-          }
+          logAccountMenuClient('menu onOpenChange', {
+            open: next,
+            userId: userId ? '[set]' : '[empty]',
+          });
+          pingAccountMenuServer({ event: 'menu_open_change', open: next });
         }}
       >
         <DropdownMenuTrigger
           type="button"
           aria-label="Open your profile menu"
+          onPointerDown={() => {
+            logAccountMenuClient('trigger pointerdown', {
+              showProfileName: showName,
+              userId: userId ? '[set]' : '[empty]',
+            });
+            pingAccountMenuServer({ event: 'trigger_pointerdown' });
+          }}
           className={cn(
             'touch-manipulation inline-flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
             'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
