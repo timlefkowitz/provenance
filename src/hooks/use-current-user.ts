@@ -24,8 +24,9 @@ export function useCurrentUser(initialData?: JwtPayload | null) {
   const fetchClaims = useCallback(async () => {
     const response = await client.auth.getClaims();
     if (response.error) {
-      setData(undefined);
+      console.error('[useCurrentUser] getClaims failed', response.error);
       setError(response.error);
+      // Keep prior claims on transient errors so shell UI (e.g. account menu) does not unmount.
       return;
     }
     if (response.data?.claims) {

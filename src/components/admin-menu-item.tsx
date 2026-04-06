@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Shield } from 'lucide-react';
+import { DropdownMenuItem } from '@kit/ui/dropdown-menu';
 import { cn } from '@kit/ui/utils';
 
 const rowClass =
@@ -45,13 +46,15 @@ export function AdminMenuItem({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <Link
-      href="/admin"
-      className={cn(rowClass, 'flex items-center space-x-2')}
-      onClick={onNavigate}
-    >
-      <Shield className="h-5" />
-      <span>Admin</span>
-    </Link>
+    <DropdownMenuItem asChild>
+      <Link
+        href="/admin"
+        className={cn(rowClass, 'flex items-center space-x-2 font-serif')}
+        onClick={onNavigate}
+      >
+        <Shield className="h-5" />
+        <span>Admin</span>
+      </Link>
+    </DropdownMenuItem>
   );
 }

@@ -20,16 +20,21 @@ import { useTheme } from 'next-themes';
 import { useTranslation } from 'react-i18next';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
-import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 import { If } from '@kit/ui/if';
 import { ProfileAvatar } from '@kit/ui/profile-avatar';
 import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@kit/ui/collapsible';
 import type { AppDatabase } from '~/lib/supabase-app-database';
 import { AdminMenuItem } from './admin-menu-item';
 import { getPerspective } from './perspective-switcher';
@@ -55,7 +60,7 @@ const features = {
 
 const MODES = ['light', 'dark', 'system'] as const;
 
-/** Matches DropdownMenuItem surface so the popover menu feels the same */
+/** Matches menu row surface (also used inside submenus for non-item rows) */
 const rowClass =
   'focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-pointer items-center rounded-xs px-2 py-1.5 text-sm outline-none transition-colors select-none hover:bg-accent hover:text-accent-foreground';
 
@@ -101,11 +106,15 @@ export function ProfileAccountDropdownContainer(props: {
   const { setTheme, theme, resolvedTheme } = useTheme();
 
   const [open, setOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(false);
-  const [languageOpen, setLanguageOpen] = useState(false);
 
   const close = useCallback(() => setOpen(false), []);
+
+  const onMenuOpenChange = useCallback((next: boolean) => {
+    if (next) {
+      console.log('[ProfileDropdown] menu opened');
+    }
+    setOpen(next);
+  }, []);
 
   const userId =
     userData?.sub ?? (userData as { id?: string } | undefined)?.id ?? '';
@@ -171,7 +180,6 @@ export function ProfileAccountDropdownContainer(props: {
       }
       setCurrentPerspective(role);
       setOpen(false);
-      setProfileOpen(false);
       router.refresh();
     },
     [router],
@@ -247,10 +255,12 @@ export function ProfileAccountDropdownContainer(props: {
     );
   })();
 
+  const showName = props.showProfileName ?? false;
+
   return (
     <div className="relative z-[110] shrink-0">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <DropdownMenu open={open} onOpenChange={onMenuOpenChange} modal={false}>
+        <DropdownMenuTrigger asChild>
           <button
             type="button"
             aria-label="Open your profile menu"
@@ -259,9 +269,10 @@ export function ProfileAccountDropdownContainer(props: {
               'touch-manipulation flex cursor-pointer items-center rounded-md border-0 bg-transparent p-0 shadow-none outline-none',
               'focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
               'data-[state=open]:bg-secondary/50',
+              !showName && 'min-h-11 min-w-11 justify-center sm:min-h-[44px] sm:min-w-[44px]',
               {
                 'active:bg-secondary/50 items-center gap-x-4 p-2 transition-colors hover:bg-secondary':
-                  props.showProfileName,
+                  showName,
               },
             )}
           >
@@ -272,7 +283,7 @@ export function ProfileAccountDropdownContainer(props: {
               pictureUrl={profilePictureUrl}
             />
 
-            <If condition={props.showProfileName ?? false}>
+            <If condition={showName}>
               <div className="fade-in animate-in flex w-full flex-col truncate text-left">
                 <span className="truncate text-sm">{displayName}</span>
                 <span className="text-muted-foreground truncate text-xs">
@@ -283,9 +294,9 @@ export function ProfileAccountDropdownContainer(props: {
               <ChevronDown className="text-muted-foreground mr-1 h-8" />
             </If>
           </button>
-        </PopoverTrigger>
+        </DropdownMenuTrigger>
 
-        <PopoverContent
+        <DropdownMenuContent
           align="end"
           side="bottom"
           sideOffset={8}
@@ -293,7 +304,9 @@ export function ProfileAccountDropdownContainer(props: {
           className="z-[300] min-w-[14rem] max-w-[calc(100vw-1.5rem)] p-1 font-serif"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <div className={cn(rowClass, '!h-auto min-h-10 cursor-default rounded-none py-2')}>
+          <DropdownMenuLabel
+            className={cn(rowClass, '!h-auto min-h-10 cursor-default rounded-none py-2 font-normal')}
+          >
             <div className="flex flex-col justify-start truncate text-left text-xs">
               <div className="text-muted-foreground">
                 <Trans i18nKey="common:signedInAs" />
@@ -302,43 +315,41 @@ export function ProfileAccountDropdownContainer(props: {
                 {signedInAsLabel}
               </span>
             </div>
-          </div>
+          </DropdownMenuLabel>
 
-          <div className={sepClass} />
+          <DropdownMenuSeparator className={sepClass} />
 
-          <Link
-            href={paths.home}
-            className={cn(rowClass, 'flex items-center space-x-2')}
-            onClick={close}
-          >
-            <Home className="h-5" />
-            <span>
-              <Trans i18nKey="common:routes.home" />
-            </span>
-          </Link>
+          <DropdownMenuItem asChild>
+            <Link
+              href={paths.home}
+              className={cn(rowClass, 'flex cursor-pointer items-center space-x-2')}
+              onClick={close}
+            >
+              <Home className="h-5" />
+              <span>
+                <Trans i18nKey="common:routes.home" />
+              </span>
+            </Link>
+          </DropdownMenuItem>
 
-          <Collapsible open={profileOpen} onOpenChange={setProfileOpen}>
-            <CollapsibleTrigger
-              className={cn(rowClass, 'flex w-full items-center justify-between gap-2')}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              className={cn(rowClass, 'cursor-default justify-between gap-2 font-serif')}
             >
               <span className="flex items-center space-x-2">
                 <User className="h-5" />
                 <span>Profile</span>
               </span>
-              <span className="flex items-center gap-1">
-                <span className="text-xs font-normal text-muted-foreground">
-                  {getRoleLabel(currentPerspective)}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                    profileOpen && 'rotate-180',
-                  )}
-                />
+              <span className="text-xs font-normal text-muted-foreground">
+                {getRoleLabel(currentPerspective)}
               </span>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-0.5 pb-1 pl-1 pt-0">
-              <p className="px-2 py-1 text-xs text-muted-foreground">
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent
+              className="z-[320] max-h-[min(70vh,24rem)] min-w-[12rem] overflow-y-auto p-1 font-serif"
+              sideOffset={6}
+              collisionPadding={16}
+            >
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">
                 Viewing as: {getRoleLabel(currentPerspective)}
               </p>
               {(
@@ -348,82 +359,90 @@ export function ProfileAccountDropdownContainer(props: {
                   USER_ROLES.GALLERY,
                 ] as const
               ).map((role) => (
-                <button
+                <DropdownMenuItem
                   key={role}
-                  type="button"
                   className={cn(
                     rowClass,
-                    'flex items-center justify-between',
+                    'cursor-pointer justify-between font-serif',
                     currentPerspective === role && 'bg-muted',
                   )}
-                  onClick={() => switchRole(role)}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    switchRole(role);
+                  }}
                 >
                   <span>{getRoleLabel(role)}</span>
                   {currentPerspective === role ? (
                     <Check className="h-4 w-4" />
                   ) : null}
-                </button>
+                </DropdownMenuItem>
               ))}
-              <div className={sepClass} />
-              <Link
-                href={paths.profile}
-                className={cn(rowClass, 'flex items-center space-x-2')}
-                onClick={close}
-              >
-                <User className="h-4" />
-                <span>My Profile</span>
-              </Link>
+              <DropdownMenuSeparator className={sepClass} />
+              <DropdownMenuItem asChild>
+                <Link
+                  href={paths.profile}
+                  className={cn(rowClass, 'flex cursor-pointer items-center space-x-2 font-serif')}
+                  onClick={close}
+                >
+                  <User className="h-4" />
+                  <span>My Profile</span>
+                </Link>
+              </DropdownMenuItem>
               {profilesForCurrentRole.length > 0
                 ? profilesForCurrentRole.map((profile) => (
                     <div key={profile.id} className="space-y-0.5">
-                      <Link
-                        href={
-                          currentPerspective === USER_ROLES.GALLERY
-                            ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
-                            : `/artists/${userId}?role=${currentPerspective}`
-                        }
-                        className={cn(rowClass, 'flex items-center space-x-2')}
-                        onClick={() => {
-                          setSelectedProfileAndNavigate(profile.id);
-                          close();
-                        }}
-                      >
-                        <User className="h-4" />
-                        <span className="truncate">{profile.name}</span>
-                      </Link>
-                      {(profile.role === USER_ROLES.GALLERY ||
-                        profile.role === USER_ROLES.ARTIST) && (
+                      <DropdownMenuItem asChild>
                         <Link
-                          href={`/profiles/${profile.id}/edit`}
+                          href={
+                            currentPerspective === USER_ROLES.GALLERY
+                              ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
+                              : `/artists/${userId}?role=${currentPerspective}`
+                          }
                           className={cn(
                             rowClass,
-                            'flex items-center space-x-2 pl-6 text-xs text-muted-foreground',
+                            'flex cursor-pointer items-center space-x-2 font-serif',
                           )}
-                          onClick={close}
+                          onClick={() => {
+                            setSelectedProfileAndNavigate(profile.id);
+                            close();
+                          }}
                         >
-                          <Settings className="h-3.5 w-3.5 shrink-0" />
-                          <span>Edit settings &amp; Find articles</span>
+                          <User className="h-4" />
+                          <span className="truncate">{profile.name}</span>
                         </Link>
+                      </DropdownMenuItem>
+                      {(profile.role === USER_ROLES.GALLERY ||
+                        profile.role === USER_ROLES.ARTIST) && (
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/profiles/${profile.id}/edit`}
+                            className={cn(
+                              rowClass,
+                              'flex cursor-pointer items-center space-x-2 pl-6 text-xs text-muted-foreground',
+                            )}
+                            onClick={close}
+                          >
+                            <Settings className="h-3.5 w-3.5 shrink-0" />
+                            <span>Edit settings &amp; Find articles</span>
+                          </Link>
+                        </DropdownMenuItem>
                       )}
                     </div>
                   ))
                 : null}
-            </CollapsibleContent>
-          </Collapsible>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-          <div className={sepClass} />
+          <DropdownMenuSeparator className={sepClass} />
 
           <AdminMenuItem onNavigate={close} />
 
           <If condition={features.enableThemeToggle}>
             <>
-              <div className={sepClass} />
-              <Collapsible open={themeOpen} onOpenChange={setThemeOpen}>
-                <CollapsibleTrigger
-                  className={cn(
-                    rowClass,
-                    'flex w-full items-center justify-between gap-2',
-                  )}
+              <DropdownMenuSeparator className={sepClass} />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger
+                  className={cn(rowClass, 'cursor-default justify-between gap-2 font-serif')}
                 >
                   <span className="flex items-center space-x-2">
                     <ThemeIcon theme={resolvedTheme} />
@@ -431,26 +450,24 @@ export function ProfileAccountDropdownContainer(props: {
                       <Trans i18nKey="common:theme" />
                     </span>
                   </span>
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                      themeOpen && 'rotate-180',
-                    )}
-                  />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-0.5 pb-1 pl-1">
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  className="z-[320] min-w-[10rem] p-1 font-serif"
+                  sideOffset={6}
+                  collisionPadding={16}
+                >
                   {MODES.map((mode) => {
                     const isSelected = theme === mode;
                     return (
-                      <button
+                      <DropdownMenuItem
                         key={mode}
-                        type="button"
                         className={cn(
                           rowClass,
-                          'flex items-center space-x-2',
+                          'cursor-pointer font-serif',
                           isSelected && 'bg-muted',
                         )}
-                        onClick={() => {
+                        onSelect={(e) => {
+                          e.preventDefault();
                           setTheme(mode);
                           setCookieTheme(mode);
                         }}
@@ -459,73 +476,68 @@ export function ProfileAccountDropdownContainer(props: {
                         <span>
                           <Trans i18nKey={`common:${mode}Theme`} />
                         </span>
-                      </button>
+                      </DropdownMenuItem>
                     );
                   })}
-                </CollapsibleContent>
-              </Collapsible>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </>
           </If>
 
-          <div className={sepClass} />
+          <DropdownMenuSeparator className={sepClass} />
 
-          <Collapsible open={languageOpen} onOpenChange={setLanguageOpen}>
-            <CollapsibleTrigger
-              className={cn(
-                rowClass,
-                'flex w-full items-center justify-between gap-2',
-              )}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              className={cn(rowClass, 'cursor-default font-serif')}
             >
               <span className="text-sm font-medium">
                 <Trans i18nKey="common:language" defaults="Language" />
               </span>
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                  languageOpen && 'rotate-180',
-                )}
-              />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-0.5 pb-1 pl-1">
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent
+              className="z-[320] max-h-[min(50vh,20rem)] min-w-[10rem] overflow-y-auto p-1 font-serif"
+              sideOffset={6}
+              collisionPadding={16}
+            >
               {languages.map((locale) => {
                 const isSelected = locale === i18n.language;
                 return (
-                  <button
+                  <DropdownMenuItem
                     key={locale}
-                    type="button"
                     className={cn(
                       rowClass,
-                      'flex w-full items-center justify-between',
+                      'cursor-pointer justify-between font-serif',
                       isSelected && 'bg-muted',
                     )}
-                    onClick={() => void languageChanged(locale)}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      void languageChanged(locale);
+                    }}
                   >
                     <span>{getLanguageLabel(locale)}</span>
                     {isSelected ? <span className="text-xs">✓</span> : null}
-                  </button>
+                  </DropdownMenuItem>
                 );
               })}
-            </CollapsibleContent>
-          </Collapsible>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-          <div className={sepClass} />
+          <DropdownMenuSeparator className={sepClass} />
 
-          <button
-            type="button"
-            className={cn(rowClass, 'flex items-center space-x-2 text-left')}
-            onClick={() => {
+          <DropdownMenuItem
+            className={cn(rowClass, 'cursor-pointer font-serif')}
+            onSelect={() => {
               close();
               router.push(paths.profileSettings);
             }}
           >
             <Settings className="h-5" />
             <span>Settings</span>
-          </button>
+          </DropdownMenuItem>
 
-          <button
-            type="button"
-            className={cn(rowClass, 'flex w-full items-center space-x-2 text-left')}
-            onClick={() => {
+          <DropdownMenuItem
+            className={cn(rowClass, 'cursor-pointer font-serif')}
+            onSelect={() => {
               close();
               void signOut.mutateAsync();
             }}
@@ -534,9 +546,9 @@ export function ProfileAccountDropdownContainer(props: {
             <span>
               <Trans i18nKey="auth:signOut" />
             </span>
-          </button>
-        </PopoverContent>
-      </Popover>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

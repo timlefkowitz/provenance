@@ -6,11 +6,17 @@
  */
 
 /*
-Optimize dropdowns for mobile
+ * Stacking for all Radix floating layers (Popover, Dropdown, Select, …).
+ * Full-width mobile layout only for menu/select surfaces — not Popover wrappers,
+ * which caused unreliable hit-testing and positioning for anchored panels.
  */
 [data-radix-popper-content-wrapper] {
-    @apply w-full md:w-auto;
     z-index: 200;
+}
+
+[data-radix-popper-content-wrapper]:has([data-radix-menu-content]),
+[data-radix-popper-content-wrapper]:has([data-radix-select-content]) {
+    @apply w-full md:w-auto;
 }
 
 [data-radix-menu-content] {
