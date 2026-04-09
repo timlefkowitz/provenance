@@ -330,6 +330,16 @@ export function V2LandingContent({ featuredEntry }: V2LandingContentProps) {
               </motion.div>
             ))}
           </motion.div>
+
+          <div className="text-center mt-12">
+            <Link
+              href="/subscription?role=collector"
+              className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-wine text-parchment font-serif text-base font-medium hover:bg-wine/90 transition-colors shadow-sm"
+            >
+              Subscribe
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} />
+            </Link>
+          </div>
         </div>
       </LandingSection>
 
@@ -398,6 +408,16 @@ export function V2LandingContent({ featuredEntry }: V2LandingContentProps) {
               </motion.div>
             ))}
           </motion.div>
+
+          <div className="text-center mt-12">
+            <Link
+              href="/subscription?role=artist"
+              className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-parchment text-wine font-serif text-base font-medium hover:bg-parchment/90 transition-colors shadow-sm"
+            >
+              Subscribe
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} />
+            </Link>
+          </div>
         </div>
       </LandingSection>
     </div>

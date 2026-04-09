@@ -22,11 +22,11 @@ export default async function Home() {
       <header className="relative min-h-screen min-h-viewport w-full flex flex-col items-center justify-center text-center px-6">
         <div className="flex flex-col items-center gap-6">
           <div className="w-16 h-px bg-wine/40" />
-          <h1 className="text-6xl sm:text-8xl lg:text-9xl font-bold tracking-[0.12em] text-wine">
+          <h1 className="text-5xl sm:text-8xl lg:text-9xl font-bold tracking-[0.04em] sm:tracking-[0.12em] text-wine">
             PROVENANCE
           </h1>
           <div className="w-16 h-px bg-wine/40" />
-          <p className="text-lg sm:text-xl font-light tracking-[0.3em] text-ink/70 uppercase">
+          <p className="text-base sm:text-xl font-light tracking-[0.12em] sm:tracking-[0.3em] text-ink/70 uppercase">
             Preserving Cultural Heritage
           </p>
         </div>
