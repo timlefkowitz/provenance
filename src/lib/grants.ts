@@ -19,6 +19,7 @@ export type Grant = {
   type?: OpportunityType;
   source?: string | null;
   raw_response?: unknown;
+  bookmarked?: boolean;
   created_at?: string;
   updated_at?: string;
 };

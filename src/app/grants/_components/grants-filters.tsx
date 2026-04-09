@@ -5,11 +5,13 @@ import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
+import { Bookmark } from 'lucide-react';
 import type { ArtistGrantRow } from '../_actions/get-artist-grants';
 import { OPEN_CALL_MEDIUMS } from '~/app/open-calls/_actions/open-call-constants';
 
 export type SortField = 'deadline' | 'amount' | 'name';
 export type LocationFilter = string | 'all' | 'none';
+export type BookmarkFilter = 'all' | 'saved';
 
 type GrantsFiltersProps = {
   grants: ArtistGrantRow[];
@@ -21,6 +23,9 @@ type GrantsFiltersProps = {
   locationFilter: LocationFilter;
   onLocationFilterChange: (location: LocationFilter) => void;
   onSortChange?: (field: SortField) => void;
+  bookmarkFilter: BookmarkFilter;
+  onBookmarkFilterChange: (filter: BookmarkFilter) => void;
+  savedCount: number;
 };
 
 export function GrantsFilters({
@@ -33,6 +38,9 @@ export function GrantsFilters({
   locationFilter,
   onLocationFilterChange,
   onSortChange,
+  bookmarkFilter,
+  onBookmarkFilterChange,
+  savedCount,
 }: GrantsFiltersProps) {
   const [sortField, setSortField] = useState<SortField>('deadline');
 
@@ -51,6 +59,27 @@ export function GrantsFilters({
 
   return (
     <div className="space-y-4 mb-6">
+      {/* Bookmark filter tabs */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={bookmarkFilter === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className="font-serif text-xs"
+          onClick={() => onBookmarkFilterChange('all')}
+        >
+          All ({grants.length})
+        </Button>
+        <Button
+          variant={bookmarkFilter === 'saved' ? 'default' : 'outline'}
+          size="sm"
+          className="font-serif text-xs"
+          onClick={() => onBookmarkFilterChange('saved')}
+        >
+          <Bookmark className="h-3.5 w-3.5 mr-1 fill-current" />
+          Saved ({savedCount})
+        </Button>
+      </div>
+
       {/* Search + Medium + Location bar */}
       <div className="rounded-lg border border-wine/20 bg-parchment/40 p-4">
         <div className="flex flex-wrap items-end gap-4">
