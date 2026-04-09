@@ -24,15 +24,15 @@ export function NotificationBadge() {
         .eq('read', false);
 
       if (error) {
-        console.error('Error fetching unread count:', error);
+        console.error('[NotificationBadge] Error fetching unread count', error);
         return 0;
       }
 
       return count || 0;
     },
     enabled: !!user?.sub,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchInterval: 120000, // Refetch every 2 minutes
+    refetchOnWindowFocus: false,
   });
 
   if (!user) {

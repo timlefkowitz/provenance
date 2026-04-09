@@ -3,6 +3,7 @@
  * Used to avoid firing many locale fetches in parallel (ERR_INSUFFICIENT_RESOURCES).
  */
 let localeLoadQueue = Promise.resolve<void>(undefined);
+const localeResponseCache = new Map<string, Promise<Record<string, string>>>();
 
 function runInQueue<T>(fn: () => Promise<T>): Promise<T> {
   const next = localeLoadQueue.then(() => fn(), () => fn());
@@ -15,27 +16,35 @@ export async function i18nResolver(language: string, namespace: string) {
   // Dynamic import() of public/ files often fails in bundled client code on Vercel.
   // Serialize fetches to avoid ERR_INSUFFICIENT_RESOURCES when many namespaces load at once.
   if (typeof window !== 'undefined') {
-    return runInQueue(async () => {
-      try {
-        const res = await fetch(`/locales/${language}/${namespace}.json`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return (await res.json()) as Record<string, string>;
-      } catch (error) {
-        console.error(
-          `[i18n] Failed to load locales/${language}/${namespace}.json`,
-          error
-        );
-        if (language !== 'en') {
-          try {
-            const fallback = await fetch(`/locales/en/${namespace}.json`);
-            if (fallback.ok) return (await fallback.json()) as Record<string, string>;
-          } catch {
-            // ignore
+    const cacheKey = `${language}:${namespace}`;
+
+    if (!localeResponseCache.has(cacheKey)) {
+      const loadPromise = runInQueue(async () => {
+        try {
+          const res = await fetch(`/locales/${language}/${namespace}.json`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return (await res.json()) as Record<string, string>;
+        } catch (error) {
+          console.error(
+            `[i18n] Failed to load locales/${language}/${namespace}.json`,
+            error
+          );
+          if (language !== 'en') {
+            try {
+              const fallback = await fetch(`/locales/en/${namespace}.json`);
+              if (fallback.ok) return (await fallback.json()) as Record<string, string>;
+            } catch {
+              // ignore
+            }
           }
+          return {};
         }
-        return {};
-      }
-    });
+      });
+
+      localeResponseCache.set(cacheKey, loadPromise);
+    }
+
+    return localeResponseCache.get(cacheKey) as Promise<Record<string, string>>;
   }
 
   // Server: use dynamic import (filesystem)

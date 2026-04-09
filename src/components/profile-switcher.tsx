@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { cn } from '@kit/ui/utils';
 import type { AppDatabase } from '~/lib/supabase-app-database';
+import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { getPerspective } from './perspective-switcher';
 import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 
@@ -18,6 +18,7 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { data: user } = useCurrentUser();
   const client = useSupabase<AppDatabase>();
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [currentPerspective, setCurrentPerspective] = useState<string>(USER_ROLES.ARTIST);
 
@@ -33,28 +34,45 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
     }
   }, []);
 
-  // Fetch all user profiles
-  const { data: profiles = [] } = useQuery({
-    queryKey: ['user-profiles', user?.sub],
-    queryFn: async () => {
-      if (!user?.sub) return [];
+  // Fetch all user profiles without React Query to avoid QueryClient mismatch in shell components.
+  useEffect(() => {
+    if (!user?.sub) {
+      setProfiles([]);
+      return;
+    }
 
-      const { data, error } = await client
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user.sub)
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
+    let cancelled = false;
+    console.log('[ProfileSwitcher] Fetching user profiles');
+    void (async () => {
+      try {
+        const { data, error } = await client
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.sub)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching profiles:', error);
-        return [];
+        if (cancelled) return;
+
+        if (error) {
+          console.error('[ProfileSwitcher] Error fetching profiles', error);
+          setProfiles([]);
+          return;
+        }
+
+        console.log('[ProfileSwitcher] User profiles loaded');
+        setProfiles((data || []) as UserProfile[]);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[ProfileSwitcher] Unexpected fetch error', error);
+        setProfiles([]);
       }
+    })();
 
-      return data ?? [];
-    },
-    enabled: !!user?.sub,
-  });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, user?.sub]);
 
   // Filter profiles by current perspective/role
   const filteredProfiles = useMemo(() => {

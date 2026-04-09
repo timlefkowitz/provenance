@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { Label } from '@kit/ui/label';
@@ -9,6 +8,7 @@ import { getPerspective } from './perspective-switcher';
 import { getSelectedProfileId } from './profile-switcher';
 import { USER_ROLES } from '~/lib/user-roles';
 import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
+import type { AppDatabase } from '~/lib/supabase-app-database';
 
 /**
  * Shows "Using: [Gallery name]" in the hamburger when the user is in Gallery mode.
@@ -16,7 +16,8 @@ import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
  */
 export function UsingGalleryLabel() {
   const { data: user } = useCurrentUser();
-  const client = useSupabase();
+  const client = useSupabase<AppDatabase>();
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [currentPerspective, setCurrentPerspective] = useState<string>(USER_ROLES.ARTIST);
 
@@ -60,28 +61,46 @@ export function UsingGalleryLabel() {
     };
   }, []);
 
-  const { data: profiles = [] } = useQuery({
-    queryKey: ['user-profiles-gallery-label', user?.sub],
-    queryFn: async () => {
-      if (!user?.sub) return [];
+  useEffect(() => {
+    if (!user?.sub || currentPerspective !== USER_ROLES.GALLERY) {
+      setProfiles([]);
+      return;
+    }
 
-      const { data, error } = await client
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user.sub)
-        .eq('role', USER_ROLES.GALLERY)
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
+    let cancelled = false;
+    console.log('[UsingGalleryLabel] Fetching gallery profiles');
 
-      if (error) {
-        console.error('Error fetching gallery profiles:', error);
-        return [];
+    void (async () => {
+      try {
+        const { data, error } = await client
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.sub)
+          .eq('role', USER_ROLES.GALLERY)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+
+        if (cancelled) return;
+
+        if (error) {
+          console.error('[UsingGalleryLabel] Error fetching gallery profiles', error);
+          setProfiles([]);
+          return;
+        }
+
+        console.log('[UsingGalleryLabel] Gallery profiles loaded');
+        setProfiles((data || []) as unknown as UserProfile[]);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[UsingGalleryLabel] Unexpected fetch error', error);
+        setProfiles([]);
       }
+    })();
 
-      return (data || []) as UserProfile[];
-    },
-    enabled: !!user?.sub && currentPerspective === USER_ROLES.GALLERY,
-  });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, currentPerspective, user?.sub]);
 
   const currentGalleryName = useMemo(() => {
     if (currentPerspective !== USER_ROLES.GALLERY || profiles.length === 0) return null;

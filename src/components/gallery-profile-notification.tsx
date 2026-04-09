@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { X, Info, Building2 } from 'lucide-react';
+import { X, Building2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import { getPerspective } from './perspective-switcher';
@@ -14,46 +13,50 @@ const DISMISSED_KEY = 'gallery_profile_notification_dismissed';
 export function GalleryProfileNotification() {
   const [isVisible, setIsVisible] = useState(false);
   const [hasGalleryProfile, setHasGalleryProfile] = useState<boolean | null>(null);
-  const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    // FIRST: Check if already dismissed - if so, never show again
-    const dismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
-    if (dismissed) {
-      setIsVisible(false);
-      setHasGalleryProfile(null);
-      return; // Exit early - don't do any other checks
-    }
+    let cancelled = false;
 
-    // Check if perspective is Gallery
-    const perspective = getPerspective();
-    if (perspective !== USER_ROLES.GALLERY) {
-      setIsVisible(false);
-      return;
-    }
+    async function syncNotificationVisibility() {
+      const dismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
+      if (dismissed) {
+        setIsVisible(false);
+        setHasGalleryProfile(null);
+        return;
+      }
 
-    // Check if user has a gallery profile
-    async function checkGalleryProfile() {
+      const perspective = getPerspective();
+      if (perspective !== USER_ROLES.GALLERY) {
+        setIsVisible(false);
+        return;
+      }
+
+      console.log('[GalleryProfileNotification] Checking gallery profile status');
       try {
-        // Add cache-busting query param to ensure fresh data
-        const response = await fetch(`/api/check-gallery-profile?t=${Date.now()}`);
+        const response = await fetch('/api/check-gallery-profile', {
+          cache: 'no-store',
+        });
+
         if (response.ok) {
           const data = await response.json();
+          if (cancelled) return;
+
           setHasGalleryProfile(data.hasProfile);
-          // Only show notification if user doesn't have a gallery profile
-          // But respect dismissal - if dismissed, don't show even if no profile
           const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
           if (!stillDismissed) {
             setIsVisible(!data.hasProfile);
           }
         }
       } catch (error) {
-        console.error('Error checking gallery profile:', error);
-        // Only show notification if check fails AND not dismissed
+        if (cancelled) return;
+        console.error(
+          '[GalleryProfileNotification] Error checking gallery profile',
+          error,
+        );
         const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
         if (!stillDismissed) {
           setIsVisible(true);
@@ -61,8 +64,35 @@ export function GalleryProfileNotification() {
       }
     }
 
-    checkGalleryProfile();
-  }, [pathname]);
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === DISMISSED_KEY ||
+        event.key === 'user_perspective'
+      ) {
+        void syncNotificationVisibility();
+      }
+    };
+
+    const handlePerspectiveChanged = () => {
+      void syncNotificationVisibility();
+    };
+
+    void syncNotificationVisibility();
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(
+      'user_perspective_changed',
+      handlePerspectiveChanged as EventListener,
+    );
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(
+        'user_perspective_changed',
+        handlePerspectiveChanged as EventListener,
+      );
+    };
+  }, []);
 
   const handleDismiss = () => {
     if (typeof window !== 'undefined') {
@@ -81,10 +111,6 @@ export function GalleryProfileNotification() {
   const profileLink = hasGalleryProfile 
     ? '/profiles' // Link to profiles page to edit
     : '/profiles/new?role=gallery'; // Link to create gallery profile
-
-  const actionText = hasGalleryProfile
-    ? 'edit your gallery profile'
-    : 'create your gallery profile';
 
   return (
     <Alert 

@@ -3,11 +3,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import resourcesToBackend from 'i18next-resources-to-backend';
 import { initReactI18next } from 'react-i18next';
 
-// Keep track of the number of iterations
-let iteration = 0;
-
-// Maximum number of iterations
-const MAX_ITERATIONS = 20;
+let i18nPluginsRegistered = false;
 
 /**
  * Initialize the i18n instance on the client.
@@ -18,69 +14,71 @@ export async function initializeI18nClient(
   settings: InitOptions,
   resolver: (lang: string, namespace: string) => Promise<object>,
 ): Promise<i18n> {
-  const loadedLanguages: string[] = [];
-  const loadedNamespaces: string[] = [];
-
-  await i18next
-    .use(
+  if (!i18nPluginsRegistered) {
+    i18next.use(
       resourcesToBackend(async (language, namespace, callback) => {
-        const data = await resolver(language, namespace);
-
-        if (!loadedLanguages.includes(language)) {
-          loadedLanguages.push(language);
+        try {
+          const data = await resolver(language, namespace);
+          return callback(null, data);
+        } catch (error) {
+          console.error('[I18n] Failed to resolve translation resource', error);
+          return callback(error as Error, null);
         }
-
-        if (!loadedNamespaces.includes(namespace)) {
-          loadedNamespaces.push(namespace);
-        }
-
-        return callback(null, data);
       }),
-    )
-    .use(LanguageDetector)
-    .use(initReactI18next)
-    .init(
-      {
-        ...settings,
-        detection: {
-          order: ['htmlTag', 'cookie', 'navigator'],
-          caches: ['cookie'],
-          lookupCookie: 'lang',
-        },
-        interpolation: {
-          escapeValue: false,
-        },
-      },
-      (err) => {
-        if (err) {
-          console.error('Error initializing i18n client', err);
-        }
-      },
     );
-
-  // Ensure at least one namespace is loaded before the empty check.
-  // resourcesToBackend loads on-demand, so no resource is loaded until something uses t().
-  const firstNs = Array.isArray(settings.ns) ? settings.ns[0] : (settings.ns as string) || 'common';
-  await i18next.loadNamespaces(firstNs);
-
-  // to avoid infinite loops, we return the i18next instance after a certain number of iterations
-  // even if the languages and namespaces are not loaded
-  if (iteration >= MAX_ITERATIONS) {
-    console.debug(`Max iterations reached: ${MAX_ITERATIONS}`);
-
-    return i18next;
+    i18next.use(LanguageDetector).use(initReactI18next);
+    i18nPluginsRegistered = true;
   }
 
-  // keep component from rendering if no languages or namespaces are loaded
-  if (loadedLanguages.length === 0 || loadedNamespaces.length === 0) {
-    iteration++;
+  console.log('[I18n] Client init started');
+  const namespaceList = normalizeNamespaces(settings.ns);
+  const language = normalizeLanguage(settings.lng as string | undefined);
 
-    console.debug(
-      `Keeping component from rendering if no languages or namespaces are loaded. Iteration: ${iteration}. Will stop after ${MAX_ITERATIONS} iterations.`,
-    );
+  const clientSettings: InitOptions = {
+    ...settings,
+    lng: language,
+    detection: {
+      order: ['cookie', 'htmlTag'],
+      caches: ['cookie'],
+      lookupCookie: 'lang',
+    },
+    interpolation: {
+      escapeValue: false,
+    },
+  };
 
-    throw new Error('No languages or namespaces loaded');
+  if (!i18next.isInitialized) {
+    await i18next.init(clientSettings, (err) => {
+      if (err) {
+        console.error('[I18n] Error initializing i18n client', err);
+      }
+    });
+    console.log('[I18n] Client initialized');
+  } else {
+    if (language && i18next.resolvedLanguage !== language) {
+      await i18next.changeLanguage(language);
+    }
+    console.log('[I18n] Reusing existing client instance');
   }
 
+  if (namespaceList.length > 0) {
+    await i18next.loadNamespaces(namespaceList);
+  }
+
+  console.log('[I18n] Client namespaces ensured');
   return i18next;
+}
+
+function normalizeLanguage(language: string | undefined) {
+  return (language ?? 'en').trim().toLowerCase().split('-')[0];
+}
+
+function normalizeNamespaces(namespaces: InitOptions['ns']) {
+  if (!namespaces) {
+    return [];
+  }
+
+  const list = Array.isArray(namespaces) ? namespaces : [namespaces];
+
+  return [...new Set(list.map((namespace) => String(namespace).trim()))];
 }
