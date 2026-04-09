@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import type { JwtPayload } from '@supabase/supabase-js';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
@@ -20,9 +21,9 @@ import { PerspectiveSwitcher } from './perspective-switcher';
 import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
-export function Navigation() {
+export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
-  const user = useCurrentUser();
+  const user = useCurrentUser(props.initialUser);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Investor pages have their own dedicated nav; hide the main nav there.

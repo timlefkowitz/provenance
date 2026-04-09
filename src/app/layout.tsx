@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import type { JwtPayload } from "@supabase/supabase-js";
 import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@kit/ui/sonner";
+import { getSupabaseServerClient } from "@kit/supabase/server-client";
 import { RootProviders } from "~/components/root-providers";
 import { OnboardingGuard } from "~/components/onboarding-guard";
 import { Navigation } from "~/components/navigation";
@@ -53,11 +55,27 @@ export default async function RootLayout({
   // Get the current language from server-side i18n (reads from cookie)
   // Wrap in try-catch to prevent layout crash on Vercel (e.g. i18n/cookies edge cases)
   let currentLang = 'en';
+  let initialUser: JwtPayload | null = null;
   try {
     const i18n = await createI18nServerInstance();
     currentLang = i18n.language || 'en';
+
+    const client = getSupabaseServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await client.auth.getUser();
+
+    if (authError) {
+      console.error('[Provenance] RootLayout auth.getUser failed', authError);
+    } else if (user) {
+      initialUser = {
+        ...user,
+        sub: user.id,
+      } as unknown as JwtPayload;
+    }
   } catch (err) {
-    console.error('[Provenance] RootLayout i18n init failed, using en:', err);
+    console.error('[Provenance] RootLayout init failed, using safe defaults:', err);
   }
 
   if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
@@ -71,7 +89,7 @@ export default async function RootLayout({
       >
         <RootProviders lang={currentLang}>
           <OnboardingGuard>
-            <Navigation />
+            <Navigation initialUser={initialUser} />
             <StreakActivityTracker />
             <GalleryProfileNotification />
             {children}
