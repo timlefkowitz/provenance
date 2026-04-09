@@ -57,6 +57,51 @@
         --sidebar-ring: var(--color-blue-500);
     }
 
+    .parchment {
+        --background: #F5F1E8;
+        --foreground: #111111;
+
+        --card: #F5F1E8;
+        --card-foreground: #111111;
+
+        --popover: #F5F1E8;
+        --popover-foreground: #111111;
+
+        --primary: #4A2F25;
+        --primary-foreground: #F5F1E8;
+
+        --secondary: #EDE8DB;
+        --secondary-foreground: #2A1A13;
+
+        --muted: #E8E2D5;
+        --muted-foreground: #6B5D52;
+
+        --accent: #EDE8DB;
+        --accent-foreground: #2A1A13;
+
+        --destructive: var(--color-red-500);
+        --destructive-foreground: var(--color-white);
+
+        --border: #D6CEBC;
+        --input: #CFC6B2;
+        --ring: #4A2F25;
+
+        --chart-1: var(--color-orange-400);
+        --chart-2: var(--color-teal-600);
+        --chart-3: var(--color-green-800);
+        --chart-4: var(--color-yellow-200);
+        --chart-5: var(--color-orange-200);
+
+        --sidebar-background: #EDE8DB;
+        --sidebar-foreground: #3D2A1F;
+        --sidebar-primary: #4A2F25;
+        --sidebar-primary-foreground: #F5F1E8;
+        --sidebar-accent: #E2DACA;
+        --sidebar-accent-foreground: #111111;
+        --sidebar-border: var(--border);
+        --sidebar-ring: #4A2F25;
+    }
+
     .dark {
         --background: var(--color-neutral-900);
         --foreground: var(--color-white);

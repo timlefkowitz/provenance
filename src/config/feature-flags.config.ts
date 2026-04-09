@@ -7,7 +7,7 @@ const FeatureFlagsSchema = z.object({
 });
 
 const featureFlagsConfig = FeatureFlagsSchema.parse({
-  enableThemeToggle: false,
+  enableThemeToggle: true,
   enableVersionUpdater: false,
   languagePriority: 'application',
 } satisfies z.infer<typeof FeatureFlagsSchema>);

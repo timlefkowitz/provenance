@@ -16,6 +16,8 @@
 @source "../{app,components,config,lib}/**/*.{ts,tsx}";
 @source "../../src/{app,components,config,lib}/**/*.{ts,tsx}";
 
+@variant dark (&:where(.dark, .dark *));
+
 /* User Custom Theme */
 @theme {
   --color-parchment: #F5F1E8;
@@ -35,8 +37,8 @@
 
 @layer base {
   body {
-    background-color: var(--color-parchment);
-    color: var(--color-ink);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
       sans-serif;
   }

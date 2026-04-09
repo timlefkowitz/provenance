@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { JwtPayload } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text } from "next/font/google";
 import "./globals.css";
 
@@ -13,6 +14,7 @@ import { GalleryProfileNotification } from "~/components/gallery-profile-notific
 import { ClientAnalytics } from "~/components/client-analytics";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
+import { cn } from "@kit/ui/utils";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -56,6 +58,12 @@ export default async function RootLayout({
   // Wrap in try-catch to prevent layout crash on Vercel (e.g. i18n/cookies edge cases)
   let currentLang = 'en';
   let initialUser: JwtPayload | null = null;
+
+  const VALID_THEMES = new Set(['parchment', 'light', 'dark', 'system']);
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get('theme')?.value;
+  const currentTheme = themeCookie && VALID_THEMES.has(themeCookie) ? themeCookie : 'parchment';
+
   try {
     const i18n = await createI18nServerInstance();
     currentLang = i18n.language || 'en';
@@ -83,11 +91,15 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang={currentLang} suppressHydrationWarning>
+    <html
+      lang={currentLang}
+      className={cn(currentTheme !== 'system' && currentTheme)}
+      suppressHydrationWarning
+    >
       <body
-        className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased bg-parchment text-ink overflow-x-hidden`}
+        className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased overflow-x-hidden`}
       >
-        <RootProviders lang={currentLang}>
+        <RootProviders lang={currentLang} theme={currentTheme}>
           <OnboardingGuard>
             <Navigation initialUser={initialUser} />
             <StreakActivityTracker />

@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
 import {
+  BookOpen,
   ChevronDown,
   Computer,
   Home,
   LogOut,
-  Moon,
   Settings,
   Sun,
   User,
@@ -50,7 +50,7 @@ const features = {
   enableThemeToggle: featuresFlagConfig.enableThemeToggle,
 };
 
-const MODES = ['light', 'dark', 'system'] as const;
+const MODES = ['parchment', 'light', 'system'] as const;
 
 /** Matches DropdownMenuItem surface so the popover menu feels the same */
 const rowClass =
@@ -64,14 +64,14 @@ function setCookieTheme(theme: string) {
 
 function ThemeIcon({ theme }: { theme: string | undefined }) {
   switch (theme) {
+    case 'parchment':
+      return <BookOpen className="h-4 w-4" />;
     case 'light':
       return <Sun className="h-4 w-4" />;
-    case 'dark':
-      return <Moon className="h-4 w-4" />;
     case 'system':
       return <Computer className="h-4 w-4" />;
     default:
-      return <Sun className="h-4 w-4" />;
+      return <BookOpen className="h-4 w-4" />;
   }
 }
 

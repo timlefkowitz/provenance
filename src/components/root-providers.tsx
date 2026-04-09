@@ -55,6 +55,7 @@ export function RootProviders({
               enableSystem
               disableTransitionOnChange
               defaultTheme={theme}
+              themes={['parchment', 'light', 'dark', 'system']}
               enableColorScheme={false}
             >
               {children}

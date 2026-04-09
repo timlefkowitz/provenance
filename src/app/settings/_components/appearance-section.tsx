@@ -5,13 +5,13 @@ import { useTheme } from 'next-themes';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
 import { cn } from '@kit/ui/utils';
-import { Sun, Moon, Computer, Check } from 'lucide-react';
+import { Sun, Computer, Check, BookOpen } from 'lucide-react';
 import { languages, I18N_COOKIE_NAME } from '~/lib/i18n/i18n.settings';
 import featuresFlagConfig from '~/config/feature-flags.config';
 
 const THEMES = [
+  { value: 'parchment', label: 'Parchment', icon: BookOpen },
   { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'system', label: 'System', icon: Computer },
 ] as const;
 
@@ -60,8 +60,8 @@ export function AppearanceSection() {
           <CardHeader>
             <CardTitle className="font-display text-wine">Theme</CardTitle>
             <CardDescription className="font-serif">
-              Choose between light mode, dark mode, or follow your system
-              setting.
+              Choose between parchment, light, or follow your system
+              preference.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -6,7 +6,7 @@ const AppConfigSchema = z.object({
     description: z.string(),
     url: z.string().url(),
     locale: z.string().default('en'),
-    theme: z.enum(['light', 'dark', 'system']),
+    theme: z.enum(['light', 'dark', 'system', 'parchment']),
     themeColor: z.string(),
     themeColorDark: z.string(),
 });
@@ -17,7 +17,7 @@ const appConfig = AppConfigSchema.parse({
   description: 'Marketplace for digital collectibles and art.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   locale: 'en',
-  theme: 'light',
+  theme: 'parchment',
   themeColor: '#ffffff',
   themeColorDark: '#000000',
 });
