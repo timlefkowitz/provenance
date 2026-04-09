@@ -20,6 +20,9 @@ import { NotificationBadge } from './notification-badge';
 import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
+const desktopNavItemClass =
+  'inline-flex items-center rounded-md px-2 py-1 -mx-2 -my-1 text-ink hover:text-wine transition-colors font-serif focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment';
+
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
   const user = useCurrentUser(props.initialUser);
@@ -44,7 +47,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link 
             href="/artworks" 
-            className="text-ink hover:text-wine transition-colors font-serif"
+            className={desktopNavItemClass}
           >
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
@@ -52,24 +55,24 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             <>
               <Link
                 href="/artworks/my"
-                className="text-ink hover:text-wine transition-colors font-serif"
+                className={desktopNavItemClass}
               >
                 Collection
               </Link>
               <Link 
                 href="/portal" 
-                className="text-ink hover:text-wine transition-colors font-serif"
+                className={desktopNavItemClass}
               >
                 Portal
               </Link>
               <Link 
                 href="/registry" 
-                className="text-ink hover:text-wine transition-colors font-serif"
+                className={desktopNavItemClass}
               >
                 <Trans i18nKey="common:navigation.registry" defaults="Registry" />
               </Link>
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1 text-ink hover:text-wine transition-colors font-serif font-medium outline-none data-[state=open]:text-wine">
+                <DropdownMenuTrigger className={`${desktopNavItemClass} gap-1 font-medium data-[state=open]:text-wine`}>
                   Toolbox
                   <ChevronDown className="h-4 w-4" />
                 </DropdownMenuTrigger>
@@ -90,7 +93,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           )}
           <Link 
             href="/about" 
-            className="text-ink hover:text-wine transition-colors font-serif"
+            className={desktopNavItemClass}
           >
             <Trans i18nKey="common:navigation.about" defaults="About" />
           </Link>
