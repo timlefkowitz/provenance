@@ -1,11 +1,10 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback, startTransition } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
 import {
-  Check,
   ChevronDown,
   Computer,
   Home,
@@ -32,15 +31,13 @@ import {
 } from '@kit/ui/collapsible';
 import type { AppDatabase } from '~/lib/supabase-app-database';
 import { AdminMenuItem } from './admin-menu-item';
-import { getPerspective } from './perspective-switcher';
 import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
-import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 import { languages, I18N_COOKIE_NAME } from '~/lib/i18n/i18n.settings';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
 
-const PERSPECTIVE_KEY = 'user_perspective';
 const SELECTED_PROFILE_KEY = 'selected_profile_id';
 
 const paths = {
@@ -152,36 +149,6 @@ export function ProfileAccountDropdownContainer(props: {
       });
   }, [userId, client]);
 
-  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(
-    USER_ROLES.ARTIST,
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    startTransition(() => {
-      setCurrentPerspective(getPerspective());
-    });
-  }, []);
-
-  const switchRole = useCallback(
-    (role: UserRole) => {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(PERSPECTIVE_KEY, role);
-        localStorage.removeItem(SELECTED_PROFILE_KEY);
-      }
-      setCurrentPerspective(role);
-      setOpen(false);
-      setProfileOpen(false);
-      router.refresh();
-    },
-    [router],
-  );
-
-  const profilesForCurrentRole = useMemo(
-    () => profiles.filter((p) => p.role === currentPerspective),
-    [profiles, currentPerspective],
-  );
-
   const setSelectedProfileAndNavigate = useCallback((profileId: string) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(SELECTED_PROFILE_KEY, profileId);
@@ -227,25 +194,11 @@ export function ProfileAccountDropdownContainer(props: {
   const displayName =
     accountData?.name ?? props.account?.name ?? userData?.email ?? '';
 
-  const profilePictureUrl = (() => {
-    if (currentPerspective === USER_ROLES.GALLERY) {
-      const selectedId =
-        typeof window !== 'undefined'
-          ? localStorage.getItem(SELECTED_PROFILE_KEY)
-          : null;
-      const galleryProfile =
-        profilesForCurrentRole.find((p) => p.id === selectedId) ??
-        profilesForCurrentRole[0];
-      if (galleryProfile?.picture_url) return galleryProfile.picture_url;
-    }
-    return (
-      accountData?.picture_url ??
-      props.account?.picture_url ??
-      (userData.user_metadata as { avatar_url?: string } | undefined)
-        ?.avatar_url ??
-      null
-    );
-  })();
+  const profilePictureUrl =
+    accountData?.picture_url ??
+    props.account?.picture_url ??
+    (userData.user_metadata as { avatar_url?: string } | undefined)?.avatar_url ??
+    null;
 
   return (
     <div className="relative z-[110] shrink-0">
@@ -325,46 +278,14 @@ export function ProfileAccountDropdownContainer(props: {
                 <User className="h-5" />
                 <span>Profile</span>
               </span>
-              <span className="flex items-center gap-1">
-                <span className="text-xs font-normal text-muted-foreground">
-                  {getRoleLabel(currentPerspective)}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                    profileOpen && 'rotate-180',
-                  )}
-                />
-              </span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                  profileOpen && 'rotate-180',
+                )}
+              />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-0.5 pb-1 pl-1 pt-0">
-              <p className="px-2 py-1 text-xs text-muted-foreground">
-                Viewing as: {getRoleLabel(currentPerspective)}
-              </p>
-              {(
-                [
-                  USER_ROLES.ARTIST,
-                  USER_ROLES.COLLECTOR,
-                  USER_ROLES.GALLERY,
-                ] as const
-              ).map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  className={cn(
-                    rowClass,
-                    'flex items-center justify-between',
-                    currentPerspective === role && 'bg-muted',
-                  )}
-                  onClick={() => switchRole(role)}
-                >
-                  <span>{getRoleLabel(role)}</span>
-                  {currentPerspective === role ? (
-                    <Check className="h-4 w-4" />
-                  ) : null}
-                </button>
-              ))}
-              <div className={sepClass} />
               <Link
                 href={paths.profile}
                 className={cn(rowClass, 'flex items-center space-x-2')}
@@ -373,14 +294,14 @@ export function ProfileAccountDropdownContainer(props: {
                 <User className="h-4" />
                 <span>My Profile</span>
               </Link>
-              {profilesForCurrentRole.length > 0
-                ? profilesForCurrentRole.map((profile) => (
+              {profiles.length > 0
+                ? profiles.map((profile) => (
                     <div key={profile.id} className="space-y-0.5">
                       <Link
                         href={
-                          currentPerspective === USER_ROLES.GALLERY
+                          profile.role === USER_ROLES.GALLERY
                             ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
-                            : `/artists/${userId}?role=${currentPerspective}`
+                            : `/artists/${userId}?role=${profile.role}`
                         }
                         className={cn(rowClass, 'flex items-center space-x-2')}
                         onClick={() => {
@@ -389,7 +310,12 @@ export function ProfileAccountDropdownContainer(props: {
                         }}
                       >
                         <User className="h-4" />
-                        <span className="truncate">{profile.name}</span>
+                        <span className="truncate">
+                          {profile.name}
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {getRoleLabel(profile.role)}
+                          </span>
+                        </span>
                       </Link>
                       {(profile.role === USER_ROLES.GALLERY ||
                         profile.role === USER_ROLES.ARTIST) && (

@@ -17,7 +17,6 @@ import {
 import pathsConfig from '~/config/paths.config';
 import { ProfileAccountDropdownContainer } from './personal-account-dropdown-container';
 import { NotificationBadge } from './notification-badge';
-import { PerspectiveSwitcher } from './perspective-switcher';
 import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
@@ -76,28 +75,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="font-serif">
                   <DropdownMenuItem asChild>
-                    <Link href="/profiles" className="cursor-pointer">
-                      Manage profiles
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <Link href="/grants" className="cursor-pointer">
                       Grants
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/open-calls/browse" className="cursor-pointer">
-                      Open Calls
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <Link href="/portal/or" className="cursor-pointer">
                       OR
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/subscription" className="cursor-pointer">
-                      Subscription
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -207,10 +191,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
       {mobileMenuOpen && (
         <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-[90]">
           <div className="flex flex-col px-6 py-4 gap-4">
-            {/* Role Switcher */}
-            {user.data && (
-              <PerspectiveSwitcher compact />
-            )}
             {/* When Gallery: show which gallery the user is using */}
             {user.data && (
               <UsingGalleryLabel />
@@ -261,13 +241,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   Toolbox
                 </span>
                 <Link 
-                  href="/profiles" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10 cursor-pointer"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Manage profiles
-                </Link>
-                <Link 
                   href="/grants" 
                   className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10 cursor-pointer"
                   onClick={() => setMobileMenuOpen(false)}
@@ -275,25 +248,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   Grants
                 </Link>
                 <Link 
-                  href="/open-calls/browse" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Open Calls
-                </Link>
-                <Link 
                   href="/portal/or" 
                   className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   OR
-                </Link>
-                <Link 
-                  href="/subscription" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Subscription
                 </Link>
               </>
             )}
