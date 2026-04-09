@@ -76,7 +76,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   Toolbox
                   <ChevronDown className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="font-serif">
+                <DropdownMenuContent align="start" className="z-[200] font-serif">
                   <DropdownMenuItem asChild>
                     <Link href="/grants" className="cursor-pointer">
                       Grants
