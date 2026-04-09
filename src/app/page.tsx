@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getFeaturedEntry } from "./admin/_actions/get-featured-entry";
-import { LandingPageContent } from "./page-content";
+import { V2LandingContent } from "./page-content";
+import { ChevronDown } from "lucide-react";
 
-// Force dynamic rendering so featured artwork changes on each page load
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  // Check if user is authenticated and redirect to portal
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
@@ -15,26 +14,32 @@ export default async function Home() {
     redirect('/portal');
   }
 
-  // Get featured entry (read-only, safe)
   const { featuredEntry } = await getFeaturedEntry();
+
   return (
-    <main className="min-h-screen flex flex-col items-center p-8 sm:p-20 font-landing overflow-x-hidden">
-      {/* Masthead — first full screen */}
-      <header className="min-h-screen min-h-viewport w-full max-w-4xl flex flex-col items-center justify-center text-center pb-10">
-        <h1 className="text-6xl sm:text-8xl font-bold tracking-tight mb-4 text-wine">
-          PROVENANCE
-        </h1>
-        <p className="text-xl sm:text-2xl font-light tracking-tight text-ink/80">
-          PRESERVING CULTURAL HERITAGE
-        </p>
+    <main className="min-h-screen flex flex-col items-center overflow-x-hidden font-landing bg-parchment">
+      {/* Masthead */}
+      <header className="relative min-h-screen min-h-viewport w-full flex flex-col items-center justify-center text-center px-6">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-16 h-px bg-wine/40" />
+          <h1 className="text-6xl sm:text-8xl lg:text-9xl font-bold tracking-[0.12em] text-wine">
+            PROVENANCE
+          </h1>
+          <div className="w-16 h-px bg-wine/40" />
+          <p className="text-lg sm:text-xl font-light tracking-[0.3em] text-ink/70 uppercase">
+            Preserving Cultural Heritage
+          </p>
+        </div>
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
+          <ChevronDown className="w-6 h-6 text-wine/50" strokeWidth={1.5} />
+        </div>
       </header>
 
-      {/* Sections 1–4: Featured, Certificates, Collection, Tools (with parallax + scroll animations) */}
-      <LandingPageContent featuredEntry={featuredEntry ?? null} />
+      <V2LandingContent featuredEntry={featuredEntry ?? null} />
 
       {/* Footer */}
-      <footer className="w-full max-w-4xl text-center text-sm text-ink/60 font-landing py-8">
-        <p>© {new Date().getFullYear()} Provence Platform. Patent Pending.</p>
+      <footer className="w-full text-center text-sm text-ink/50 font-landing py-12 border-t border-wine/10">
+        <p>&copy; {new Date().getFullYear()} Provenance Platform. Patent Pending.</p>
       </footer>
     </main>
   );

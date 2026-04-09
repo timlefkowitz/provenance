@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { SpreadsheetEditForm } from '../edit-provenance/_components/spreadsheet-edit-form';
@@ -32,13 +33,21 @@ export default async function MyArtworksPage() {
   if (!artworks || artworks.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl w-full min-w-0 overflow-x-hidden">
-        <div className="mb-8">
-          <h1 className="text-4xl font-display font-bold text-wine mb-2">
-            Collection Management
-          </h1>
-          <p className="text-ink/70 font-serif">
-            Add artworks to start managing your collection.
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-display font-bold text-wine mb-2">
+              Collection Management
+            </h1>
+            <p className="text-ink/70 font-serif">
+              Add artworks to start managing your collection.
+            </p>
+          </div>
+          <Link
+            href="/subscription?role=collector"
+            className="self-start sm:self-center inline-flex items-center px-5 py-2.5 rounded-lg bg-wine text-parchment font-serif text-sm font-medium hover:bg-wine/90 transition-colors"
+          >
+            Subscribe
+          </Link>
         </div>
       </div>
     );
@@ -86,13 +95,21 @@ export default async function MyArtworksPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl w-full min-w-0 overflow-x-hidden">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Collection Management
-        </h1>
-        <p className="text-ink/70 font-serif">
-          Select an artwork from the image row, then edit provenance details below.
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-display font-bold text-wine mb-2">
+            Collection Management
+          </h1>
+          <p className="text-ink/70 font-serif">
+            Select an artwork from the image row, then edit provenance details below.
+          </p>
+        </div>
+        <Link
+          href="/subscription?role=collector"
+          className="self-start sm:self-center inline-flex items-center px-5 py-2.5 rounded-lg bg-wine text-parchment font-serif text-sm font-medium hover:bg-wine/90 transition-colors"
+        >
+          Subscribe
+        </Link>
       </div>
 
       <SpreadsheetEditForm

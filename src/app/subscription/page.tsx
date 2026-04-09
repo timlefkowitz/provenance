@@ -9,7 +9,7 @@ export const metadata = {
   description: 'Manage your subscription and billing',
 };
 
-type SearchParams = Promise<{ success?: string; canceled?: string; upgrade?: string }>;
+type SearchParams = Promise<{ success?: string; canceled?: string; upgrade?: string; role?: string }>;
 
 export default async function SubscriptionPage({
   searchParams,
@@ -48,12 +48,18 @@ export default async function SubscriptionPage({
 
   const subscription = subscriptionRows?.[0] ?? null;
 
+  const VALID_SUBSCRIPTION_ROLES = ['artist', 'collector', 'gallery'] as const;
+  const queryRole = VALID_SUBSCRIPTION_ROLES.includes(params.role as any)
+    ? (params.role as SubscriptionRole)
+    : null;
+
   const defaultRole: SubscriptionRole | null =
-    subscription?.status === 'trialing' &&
+    queryRole ??
+    (subscription?.status === 'trialing' &&
     subscription.role &&
     isValidRole(subscription.role)
       ? (subscription.role as SubscriptionRole)
-      : accountDefaultRole;
+      : accountDefaultRole);
 
   return (
     <div className="container py-10">
