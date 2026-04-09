@@ -16,7 +16,6 @@ import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favo
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getLeadsForArtist } from './or/_actions/leads';
-import { GalleryMembersManager } from '../profiles/_components/gallery-members-manager';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -689,28 +688,15 @@ export default async function PortalPage() {
         </CardContent>
       </Card>
 
-      {/* Gallery teams — at bottom of portal */}
+      {/* Gallery teams now live on the Settings page */}
       {galleryProfiles.length > 0 && (
-        <div className="mt-10 pt-8 border-t border-wine/20">
-          <h2 className="text-2xl font-display font-bold text-wine mb-2">
-            Gallery teams
-          </h2>
-          <p className="text-ink/70 font-serif mb-4">
-            Select a gallery and manage the team members who can manage collections, post Certificates of Show, and manage exhibitions.
+        <div className="mt-10 pt-8 border-t border-wine/20 text-center">
+          <p className="text-ink/70 font-serif">
+            Gallery team management has moved to{' '}
+            <a href="/settings#teams" className="text-wine underline hover:text-wine/80">
+              Settings &rarr; Teams
+            </a>.
           </p>
-          <div className="space-y-6">
-            {galleryProfiles.map((profile: any) => (
-              <div key={profile.id} className="space-y-2">
-                <h3 className="text-lg font-display text-wine">
-                  {profile.name || 'Untitled gallery'}
-                </h3>
-                <GalleryMembersManager
-                  galleryProfileId={profile.id}
-                  userId={user.id}
-                />
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>

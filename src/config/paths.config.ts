@@ -30,7 +30,7 @@ const pathsConfig = PathsSchema.parse({
   app: {
     home: '/',
     profile: '/profile',
-    profileSettings: '/portal',
+    profileSettings: '/settings',
   },
 } satisfies z.infer<typeof PathsSchema>);
 
