@@ -5,16 +5,22 @@ import { Heart } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { addFavorite, removeFavorite, isFavorited } from '../_actions/favorites';
+import { isStaleServerActionError } from '~/lib/stale-server-action';
 
-export function FavoriteButton({ 
+export function FavoriteButton({
   artworkId,
-  currentUserId 
-}: { 
+  currentUserId,
+  /** When set (e.g. server-batched portal data), skip per-card isFavorited() on mount */
+  initialFavorited,
+}: {
   artworkId: string;
   currentUserId?: string;
+  initialFavorited?: boolean;
 }) {
-  const [favorited, setFavorited] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [favorited, setFavorited] = useState(() =>
+    initialFavorited !== undefined ? initialFavorited : false,
+  );
+  const [loading, setLoading] = useState(initialFavorited === undefined);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -23,18 +29,30 @@ export function FavoriteButton({
       return;
     }
 
-    // Check if artwork is favorited
+    if (initialFavorited !== undefined) {
+      setFavorited(initialFavorited);
+      setLoading(false);
+      return;
+    }
+
     startTransition(async () => {
       try {
         const favoritedStatus = await isFavorited(artworkId);
         setFavorited(favoritedStatus);
       } catch (error) {
-        console.error('Error checking favorite status:', error);
+        if (isStaleServerActionError(error)) {
+          console.error(
+            '[FavoriteButton] Server action missing — stale JS after deploy? Hard refresh / clear cache.',
+            error,
+          );
+        } else {
+          console.error('[FavoriteButton] Error checking favorite status', error);
+        }
       } finally {
         setLoading(false);
       }
     });
-  }, [artworkId, currentUserId]);
+  }, [artworkId, currentUserId, initialFavorited]);
 
   const handleToggle = () => {
     if (!currentUserId) {
@@ -55,9 +73,15 @@ export function FavoriteButton({
           setFavorited(true);
           toast.success('Added to favorites');
         }
-      } catch (error: any) {
-        console.error('Error toggling favorite:', error);
-        toast.error(error.message || 'Failed to update favorite');
+      } catch (error: unknown) {
+        if (isStaleServerActionError(error)) {
+          console.error('[FavoriteButton] Toggle failed — stale deployment bundle', error);
+          toast.error('Please refresh the page (Cmd/Ctrl+Shift+R) to sync with the site.');
+        } else {
+          const msg = error instanceof Error ? error.message : 'Failed to update favorite';
+          console.error('[FavoriteButton] Error toggling favorite', error);
+          toast.error(msg);
+        }
       }
     });
   };

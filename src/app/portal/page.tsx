@@ -22,6 +22,9 @@ export const metadata = {
   title: 'Portal | Provenance',
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function PortalPage() {
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
@@ -65,7 +68,9 @@ export default async function PortalPage() {
         .in('account_id', primaryAccountIds),
       admin
         .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
+        .select(
+          'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status, artist_account_id, artist_profile_id',
+        )
         .in('account_id', primaryAccountIds)
         .order('created_at', { ascending: false })
         .limit(6),
@@ -80,7 +85,9 @@ export default async function PortalPage() {
         .in('account_id', primaryAccountIds),
       (client as any)
         .from('artworks')
-        .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
+        .select(
+          'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status, artist_account_id, artist_profile_id',
+        )
         .in('account_id', primaryAccountIds)
         .order('created_at', { ascending: false })
         .limit(6),
@@ -131,6 +138,55 @@ export default async function PortalPage() {
   // Get favorites
   const favoriteArtworks = await getFavoriteArtworks(6);
   const favoriteCount = await getFavoriteCount();
+
+  const favoriteList = favoriteArtworks ?? [];
+  const recentList = recentArtworks ?? [];
+  const recentArtworkIds = [...new Set(recentList.map((a: { id: string }) => a.id))];
+
+  let favoritedRecentIdSet = new Set<string>();
+  if (recentArtworkIds.length > 0) {
+    const { data: favRows, error: favBatchError } = await (client as any)
+      .from('artwork_favorites')
+      .select('artwork_id')
+      .eq('user_id', user.id)
+      .in('artwork_id', recentArtworkIds);
+    if (favBatchError) {
+      console.error('[Portal] batch favorite state failed', favBatchError);
+    } else {
+      favoritedRecentIdSet = new Set(
+        (favRows ?? []).map((r: { artwork_id: string }) => r.artwork_id),
+      );
+    }
+  }
+
+  const artistIdsForFollow = [
+    ...new Set(
+      [...favoriteList, ...recentList]
+        .map((a: { artist_account_id?: string | null }) => a.artist_account_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+    ),
+  ];
+
+  let followingArtistIdSet = new Set<string>();
+  if (artistIdsForFollow.length > 0) {
+    const { data: folRows, error: folBatchError } = await (client as any)
+      .from('user_follows')
+      .select('following_id')
+      .eq('follower_id', user.id)
+      .in('following_id', artistIdsForFollow);
+    if (folBatchError) {
+      console.error('[Portal] batch follow state failed', folBatchError);
+    } else {
+      followingArtistIdSet = new Set(
+        (folRows ?? []).map((r: { following_id: string }) => r.following_id),
+      );
+    }
+  }
+
+  console.log('[Portal] batched artwork card UI state', {
+    recentArtworkCount: recentArtworkIds.length,
+    artistIdsForFollowCount: artistIdsForFollow.length,
+  });
 
   const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
 
@@ -346,6 +402,12 @@ export default async function PortalPage() {
                     key={artwork.id}
                     artwork={artwork}
                     currentUserId={user.id}
+                    initialFavorited
+                    initialFollowingArtist={
+                      artwork.artist_account_id
+                        ? followingArtistIdSet.has(artwork.artist_account_id)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -395,6 +457,12 @@ export default async function PortalPage() {
                     key={artwork.id}
                     artwork={artwork}
                     currentUserId={user.id}
+                    initialFavorited={favoritedRecentIdSet.has(artwork.id)}
+                    initialFollowingArtist={
+                      artwork.artist_account_id
+                        ? followingArtistIdSet.has(artwork.artist_account_id)
+                        : undefined
+                    }
                   />
                 ))}
               </div>

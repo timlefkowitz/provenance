@@ -45,12 +45,16 @@ export type ArtworkCardArtwork = {
 
 type Artwork = ArtworkCardArtwork;
 
-export function ArtworkCard({ 
-  artwork, 
-  currentUserId 
-}: { 
+export function ArtworkCard({
+  artwork,
+  currentUserId,
+  initialFavorited,
+  initialFollowingArtist,
+}: {
   artwork: Artwork;
   currentUserId?: string;
+  initialFavorited?: boolean;
+  initialFollowingArtist?: boolean;
 }) {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
@@ -89,9 +93,10 @@ export function ArtworkCard({
         <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
           {/* Favorite Button - Show for all authenticated users */}
           {currentUserId && (
-            <FavoriteButton 
+            <FavoriteButton
               artworkId={artwork.id}
               currentUserId={currentUserId}
+              initialFavorited={initialFavorited}
             />
           )}
           {/* Delete Menu - Only show for owners */}
@@ -149,11 +154,11 @@ export function ArtworkCard({
             </DropdownMenu>
           )}
         </div>
-        <Link 
-          href={`/artworks/${artwork.id}/certificate`} 
+        <Link
+          href={`/artworks/${artwork.id}/certificate`}
           className="cursor-pointer"
           onClick={handleArtworkClick}
-          prefetch={true}
+          prefetch={false}
         >
           <div className="relative aspect-square bg-parchment overflow-hidden">
           {artwork.image_url && !imageError ? (
@@ -179,7 +184,7 @@ export function ArtworkCard({
             href={`/artworks/${artwork.id}/certificate`}
             className="cursor-pointer"
             onClick={handleArtworkClick}
-            prefetch={true}
+            prefetch={false}
           >
           <h3 className="font-display font-bold text-wine text-lg mb-1 line-clamp-2 group-hover:text-wine/80 transition-colors">
             {artwork.title}
@@ -206,6 +211,7 @@ export function ArtworkCard({
                 <FollowButton
                   artistId={artwork.artist_account_id}
                   currentUserId={currentUserId}
+                  initialFollowing={initialFollowingArtist}
                 />
               )}
             </div>
@@ -223,7 +229,7 @@ export function ArtworkCard({
               Certificate
             </span>
           )}
-          <span>
+          <span suppressHydrationWarning>
             {new Date(artwork.created_at).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',

@@ -13,6 +13,9 @@ function getReactErrorHint(message: string): string | null {
   if (message.includes("Unexpected token 'export'") || message.includes('webpage_content_reporter')) {
     return "This may be caused by a browser extension injecting scripts. Try a private/incognito window or disable extensions (e.g. Grammarly, ad blockers, password managers).";
   }
+  if (message.includes('was not found on the server') || message.includes('UnrecognizedActionError')) {
+    return 'Server Actions failed: the page JS does not match the server (often after a deploy/rollback). Hard-refresh (Cmd/Ctrl+Shift+R) or clear site data for this origin.';
+  }
   return null;
 }
 

@@ -43,6 +43,24 @@ const nextConfig: NextConfig = {
   /** We already do linting and typechecking as separate tasks in CI */
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+
+  /**
+   * After deploys/rollbacks, cached HTML pointing at old _next/static chunks causes
+   * Server Action ID mismatches on /portal. Discourage caching the document shell.
+   */
+  async headers() {
+    return [
+      {
+        source: '/portal',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-store, max-age=0, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

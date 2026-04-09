@@ -31,6 +31,7 @@ import {
 } from '@kit/ui/alert-dialog';
 import { UserPlus, Trash2, Shield, User, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { isStaleServerActionError } from '~/lib/stale-server-action';
 import { 
   getGalleryMembers, 
   inviteGalleryMember, 
@@ -43,6 +44,13 @@ import {
 interface GalleryMembersManagerProps {
   galleryProfileId: string;
   userId: string;
+}
+
+function staleServerActionToast() {
+  toast.error(
+    'This page is out of sync with the server. Hard-refresh (Cmd/Ctrl+Shift+R) to reload.',
+    { id: 'stale-server-actions-gallery' },
+  );
 }
 
 export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembersManagerProps) {
@@ -83,9 +91,17 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         setMembers(data);
       }
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Failed to load members';
-      console.error('[GalleryMembersManager] loadMembers error:', msg, error);
-      toast.error(msg);
+      if (isStaleServerActionError(error)) {
+        console.error(
+          '[GalleryMembersManager] Server action missing — stale JS after deploy?',
+          error,
+        );
+        staleServerActionToast();
+      } else {
+        const msg = error instanceof Error ? error.message : 'Failed to load members';
+        console.error('[GalleryMembersManager] loadMembers error', error);
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -96,7 +112,15 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
       const can = await canManageGallery(userId, galleryProfileId);
       setCanManage(can);
     } catch (error) {
-      console.error('[GalleryMembersManager] checkPermissions error:', error);
+      if (isStaleServerActionError(error)) {
+        console.error(
+          '[GalleryMembersManager] checkPermissions stale server action',
+          error,
+        );
+        staleServerActionToast();
+      } else {
+        console.error('[GalleryMembersManager] checkPermissions error', error);
+      }
       setCanManage(false);
     }
   }

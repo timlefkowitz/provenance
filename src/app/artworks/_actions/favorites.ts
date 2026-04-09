@@ -182,7 +182,9 @@ export async function getFavoriteArtworks(limit: number = 10) {
   const artworkIds = favorites.map((f: any) => f.artwork_id);
   const { data: artworks, error: artworksError } = await (client as any)
     .from('artworks')
-    .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status')
+    .select(
+      'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status, artist_account_id, artist_profile_id',
+    )
     .in('id', artworkIds);
 
   if (artworksError) {

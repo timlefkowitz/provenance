@@ -2,39 +2,72 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { Button } from '@kit/ui/button';
+import { toast } from '@kit/ui/sonner';
 import { UserPlus, UserCheck } from 'lucide-react';
 import { toggleFollow } from '../_actions/toggle-follow';
 import { checkIsFollowing } from '../_actions/check-is-following';
+import { isStaleServerActionError } from '~/lib/stale-server-action';
 
-export function FollowButton({ 
-  artistId, 
-  currentUserId 
-}: { 
+export function FollowButton({
+  artistId,
+  currentUserId,
+  /** When set (e.g. server-batched portal), skip checkIsFollowing() on mount */
+  initialFollowing,
+}: {
   artistId: string;
   currentUserId: string;
+  initialFollowing?: boolean;
 }) {
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(() =>
+    initialFollowing !== undefined ? initialFollowing : false,
+  );
+  const [isLoading, setIsLoading] = useState(initialFollowing === undefined);
   const [isPending, startTransition] = useTransition();
 
-  // Check if currently following
   useEffect(() => {
-    async function checkFollow() {
-      const following = await checkIsFollowing(artistId, currentUserId);
-      setIsFollowing(following);
+    if (initialFollowing !== undefined) {
+      setIsFollowing(initialFollowing);
       setIsLoading(false);
+      return;
     }
-    checkFollow();
-  }, [artistId, currentUserId]);
+
+    async function checkFollow() {
+      try {
+        const following = await checkIsFollowing(artistId, currentUserId);
+        setIsFollowing(following);
+      } catch (error) {
+        if (isStaleServerActionError(error)) {
+          console.error(
+            '[FollowButton] Server action missing — stale JS after deploy?',
+            error,
+          );
+        } else {
+          console.error('[FollowButton] checkIsFollowing failed', error);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    void checkFollow();
+  }, [artistId, currentUserId, initialFollowing]);
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     startTransition(async () => {
-      const result = await toggleFollow(artistId, currentUserId);
-      if (!result.error) {
-        setIsFollowing(result.isFollowing || false);
+      try {
+        const result = await toggleFollow(artistId, currentUserId);
+        if (!result.error) {
+          setIsFollowing(result.isFollowing || false);
+        }
+      } catch (error) {
+        if (isStaleServerActionError(error)) {
+          console.error('[FollowButton] Toggle failed — stale deployment bundle', error);
+          toast.error('Please refresh the page (Cmd/Ctrl+Shift+R) to sync with the site.');
+        } else {
+          console.error('[FollowButton] toggleFollow failed', error);
+        }
       }
     });
   };
