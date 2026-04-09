@@ -22,19 +22,49 @@ export function useCurrentUser(initialData?: JwtPayload | null) {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchClaims = useCallback(async () => {
-    const response = await client.auth.getClaims();
-    if (response.error) {
-      setData(undefined);
-      setError(response.error);
+    console.log('[Auth] useCurrentUser fetch started');
+    console.log('[Auth] Calling Supabase auth.getClaims');
+    const claimsResponse = await client.auth.getClaims();
+
+    if (claimsResponse.data?.claims) {
+      console.log('[Auth] useCurrentUser resolved from claims');
+      setData(claimsResponse.data.claims);
+      setError(null);
       return;
     }
-    if (response.data?.claims) {
-      setData(response.data.claims);
-      setError(null);
-    } else {
-      setData(undefined);
-      setError(new Error('Unexpected result format'));
+
+    if (claimsResponse.error) {
+      console.error(
+        '[Auth] auth.getClaims failed, falling back to auth.getUser',
+        claimsResponse.error,
+      );
     }
+
+    console.log('[Auth] Calling Supabase auth.getUser fallback');
+    const userResponse = await client.auth.getUser();
+
+    if (userResponse.error) {
+      console.error('[Auth] auth.getUser fallback failed', userResponse.error);
+      setData(undefined);
+      setError(userResponse.error);
+      return;
+    }
+
+    if (!userResponse.data.user) {
+      console.log('[Auth] No authenticated user found');
+      setData(undefined);
+      setError(null);
+      return;
+    }
+
+    const jwtLikeUser = {
+      ...userResponse.data.user,
+      sub: userResponse.data.user.id,
+    } as unknown as JwtPayload;
+
+    console.log('[Auth] useCurrentUser resolved from getUser fallback');
+    setData(jwtLikeUser);
+    setError(null);
   }, [client]);
 
   useEffect(() => {
