@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --check \"**/*.{js,cjs,mjs,ts,tsx,md,json}\"",
     "typecheck": "tsc --noEmit",
+    "build:planets": "pnpm --filter @provenance/collectibles --filter @provenance/realestate --filter @provenance/vehicles --filter @provenance/api build",
     "with-env": "dotenv -e ./.env.local --"
   },
   "dependencies": {
