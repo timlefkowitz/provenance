@@ -1,0 +1,32 @@
+{
+  "name": "@provenance/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "next dev --port 3100 --turbo",
+    "build": "next build",
+    "start": "next start --port 3100"
+  },
+  "dependencies": {
+    "@provenance/core": "workspace:*",
+    "@provenance/verification-engine": "workspace:*",
+    "@provenance/planet-artworks": "workspace:*",
+    "@provenance/planet-collectibles": "workspace:*",
+    "@provenance/planet-realestate": "workspace:*",
+    "@provenance/planet-vehicles": "workspace:*",
+    "@supabase/supabase-js": "2.75.0",
+    "next": "15.5.9",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "zod": "^3.25.32"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.1",
+    "@types/react": "19.2.7",
+    "typescript": "^5.9.3"
+  }
+}

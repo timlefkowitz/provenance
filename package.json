@@ -17,6 +17,9 @@
     "with-env": "dotenv -e ./.env.local --"
   },
   "dependencies": {
+    "@provenance/core": "workspace:*",
+    "@provenance/verification-engine": "workspace:*",
+    "@provenance/planet-artworks": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@kit/accounts": "workspace:*",

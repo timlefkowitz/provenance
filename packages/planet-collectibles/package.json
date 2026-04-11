@@ -1,0 +1,18 @@
+{
+  "name": "@provenance/planet-collectibles",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./verification": "./src/verification.ts"
+  },
+  "dependencies": {
+    "@provenance/core": "workspace:*",
+    "@provenance/verification-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

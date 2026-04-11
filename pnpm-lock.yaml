@@ -35,6 +35,15 @@ importers:
       '@kit/ui':
         specifier: workspace:*
         version: link:makerkit/nextjs-saas-starter-kit-lite/packages/ui
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:packages/core
+      '@provenance/planet-artworks':
+        specifier: workspace:*
+        version: link:packages/planet-artworks
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:packages/verification-engine
       '@supabase/supabase-js':
         specifier: 2.75.0
         version: 2.75.0
@@ -159,6 +168,334 @@ importers:
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
+      tailwindcss:
+        specifier: 4.1.14
+        version: 4.1.14
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@4.1.14)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  apps/api:
+    dependencies:
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@provenance/planet-artworks':
+        specifier: workspace:*
+        version: link:../../packages/planet-artworks
+      '@provenance/planet-collectibles':
+        specifier: workspace:*
+        version: link:../../packages/planet-collectibles
+      '@provenance/planet-realestate':
+        specifier: workspace:*
+        version: link:../../packages/planet-realestate
+      '@provenance/planet-vehicles':
+        specifier: workspace:*
+        version: link:../../packages/planet-vehicles
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../../packages/verification-engine
+      '@supabase/supabase-js':
+        specifier: 2.75.0
+        version: 2.75.0
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+      react-dom:
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^24.7.1
+        version: 24.7.1
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  apps/collectibles:
+    dependencies:
+      '@kit/accounts':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/features/accounts
+      '@kit/auth':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth
+      '@kit/i18n':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/i18n
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/next
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/supabase
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/ui
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@provenance/planet-collectibles':
+        specifier: workspace:*
+        version: link:../../packages/planet-collectibles
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../../packages/verification-engine
+      '@supabase/supabase-js':
+        specifier: 2.75.0
+        version: 2.75.0
+      '@tanstack/react-query':
+        specifier: 5.90.2
+        version: 5.90.2(react@19.2.1)
+      '@vercel/analytics':
+        specifier: ^1.6.1
+        version: 1.6.1(next@15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)
+      framer-motion:
+        specifier: ^12.34.3
+        version: 12.34.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      lucide-react:
+        specifier: ^0.545.0
+        version: 0.545.0(react@19.2.1)
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      next-themes:
+        specifier: 0.4.6
+        version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+      react-dom:
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
+      react-i18next:
+        specifier: ^16.0.0
+        version: 16.0.0(i18next@25.6.0(typescript@5.9.3))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      tailwind-merge:
+        specifier: ^3.3.1
+        version: 3.3.1
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.14
+        version: 4.1.14
+      '@types/node':
+        specifier: ^24.7.1
+        version: 24.7.1
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.7)
+      dotenv-cli:
+        specifier: ^10.0.0
+        version: 10.0.0
+      tailwindcss:
+        specifier: 4.1.14
+        version: 4.1.14
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@4.1.14)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  apps/realestate:
+    dependencies:
+      '@kit/accounts':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/features/accounts
+      '@kit/auth':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth
+      '@kit/i18n':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/i18n
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/next
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/supabase
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/ui
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@provenance/planet-realestate':
+        specifier: workspace:*
+        version: link:../../packages/planet-realestate
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../../packages/verification-engine
+      '@supabase/supabase-js':
+        specifier: 2.75.0
+        version: 2.75.0
+      '@tanstack/react-query':
+        specifier: 5.90.2
+        version: 5.90.2(react@19.2.1)
+      '@vercel/analytics':
+        specifier: ^1.6.1
+        version: 1.6.1(next@15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)
+      framer-motion:
+        specifier: ^12.34.3
+        version: 12.34.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      lucide-react:
+        specifier: ^0.545.0
+        version: 0.545.0(react@19.2.1)
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      next-themes:
+        specifier: 0.4.6
+        version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+      react-dom:
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
+      react-i18next:
+        specifier: ^16.0.0
+        version: 16.0.0(i18next@25.6.0(typescript@5.9.3))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      tailwind-merge:
+        specifier: ^3.3.1
+        version: 3.3.1
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.14
+        version: 4.1.14
+      '@types/node':
+        specifier: ^24.7.1
+        version: 24.7.1
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.7)
+      dotenv-cli:
+        specifier: ^10.0.0
+        version: 10.0.0
+      tailwindcss:
+        specifier: 4.1.14
+        version: 4.1.14
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@4.1.14)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  apps/vehicles:
+    dependencies:
+      '@kit/accounts':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/features/accounts
+      '@kit/auth':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth
+      '@kit/i18n':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/i18n
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/next
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/supabase
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../makerkit/nextjs-saas-starter-kit-lite/packages/ui
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@provenance/planet-vehicles':
+        specifier: workspace:*
+        version: link:../../packages/planet-vehicles
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../../packages/verification-engine
+      '@supabase/supabase-js':
+        specifier: 2.75.0
+        version: 2.75.0
+      '@tanstack/react-query':
+        specifier: 5.90.2
+        version: 5.90.2(react@19.2.1)
+      '@vercel/analytics':
+        specifier: ^1.6.1
+        version: 1.6.1(next@15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)
+      framer-motion:
+        specifier: ^12.34.3
+        version: 12.34.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      lucide-react:
+        specifier: ^0.545.0
+        version: 0.545.0(react@19.2.1)
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@playwright/test@1.56.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      next-themes:
+        specifier: 0.4.6
+        version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+      react-dom:
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
+      react-i18next:
+        specifier: ^16.0.0
+        version: 16.0.0(i18next@25.6.0(typescript@5.9.3))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      tailwind-merge:
+        specifier: ^3.3.1
+        version: 3.3.1
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.14
+        version: 4.1.14
+      '@types/node':
+        specifier: ^24.7.1
+        version: 24.7.1
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.7)
+      dotenv-cli:
+        specifier: ^10.0.0
+        version: 10.0.0
       tailwindcss:
         specifier: 4.1.14
         version: 4.1.14
@@ -629,6 +966,84 @@ importers:
   makerkit/nextjs-saas-starter-kit-lite/tooling/scripts: {}
 
   makerkit/nextjs-saas-starter-kit-lite/tooling/typescript: {}
+
+  packages/core:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: 2.75.0
+        version: 2.75.0
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/planet-artworks:
+    dependencies:
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../core
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../verification-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/planet-collectibles:
+    dependencies:
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../core
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../verification-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/planet-realestate:
+    dependencies:
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../core
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../verification-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/planet-vehicles:
+    dependencies:
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../core
+      '@provenance/verification-engine':
+        specifier: workspace:*
+        version: link:../verification-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/verification-engine:
+    dependencies:
+      '@provenance/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.25.32
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 

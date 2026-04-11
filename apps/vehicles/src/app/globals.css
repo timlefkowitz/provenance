@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+
+@plugin "tailwindcss-animate";
+
+@source "../{app,components,config,lib}/**/*.{ts,tsx}";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-parchment: #F5F1E8;
+  --color-ink: #111111;
+  --color-wine: #4A2F25;
+
+  --font-display: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-body: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-parchment);
+    color: var(--color-ink);
+    font-family: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+}
+
+.min-h-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+}

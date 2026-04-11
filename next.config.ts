@@ -11,6 +11,12 @@ const INTERNAL_PACKAGES = [
   '@kit/supabase',
   '@kit/i18n',
   '@kit/next',
+  '@provenance/core',
+  '@provenance/verification-engine',
+  '@provenance/planet-artworks',
+  '@provenance/planet-collectibles',
+  '@provenance/planet-realestate',
+  '@provenance/planet-vehicles',
 ];
 
 const nextConfig: NextConfig = {

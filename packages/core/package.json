@@ -1,0 +1,21 @@
+{
+  "name": "@provenance/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./src/types/index.ts",
+    "./db": "./src/db/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./auth/middleware": "./src/auth/middleware.ts",
+    "./email": "./src/email/index.ts",
+    "./planet": "./src/types/planet.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.75.0",
+    "zod": "^3.25.32"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

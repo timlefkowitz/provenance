@@ -1,0 +1,18 @@
+{
+  "name": "@provenance/verification-engine",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./scoring": "./src/scoring.ts",
+    "./types": "./src/types.ts"
+  },
+  "dependencies": {
+    "@provenance/core": "workspace:*",
+    "zod": "^3.25.32"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
