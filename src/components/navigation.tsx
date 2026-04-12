@@ -91,6 +91,9 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               </DropdownMenu>
             </>
           )}
+          <Link href="/blog" className={desktopNavItemClass}>
+            <Trans i18nKey="marketing:blog" defaults="Blog" />
+          </Link>
           <Link 
             href="/about" 
             className={desktopNavItemClass}
@@ -259,6 +262,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 </Link>
               </>
             )}
+            <Link
+              href="/blog"
+              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Trans i18nKey="marketing:blog" defaults="Blog" />
+            </Link>
             <Link 
               href="/about" 
               className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"

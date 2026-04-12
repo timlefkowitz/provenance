@@ -10,6 +10,7 @@ export const defaultI18nNamespaces = [
   'common',
   'auth',
   'account',
+  'marketing',
 ];
 
 export function getI18nSettings(
