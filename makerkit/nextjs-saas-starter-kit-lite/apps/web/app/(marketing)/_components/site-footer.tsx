@@ -23,6 +23,10 @@ export function SiteFooter() {
           heading: 'Get Started',
           links: [
             {
+              href: '/blog',
+              label: <Trans i18nKey="marketing:blog" />,
+            },
+            {
               href: '/auth/sign-in',
               label: <Trans i18nKey="auth:signIn" />,
             },

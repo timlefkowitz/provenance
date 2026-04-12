@@ -1,6 +1,7 @@
 import { getServerSideSitemap } from 'next-sitemap';
 
 import appConfig from '~/config/app.config';
+import { getPublishedBlogSitemapEntries } from '~/lib/blog/posts';
 
 /**
  * @description The maximum age of the sitemap in seconds.
@@ -12,16 +13,18 @@ const MAX_AGE = 60;
 const S_MAX_AGE = 3600;
 
 export async function GET() {
-  const paths = getPaths();
+  console.log('[Sitemap] GET started');
+  const paths = [...getStaticPaths(), ...(await getBlogSitemapPaths())];
 
   const headers = {
     'Cache-Control': `public, max-age=${MAX_AGE}, s-maxage=${S_MAX_AGE}`,
   };
 
-  return getServerSideSitemap([...paths], headers);
+  console.log('[Sitemap] GET returning', paths.length, 'entries');
+  return getServerSideSitemap(paths, headers);
 }
 
-function getPaths() {
+function getStaticPaths() {
   const paths = [
     '/',
     '/faq',
@@ -37,4 +40,28 @@ function getPaths() {
       lastmod: new Date().toISOString(),
     };
   });
+}
+
+async function getBlogSitemapPaths() {
+  try {
+    const entries = await getPublishedBlogSitemapEntries();
+    const blogIndex = {
+      loc: new URL('/blog', appConfig.url).href,
+      lastmod: new Date().toISOString(),
+    };
+    const posts = entries.map((entry) => ({
+      loc: new URL(`/blog/${entry.slug}`, appConfig.url).href,
+      lastmod: new Date(entry.lastmod).toISOString(),
+    }));
+
+    return [blogIndex, ...posts];
+  } catch (error) {
+    console.error('[Sitemap] getBlogSitemapPaths failed', error);
+    return [
+      {
+        loc: new URL('/blog', appConfig.url).href,
+        lastmod: new Date().toISOString(),
+      },
+    ];
+  }
 }
