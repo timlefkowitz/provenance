@@ -28,6 +28,7 @@ function getStaticPaths() {
   const paths = [
     '/',
     '/faq',
+    '/create-certificate-of-authenticity',
     '/cookie-policy',
     '/terms-of-service',
     '/privacy-policy',
