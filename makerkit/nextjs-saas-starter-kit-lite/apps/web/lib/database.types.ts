@@ -72,6 +72,8 @@ export type Database = {
       };
       blog_posts: {
         Row: {
+          author_name: string;
+          author_user_id: string | null;
           body_markdown: string;
           canonical_path: string | null;
           created_at: string;
@@ -85,6 +87,8 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          author_name?: string;
+          author_user_id?: string | null;
           body_markdown: string;
           canonical_path?: string | null;
           created_at?: string;
@@ -98,6 +102,8 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          author_name?: string;
+          author_user_id?: string | null;
           body_markdown?: string;
           canonical_path?: string | null;
           created_at?: string;

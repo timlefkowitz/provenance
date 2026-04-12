@@ -56,6 +56,7 @@ async function BlogIndexPage() {
                   >
                     {dateLabel}
                   </time>
+                  <p className="text-muted-foreground text-sm">By {post.author_name}</p>
                   <h2 className="font-heading text-2xl font-medium tracking-tight dark:text-white">
                     <Link
                       href={`/blog/${post.slug}`}

@@ -83,8 +83,8 @@ async function BlogPostPage(props: PageProps) {
     dateModified: post.updated_at,
     mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
     author: {
-      '@type': 'Organization',
-      name: appConfig.name,
+      '@type': 'Person',
+      name: post.author_name,
     },
     publisher: {
       '@type': 'Organization',
@@ -120,6 +120,10 @@ async function BlogPostPage(props: PageProps) {
               >
                 {datePublished}
               </time>
+              <span className="text-muted-foreground" aria-hidden>
+                ·
+              </span>
+              <span className="text-muted-foreground">By {post.author_name}</span>
             </div>
             <h1 className="font-heading text-3xl font-medium tracking-tighter xl:text-5xl dark:text-white">
               {post.title}

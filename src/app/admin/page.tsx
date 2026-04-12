@@ -65,6 +65,27 @@ export default async function AdminPage() {
           </div>
         </div>
 
+        {/* Blog */}
+        <div className="border-4 border-double border-wine p-6 bg-parchment">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-display font-bold text-wine mb-2">
+                Blog
+              </h2>
+              <p className="text-ink/70 font-serif text-sm">
+                Write public SEO posts at /blog. Set byline to the author name
+                shown on each article.
+              </p>
+            </div>
+            <Button
+              asChild
+              className="bg-wine text-parchment hover:bg-wine/90"
+            >
+              <Link href="/admin/blog">Manage blog</Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Email templates */}
         <div className="border-4 border-double border-wine p-6 bg-parchment">
           <div className="flex items-center justify-between mb-4">

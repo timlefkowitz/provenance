@@ -54,6 +54,9 @@ async function BlogIndexPage() {
                 >
                   {formatBlogDate(post.published_at)}
                 </time>
+                <p className="font-body text-sm text-ink/55">
+                  By {post.author_name}
+                </p>
                 <h2 className="font-display text-2xl text-wine">
                   <Link
                     href={`/blog/${post.slug}`}

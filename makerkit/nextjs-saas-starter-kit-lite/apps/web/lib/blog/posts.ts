@@ -10,6 +10,7 @@ export type BlogPostListItem = {
   description: string | null;
   published_at: string;
   og_image_url: string | null;
+  author_name: string;
 };
 
 export type BlogPostDetail = BlogPostListItem & {
@@ -17,13 +18,14 @@ export type BlogPostDetail = BlogPostListItem & {
   body_markdown: string;
   canonical_path: string | null;
   updated_at: string;
+  author_user_id: string | null;
 };
 
 export async function getPublishedPosts(): Promise<BlogPostListItem[]> {
   const client = getSupabaseServerClient();
   const { data, error } = await client
     .from('blog_posts')
-    .select('slug, title, description, published_at, og_image_url')
+    .select('slug, title, description, published_at, og_image_url, author_name')
     .order('published_at', { ascending: false });
 
   if (error) {
@@ -40,7 +42,7 @@ export const getPublishedPostBySlug = cache(
     const { data, error } = await client
       .from('blog_posts')
       .select(
-        'id, slug, title, description, published_at, og_image_url, body_markdown, canonical_path, updated_at',
+        'id, slug, title, description, published_at, og_image_url, body_markdown, canonical_path, updated_at, author_name, author_user_id',
       )
       .eq('slug', slug)
       .maybeSingle();
