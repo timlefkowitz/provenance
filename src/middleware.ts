@@ -4,7 +4,13 @@ import { NextResponse } from 'next/server';
 import { createMiddlewareClient } from '@kit/supabase/middleware-client';
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|images|locales|assets|api/*).*)'],
+  matcher: [
+    /*
+     * Skip static assets, API, and SEO files so crawlers (e.g. Google Search Console)
+     * never depend on middleware + Supabase for /sitemap.xml or /robots.txt.
+     */
+    '/((?!_next/static|_next/image|images|locales|assets|api/|sitemap\\.xml|robots\\.txt|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2)$).*)',
+  ],
 };
 
 export async function middleware(request: NextRequest) {
