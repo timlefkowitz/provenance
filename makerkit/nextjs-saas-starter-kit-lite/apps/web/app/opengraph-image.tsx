@@ -1,6 +1,16 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Provenance — certificates, provenance, and collection records';
+/** Keep this file import-free: next-metadata-image-loader rejects cross-module imports here. Sync colors with config/og-brand.ts. */
+const OG = {
+  wordmark: 'Provenance',
+  fontFamily:
+    'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
+  text: '#fafaf9',
+  gradientDefault:
+    'linear-gradient(120deg, #0c0a09 0%, #1c1917 45%, #44403c 100%)',
+} as const;
+
+export const alt = 'Provenance - certificates, provenance, and collection records';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -16,10 +26,9 @@ export default function OpengraphImage() {
           alignItems: 'flex-start',
           justifyContent: 'center',
           padding: 64,
-          background: 'linear-gradient(120deg, #0c0a09 0%, #1c1917 45%, #44403c 100%)',
-          color: '#fafaf9',
-          fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
+          background: OG.gradientDefault,
+          color: OG.text,
+          fontFamily: OG.fontFamily,
         }}
       >
         <div
@@ -31,7 +40,7 @@ export default function OpengraphImage() {
             opacity: 0.9,
           }}
         >
-          Provenance
+          {OG.wordmark}
         </div>
         <div
           style={{
@@ -54,7 +63,7 @@ export default function OpengraphImage() {
             lineHeight: 1.35,
           }}
         >
-          Artists, collectors, galleries, and institutions — one registry-shaped record.
+          Artists, collectors, galleries, and institutions - one registry-shaped record.
         </div>
       </div>
     ),

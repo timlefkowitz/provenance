@@ -1,5 +1,7 @@
 import { ImageResponse } from 'next/og';
 
+import { OG_BRAND } from '../../../../config/og-brand';
+
 export const PERSONA_OG_SIZE = { width: 1200, height: 630 } as const;
 
 type PersonaOgParts = {
@@ -11,6 +13,7 @@ type PersonaOgParts = {
 
 /**
  * Shared 1200×630 Open Graph art for persona landing routes (`/lp/*`).
+ * Brand tokens live in config/og-brand.ts.
  */
 export function renderPersonaOpenGraphImage(parts: PersonaOgParts) {
   return new ImageResponse(
@@ -24,10 +27,9 @@ export function renderPersonaOpenGraphImage(parts: PersonaOgParts) {
           alignItems: 'flex-start',
           justifyContent: 'center',
           padding: 64,
-          background: 'linear-gradient(125deg, #0c0a09 0%, #422006 42%, #881337 100%)',
-          color: '#fafaf9',
-          fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
+          background: OG_BRAND.gradientPersona,
+          color: OG_BRAND.text,
+          fontFamily: OG_BRAND.fontFamily,
         }}
       >
         <div
@@ -39,7 +41,7 @@ export function renderPersonaOpenGraphImage(parts: PersonaOgParts) {
             opacity: 0.85,
           }}
         >
-          Provenance
+          {OG_BRAND.wordmark}
         </div>
         <div
           style={{

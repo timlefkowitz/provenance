@@ -197,4 +197,19 @@ If a feature is **only in SQL**, describe it as “supported by the data model /
 
 ---
 
+## Marketing site (`makerkit/nextjs-saas-starter-kit-lite/apps/web`)
+
+Public SEO and persona landings live in this Next.js app (not the root `provence-app` package at repo top). **If `https://provenance.guru/opengraph-image` returns 404**, the live deployment is likely building a different directory: set the host’s project **Root Directory** to `makerkit/nextjs-saas-starter-kit-lite/apps/web` (or equivalent) so routes like `/sitemap.xml`, `/lp/artist`, and OG images exist.
+
+**Spot-check after deploy** (expect `HTTP/2 200` and `content-type: image/png`):
+
+```bash
+curl -sI https://provenance.guru/opengraph-image
+curl -sI https://provenance.guru/lp/artist/opengraph-image
+```
+
+Browsers open those URLs as a PNG download when healthy. **OG brand tweaks** (gradients, wordmark, future logo/font): edit `makerkit/nextjs-saas-starter-kit-lite/apps/web/config/og-brand.ts` and optionally switch `opengraph-image` modules to async loading once assets exist.
+
+---
+
 *End of brief — safe to ingest as system context for Open Claw or similar tools.*
