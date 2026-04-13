@@ -11,11 +11,14 @@ CREATE TABLE IF NOT EXISTS public.asset_events (
   created_at  timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_asset_events_lookup ON public.asset_events(planet, asset_id, created_at);
-CREATE INDEX idx_asset_events_type ON public.asset_events(event_type);
-CREATE INDEX idx_asset_events_actor ON public.asset_events(actor_id);
+CREATE INDEX IF NOT EXISTS idx_asset_events_lookup ON public.asset_events(planet, asset_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_asset_events_type ON public.asset_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_asset_events_actor ON public.asset_events(actor_id);
 
 ALTER TABLE public.asset_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS asset_events_select_all ON public.asset_events;
+DROP POLICY IF EXISTS asset_events_insert_auth ON public.asset_events;
 
 -- Events are publicly readable (transparency is the point of provenance)
 CREATE POLICY asset_events_select_all ON public.asset_events

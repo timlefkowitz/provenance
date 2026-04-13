@@ -29,13 +29,19 @@ CREATE TABLE IF NOT EXISTS public.properties (
   updated_by          uuid REFERENCES auth.users(id)
 );
 
-CREATE INDEX idx_properties_account ON public.properties(account_id);
-CREATE INDEX idx_properties_parcel ON public.properties(parcel_number);
-CREATE INDEX idx_properties_location ON public.properties(city, state);
-CREATE INDEX idx_properties_type ON public.properties(property_type);
-CREATE INDEX idx_properties_status ON public.properties(status);
+CREATE INDEX IF NOT EXISTS idx_properties_account ON public.properties(account_id);
+CREATE INDEX IF NOT EXISTS idx_properties_parcel ON public.properties(parcel_number);
+CREATE INDEX IF NOT EXISTS idx_properties_location ON public.properties(city, state);
+CREATE INDEX IF NOT EXISTS idx_properties_type ON public.properties(property_type);
+CREATE INDEX IF NOT EXISTS idx_properties_status ON public.properties(status);
 
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS properties_select_public ON public.properties;
+DROP POLICY IF EXISTS properties_select_own ON public.properties;
+DROP POLICY IF EXISTS properties_insert_own ON public.properties;
+DROP POLICY IF EXISTS properties_update_own ON public.properties;
+DROP POLICY IF EXISTS properties_delete_own ON public.properties;
 
 CREATE POLICY properties_select_public ON public.properties
   FOR SELECT USING (is_public = true);
@@ -60,6 +66,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_properties_updated_at ON public.properties;
 CREATE TRIGGER trg_properties_updated_at
   BEFORE UPDATE ON public.properties
   FOR EACH ROW EXECUTE FUNCTION public.update_properties_updated_at();

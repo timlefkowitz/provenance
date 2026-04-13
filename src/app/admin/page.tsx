@@ -106,6 +106,26 @@ export default async function AdminPage() {
           </div>
         </div>
 
+        {/* Verification API keys */}
+        <div className="border-4 border-double border-wine p-6 bg-parchment">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-display font-bold text-wine mb-2">
+                Verification API keys
+              </h2>
+              <p className="text-ink/70 font-serif text-sm">
+                Create Bearer tokens for the Provenance verification API (integrations, tooling).
+              </p>
+            </div>
+            <Button
+              asChild
+              className="bg-wine text-parchment hover:bg-wine/90"
+            >
+              <Link href="/admin/api-keys">Manage API keys</Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Queued Artworks */}
         <div className="border-4 border-double border-wine p-6 bg-parchment">
           <div className="flex items-center justify-between mb-4">

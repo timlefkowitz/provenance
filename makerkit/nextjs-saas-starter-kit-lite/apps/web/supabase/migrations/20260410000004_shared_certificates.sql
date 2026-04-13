@@ -13,11 +13,15 @@ CREATE TABLE IF NOT EXISTS public.certificates (
   metadata            jsonb DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX idx_certificates_planet_asset ON public.certificates(planet, asset_id);
-CREATE INDEX idx_certificates_number ON public.certificates(certificate_number);
-CREATE INDEX idx_certificates_status ON public.certificates(status);
+CREATE INDEX IF NOT EXISTS idx_certificates_planet_asset ON public.certificates(planet, asset_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_number ON public.certificates(certificate_number);
+CREATE INDEX IF NOT EXISTS idx_certificates_status ON public.certificates(status);
 
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS certificates_select_all ON public.certificates;
+DROP POLICY IF EXISTS certificates_insert_auth ON public.certificates;
+DROP POLICY IF EXISTS certificates_update_issuer ON public.certificates;
 
 -- Certificates are publicly readable for verification
 CREATE POLICY certificates_select_all ON public.certificates

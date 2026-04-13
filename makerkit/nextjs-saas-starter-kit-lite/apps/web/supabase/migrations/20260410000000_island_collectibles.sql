@@ -26,11 +26,17 @@ CREATE TABLE IF NOT EXISTS public.collectibles (
   updated_by          uuid REFERENCES auth.users(id)
 );
 
-CREATE INDEX idx_collectibles_account ON public.collectibles(account_id);
-CREATE INDEX idx_collectibles_category ON public.collectibles(category);
-CREATE INDEX idx_collectibles_status ON public.collectibles(status);
+CREATE INDEX IF NOT EXISTS idx_collectibles_account ON public.collectibles(account_id);
+CREATE INDEX IF NOT EXISTS idx_collectibles_category ON public.collectibles(category);
+CREATE INDEX IF NOT EXISTS idx_collectibles_status ON public.collectibles(status);
 
 ALTER TABLE public.collectibles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS collectibles_select_public ON public.collectibles;
+DROP POLICY IF EXISTS collectibles_select_own ON public.collectibles;
+DROP POLICY IF EXISTS collectibles_insert_own ON public.collectibles;
+DROP POLICY IF EXISTS collectibles_update_own ON public.collectibles;
+DROP POLICY IF EXISTS collectibles_delete_own ON public.collectibles;
 
 CREATE POLICY collectibles_select_public ON public.collectibles
   FOR SELECT USING (is_public = true);
@@ -55,6 +61,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_collectibles_updated_at ON public.collectibles;
 CREATE TRIGGER trg_collectibles_updated_at
   BEFORE UPDATE ON public.collectibles
   FOR EACH ROW EXECUTE FUNCTION public.update_collectibles_updated_at();

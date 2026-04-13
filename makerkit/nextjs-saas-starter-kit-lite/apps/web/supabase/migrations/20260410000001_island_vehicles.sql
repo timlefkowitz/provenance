@@ -28,12 +28,18 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   updated_by          uuid REFERENCES auth.users(id)
 );
 
-CREATE INDEX idx_vehicles_account ON public.vehicles(account_id);
-CREATE INDEX idx_vehicles_vin ON public.vehicles(vin);
-CREATE INDEX idx_vehicles_make_model ON public.vehicles(make, model);
-CREATE INDEX idx_vehicles_status ON public.vehicles(status);
+CREATE INDEX IF NOT EXISTS idx_vehicles_account ON public.vehicles(account_id);
+CREATE INDEX IF NOT EXISTS idx_vehicles_vin ON public.vehicles(vin);
+CREATE INDEX IF NOT EXISTS idx_vehicles_make_model ON public.vehicles(make, model);
+CREATE INDEX IF NOT EXISTS idx_vehicles_status ON public.vehicles(status);
 
 ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS vehicles_select_public ON public.vehicles;
+DROP POLICY IF EXISTS vehicles_select_own ON public.vehicles;
+DROP POLICY IF EXISTS vehicles_insert_own ON public.vehicles;
+DROP POLICY IF EXISTS vehicles_update_own ON public.vehicles;
+DROP POLICY IF EXISTS vehicles_delete_own ON public.vehicles;
 
 CREATE POLICY vehicles_select_public ON public.vehicles
   FOR SELECT USING (is_public = true);
@@ -58,6 +64,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_vehicles_updated_at ON public.vehicles;
 CREATE TRIGGER trg_vehicles_updated_at
   BEFORE UPDATE ON public.vehicles
   FOR EACH ROW EXECUTE FUNCTION public.update_vehicles_updated_at();

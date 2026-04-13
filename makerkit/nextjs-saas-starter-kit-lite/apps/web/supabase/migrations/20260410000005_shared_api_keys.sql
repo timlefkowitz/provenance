@@ -13,10 +13,15 @@ CREATE TABLE IF NOT EXISTS public.api_keys (
   created_at    timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_api_keys_account ON public.api_keys(account_id);
-CREATE INDEX idx_api_keys_hash ON public.api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_api_keys_account ON public.api_keys(account_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON public.api_keys(key_hash);
 
 ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS api_keys_select_own ON public.api_keys;
+DROP POLICY IF EXISTS api_keys_insert_own ON public.api_keys;
+DROP POLICY IF EXISTS api_keys_update_own ON public.api_keys;
+DROP POLICY IF EXISTS api_keys_delete_own ON public.api_keys;
 
 -- Users can only see their own API keys
 CREATE POLICY api_keys_select_own ON public.api_keys

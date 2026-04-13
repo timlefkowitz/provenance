@@ -1,12 +1,57 @@
 # Provenance / Provence — Product brief for Open Claw
 
-This document summarizes what the **Provenance** platform (the repo also refers to the product as **Provence** in places) is designed to do, who it serves, how objects and certificates are modeled, and how APIs and integrations are intended to work. It is written for an external assistant (for example **Open Claw**) that needs a single source of truth about capabilities **as implemented or scaffolded in this codebase** (Spring 2026).
+This document summarizes what the **Provenance** platform (the repo also refers to the product as **Provence** in places) is designed to do, who it serves, how objects and certificates are modeled, how **pricing and subscriptions** work where implemented, and how APIs and integrations are intended to work. It is written for an external assistant (for example **Open Claw**) that needs a single source of truth about capabilities **as implemented or scaffolded in this codebase** (Spring 2026).
 
 ---
 
 ## One-line positioning
 
 A **high-trust registry and journal** for art and objects: users register works and related assets, attach **rich provenance narratives**, issue **role-appropriate certificates**, and (in the product vision) anchor verification to **immutable records** (database today; Avalanche / IPFS described in internal docs).
+
+---
+
+## What everything does (repo map)
+
+Use this table when you need to know *which part of the codebase does what* without reading the tree.
+
+| Piece | Role |
+|-------|------|
+| **Root journal app** (`package.json` name `provence-app`, `src/`, `next.config.ts` at repo root) | Primary product UI: artworks, collectibles, certificates, provenance editing, onboarding, grants, open calls, articles, **Stripe subscription checkout** (`/subscription`), and **server routes** that gate some flows. Shared UI kit (`@kit/*`) and Supabase client. |
+| **`makerkit/.../apps/web`** | Marketing and SaaS shell: blog, FAQ, legal, LP pages, OG images; not every DB-backed feature has UI here. **Supabase migrations** under this app are the canonical SQL history for the shared database. |
+| **`makerkit/.../apps/provenance`** | Same *product* layout as the root journal app in many setups; **billing code paths** in this repo currently live under the **root** `src/` (e.g. `src/lib/stripe-config.ts` exists only there—confirm deploy root if checkout is missing). |
+| **Planet apps** (`apps/collectibles`, `apps/vehicles`, `apps/realestate`, `apps/api`) | Separate Next (or API) packages for vertical-specific surfaces and tooling; align with shared “planet” tables in migrations. |
+| **`makerkit/.../apps/provenance/contracts/`** | On-chain registry sketch (`ProvenanceRegistry.sol`: IDs, hashes, ownership timeline)—product narrative, not necessarily wired to the live journal DB. |
+| **Supabase** | Application data API for clients: PostgREST + RLS; Stripe webhook / service role update `subscriptions` server-side. |
+
+---
+
+## Pricing model (subscriptions)
+
+Billing is **role-aligned SaaS**: each paying user holds **one subscription row** (`public.subscriptions`) with `role` in **`artist` \| `collector` \| `gallery`** and a Stripe-synced `status` (`active`, `trialing`, `canceled`, etc.). Checkout is **Stripe Billing** (Checkout Session → recurring prices); the **Customer Portal** is used for self-serve card changes and cancellation copy in the app.
+
+### Display amounts vs Stripe
+
+The subscription picker shows **marketing/display** amounts from code constants (not fetched from Stripe for the label):
+
+| Plan role | Monthly (UI constant) | Yearly (UI constant) |
+|-----------|----------------------|------------------------|
+| **Artist** | $10/mo | $99/yr |
+| **Collector** | $29.99/mo | $299.90/yr |
+| **Gallery** | $99/mo | $990/yr |
+
+**Actual charge** always follows the **Stripe Price** IDs in environment variables (`STRIPE_PRICE_ARTIST_MONTHLY`, `STRIPE_PRICE_ARTIST_YEARLY`, and the parallel `COLLECTOR_*` / `GALLERY_*` keys). Operators must create recurring prices in the Stripe Dashboard and paste `price_…` IDs—see `src/lib/stripe-config.ts` and `src/app/api/stripe/create-checkout-session/route.ts`.
+
+Yearly plans are described in-product as roughly **“two months free”** vs paying monthly (collector/gallery copy on the subscription page matches that framing).
+
+### Trials and periods
+
+`public.subscriptions` includes **`trial_end`** (migration `20250326000000_subscriptions_trial_end.sql`). During **`trialing`**, user-facing “trial ends” copy prefers **`trial_end`** over `current_period_end` alone, because Stripe’s period fields can reflect billing-cycle boundaries.
+
+### What plans are *for* (product framing vs enforcement)
+
+The subscription page lists **high-level benefits per role** (toolbox, grant lists, open calls, collection management, exhibition tooling, etc.—see `ROLE_FEATURES` in `src/app/subscription/_components/subscription-content.tsx`). Treat those bullets as **onboarding / marketing highlights**, not a guarantee that every bullet maps 1:1 to a permission flag in SQL.
+
+**Known gate in application code:** some **artist** flows require **any** subscription in `active` or `trialing` with a valid period (e.g. **Grants** and **Open Calls browse** call `getActiveArtistSubscription` in `src/lib/subscription.ts`—the helper name reflects artist-centric pages, but it selects **any** eligible paid row, not `role = artist` only). **Certificates are explicitly treated as free for everyone** in the subscription helper’s comment—do not tell users they must pay to issue a CoA unless product policy changes.
 
 ---
 
@@ -26,9 +71,9 @@ Onboarding and account metadata support three primary roles (see `user_profiles.
 
 ## Surfaces in this monorepo
 
-- **`apps/provenance`** — Journal-styled client: artworks, collectibles, articles, certificate views, provenance editing, onboarding, settings. Home positions **Avalanche C-Chain** in the narrative.
-- **`apps/web`** — SaaS shell + **marketing** (blog, FAQ, legal, long-form “create certificate of authenticity” storytelling). Not all database features are exposed as UI here.
-- **Smart contract sketch** — `apps/provenance/contracts/ProvenanceRegistry.sol` describes on-chain **record IDs**, **metadata pointers**, **document hashes**, and an **ownership timeline** (implementation status is separate from the app shell).
+- **Journal client** — In this tree, the live **Stripe subscription** and most journal routes live under the **repo root** `src/` (same app as `makerkit/.../apps/provenance` in package layout). It covers artworks, collectibles, articles, certificate views, provenance editing, onboarding, settings, `/subscription`, and grant/open-call flows where wired. Home copy positions **Avalanche C-Chain** in the narrative.
+- **`makerkit/.../apps/web`** — SaaS shell + **marketing** (blog, FAQ, legal, long-form “create certificate of authenticity” storytelling). Not all database features are exposed as UI here; it hosts the **migration** folder for Supabase.
+- **Smart contract sketch** — `makerkit/nextjs-saas-starter-kit-lite/apps/provenance/contracts/ProvenanceRegistry.sol` describes on-chain **record IDs**, **metadata pointers**, **document hashes**, and an **ownership timeline** (implementation status is separate from the app shell).
 
 ---
 
@@ -187,7 +232,11 @@ If a feature is **only in SQL**, describe it as “supported by the data model /
 
 ## File pointers (for maintainers and agents)
 
-- Role onboarding: `apps/provenance/src/app/onboarding/`
+- Subscription display prices and Stripe env key names: `src/lib/stripe-config.ts`
+- Checkout session API: `src/app/api/stripe/create-checkout-session/route.ts`
+- Subscription page UI: `src/app/subscription/` (including `_components/subscription-content.tsx`)
+- Subscription eligibility helper: `src/lib/subscription.ts`
+- Role onboarding: `src/app/onboarding/` at repo root (mirrored under `makerkit/nextjs-saas-starter-kit-lite/apps/provenance/src/app/onboarding/`)
 - Artworks schema: `apps/web/supabase/migrations/20250103000000_create_artworks.sql`
 - Provenance fields: `apps/web/supabase/migrations/20250104000000_add_provenance_fields.sql`
 - Certificate workflow: `apps/web/supabase/migrations/20250110000000_add_notifications_and_certificate_workflow.sql`

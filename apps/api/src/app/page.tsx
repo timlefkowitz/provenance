@@ -34,7 +34,8 @@ POST   /api/v1/webhooks                       Register a webhook`}
       </pre>
 
       <p style={{ color: '#888', fontSize: '0.875rem', marginTop: '2rem' }}>
-        All endpoints require a Bearer token. See the documentation for details.
+        All endpoints require a Bearer token. Issue keys from the main Provenance app admin path{' '}
+        <strong>/admin/api-keys</strong> (signed-in admin users only).
       </p>
     </main>
   );
