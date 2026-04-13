@@ -97,5 +97,16 @@
   "certificateOfAuthenticityMutableFootnote": "The point is continuity: a certificate that can be created once and updated responsibly is closer to how art and collectibles actually live than a laminated sheet locked in a drawer.",
   "certificateOfAuthenticityCtaHeading": "Ready to issue a COA that can keep up?",
   "certificateOfAuthenticityCtaBody": "Start with a certificate designed for resale, insurance, and scrutiny—not for a single screenshot on social media.",
-  "certificateOfAuthenticityCtaButton": "Create your certificate"
+  "certificateOfAuthenticityCtaButton": "Create your certificate",
+  "personaLinksHeading": "Who Provenance is for",
+  "personaLinksIntro": "Choose the overview that matches your role—each page spells out outcomes, early proof, and a clear next step.",
+  "personaLinksFooterHeading": "Audience",
+  "personaLinkArtist": "Artists",
+  "personaLinkArtistDescription": "Certificates of authenticity, studio CRM, and grant discovery",
+  "personaLinkCollector": "Collectors",
+  "personaLinkCollectorDescription": "Ownership records and provenance you can defend",
+  "personaLinkGallery": "Galleries",
+  "personaLinkGalleryDescription": "Exhibitions, open calls, and roster tools",
+  "personaLinkInstitution": "Institutions",
+  "personaLinkInstitutionDescription": "Audit events, certificates, and verification APIs"
 }

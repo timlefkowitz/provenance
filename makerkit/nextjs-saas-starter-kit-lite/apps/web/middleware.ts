@@ -8,6 +8,7 @@ import { createMiddlewareClient } from '@kit/supabase/middleware-client';
 
 import appConfig from '~/config/app.config';
 import pathsConfig from '~/config/paths.config';
+import { getPersonaSlugFromHost } from '~/lib/marketing/persona-landing-hosts';
 
 const CSRF_SECRET_COOKIE = 'csrfSecret';
 const NEXT_ACTION_HEADER = 'next-action';
@@ -23,6 +24,18 @@ const getUser = (request: NextRequest, response: NextResponse) => {
 };
 
 export async function middleware(request: NextRequest) {
+  const host = request.headers.get('host')?.split(':')[0] ?? '';
+  const personaSlug = getPersonaSlugFromHost(host);
+  const pathname = request.nextUrl.pathname;
+
+  if (personaSlug && pathname === '/') {
+    const rewriteUrl = new URL(`/lp/${personaSlug}`, request.url);
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+    setRequestId(request);
+
+    return await withCsrfMiddleware(request, rewriteResponse);
+  }
+
   const response = NextResponse.next();
 
   // set a unique request ID for each request

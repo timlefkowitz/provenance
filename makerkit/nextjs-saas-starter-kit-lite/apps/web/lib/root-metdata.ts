@@ -11,6 +11,7 @@ import appConfig from '~/config/app.config';
 export const generateRootMetadata = async (): Promise<Metadata> => {
   const headersStore = await headers();
   const csrfToken = headersStore.get('x-csrf-token') ?? '';
+  const defaultOg = new URL('/opengraph-image', appConfig.url).href;
 
   return {
     title: appConfig.title,
@@ -25,11 +26,20 @@ export const generateRootMetadata = async (): Promise<Metadata> => {
       siteName: appConfig.name,
       title: appConfig.title,
       description: appConfig.description,
+      images: [
+        {
+          url: defaultOg,
+          width: 1200,
+          height: 630,
+          alt: appConfig.title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: appConfig.title,
       description: appConfig.description,
+      images: [defaultOg],
     },
     icons: {
       icon: '/images/favicon/favicon.ico',

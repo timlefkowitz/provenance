@@ -14,6 +14,7 @@ import {
 } from '@kit/ui/marketing';
 import { Trans } from '@kit/ui/trans';
 
+import { PersonaInternalLinks } from '~/(marketing)/_components/persona-internal-links';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 function Home() {
@@ -52,6 +53,10 @@ function Home() {
             />
           }
         />
+      </div>
+
+      <div className={'container mx-auto max-w-5xl px-4'}>
+        <PersonaInternalLinks />
       </div>
 
       <div className={'container mx-auto'}>

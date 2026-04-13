@@ -13,16 +13,46 @@ import {
 import { Button } from '@kit/ui/button';
 import { FeatureCard, FeatureGrid } from '@kit/ui/marketing';
 
+import { PersonaInternalLinks } from '~/(marketing)/_components/persona-internal-links';
 import { SitePageHeader } from '~/(marketing)/_components/site-page-header';
+import appConfig from '~/config/app.config';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 export const generateMetadata = async () => {
   const { t } = await createI18nServerInstance();
+  const title = t('marketing:certificateOfAuthenticityPageTitle');
+  const description = t('marketing:certificateOfAuthenticityPageDescription');
+  const pageUrl = new URL(
+    '/create-certificate-of-authenticity',
+    appConfig.url,
+  ).href;
+  const defaultOg = new URL('/opengraph-image', appConfig.url).href;
 
   return {
-    title: t('marketing:certificateOfAuthenticityPageTitle'),
-    description: t('marketing:certificateOfAuthenticityPageDescription'),
+    title,
+    description,
+    openGraph: {
+      type: 'article',
+      url: pageUrl,
+      siteName: appConfig.name,
+      title,
+      description,
+      images: [
+        {
+          url: defaultOg,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [defaultOg],
+    },
   };
 };
 
@@ -419,6 +449,8 @@ async function CreateCertificateOfAuthenticityPage() {
             {t('marketing:certificateOfAuthenticityMutableFootnote')}
           </p>
         </section>
+
+        <PersonaInternalLinks />
 
         <section
           className={

@@ -6,7 +6,9 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
 
+import { PersonaInternalLinks } from '~/(marketing)/_components/persona-internal-links';
 import { SitePageHeader } from '~/(marketing)/_components/site-page-header';
+import appConfig from '~/config/app.config';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 import { getPublishedPosts } from '~/lib/blog/posts';
@@ -15,10 +17,35 @@ export const revalidate = 120;
 
 export const generateMetadata = async () => {
   const { t } = await createI18nServerInstance();
+  const blogUrl = new URL('/blog', appConfig.url).href;
+  const defaultOg = new URL('/opengraph-image', appConfig.url).href;
+  const title = t('marketing:blog');
+  const description = t('marketing:blogSubtitle');
 
   return {
-    title: t('marketing:blog'),
-    description: t('marketing:blogSubtitle'),
+    title,
+    description,
+    openGraph: {
+      type: 'website',
+      url: blogUrl,
+      siteName: appConfig.name,
+      title,
+      description,
+      images: [
+        {
+          url: defaultOg,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [defaultOg],
+    },
   };
 };
 
@@ -33,7 +60,9 @@ async function BlogIndexPage() {
         subtitle={t('marketing:blogSubtitle')}
       />
 
-      <div className={'container flex flex-col space-y-10 pb-16'}>
+      <div className={'container flex max-w-3xl flex-col space-y-10 pb-16'}>
+        <PersonaInternalLinks />
+
         {posts.length === 0 ? (
           <p className="text-muted-foreground text-lg">
             <Trans i18nKey={'marketing:noPosts'} />

@@ -9,6 +9,7 @@ import { CtaButton } from '@kit/ui/marketing';
 import { Trans } from '@kit/ui/trans';
 
 import { BlogPostMarkdown } from '~/(marketing)/_components/blog-post-markdown';
+import { PersonaInternalLinks } from '~/(marketing)/_components/persona-internal-links';
 import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
 import { getPublishedPostBySlug } from '~/lib/blog/posts';
@@ -34,6 +35,17 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const canonicalUrl = new URL(canonicalPath, appConfig.url).href;
   const pageUrl = new URL(`/blog/${post.slug}`, appConfig.url).href;
+  const defaultOg = new URL('/opengraph-image', appConfig.url).href;
+  const ogImages = post.og_image_url
+    ? [{ url: post.og_image_url, alt: post.title }]
+    : [
+        {
+          url: defaultOg,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ];
 
   return {
     title: post.title,
@@ -47,15 +59,13 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       publishedTime: post.published_at ?? undefined,
       modifiedTime: post.updated_at,
       siteName: appConfig.name,
-      images: post.og_image_url
-        ? [{ url: post.og_image_url, alt: post.title }]
-        : undefined,
+      images: ogImages,
     },
     twitter: {
-      card: post.og_image_url ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title: post.title,
       description: post.description ?? undefined,
-      images: post.og_image_url ? [post.og_image_url] : undefined,
+      images: post.og_image_url ? [post.og_image_url] : [defaultOg],
     },
     robots: { index: true, follow: true },
   };
@@ -149,6 +159,10 @@ async function BlogPostPage(props: PageProps) {
 
         <div className="container max-w-3xl">
           <BlogPostMarkdown source={post.body_markdown} />
+        </div>
+
+        <div className="container max-w-3xl">
+          <PersonaInternalLinks />
         </div>
 
         <div className="container max-w-3xl">

@@ -37,6 +37,27 @@ export function SiteFooter() {
           ],
         },
         {
+          heading: <Trans i18nKey="marketing:personaLinksFooterHeading" />,
+          links: [
+            {
+              href: '/lp/artist',
+              label: <Trans i18nKey="marketing:personaLinkArtist" />,
+            },
+            {
+              href: '/lp/collector',
+              label: <Trans i18nKey="marketing:personaLinkCollector" />,
+            },
+            {
+              href: '/lp/gallery',
+              label: <Trans i18nKey="marketing:personaLinkGallery" />,
+            },
+            {
+              href: '/lp/institution',
+              label: <Trans i18nKey="marketing:personaLinkInstitution" />,
+            },
+          ],
+        },
+        {
           heading: <Trans i18nKey="marketing:legal" />,
           links: [
             {
