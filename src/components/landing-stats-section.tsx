@@ -48,8 +48,7 @@ export function LandingStatsSection({ stats }: LandingStatsSectionProps) {
             The network in numbers
           </h2>
           <p className="mt-3 text-sm md:text-base font-light text-ink/60 max-w-xl mx-auto">
-            Totals refresh every time you open this page.
-          </p>
+          Grassroots network of artists, collectors, and galleries</p>
         </div>
 
         <motion.ul
