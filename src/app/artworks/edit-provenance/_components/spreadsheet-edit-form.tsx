@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@kit/ui/button';
+import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
 import { Textarea } from '@kit/ui/textarea';
 import { Switch } from '@kit/ui/switch';
@@ -83,6 +84,43 @@ type ArtworkFormData = {
   owned_by_is_public: boolean | null;
   sold_by: string;
   sold_by_is_public: boolean | null;
+};
+
+/** Optional blocks stacked in the primary “image & title” column (hidden until toggled). */
+const OPTIONAL_PRIMARY_FIELDS = [
+  'creation_date',
+  'medium',
+  'dimensions',
+  'former_owners',
+  'auction_history',
+  'exhibition',
+  'exhibition_history',
+  'historic_context',
+  'celebrity_notes',
+  'edition',
+  'production_location',
+  'owned_by',
+  'sold_by',
+  'is_public',
+] as const;
+
+type OptionalPrimaryField = (typeof OPTIONAL_PRIMARY_FIELDS)[number];
+
+const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
+  creation_date: 'Creation date',
+  medium: 'Medium',
+  dimensions: 'Dimensions',
+  former_owners: 'Former owners',
+  auction_history: 'Auction history',
+  exhibition: 'Exhibition link',
+  exhibition_history: 'Exhibition history',
+  historic_context: 'Historic context',
+  celebrity_notes: 'Celebrity notes',
+  edition: 'Edition',
+  production_location: 'Production location',
+  owned_by: 'Owned by',
+  sold_by: 'Sold by',
+  is_public: 'Public listing',
 };
 
 function ExhibitionCombobox({
@@ -201,6 +239,10 @@ export function SpreadsheetEditForm({
     }
     return new Set([artworks[0].id]);
   });
+  /** Extra provenance blocks shown inside the primary image & title column. */
+  const [optionalPrimaryFields, setOptionalPrimaryFields] = useState<Set<OptionalPrimaryField>>(
+    () => new Set(),
+  );
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -310,6 +352,18 @@ export function SpreadsheetEditForm({
 
   const handleClearSelection = () => {
     setSelectedArtworkIds(new Set());
+  };
+
+  const toggleOptionalPrimaryField = (field: OptionalPrimaryField) => {
+    setOptionalPrimaryFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(field)) {
+        next.delete(field);
+      } else {
+        next.add(field);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -596,7 +650,38 @@ export function SpreadsheetEditForm({
         </div>
       </div>
 
-      {/* Spreadsheet Table */}
+      {/* Which extra fields appear in each row (below image, title, artist, description, value) */}
+      <div className="rounded-lg border border-wine/20 bg-parchment/50 px-4 py-3 space-y-3">
+        <div>
+          <p className="text-xs font-display font-semibold uppercase tracking-wide text-wine">
+            Fields in each artwork row
+          </p>
+          <p className="text-xs text-ink/60 font-serif mt-1 max-w-2xl">
+            Image, title, artist, description, and value are always shown. Tap a label to add or
+            remove other fields—they appear in the same card under the value.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {OPTIONAL_PRIMARY_FIELDS.map((field) => {
+            const active = optionalPrimaryFields.has(field);
+            return (
+              <Button
+                key={field}
+                type="button"
+                variant={active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => toggleOptionalPrimaryField(field)}
+                className="font-serif text-xs h-8 rounded-full border-wine/25"
+                aria-pressed={active}
+              >
+                {OPTIONAL_PRIMARY_LABELS[field]}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Spreadsheet: one column per artwork — core fields + toggled extras */}
       <div className="max-w-full overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
         {visibleArtworks.length === 0 ? (
           <div className="p-8 text-center">
@@ -605,292 +690,335 @@ export function SpreadsheetEditForm({
             </p>
           </div>
         ) : (
-        <table className="w-full table-fixed">
-          <thead className="bg-wine/10 sticky top-0 z-10">
-            <tr>
-              <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20 w-[200px]">
-                Image & Title
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
-                Artist
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
-                Description
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[120px]">
-                Date
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
-                Medium
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
-                Dimensions
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
-                Former Owners
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
-                Auction History
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[220px]">
-                Exhibition
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
-                Exhibition History
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
-                Historic Context
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[200px]">
-                Celebrity Notes
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[120px]">
-                Value
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[100px]">
-                Edition
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
-                Production Location
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
-                Owned By
-              </th>
-              <th className="px-3 py-3 text-left font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[150px]">
-                Sold By
-              </th>
-              <th className="px-3 py-3 text-center font-serif text-sm text-wine font-semibold border-b border-wine/20 w-[100px]">
-                Public
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleArtworks.map((artwork) => {
-              const data = artworkData[artwork.id];
-              if (!data) return null;
+          <table className="w-full min-w-0">
+            <thead className="bg-wine/10 sticky top-0 z-10">
+              <tr>
+                <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20">
+                  Image & title
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleArtworks.map((artwork) => {
+                const data = artworkData[artwork.id];
+                if (!data) return null;
 
-              return (
-                <tr
-                  key={artwork.id}
-                  className={`border-b border-wine/10 bg-wine/10 hover:bg-wine/10`}
-                >
-                  {/* Image & Title */}
-                  <td className="px-4 py-4 border-r border-wine/10">
-                    <div className="flex items-center gap-3">
-                      {artwork.image_url ? (
-                        <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden border border-wine/20">
-                          <Image
-                            src={artwork.image_url}
-                            alt={data.title || artwork.title}
-                            fill
-                            className="object-cover"
-                            sizes="64px"
+                const optionalOrdered = OPTIONAL_PRIMARY_FIELDS.filter((f) =>
+                  optionalPrimaryFields.has(f),
+                );
+
+                return (
+                  <tr
+                    key={artwork.id}
+                    className="border-b border-wine/10 bg-wine/10 hover:bg-wine/15"
+                  >
+                    <td className="px-4 py-4 align-top">
+                      <div className="max-w-xl space-y-4">
+                        <div className="flex gap-4">
+                          {artwork.image_url ? (
+                            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-wine/20 shadow-sm">
+                              <Image
+                                src={artwork.image_url}
+                                alt={data.title || artwork.title}
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-20 h-20 flex-shrink-0 rounded-lg border border-wine/20 bg-ink/5 flex items-center justify-center">
+                              <span className="text-ink/30 text-xs font-serif">No image</span>
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs font-serif text-ink/60">Title</Label>
+                              <Input
+                                value={data.title}
+                                onChange={(e) =>
+                                  updateField(artwork.id, 'title', e.target.value)
+                                }
+                                className="font-display font-semibold text-wine text-sm h-9 border-wine/20"
+                                placeholder="Artwork title"
+                                aria-label="Artwork title"
+                              />
+                            </div>
+                            {artwork.certificate_number ? (
+                              <p className="text-xs text-ink/50 font-serif truncate">
+                                {artwork.certificate_number}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-serif text-ink/60">Artist</Label>
+                          <Input
+                            value={data.artist_name}
+                            onChange={(e) =>
+                              updateField(artwork.id, 'artist_name', e.target.value)
+                            }
+                            className="font-serif text-sm h-9 border-wine/20"
+                            placeholder="Artist name"
                           />
                         </div>
-                      ) : (
-                        <div className="w-16 h-16 flex-shrink-0 rounded border border-wine/20 bg-ink/5 flex items-center justify-center">
-                          <span className="text-ink/30 text-xs">No Image</span>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-serif text-ink/60">Description</Label>
+                          <Textarea
+                            value={data.description}
+                            onChange={(e) =>
+                              updateField(artwork.id, 'description', e.target.value)
+                            }
+                            className="font-serif text-sm min-h-[72px] border-wine/20 resize-y"
+                            placeholder="Description"
+                            rows={3}
+                          />
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <Input
-                          value={data.title}
-                          onChange={(e) =>
-                            updateField(artwork.id, 'title', e.target.value)
-                          }
-                          className="font-display font-semibold text-wine text-sm h-8 border-wine/20"
-                          placeholder="Artwork title"
-                          aria-label="Artwork title"
-                        />
-                        <div className="text-xs text-ink/60 font-serif truncate">
-                          {artwork.certificate_number}
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-serif text-ink/60">Value</Label>
+                          <Input
+                            value={data.value}
+                            onChange={(e) => updateField(artwork.id, 'value', e.target.value)}
+                            className="font-serif text-sm h-9 border-wine/20"
+                            placeholder="$10,000"
+                          />
                         </div>
+
+                        {optionalOrdered.map((field) => (
+                          <div
+                            key={`${artwork.id}-${field}`}
+                            className="space-y-1 pt-2 border-t border-wine/15"
+                          >
+                            {field === 'creation_date' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.creation_date}
+                                </Label>
+                                <Input
+                                  type="date"
+                                  value={data.creation_date}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'creation_date', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'medium' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.medium}
+                                </Label>
+                                <Input
+                                  value={data.medium}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'medium', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                  placeholder="e.g., Oil on canvas"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'dimensions' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.dimensions}
+                                </Label>
+                                <Input
+                                  value={data.dimensions}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'dimensions', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                  placeholder="e.g., 24 × 36 in"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'former_owners' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.former_owners}
+                                </Label>
+                                <Textarea
+                                  value={data.former_owners}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'former_owners', e.target.value)
+                                  }
+                                  className="font-serif text-sm min-h-[60px] border-wine/20 resize-y"
+                                  placeholder="Former owners"
+                                  rows={2}
+                                />
+                              </>
+                            ) : null}
+                            {field === 'auction_history' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.auction_history}
+                                </Label>
+                                <Textarea
+                                  value={data.auction_history}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'auction_history', e.target.value)
+                                  }
+                                  className="font-serif text-sm min-h-[60px] border-wine/20 resize-y"
+                                  placeholder="Auction history"
+                                  rows={2}
+                                />
+                              </>
+                            ) : null}
+                            {field === 'exhibition' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.exhibition}
+                                </Label>
+                                <ExhibitionCombobox
+                                  artworkId={artwork.id}
+                                  value={data.exhibition_id ?? null}
+                                  options={linkableExhibitions}
+                                  onChange={(v) => updateField(artwork.id, 'exhibition_id', v)}
+                                />
+                                <p className="text-[10px] text-ink/50 font-serif leading-tight">
+                                  Optional link. Use exhibition history for free-text notes.
+                                </p>
+                              </>
+                            ) : null}
+                            {field === 'exhibition_history' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.exhibition_history}
+                                </Label>
+                                <Textarea
+                                  value={data.exhibition_history}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'exhibition_history', e.target.value)
+                                  }
+                                  className="font-serif text-sm min-h-[60px] border-wine/20 resize-y"
+                                  placeholder="Exhibitions and literature"
+                                  rows={2}
+                                />
+                              </>
+                            ) : null}
+                            {field === 'historic_context' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.historic_context}
+                                </Label>
+                                <Textarea
+                                  value={data.historic_context}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'historic_context', e.target.value)
+                                  }
+                                  className="font-serif text-sm min-h-[60px] border-wine/20 resize-y"
+                                  placeholder="Historic context"
+                                  rows={2}
+                                />
+                              </>
+                            ) : null}
+                            {field === 'celebrity_notes' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.celebrity_notes}
+                                </Label>
+                                <Textarea
+                                  value={data.celebrity_notes}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'celebrity_notes', e.target.value)
+                                  }
+                                  className="font-serif text-sm min-h-[60px] border-wine/20 resize-y"
+                                  placeholder="Celebrity notes"
+                                  rows={2}
+                                />
+                              </>
+                            ) : null}
+                            {field === 'edition' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.edition}
+                                </Label>
+                                <Input
+                                  value={data.edition}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'edition', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                  placeholder="e.g., 1/10"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'production_location' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.production_location}
+                                </Label>
+                                <Input
+                                  value={data.production_location}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'production_location', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                  placeholder="Where it was made"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'owned_by' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.owned_by}
+                                </Label>
+                                <Input
+                                  value={data.owned_by}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'owned_by', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                  placeholder="Owner or collection"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'sold_by' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.sold_by}
+                                </Label>
+                                <Input
+                                  value={data.sold_by}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'sold_by', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20"
+                                  placeholder="Gallery or seller"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'is_public' ? (
+                              <div className="flex items-center justify-between gap-3 rounded-md border border-wine/20 bg-parchment/60 px-3 py-2">
+                                <div>
+                                  <Label className="text-xs font-serif text-ink/80">
+                                    {OPTIONAL_PRIMARY_LABELS.is_public}
+                                  </Label>
+                                  <p className="text-[10px] text-ink/50 font-serif">
+                                    Visible on your public profile when on.
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={data.is_public ?? false}
+                                  onCheckedChange={(checked) =>
+                                    updateField(artwork.id, 'is_public', checked)
+                                  }
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  </td>
-
-                  {/* Artist */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.artist_name}
-                      onChange={(e) => updateField(artwork.id, 'artist_name', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="Artist name"
-                    />
-                  </td>
-
-                  {/* Description */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Textarea
-                      value={data.description}
-                      onChange={(e) => updateField(artwork.id, 'description', e.target.value)}
-                      className="font-serif text-sm min-h-[60px] border-wine/20 resize-none"
-                      placeholder="Description"
-                      rows={2}
-                    />
-                  </td>
-
-                  {/* Date */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      type="date"
-                      value={data.creation_date}
-                      onChange={(e) => updateField(artwork.id, 'creation_date', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                    />
-                  </td>
-
-                  {/* Medium */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.medium}
-                      onChange={(e) => updateField(artwork.id, 'medium', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="e.g., Oil on Canvas"
-                    />
-                  </td>
-
-                  {/* Dimensions */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.dimensions}
-                      onChange={(e) => updateField(artwork.id, 'dimensions', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="e.g., 24 x 36"
-                    />
-                  </td>
-
-                  {/* Former Owners */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Textarea
-                      value={data.former_owners}
-                      onChange={(e) => updateField(artwork.id, 'former_owners', e.target.value)}
-                      className="font-serif text-sm min-h-[60px] border-wine/20 resize-none"
-                      placeholder="Former owners"
-                      rows={2}
-                    />
-                  </td>
-
-                  {/* Auction History */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Textarea
-                      value={data.auction_history}
-                      onChange={(e) => updateField(artwork.id, 'auction_history', e.target.value)}
-                      className="font-serif text-sm min-h-[60px] border-wine/20 resize-none"
-                      placeholder="Auction history"
-                      rows={2}
-                    />
-                  </td>
-
-                  {/* Exhibition (link to exhibition) */}
-                  <td className="px-3 py-2 border-r border-wine/10 align-top">
-                    <ExhibitionCombobox
-                      artworkId={artwork.id}
-                      value={data.exhibition_id ?? null}
-                      options={linkableExhibitions}
-                      onChange={(v) => updateField(artwork.id, 'exhibition_id', v)}
-                    />
-                    <p className="text-[10px] text-ink/50 font-serif mt-1 max-w-[200px] leading-tight">
-                      Linked exhibition. Type to search. Optional; use Exhibition
-                      History for text notes.
-                    </p>
-                  </td>
-
-                  {/* Exhibition History */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Textarea
-                      value={data.exhibition_history}
-                      onChange={(e) => updateField(artwork.id, 'exhibition_history', e.target.value)}
-                      className="font-serif text-sm min-h-[60px] border-wine/20 resize-none"
-                      placeholder="Exhibition history"
-                      rows={2}
-                    />
-                  </td>
-
-                  {/* Historic Context */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Textarea
-                      value={data.historic_context}
-                      onChange={(e) => updateField(artwork.id, 'historic_context', e.target.value)}
-                      className="font-serif text-sm min-h-[60px] border-wine/20 resize-none"
-                      placeholder="Historic context"
-                      rows={2}
-                    />
-                  </td>
-
-                  {/* Celebrity Notes */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Textarea
-                      value={data.celebrity_notes}
-                      onChange={(e) => updateField(artwork.id, 'celebrity_notes', e.target.value)}
-                      className="font-serif text-sm min-h-[60px] border-wine/20 resize-none"
-                      placeholder="Celebrity notes"
-                      rows={2}
-                    />
-                  </td>
-
-                  {/* Value */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.value}
-                      onChange={(e) => updateField(artwork.id, 'value', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="$10,000"
-                    />
-                  </td>
-
-                  {/* Edition */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.edition}
-                      onChange={(e) => updateField(artwork.id, 'edition', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="1/10"
-                    />
-                  </td>
-
-                  {/* Production Location */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.production_location}
-                      onChange={(e) => updateField(artwork.id, 'production_location', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="Location"
-                    />
-                  </td>
-
-                  {/* Owned By */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.owned_by}
-                      onChange={(e) => updateField(artwork.id, 'owned_by', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="Owner"
-                    />
-                  </td>
-
-                  {/* Sold By */}
-                  <td className="px-3 py-2 border-r border-wine/10">
-                    <Input
-                      value={data.sold_by}
-                      onChange={(e) => updateField(artwork.id, 'sold_by', e.target.value)}
-                      className="font-serif text-sm h-8 border-wine/20"
-                      placeholder="Seller"
-                    />
-                  </td>
-
-                  {/* Public Toggle */}
-                  <td className="px-3 py-2 text-center">
-                    <Switch
-                      checked={data.is_public ?? false}
-                      onCheckedChange={(checked) => updateField(artwork.id, 'is_public', checked)}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
