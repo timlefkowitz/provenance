@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { cache } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -68,10 +69,24 @@ export type BlogSitemapEntry = {
 export async function getPublishedBlogSitemapEntries(): Promise<
   BlogSitemapEntry[]
 > {
-  const client = getSupabaseServerClient();
+  /** Sitemap/metadata routes must not use `getSupabaseServerClient()` (it calls `cookies()`), or Next.js fails static generation and crawlers can see 5xx. */
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    console.error(
+      '[Blog] getPublishedBlogSitemapEntries skipped: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY missing',
+    );
+    return [];
+  }
+
+  const client = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
   const { data, error } = await client
     .from('blog_posts')
     .select('slug, updated_at, published_at')
+    .eq('status', 'published')
     .order('published_at', { ascending: false });
 
   if (error) {

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
-import appConfig from '~/config/app.config';
 import { getPublishedBlogSitemapEntries } from '~/lib/blog/posts';
+import { getPublicSiteOrigin } from '~/lib/seo/public-site-origin';
 
 /** Public indexable routes for the root Next app (provenance.guru). */
 const STATIC_PATHS = [
@@ -37,11 +37,11 @@ function buildStaticEntries(base: string, now: Date): MetadataRoute.Sitemap {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   console.log('[Sitemap] generating via src/app/sitemap.ts');
   const now = new Date();
-  const base = appConfig.url;
+  const base = getPublicSiteOrigin();
 
   if (base.includes('localhost')) {
     console.warn(
-      '[Sitemap] NEXT_PUBLIC_SITE_URL is localhost; set https://www.provenance.guru (or apex) in production so <loc> URLs are correct for Google.',
+      '[Sitemap] NEXT_PUBLIC_SITE_URL missing or localhost; set https://www.provenance.guru in production for correct <loc> URLs.',
     );
   }
 
@@ -51,10 +51,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const entries = await getPublishedBlogSitemapEntries();
     const blogEntries: MetadataRoute.Sitemap = [
       { url: new URL('/blog', base).href, lastModified: now },
-      ...entries.map((entry) => ({
-        url: new URL(`/blog/${entry.slug}`, base).href,
-        lastModified: new Date(entry.lastmod),
-      })),
+      ...entries.map((entry) => {
+        const lastModified = new Date(entry.lastmod);
+        return {
+          url: new URL(`/blog/${entry.slug}`, base).href,
+          lastModified: Number.isNaN(lastModified.getTime())
+            ? now
+            : lastModified,
+        };
+      }),
     ];
     const combined = [...staticEntries, ...blogEntries];
     console.log('[Sitemap] returning', combined.length, 'entries');
