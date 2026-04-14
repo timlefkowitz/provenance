@@ -48,6 +48,12 @@
         "role": "Co-Founder & Developer",
         "bio": "Timothy Lefkowitz is a multifaceted professional based in San Antonio, combining accomplished software development with creative visual artistry. As a Software Engineer at Accenture Federal Services, he specializes in Java, Akka, Kafka, and Openshift, with expertise in full-stack development and web applications. In addition to his technical background, Lefkowitz is an established photographer and artist, having exhibited his work at numerous venues in San Antonio. His artistic practice, which emphasizes light as a powerful motif, uniquely informs his approach to building technology solutions for artists.",
         "photo_url": "https://lh3.googleusercontent.com/a/ACg8ocJRLeOGhs21qLLcuBznH-Q1UJwg2lr2ImZ7Y3ewQ43yYdTCXrqxFA=s576-c-no"
+      },
+      {
+        "name": "Justin Parr",
+        "role": "Co-Founder, Artist, Gallery owner of Fl!ght for 25 years",
+        "bio": "Justin Parr is a San Antonio multimedia artist, glassblower, and gallery owner whose work centers on process, material experimentation, and the beauty of imperfection. With over fifteen years of torch-working experience, he creates both functional and decorative glass pieces and operates FL!GHT Gallery in the Blue Star Arts Complex. His broader creative practice also includes photography, design, and independent art projects.",
+        "photo_url": "/data/about-photos/justin-parr.png"
       }
     ]
   },
