@@ -8,19 +8,19 @@ const markdownLinkClass =
 const markdownComponents: Partial<Components> = {
   h1: (props) => (
     <h1
-      className="font-display mt-10 text-3xl font-medium tracking-tight text-wine first:mt-0"
+      className="font-display mt-10 text-3xl font-semibold tracking-tight text-ink first:mt-0"
       {...props}
     />
   ),
   h2: (props) => (
     <h2
-      className="font-display mt-10 text-2xl font-medium tracking-tight text-wine"
+      className="font-display mt-10 text-2xl font-semibold tracking-tight text-ink"
       {...props}
     />
   ),
   h3: (props) => (
     <h3
-      className="font-display mt-8 text-xl font-medium tracking-tight text-wine"
+      className="font-display mt-8 text-xl font-semibold tracking-tight text-ink"
       {...props}
     />
   ),
@@ -100,7 +100,7 @@ const markdownComponents: Partial<Components> = {
 
 export function BlogPostMarkdown({ source }: { source: string }) {
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto w-full max-w-3xl">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={markdownComponents}
