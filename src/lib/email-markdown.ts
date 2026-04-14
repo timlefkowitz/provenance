@@ -76,14 +76,14 @@ function applyEmailInlineStyles(html: string, theme: EmailTheme): string {
   return (
     html
       .replace(/<h1(\s[^>]*)?>/gi, `<h1 style="margin:0 0 16px;font-family:${ff};font-size:32px;font-weight:600;color:${wine};line-height:1.2;">`)
-      .replace(/<h2(\s[^>]*)?>/gi, `<h2 style="margin:0 0 16px;font-family:${ff};font-size:28px;font-weight:600;color:${wine};line-height:1.2;">`)
-      .replace(/<h3(\s[^>]*)?>/gi, `<h3 style="margin:0 0 12px;font-size:22px;font-weight:600;color:${wine};line-height:1.2;">`)
+      .replace(/<h2(\s[^>]*)?>/gi, `<h2 style="margin:0 0 20px;font-family:${ff};font-size:28px;font-weight:600;color:${wine};line-height:1.2;">`)
+      .replace(/<h3(\s[^>]*)?>/gi, `<h3 style="margin:0 0 14px;font-size:22px;font-weight:600;color:${wine};line-height:1.2;">`)
       .replace(/<p(\s[^>]*)?>/gi, `<p style="margin:0 0 16px;color:${ink};">`)
       .replace(/<ul(\s[^>]*)?>/gi, `<ul style="margin:0 0 24px;padding-left:20px;color:${ink};">`)
       .replace(/<ol(\s[^>]*)?>/gi, `<ol style="margin:0 0 24px;padding-left:24px;color:${ink};">`)
       .replace(/<li(\s[^>]*)?>/gi, `<li style="margin-bottom:10px;">`)
       .replace(/<blockquote(\s[^>]*)?>/gi, `<blockquote style="margin:0 0 16px;padding-left:12px;border-left:3px solid ${wine};color:${ink};">`)
-      .replace(/<hr(\s[^>]*)?>/gi, `<hr style="border:none;border-top:1px solid ${wine};margin:24px 0;" />`)
+      .replace(/<hr(\s[^>]*)?>/gi, `<hr style="border:none;border-top:1px solid ${wine};margin:28px 0 32px;" />`)
       .replace(/<a /gi, `<a style="color:${wine};font-weight:600;" `)
       .replace(/<strong(\s[^>]*)?>/gi, `<strong style="color:${ink};">`)
       .replace(/<em(\s[^>]*)?>/gi, `<em style="color:${ink};">`)

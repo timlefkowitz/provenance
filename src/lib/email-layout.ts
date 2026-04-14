@@ -25,6 +25,102 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function getPublicSiteUrlForEmail(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.provenance.guru';
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'https:' || u.protocol === 'http:') {
+      return raw.replace(/\/$/, '');
+    }
+  } catch {
+    /* fall through */
+  }
+  return 'https://www.provenance.guru';
+}
+
+function decodeBasicHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+/**
+ * Remove the first markdown line that is `[any label](href)` for an exact href match.
+ * Returns the bracket label (decoded) for use as the button label when present.
+ */
+export function stripMarkdownLinkLineByHref(
+  markdown: string,
+  href: string,
+): { markdown: string; linkLabel: string | null } {
+  const lineRe = new RegExp(
+    `^\\s*\\[([^\\]]+)\\]\\(${escapeRegExp(href)}\\)\\s*$`,
+    'm',
+  );
+  const match = markdown.match(lineRe);
+  if (!match) {
+    return { markdown, linkLabel: null };
+  }
+  const stripped = markdown
+    .replace(lineRe, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+/, '');
+  return { markdown: stripped, linkLabel: decodeBasicHtmlEntities(match[1]) };
+}
+
+/** Nested-table CTA for clients that ignore styled text links. */
+export function buildBulletproofButtonTable(
+  href: string,
+  label: string,
+  theme: EmailTheme,
+): string {
+  const { wine, fontFamily } = theme;
+  const safeHref = escapeHtml(href);
+  const safeLabel = escapeHtml(label);
+  const labelColor = '#F5F1E8';
+  return `
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 8px;border-collapse:collapse;">
+  <tr>
+    <td align="left" bgcolor="${wine}" style="border-radius:6px;background-color:${wine};">
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 28px;font-family:${fontFamily};font-size:16px;font-weight:600;line-height:1.2;color:${labelColor};text-decoration:none;border-radius:6px;">
+        ${safeLabel}
+      </a>
+    </td>
+  </tr>
+</table>`.trim();
+}
+
+export function buildEmailFooterHtml(theme: EmailTheme): string {
+  const { inkMuted, wine, fontFamily } = theme;
+  const siteUrl = getPublicSiteUrlForEmail();
+  const safeUrl = escapeHtml(siteUrl);
+  let host = siteUrl;
+  try {
+    host = new URL(siteUrl).host;
+  } catch {
+    /* keep full string */
+  }
+  const safeHost = escapeHtml(host);
+  return `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:32px;padding-top:24px;border-collapse:collapse;border-top:1px solid ${wine};">
+  <tr>
+    <td style="font-family:${fontFamily};font-size:13px;line-height:1.55;color:${inkMuted};">
+      <p style="margin:0 0 10px;">You are receiving this email because of activity on Provenance.</p>
+      <p style="margin:0 0 10px;">
+        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:${wine};font-weight:600;text-decoration:none;">${safeHost}</a>
+      </p>
+      <p style="margin:0;font-size:12px;color:${inkMuted};opacity:0.9;">&copy; Provenance. All rights reserved.</p>
+    </td>
+  </tr>
+</table>`.trim();
+}
+
 /**
  * Matches landing masthead (`src/app/page.tsx`):
  * title: text-6xl sm:text-8xl → 60px mobile, 96px ≥640px
@@ -88,8 +184,9 @@ export function buildEmailHtml(pageTitle: string, innerHtml: string, theme: Emai
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="${parchment}" style="width: 100%; max-width: 600px; background-color: ${parchment}; border-collapse: collapse;">
           ${buildEmailMastheadRows(theme)}
           <tr>
-            <td align="left" style="padding: 0 16px 24px; font-family: ${fontFamily}; font-size: 16px; line-height: 1.6; color: ${ink}; background-color: ${parchment};">
+            <td align="left" style="padding: 12px 16px 32px; font-family: ${fontFamily}; font-size: 16px; line-height: 1.6; color: ${ink}; background-color: ${parchment};">
               ${innerHtml}
+              ${buildEmailFooterHtml(theme)}
             </td>
           </tr>
         </table>

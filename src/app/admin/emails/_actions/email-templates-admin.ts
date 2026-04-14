@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { isAdmin } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { sendTransactionalEmailStrict } from '~/lib/email';
 import { DEFAULT_EMAIL_THEME, buildEmailPreviewHtml } from '~/lib/email-templates-store';
 import {
   DEFAULT_EMAIL_MARKDOWN,
@@ -208,6 +209,67 @@ export async function previewEmailTemplate(
     return {
       ok: false,
       error: e instanceof Error ? e.message : 'Failed to build preview',
+    };
+  }
+}
+
+export async function sendTestEmailTemplate(
+  input: z.infer<typeof previewPayloadSchema>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  console.log('[Admin/emails] sendTestEmailTemplate started');
+  try {
+    const user = await requireAdminUser();
+    const to = user.email;
+    if (!to) {
+      console.error('[Admin/emails] sendTestEmailTemplate: user has no email');
+      return { ok: false, error: 'Your account has no email address on file.' };
+    }
+
+    const parsed = previewPayloadSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.flatten().formErrors.join(', ') || 'Invalid payload',
+      };
+    }
+
+    const row = parsed.data.theme;
+    const theme: EmailTheme = {
+      parchment: row.parchment,
+      ink: row.ink,
+      wine: row.wine,
+      inkSubtitle: row.ink_subtitle,
+      inkMuted: row.ink_muted,
+      mastheadTitle: row.masthead_title,
+      mastheadSubtitle: row.masthead_subtitle,
+      fontFamily: DEFAULT_EMAIL_THEME.fontFamily,
+    };
+
+    const { html, previewSubject } = buildEmailPreviewHtml(
+      parsed.data.template_key,
+      theme,
+      parsed.data.subject,
+      parsed.data.body_markdown,
+    );
+
+    const sendResult = await sendTransactionalEmailStrict({
+      to,
+      subject: `[Test] ${previewSubject}`,
+      html,
+    });
+
+    if (!sendResult.ok) {
+      console.error('[Admin/emails] sendTestEmailTemplate send failed', sendResult.error);
+      return sendResult;
+    }
+
+    console.log('[Admin/emails] sendTestEmailTemplate success', to);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Admin/emails] sendTestEmailTemplate failed', e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'Failed to send test email',
     };
   }
 }

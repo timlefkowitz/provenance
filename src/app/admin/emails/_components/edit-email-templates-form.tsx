@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -10,6 +10,7 @@ import {
   previewEmailTemplate,
   saveEmailTemplate,
   saveEmailTheme,
+  sendTestEmailTemplate,
   type EmailTemplatesAdminPayload,
 } from '../_actions/email-templates-admin';
 import type { EmailTemplateKey } from '~/lib/email-defaults';
@@ -27,7 +28,24 @@ const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
 • certification: {{name}}, {{artworkTitle}}, {{artworkUrl}}, {{CERT_BLOCK}}
 • notification: {{name}}, {{title}}, {{body}}, {{ctaUrl}}, {{ctaLabel}}
 • summary: {{name}}, {{periodLabel}}, {{siteUrl}}, {{ITEMS}}
-• update: {{name}}, {{title}}, {{body}}, {{ctaUrl}}, {{ctaLabel}}`;
+• update: {{name}}, {{title}}, {{body}}, {{ctaUrl}}, {{ctaLabel}}
+
+Primary action links: keep one markdown line like [Your label](https://…) that matches the main URL we inject (e.g. Get Started → site/artworks/add). That line is replaced by a bulletproof button; if you change the URL or label, remove the old markdown line to avoid a duplicate text link.`;
+
+function serializeWorkspaceState(
+  theme: {
+    parchment: string;
+    ink: string;
+    wine: string;
+    ink_subtitle: string;
+    ink_muted: string;
+    masthead_title: string;
+    masthead_subtitle: string;
+  },
+  templates: EmailTemplatesAdminPayload['templates'],
+) {
+  return JSON.stringify({ theme, templates });
+}
 
 export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdminPayload }) {
   const [pending, startTransition] = useTransition();
@@ -49,58 +67,125 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
 
   const [templates, setTemplates] = useState(initial.templates);
 
+  const savedBaselineRef = useRef(
+    serializeWorkspaceState(
+      {
+        parchment: initial.theme.parchment,
+        ink: initial.theme.ink,
+        wine: initial.theme.wine,
+        ink_subtitle: initial.theme.inkSubtitle,
+        ink_muted: initial.theme.inkMuted,
+        masthead_title: initial.theme.mastheadTitle,
+        masthead_subtitle: initial.theme.mastheadSubtitle,
+      },
+      initial.templates,
+    ),
+  );
+
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const previewSeq = useRef(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadPreview = async () => {
-    const t = templates[activeKey];
-    if (!t?.bodyMarkdown?.trim()) {
-      toast.error('Add some body Markdown before previewing.');
-      return;
-    }
-    setPreviewLoading(true);
-    setPreviewHtml(null);
-    setPreviewSubject(null);
-    try {
-      const res = await previewEmailTemplate({
-        template_key: activeKey,
-        subject: t.subject,
-        body_markdown: t.bodyMarkdown,
-        theme: {
-          parchment: theme.parchment,
-          ink: theme.ink,
-          wine: theme.wine,
-          ink_subtitle: theme.ink_subtitle,
-          ink_muted: theme.ink_muted,
-          masthead_title: theme.masthead_title,
-          masthead_subtitle: theme.masthead_subtitle,
-        },
-      });
-      if (res.ok) {
-        setPreviewHtml(res.html);
-        setPreviewSubject(res.previewSubject);
-      } else {
-        toast.error(res.error ?? 'Preview failed');
+  const isDirty = serializeWorkspaceState(theme, templates) !== savedBaselineRef.current;
+
+  const runPreview = useCallback(
+    async (showEmptyToast: boolean) => {
+      const t = templates[activeKey];
+      if (!t?.bodyMarkdown?.trim()) {
+        if (showEmptyToast) {
+          toast.error('Add some body Markdown before previewing.');
+        }
+        return;
       }
-    } catch (e) {
-      console.error('[Admin/emails] preview client error', e);
-      toast.error(e instanceof Error ? e.message : 'Preview failed');
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
+
+      const seq = ++previewSeq.current;
+      setPreviewLoading(true);
+      setPreviewHtml(null);
+      setPreviewSubject(null);
+
+      try {
+        const res = await previewEmailTemplate({
+          template_key: activeKey,
+          subject: t.subject,
+          body_markdown: t.bodyMarkdown,
+          theme: {
+            parchment: theme.parchment,
+            ink: theme.ink,
+            wine: theme.wine,
+            ink_subtitle: theme.ink_subtitle,
+            ink_muted: theme.ink_muted,
+            masthead_title: theme.masthead_title,
+            masthead_subtitle: theme.masthead_subtitle,
+          },
+        });
+        if (seq !== previewSeq.current) {
+          return;
+        }
+        if (res.ok) {
+          setPreviewHtml(res.html);
+          setPreviewSubject(res.previewSubject);
+        } else {
+          toast.error(res.error ?? 'Preview failed');
+        }
+      } catch (e) {
+        if (seq !== previewSeq.current) {
+          return;
+        }
+        console.error('[Admin/emails] preview client error', e);
+        toast.error(e instanceof Error ? e.message : 'Preview failed');
+      } finally {
+        if (seq === previewSeq.current) {
+          setPreviewLoading(false);
+        }
+      }
+    },
+    [activeKey, templates, theme],
+  );
 
   useEffect(() => {
-    void loadPreview();
-    // Intentionally only when switching templates; after edits, use "Refresh preview".
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid a server round-trip on every keystroke
-  }, [activeKey]);
+    const t = templates[activeKey];
+    if (!t?.bodyMarkdown?.trim()) {
+      previewSeq.current += 1;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      setPreviewHtml(null);
+      setPreviewSubject(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      void runPreview(false);
+    }, 700);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, [runPreview, activeKey, templates, theme]);
+
+  const refreshPreviewNow = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    void runPreview(true);
+  };
 
   const saveTheme = () => {
     startTransition(async () => {
       const res = await saveEmailTheme(theme);
       if (res.ok) {
+        savedBaselineRef.current = serializeWorkspaceState(theme, templates);
         toast.success('Email theme saved');
       } else {
         toast.error(res.error ?? 'Failed to save theme');
@@ -117,6 +202,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
         body_markdown: t.bodyMarkdown,
       });
       if (res.ok) {
+        savedBaselineRef.current = serializeWorkspaceState(theme, templates);
         toast.success(`Saved “${TEMPLATE_LABELS[activeKey]}” template`);
       } else {
         toast.error(res.error ?? 'Failed to save template');
@@ -124,10 +210,50 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
     });
   };
 
+  const sendTest = () => {
+    const t = templates[activeKey];
+    if (!t?.bodyMarkdown?.trim()) {
+      toast.error('Add some body Markdown before sending a test.');
+      return;
+    }
+    startTransition(async () => {
+      const res = await sendTestEmailTemplate({
+        template_key: activeKey,
+        subject: t.subject,
+        body_markdown: t.bodyMarkdown,
+        theme: {
+          parchment: theme.parchment,
+          ink: theme.ink,
+          wine: theme.wine,
+          ink_subtitle: theme.ink_subtitle,
+          ink_muted: theme.ink_muted,
+          masthead_title: theme.masthead_title,
+          masthead_subtitle: theme.masthead_subtitle,
+        },
+      });
+      if (res.ok) {
+        toast.success('Test email sent — check your inbox.');
+      } else {
+        toast.error(res.error ?? 'Failed to send test email');
+      }
+    });
+  };
+
   return (
     <div className="space-y-10">
       <section className="border-4 border-double border-wine p-6 bg-parchment space-y-4">
-        <h2 className="font-display text-2xl text-wine">Global theme & masthead</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-2xl text-wine">Global theme & masthead</h2>
+          <span
+            className={`text-xs font-medium uppercase tracking-wide px-2.5 py-1 rounded border ${
+              isDirty
+                ? 'border-amber-700/50 text-amber-900 bg-amber-50/90'
+                : 'border-wine/25 text-ink/50 bg-parchment'
+            }`}
+          >
+            {isDirty ? 'Unsaved changes' : 'Saved'}
+          </span>
+        </div>
         <p className="text-sm text-ink/70 font-serif">
           Background and text colors apply to all transactional emails. Masthead appears at the top of every email.
         </p>
@@ -259,18 +385,38 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
                 type="button"
                 variant="outline"
                 className="border-wine text-wine"
-                onClick={() => void loadPreview()}
+                onClick={refreshPreviewNow}
                 disabled={pending || previewLoading}
               >
                 {previewLoading ? 'Updating preview…' : 'Refresh preview'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-wine text-wine"
+                onClick={sendTest}
+                disabled={pending || previewLoading}
+              >
+                Send test to my email
               </Button>
             </div>
           </div>
 
           <aside className="lg:sticky lg:top-6 space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-display text-lg text-wine">Live preview</h3>
-              <span className="text-[11px] uppercase tracking-wide text-ink/50 font-serif">Sample data</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`text-[11px] font-medium uppercase tracking-wide px-2 py-0.5 rounded border ${
+                    isDirty
+                      ? 'border-amber-700/40 text-amber-900 bg-amber-50/80'
+                      : 'border-wine/20 text-ink/45 bg-parchment'
+                  }`}
+                >
+                  {isDirty ? 'Draft' : 'Saved'}
+                </span>
+                <span className="text-[11px] uppercase tracking-wide text-ink/50 font-serif">Sample data</span>
+              </div>
             </div>
             <p className="text-xs text-ink/60 font-serif leading-relaxed">
               Placeholders are filled with example names, links, and lists so you can see the real layout.
@@ -293,7 +439,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
                   />
                 ) : (
                   <div className="flex min-h-[280px] items-center justify-center rounded-md border border-dashed border-wine/30 bg-parchment/80 px-4 text-center text-sm text-ink/55 font-serif">
-                    Loading preview…
+                    {previewLoading ? 'Loading preview…' : 'Add Markdown to see preview.'}
                   </div>
                 )}
               </div>

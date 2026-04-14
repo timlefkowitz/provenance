@@ -76,6 +76,45 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
 }
 
 /**
+ * Send one email via Resend and return success or error (for admin test sends).
+ * Does not no-op when unconfigured — callers should surface the error.
+ */
+export async function sendTransactionalEmailStrict(
+  options: SendEmailOptions,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  console.log('[Email] sendTransactionalEmailStrict started', options.subject);
+  if (!isEmailConfigured()) {
+    console.error('[Email] sendTransactionalEmailStrict: RESEND_API_KEY missing');
+    return { ok: false, error: 'Resend is not configured. Set RESEND_API_KEY to send email.' };
+  }
+
+  try {
+    const resend = getResendClient();
+    const from = getFromAddress();
+    const { data, error } = await resend.emails.send({
+      from,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text || stripHtml(options.html),
+    });
+
+    if (error) {
+      console.error('[Email] sendTransactionalEmailStrict Resend error', error);
+      return { ok: false, error: error.message || 'Resend rejected the send' };
+    }
+    console.log('[Email] sendTransactionalEmailStrict sent', data?.id);
+    return { ok: true };
+  } catch (err) {
+    console.error('[Email] sendTransactionalEmailStrict failed', err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to send email',
+    };
+  }
+}
+
+/**
  * Send welcome email to new users (body + theme from DB when configured).
  */
 export async function sendWelcomeEmail(email: string, name: string): Promise<void> {

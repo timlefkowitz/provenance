@@ -1,6 +1,12 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import type { EmailTheme } from '~/lib/email-layout';
-import { EMAIL_FONT_FAMILY, buildEmailHtml, escapeHtml } from '~/lib/email-layout';
+import {
+  EMAIL_FONT_FAMILY,
+  buildBulletproofButtonTable,
+  buildEmailHtml,
+  escapeHtml,
+  stripMarkdownLinkLineByHref,
+} from '~/lib/email-layout';
 import { renderMarkdownToEmailHtml } from '~/lib/email-markdown';
 import {
   DEFAULT_EMAIL_MARKDOWN,
@@ -143,19 +149,33 @@ function isSafeHttpUrl(u: string): boolean {
   }
 }
 
+function renderMarkdownWithBulletCta(
+  md: string,
+  theme: EmailTheme,
+  ctaHref: string,
+  fallbackButtonLabel: string,
+): string {
+  const { markdown: stripped, linkLabel } = stripMarkdownLinkLineByHref(md, ctaHref);
+  const btnLabel = linkLabel ?? fallbackButtonLabel;
+  const bodyHtml = renderMarkdownToEmailHtml(stripped, theme);
+  const btnHtml = buildBulletproofButtonTable(ctaHref, btnLabel, theme);
+  return bodyHtml + btnHtml;
+}
+
 export async function renderWelcomeEmailHtml(name: string): Promise<string> {
   const theme = await getResolvedEmailTheme();
   const { bodyMarkdown } = await getResolvedTemplateMarkdown('welcome');
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
   const displayName = name || 'there';
 
+  const resolvedSite = (isSafeHttpUrl(siteUrl) ? siteUrl : 'https://provenance.guru').replace(/\/$/, '');
   const md = interpolateTemplate(
     bodyMarkdown,
     { name: escapeHtml(displayName) },
-    { siteUrl: isSafeHttpUrl(siteUrl) ? siteUrl : 'https://provenance.guru' },
+    { siteUrl: resolvedSite },
   );
-
-  const inner = `<div>${renderMarkdownToEmailHtml(md, theme)}</div>`;
+  const ctaHref = `${resolvedSite}/artworks/add`;
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, ctaHref, 'Get Started')}</div>`;
   return buildEmailHtml('Welcome to Provenance', inner, theme);
 }
 
@@ -188,7 +208,7 @@ export async function renderCertificationEmailHtml(
     },
   );
 
-  const inner = `<div>${renderMarkdownToEmailHtml(md, theme)}</div>`;
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, safeArtworkUrl, 'View Your Artwork')}</div>`;
   return buildEmailHtml('Your Artwork Has Been Certified', inner, theme);
 }
 
@@ -225,7 +245,7 @@ export async function renderNotificationEmailHtml(
     md = md.replace(/\n*\[([^\]]+)\]\([^)]+\)\n*/g, '\n');
   }
 
-  const inner = `<div>${renderMarkdownToEmailHtml(md, theme)}</div>`;
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, url, label)}</div>`;
   return buildEmailHtml(title, inner, theme);
 }
 
@@ -253,8 +273,8 @@ export async function renderSummaryEmailHtml(
       ITEMS: itemsHtml,
     },
   );
-
-  const inner = `<div>${renderMarkdownToEmailHtml(md, theme)}</div>`;
+  const portalHref = `${safeSite.replace(/\/$/, '')}/portal`;
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, portalHref, 'Open Portal')}</div>`;
   return buildEmailHtml(`Your ${periodLabel}`, inner, theme);
 }
 
@@ -282,7 +302,7 @@ export async function renderUpdateEmailHtml(
     { ctaUrl: url },
   );
 
-  const inner = `<div>${renderMarkdownToEmailHtml(md, theme)}</div>`;
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, url, label)}</div>`;
   return buildEmailHtml(title, inner, theme);
 }
 
@@ -332,15 +352,17 @@ export function buildEmailPreviewHtml(
 
   switch (key) {
     case 'welcome': {
-      const siteUrl = isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
+      const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
         ? PREVIEW_SAMPLE.siteUrl
-        : 'https://provenance.guru';
+        : 'https://provenance.guru'
+      ).replace(/\/$/, '');
       const md = interpolateTemplate(
         bodyMarkdown,
         { name: escapeHtml(PREVIEW_SAMPLE.name) },
-        { siteUrl },
+        { siteUrl: resolvedSite },
       );
-      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      const ctaHref = `${resolvedSite}/artworks/add`;
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, ctaHref, 'Get Started')}</div>`;
       return {
         html: buildEmailHtml('Welcome to Provenance', inner, t),
         previewSubject: subject,
@@ -363,7 +385,7 @@ export function buildEmailPreviewHtml(
           CERT_BLOCK: certBlock,
         },
       );
-      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, safeArtworkUrl, 'View Your Artwork')}</div>`;
       return {
         html: buildEmailHtml('Your Artwork Has Been Certified', inner, t),
         previewSubject: subject.split('{{artworkTitle}}').join(PREVIEW_SAMPLE.artworkTitle),
@@ -388,7 +410,7 @@ export function buildEmailPreviewHtml(
         },
         { ctaUrl: url },
       );
-      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, url, PREVIEW_SAMPLE.ctaLabel)}</div>`;
       return {
         html: buildEmailHtml(PREVIEW_SAMPLE.notificationTitle, inner, t),
         previewSubject: subject,
@@ -410,7 +432,8 @@ export function buildEmailPreviewHtml(
           ITEMS: itemsHtml,
         },
       );
-      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      const portalHref = `${siteUrl.replace(/\/$/, '')}/portal`;
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, portalHref, 'Open Portal')}</div>`;
       return {
         html: buildEmailHtml(`Your ${PREVIEW_SAMPLE.periodLabel}`, inner, t),
         previewSubject: subject,
@@ -435,7 +458,7 @@ export function buildEmailPreviewHtml(
         },
         { ctaUrl: url },
       );
-      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, url, PREVIEW_SAMPLE.updateLinkLabel)}</div>`;
       return {
         html: buildEmailHtml(PREVIEW_SAMPLE.updateTitle, inner, t),
         previewSubject: subject,
