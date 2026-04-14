@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { cn } from '@kit/ui/utils';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { registryRowKey } from '../_lib/registry-row-key';
 
@@ -16,6 +17,7 @@ export type RegistryAccount = {
   profileId?: string;
   profileSlug?: string | null;
   listPreviewUrl: string | null;
+  listPreviewUsesArtwork: boolean;
 };
 
 type RegistryContentProps = {
@@ -50,6 +52,7 @@ function SectionHeader({ label }: { label: string }) {
 
 export function RegistryContent({ accounts, artworkCounts }: RegistryContentProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [profilePreviewHover, setProfilePreviewHover] = useState(false);
 
   const { galleries, artists } = useMemo(() => {
     const g: RegistryAccount[] = [];
@@ -75,6 +78,12 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
     return found ?? defaultAccount;
   }, [hoveredKey, accounts, defaultAccount]);
 
+  const activeKey = activeAccount ? registryRowKey(activeAccount) : null;
+
+  useEffect(() => {
+    setProfilePreviewHover(false);
+  }, [activeKey]);
+
   const setHoverFor = useCallback((account: RegistryAccount) => {
     setHoveredKey(registryRowKey(account));
   }, []);
@@ -85,6 +94,7 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
 
   const previewUrl = activeAccount?.listPreviewUrl;
   const previewAlt = activeAccount?.name ?? 'Directory preview';
+  const previewIsArtwork = activeAccount?.listPreviewUsesArtwork ?? false;
 
   const renderRow = (account: RegistryAccount) => {
     const role = resolveRole(account);
@@ -157,17 +167,38 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
           </div>
 
           <aside className="order-2 lg:flex-1 mb-10 lg:mb-0 lg:max-w-md xl:max-w-lg lg:sticky lg:top-24 self-start w-full mx-auto lg:mx-0">
-            <div className="relative aspect-[4/5] w-full max-w-md mx-auto lg:max-w-none bg-wine/[0.04]">
+            <div
+              className="relative aspect-[4/5] w-full max-w-md mx-auto lg:max-w-none bg-wine/[0.04] overflow-hidden"
+              onMouseEnter={() => {
+                if (activeAccount && !activeAccount.listPreviewUsesArtwork && activeAccount.listPreviewUrl) {
+                  setProfilePreviewHover(true);
+                }
+              }}
+              onMouseLeave={() => setProfilePreviewHover(false)}
+            >
               {previewUrl ? (
-                <Image
-                  src={previewUrl}
-                  alt={previewAlt}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 420px"
-                  unoptimized
-                  priority={!hoveredKey}
-                />
+                previewIsArtwork || !profilePreviewHover ? (
+                  <Image
+                    src={previewUrl}
+                    alt={previewAlt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 420px"
+                    unoptimized
+                    priority={!hoveredKey}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-wine/[0.04] p-6">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- capped intrinsic display; Next/Image fill would rescale the whole pane */}
+                    <img
+                      src={previewUrl}
+                      alt={previewAlt}
+                      className="max-h-48 max-w-48 w-auto h-auto object-contain shadow-sm"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </div>
+                )
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-wine/[0.06]">
                   <span className="text-ink/30 text-6xl font-bold tracking-widest uppercase">

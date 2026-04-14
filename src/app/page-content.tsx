@@ -21,6 +21,8 @@ import {
   Megaphone,
 } from "lucide-react";
 import { LandingSection } from "@/components/landing-section";
+import { LandingStatsSection } from "@/components/landing-stats-section";
+import type { LandingPlatformStats } from "@/lib/landing-platform-stats.types";
 
 export type FeaturedEntryData = {
   artwork_id: string;
@@ -32,6 +34,7 @@ export type FeaturedEntryData = {
 
 type V2LandingContentProps = {
   featuredEntry: FeaturedEntryData;
+  platformStats: LandingPlatformStats;
 };
 
 const fadeUp = {
@@ -60,7 +63,7 @@ function PatentBadge() {
   );
 }
 
-export function V2LandingContent({ featuredEntry }: V2LandingContentProps) {
+export function V2LandingContent({ featuredEntry, platformStats }: V2LandingContentProps) {
   return (
     <div className="w-full font-landing">
       {/* ── Section 1: Featured Entry ── */}
@@ -420,6 +423,8 @@ export function V2LandingContent({ featuredEntry }: V2LandingContentProps) {
           </div>
         </div>
       </LandingSection>
+
+      <LandingStatsSection stats={platformStats} />
     </div>
   );
 }

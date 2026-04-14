@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getFeaturedEntry } from "./admin/_actions/get-featured-entry";
+import { getLandingPlatformStats } from "~/lib/get-landing-platform-stats";
 import { V2LandingContent } from "./page-content";
 import { ChevronDown } from "lucide-react";
 
@@ -14,7 +15,10 @@ export default async function Home() {
     redirect('/portal');
   }
 
-  const { featuredEntry } = await getFeaturedEntry();
+  const [{ featuredEntry }, platformStats] = await Promise.all([
+    getFeaturedEntry(),
+    getLandingPlatformStats(),
+  ]);
 
   return (
     <main className="min-h-screen flex flex-col items-center overflow-x-hidden font-landing bg-parchment">
@@ -35,7 +39,7 @@ export default async function Home() {
         </div>
       </header>
 
-      <V2LandingContent featuredEntry={featuredEntry ?? null} />
+      <V2LandingContent featuredEntry={featuredEntry ?? null} platformStats={platformStats} />
 
       {/* Footer */}
       <footer className="w-full text-center text-sm text-ink/50 font-landing py-12 border-t border-wine/10">

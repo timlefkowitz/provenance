@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
-import { USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { isPublicDirectoryGallery } from '~/config/public-registry-galleries';
 import { registryRowKey } from './_lib/registry-row-key';
 
 export const metadata = {
@@ -18,9 +19,11 @@ type Account = {
   profileId?: string;
   profileSlug?: string | null;
   listPreviewUrl: string | null;
+  /** True when preview image comes from public artwork, false when it is only the profile photo. */
+  listPreviewUsesArtwork: boolean;
 };
 
-type AccountRow = Omit<Account, 'listPreviewUrl'>;
+type AccountRow = Omit<Account, 'listPreviewUrl' | 'listPreviewUsesArtwork'>;
 
 type PreviewCandidate = {
   rowKey: string;
@@ -57,26 +60,49 @@ export default async function RegistryPage() {
     console.error('[Registry] Error fetching gallery profiles', profilesError);
   }
 
+  const listedGalleryProfiles =
+    galleryProfiles?.filter((p) =>
+      isPublicDirectoryGallery({
+        name: p.name,
+        slug: (p as { slug?: string | null }).slug,
+      }),
+    ) ?? [];
+
+  console.log('[Registry] Public directory galleries', {
+    listed: listedGalleryProfiles.length,
+    totalGalleryProfiles: galleryProfiles?.length ?? 0,
+  });
+
   const combinedList: AccountRow[] = [];
 
-  if (galleryProfiles) {
-    galleryProfiles.forEach((profile) => {
-      combinedList.push({
-        id: profile.user_id,
-        name: profile.name,
-        picture_url: profile.picture_url,
-        public_data: { role: USER_ROLES.GALLERY },
-        created_at: profile.created_at,
-        role: USER_ROLES.GALLERY,
-        profileId: profile.id,
-        profileSlug: (profile as { slug?: string | null }).slug ?? null,
-      });
+  listedGalleryProfiles.forEach((profile) => {
+    combinedList.push({
+      id: profile.user_id,
+      name: profile.name,
+      picture_url: profile.picture_url,
+      public_data: { role: USER_ROLES.GALLERY },
+      created_at: profile.created_at,
+      role: USER_ROLES.GALLERY,
+      profileId: profile.id,
+      profileSlug: (profile as { slug?: string | null }).slug ?? null,
     });
-  }
+  });
 
   accountsList.forEach((account) => {
-    const hasGalleryProfile = galleryProfiles?.some((p) => p.user_id === account.id);
-    if (!hasGalleryProfile) {
+    const hasAnyGalleryProfile = galleryProfiles?.some((p) => p.user_id === account.id) ?? false;
+    const hasListedGalleryProfile = listedGalleryProfiles.some((p) => p.user_id === account.id);
+    const accountRole = getUserRole(account.public_data as Record<string, unknown> | null);
+
+    if (!hasAnyGalleryProfile) {
+      combinedList.push(account);
+      return;
+    }
+
+    if (hasListedGalleryProfile) {
+      return;
+    }
+
+    if (accountRole !== USER_ROLES.GALLERY) {
       combinedList.push(account);
     }
   });
@@ -124,6 +150,7 @@ export default async function RegistryPage() {
   }
 
   const previewByKey: Record<string, string | null> = {};
+  const artworkPreviewKeys = new Set<string>();
   combinedList.forEach((a) => {
     previewByKey[registryRowKey(a)] = a.picture_url;
   });
@@ -153,7 +180,10 @@ export default async function RegistryPage() {
         if (!profile) continue;
         const key = registryRowKey(profile);
         const url = row.image_url as string;
-        if (url) previewByKey[key] = url;
+        if (url) {
+          previewByKey[key] = url;
+          artworkPreviewKeys.add(key);
+        }
       }
     }
 
@@ -216,16 +246,22 @@ export default async function RegistryPage() {
         if (!nonGalleryAccountIds.includes(c.rowKey) || assigned.has(c.rowKey)) continue;
         assigned.add(c.rowKey);
         previewByKey[c.rowKey] = c.image_url;
+        artworkPreviewKeys.add(c.rowKey);
       }
     }
   } catch (previewErr) {
     console.error('[Registry] Failed to resolve preview images', previewErr);
   }
 
-  const withPreview: Account[] = combinedList.map((a) => ({
-    ...a,
-    listPreviewUrl: previewByKey[registryRowKey(a)] ?? a.picture_url,
-  }));
+  const withPreview: Account[] = combinedList.map((a) => {
+    const key = registryRowKey(a);
+    const url = previewByKey[key] ?? a.picture_url;
+    return {
+      ...a,
+      listPreviewUrl: url,
+      listPreviewUsesArtwork: artworkPreviewKeys.has(key),
+    };
+  });
 
   console.log('[Registry] RegistryPage load finished', { count: withPreview.length });
 
