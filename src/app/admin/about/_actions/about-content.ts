@@ -108,7 +108,7 @@ export async function getAboutContent(): Promise<AboutContent> {
             },
             {
               name: "Justin Parr",
-              role: "Co-Founder, Artist, Gallery owner of Fl!ght for 25 years",
+              role: "Co-Founder, Artist, Gallery owner of FL!GHT for 25 years",
               bio: "Justin Parr is a San Antonio multimedia artist, glassblower, and gallery owner whose work centers on process, material experimentation, and the beauty of imperfection. With over fifteen years of torch-working experience, he creates both functional and decorative glass pieces and operates FL!GHT Gallery in the Blue Star Arts Complex. His broader creative practice also includes photography, design, and independent art projects.",
               photo_url: "/data/about-photos/justin-parr.png"
             }
