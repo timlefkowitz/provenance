@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowRight, ArrowRightIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { Button } from '@kit/ui/button';
@@ -101,51 +101,54 @@ async function BlogPostPage(props: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <article className="min-h-screen bg-parchment px-4 pb-20 font-serif sm:px-8">
-        <div className="mx-auto max-w-3xl border-b-4 border-double border-wine py-10">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-sm text-ink/70">
+      <article className="min-h-screen bg-parchment font-body">
+        <div className="border-b border-wine/10 bg-gradient-to-b from-white/30 to-transparent">
+          <div className="mx-auto max-w-3xl px-6 pb-12 pt-10 sm:px-8 md:pb-14 md:pt-14">
             <Link
               href="/blog"
-              className="font-medium text-wine underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-2 text-sm font-medium text-ink/55 transition hover:text-wine"
             >
+              <ArrowLeft className="size-4 shrink-0 opacity-70" strokeWidth={1.75} />
               <Trans i18nKey="marketing:backToBlog" />
             </Link>
-            <span aria-hidden>/</span>
-            <time dateTime={post.published_at ?? undefined}>
-              {datePublished}
-            </time>
-            <span className="text-ink/40" aria-hidden>
-              ·
-            </span>
-            <span className="text-ink/70">By {post.author_name}</span>
+            <div className="mt-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-[0.18em] text-ink/45 uppercase">
+              <time dateTime={post.published_at ?? undefined}>{datePublished}</time>
+              <span className="text-ink/25" aria-hidden>
+                ·
+              </span>
+              <span className="normal-case tracking-normal text-ink/55">
+                {post.author_name}
+              </span>
+            </div>
+            <h1 className="mt-5 font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl">
+              {post.title}
+            </h1>
+            {post.description ? (
+              <p className="mt-5 max-w-2xl text-lg font-light leading-relaxed text-ink/70 md:text-xl">
+                {post.description}
+              </p>
+            ) : null}
+            <div className="mt-10 h-px max-w-xs bg-gradient-to-r from-wine/40 to-transparent" />
           </div>
-          <h1 className="mt-6 font-display text-4xl tracking-tight text-wine sm:text-5xl">
-            {post.title}
-          </h1>
-          {post.description ? (
-            <p className="mt-4 font-body text-lg italic leading-relaxed text-ink/80 sm:text-xl">
-              {post.description}
-            </p>
-          ) : null}
         </div>
 
         {post.og_image_url ? (
-          <div className="mx-auto mt-8 max-w-3xl">
+          <div className="mx-auto mt-10 max-w-3xl px-6 sm:px-8">
             {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary OG URLs */}
             <img
               src={post.og_image_url}
               alt={post.title}
-              className="aspect-[2/1] w-full rounded-xl border border-wine/20 object-cover"
+              className="aspect-[2/1] w-full rounded-2xl border border-wine/10 object-cover shadow-sm ring-1 ring-wine/5"
             />
           </div>
         ) : null}
 
-        <div className="mx-auto mt-10 max-w-3xl">
+        <div className="mx-auto mt-12 max-w-3xl px-6 sm:px-8">
           <BlogPostMarkdown source={post.body_markdown} />
         </div>
 
-        <div className="mx-auto mt-12 max-w-3xl">
-          <div className="flex flex-col gap-4 rounded-xl border border-wine/20 bg-wine/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto mt-14 max-w-3xl px-6 sm:px-8">
+          <div className="flex flex-col gap-4 rounded-2xl border border-wine/10 bg-white/40 p-6 shadow-sm ring-1 ring-wine/5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
             <p className="font-body text-sm leading-relaxed text-ink/75">
               <Trans i18nKey="marketing:blogSubtitle" />
             </p>
@@ -174,10 +177,10 @@ async function BlogPostPage(props: PageProps) {
           </div>
         </div>
 
-        <div className="mx-auto mt-8 max-w-3xl">
+        <div className="mx-auto mt-10 max-w-3xl px-6 pb-16 sm:px-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 font-body text-sm font-medium text-wine underline-offset-4 hover:underline"
+            className="inline-flex items-center gap-2 text-sm font-medium text-ink/55 underline-offset-4 transition hover:text-wine hover:underline"
           >
             <Trans i18nKey="marketing:product" />
             <ArrowRight className="h-4 w-4" />

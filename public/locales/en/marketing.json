@@ -1,5 +1,9 @@
 {
   "blog": "Blog",
+  "blogIndexEyebrow": "Platform journal",
+  "blogArchiveEyebrow": "Archive",
+  "blogArchiveHeading": "Earlier posts",
+  "blogLatestScreenReader": "Latest post",
   "blogSubtitle": "News and updates about the platform",
   "documentation": "Documentation",
   "documentationSubtitle": "Tutorials and guide to get started with the platform",

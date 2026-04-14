@@ -1,5 +1,9 @@
 {
   "blog": "Blog",
+  "blogIndexEyebrow": "Diario de la plataforma",
+  "blogArchiveEyebrow": "Archivo",
+  "blogArchiveHeading": "Publicaciones anteriores",
+  "blogLatestScreenReader": "Última publicación",
   "blogSubtitle": "Noticias y actualizaciones sobre la plataforma",
   "documentation": "Documentación",
   "documentationSubtitle": "Tutoriales y guías para comenzar con la plataforma",
