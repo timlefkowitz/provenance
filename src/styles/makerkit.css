@@ -33,6 +33,33 @@ Optimize dropdowns for mobile
     width: 100%;
 }
 
+.light .site-header > .container:before,
+.light .site-footer > .container:before {
+    background: radial-gradient(
+        62.87% 100% at 50% 100%,
+        color-mix(in srgb, var(--border, #d4cdc0) 90%, transparent) 0%,
+        transparent 100%
+    );
+}
+
+@media (prefers-color-scheme: light) {
+    html.system .site-header > .container:before,
+    html.system .site-footer > .container:before {
+        background: radial-gradient(
+            62.87% 100% at 50% 100%,
+            color-mix(in srgb, var(--border, #d4cdc0) 90%, transparent) 0%,
+            transparent 100%
+        );
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    html.system .site-header > .container:before,
+    html.system .site-footer > .container:before {
+        background: radial-gradient(62.87% 100% at 50% 100%, rgba(255, 255, 255, .10) 0%, rgba(255, 255, 255, 0) 100%);
+    }
+}
+
 .dark .site-header > .container:before,
 .dark .site-footer > .container:before {
     background: radial-gradient(62.87% 100% at 50% 100%, rgba(255, 255, 255, .10) 0%, rgba(255, 255, 255, 0) 100%);

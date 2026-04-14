@@ -93,7 +93,7 @@ export default async function RootLayout({
   return (
     <html
       lang={currentLang}
-      className={cn(currentTheme !== 'system' && currentTheme)}
+      className={cn(currentTheme)}
       suppressHydrationWarning
     >
       <body
