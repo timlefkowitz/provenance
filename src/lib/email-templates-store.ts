@@ -285,3 +285,161 @@ export async function renderUpdateEmailHtml(
   const inner = `<div>${renderMarkdownToEmailHtml(md, theme)}</div>`;
   return buildEmailHtml(title, inner, theme);
 }
+
+/** Sample data for admin preview only — mirrors real sends without hitting the database. */
+const PREVIEW_SAMPLE = {
+  name: 'Alex Rivera',
+  siteUrl: 'https://www.provenance.guru',
+  artworkTitle: 'Evening Light (2024)',
+  certificateNumber: 'PRV-2048-A7B2',
+  artworkUrl: 'https://www.provenance.guru/artworks/sample-artwork',
+  notificationTitle: 'Your gallery request was approved',
+  notificationBody:
+    'Congratulations — your gallery profile is now live. You can add exhibitions and invite artists from your dashboard.',
+  ctaLabel: 'Open dashboard',
+  ctaUrl: 'https://www.provenance.guru/registry',
+  periodLabel: 'Weekly summary',
+  updateTitle: 'New: verified collector badges',
+  updateBody:
+    'Collectors can now earn verified badges when they complete certain steps. This helps artists trust inbound inquiries.',
+  updateLinkLabel: 'Read the announcement',
+} as const;
+
+const PREVIEW_SUMMARY_ITEMS: SummaryItem[] = [
+  {
+    title: 'New certificate: Evening Light',
+    description: 'Your artwork was certified and is visible on your profile.',
+  },
+  {
+    title: 'Exhibition invite',
+    description: 'Gallery Row North invited you to participate in Spring Group Show.',
+  },
+];
+
+/**
+ * Build the same HTML shape as production sends, using the given theme + markdown (draft from the admin form).
+ */
+export function buildEmailPreviewHtml(
+  key: EmailTemplateKey,
+  theme: EmailTheme,
+  subject: string,
+  bodyMarkdown: string,
+): { html: string; previewSubject: string } {
+  const t: EmailTheme = {
+    ...theme,
+    fontFamily: theme.fontFamily || EMAIL_FONT_FAMILY,
+  };
+
+  switch (key) {
+    case 'welcome': {
+      const siteUrl = isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
+        ? PREVIEW_SAMPLE.siteUrl
+        : 'https://provenance.guru';
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        { name: escapeHtml(PREVIEW_SAMPLE.name) },
+        { siteUrl },
+      );
+      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      return {
+        html: buildEmailHtml('Welcome to Provenance', inner, t),
+        previewSubject: subject,
+      };
+    }
+    case 'certification': {
+      const safeTitle = escapeHtml(PREVIEW_SAMPLE.artworkTitle);
+      const safeArtworkUrl = isSafeHttpUrl(PREVIEW_SAMPLE.artworkUrl)
+        ? PREVIEW_SAMPLE.artworkUrl
+        : 'https://provenance.guru';
+      const certBlock = buildCertBlockHtml(t, PREVIEW_SAMPLE.certificateNumber);
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        {
+          name: escapeHtml(PREVIEW_SAMPLE.name),
+          artworkTitle: safeTitle,
+        },
+        {
+          artworkUrl: safeArtworkUrl,
+          CERT_BLOCK: certBlock,
+        },
+      );
+      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      return {
+        html: buildEmailHtml('Your Artwork Has Been Certified', inner, t),
+        previewSubject: subject.split('{{artworkTitle}}').join(PREVIEW_SAMPLE.artworkTitle),
+      };
+    }
+    case 'notification': {
+      const siteUrl = PREVIEW_SAMPLE.siteUrl;
+      const url = isSafeHttpUrl(PREVIEW_SAMPLE.ctaUrl)
+        ? PREVIEW_SAMPLE.ctaUrl
+        : isSafeHttpUrl(siteUrl)
+          ? siteUrl
+          : 'https://provenance.guru';
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        {
+          name: escapeHtml(PREVIEW_SAMPLE.name),
+          title: escapeHtml(PREVIEW_SAMPLE.notificationTitle),
+          body: escapeHtml(PREVIEW_SAMPLE.notificationBody)
+            .replace(/\r\n/g, '\n')
+            .replace(/\n/g, '\n\n'),
+          ctaLabel: escapeHtml(PREVIEW_SAMPLE.ctaLabel),
+        },
+        { ctaUrl: url },
+      );
+      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      return {
+        html: buildEmailHtml(PREVIEW_SAMPLE.notificationTitle, inner, t),
+        previewSubject: subject,
+      };
+    }
+    case 'summary': {
+      const siteUrl = isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
+        ? PREVIEW_SAMPLE.siteUrl
+        : 'https://provenance.guru';
+      const itemsHtml = buildItemsHtml(t, PREVIEW_SUMMARY_ITEMS);
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        {
+          name: escapeHtml(PREVIEW_SAMPLE.name),
+          periodLabel: escapeHtml(PREVIEW_SAMPLE.periodLabel),
+        },
+        {
+          siteUrl,
+          ITEMS: itemsHtml,
+        },
+      );
+      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      return {
+        html: buildEmailHtml(`Your ${PREVIEW_SAMPLE.periodLabel}`, inner, t),
+        previewSubject: subject,
+      };
+    }
+    case 'update': {
+      const siteUrl = PREVIEW_SAMPLE.siteUrl;
+      const url = isSafeHttpUrl(PREVIEW_SAMPLE.ctaUrl)
+        ? PREVIEW_SAMPLE.ctaUrl
+        : isSafeHttpUrl(siteUrl)
+          ? siteUrl
+          : 'https://provenance.guru';
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        {
+          name: escapeHtml(PREVIEW_SAMPLE.name),
+          title: escapeHtml(PREVIEW_SAMPLE.updateTitle),
+          body: escapeHtml(PREVIEW_SAMPLE.updateBody)
+            .replace(/\r\n/g, '\n')
+            .replace(/\n/g, '\n\n'),
+          ctaLabel: escapeHtml(PREVIEW_SAMPLE.updateLinkLabel),
+        },
+        { ctaUrl: url },
+      );
+      const inner = `<div>${renderMarkdownToEmailHtml(md, t)}</div>`;
+      return {
+        html: buildEmailHtml(PREVIEW_SAMPLE.updateTitle, inner, t),
+        previewSubject: subject,
+      };
+    }
+  }
+}

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { isAdmin } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { DEFAULT_EMAIL_THEME } from '~/lib/email-templates-store';
+import { DEFAULT_EMAIL_THEME, buildEmailPreviewHtml } from '~/lib/email-templates-store';
 import {
   DEFAULT_EMAIL_MARKDOWN,
   DEFAULT_EMAIL_SUBJECTS,
@@ -35,6 +35,13 @@ const templateSchema = z.object({
   ]),
   subject: z.string().min(1).max(500),
   body_markdown: z.string().min(1).max(100_000),
+});
+
+const previewPayloadSchema = z.object({
+  template_key: templateSchema.shape.template_key,
+  subject: z.string().min(1).max(500),
+  body_markdown: z.string().min(1).max(100_000),
+  theme: settingsSchema,
 });
 
 async function requireAdminUser() {
@@ -157,6 +164,51 @@ export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Pro
   } catch (e) {
     console.error('[Admin/emails] saveEmailTheme', e);
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to save' };
+  }
+}
+
+export async function previewEmailTemplate(
+  input: z.infer<typeof previewPayloadSchema>,
+): Promise<
+  | { ok: true; html: string; previewSubject: string }
+  | { ok: false; error: string }
+> {
+  try {
+    await requireAdminUser();
+    const parsed = previewPayloadSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.flatten().formErrors.join(', ') || 'Invalid preview payload',
+      };
+    }
+
+    const row = parsed.data.theme;
+    const theme: EmailTheme = {
+      parchment: row.parchment,
+      ink: row.ink,
+      wine: row.wine,
+      inkSubtitle: row.ink_subtitle,
+      inkMuted: row.ink_muted,
+      mastheadTitle: row.masthead_title,
+      mastheadSubtitle: row.masthead_subtitle,
+      fontFamily: DEFAULT_EMAIL_THEME.fontFamily,
+    };
+
+    console.log('[Admin/emails] previewEmailTemplate', parsed.data.template_key);
+    const { html, previewSubject } = buildEmailPreviewHtml(
+      parsed.data.template_key,
+      theme,
+      parsed.data.subject,
+      parsed.data.body_markdown,
+    );
+    return { ok: true, html, previewSubject };
+  } catch (e) {
+    console.error('[Admin/emails] previewEmailTemplate failed', e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'Failed to build preview',
+    };
   }
 }
 

@@ -13,7 +13,7 @@ export default async function AdminEmailsPage() {
   const initial = await getEmailTemplatesAdminData();
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-4xl font-display font-bold text-wine mb-2">
