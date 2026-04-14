@@ -14,7 +14,10 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
       pathname.startsWith('/auth') ||
       pathname.startsWith('/about') || // Public about page
       pathname.startsWith('/artworks/add') || // Allow artwork uploads even without role
-      pathname.startsWith('/settings') // Account/settings page (redirects to sign-in if not authenticated)
+      pathname.startsWith('/settings') || // Account/settings page (redirects to sign-in if not authenticated)
+      pathname.startsWith('/artists') || // Public artist profiles
+      pathname.startsWith('/registry') || // Public directory (includes /artists index redirect target)
+      pathname.startsWith('/g/') // Public gallery pages by slug
     ) {
       return <>{children}</>;
     }

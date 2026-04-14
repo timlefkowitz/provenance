@@ -1,149 +1,189 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card, CardContent } from '@kit/ui/card';
-import { RegistryFilters } from './registry-filters';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { registryRowKey } from '../_lib/registry-row-key';
 
-type Account = {
+export type RegistryAccount = {
   id: string;
   name: string;
   picture_url: string | null;
-  public_data: any;
+  public_data: unknown;
   created_at: string | null;
-  role?: string; // For gallery profiles, this will be set
-  profileId?: string; // For gallery profiles, this is the profile ID
+  role?: string;
+  profileId?: string;
   profileSlug?: string | null;
+  listPreviewUrl: string | null;
 };
 
-type FilterType = 'all' | 'artist' | 'gallery';
-
 type RegistryContentProps = {
-  accounts: Account[];
+  accounts: RegistryAccount[];
   artworkCounts: Record<string, number>;
 };
 
-export function RegistryContent({ accounts, artworkCounts }: RegistryContentProps) {
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+function resolveRole(account: RegistryAccount) {
+  return account.role || getUserRole(account.public_data as Record<string, unknown> | null);
+}
 
-  const filteredAccounts = useMemo(() => {
-    if (activeFilter === 'all') {
-      return accounts;
-    }
+function buildLinkUrl(account: RegistryAccount, role: string | null) {
+  if (role === USER_ROLES.GALLERY && account.profileSlug) {
+    return `/g/${encodeURIComponent(account.profileSlug)}`;
+  }
+  if (account.profileId && role === USER_ROLES.GALLERY) {
+    return `/artists/${account.id}?role=gallery&profileId=${account.profileId}`;
+  }
+  return `/artists/${account.id}${role ? `?role=${role}` : ''}`;
+}
 
-    return accounts.filter((account) => {
-      // Check if account has a role property (from gallery profiles) or get from public_data
-      const role = account.role || getUserRole(account.public_data as Record<string, any>);
-      if (activeFilter === 'artist') {
-        return role === USER_ROLES.ARTIST;
-      }
-      if (activeFilter === 'gallery') {
-        return role === USER_ROLES.GALLERY;
-      }
-      return true;
-    });
-  }, [accounts, activeFilter]);
-
+function SectionHeader({ label }: { label: string }) {
   return (
-    <>
-      <RegistryFilters onFilterChange={setActiveFilter} activeFilter={activeFilter} />
-
-      {filteredAccounts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredAccounts.map((account) => {
-            const medium = account.public_data?.medium || '';
-            // Check if account has a role property (from gallery profiles) or get from public_data
-            const role = account.role || getUserRole(account.public_data as Record<string, any>);
-            
-            // For gallery profiles, use composite key (accountId-profileId), otherwise use accountId
-            const artworkCountKey = account.profileId && role === USER_ROLES.GALLERY
-              ? `${account.id}-${account.profileId}`
-              : account.id;
-            const artworkCount = artworkCounts[artworkCountKey] || 0;
-            
-            // Build the link URL — prefer short /g/{slug} for galleries when set
-            const linkUrl =
-              role === USER_ROLES.GALLERY && account.profileSlug
-                ? `/g/${encodeURIComponent(account.profileSlug)}`
-                : account.profileId && role === USER_ROLES.GALLERY
-                  ? `/artists/${account.id}?role=gallery&profileId=${account.profileId}`
-                  : `/artists/${account.id}${role ? `?role=${role}` : ''}`;
-            
-            return (
-              <Card 
-                key={account.id + (account.profileId || '')}
-                className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden"
-              >
-                <Link href={linkUrl} className="block">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col items-center text-center space-y-4">
-                      {/* Avatar */}
-                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-wine/20 group-hover:border-wine/40 transition-colors bg-wine/10">
-                        {account.picture_url ? (
-                          <Image
-                            src={account.picture_url}
-                            alt={account.name}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-wine/10">
-                            <span className="text-2xl font-display font-bold text-wine uppercase">
-                              {account.name?.charAt(0) || '?'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Name */}
-                      <div>
-                        <h3 className="font-display font-bold text-wine text-lg mb-1 group-hover:text-wine/80 transition-colors">
-                          {account.name}
-                        </h3>
-                        
-                        {/* Role Badge */}
-                        <div className="mb-1">
-                          <span className="text-xs font-serif uppercase tracking-wider text-ink/50">
-                            {role === USER_ROLES.ARTIST ? 'Artist' : role === USER_ROLES.GALLERY ? 'Gallery' : ''}
-                          </span>
-                        </div>
-                        
-                        {/* Medium */}
-                        {medium && (
-                          <p className="text-ink/60 font-serif text-sm italic">
-                            {medium}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Artwork Count */}
-                      {artworkCount > 0 && (
-                        <div className="text-xs text-ink/50 font-serif uppercase tracking-wider">
-                          {artworkCount} {artworkCount === 1 ? 'artwork' : 'artworks'}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Link>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-16">
-          <p className="text-ink/70 font-serif text-lg">
-            {activeFilter === 'all' 
-              ? 'No artists or galleries registered yet'
-              : activeFilter === 'artist'
-              ? 'No artists found'
-              : 'No galleries found'}
-          </p>
-        </div>
-      )}
-    </>
+    <div className="flex items-center gap-4 mt-14 first:mt-0 mb-6">
+      <span className="shrink-0 text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase whitespace-nowrap">
+        {label}
+      </span>
+      <span className="h-px flex-1 bg-wine/15 min-w-[2rem]" aria-hidden />
+    </div>
   );
 }
 
+export function RegistryContent({ accounts, artworkCounts }: RegistryContentProps) {
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+
+  const { galleries, artists } = useMemo(() => {
+    const g: RegistryAccount[] = [];
+    const a: RegistryAccount[] = [];
+    for (const account of accounts) {
+      const role = resolveRole(account);
+      if (role === USER_ROLES.GALLERY) {
+        g.push(account);
+      } else {
+        a.push(account);
+      }
+    }
+    return { galleries: g, artists: a };
+  }, [accounts]);
+
+  const defaultAccount = galleries[0] ?? artists[0] ?? null;
+
+  const activeAccount = useMemo(() => {
+    if (!hoveredKey) {
+      return defaultAccount;
+    }
+    const found = accounts.find((acc) => registryRowKey(acc) === hoveredKey);
+    return found ?? defaultAccount;
+  }, [hoveredKey, accounts, defaultAccount]);
+
+  const setHoverFor = useCallback((account: RegistryAccount) => {
+    setHoveredKey(registryRowKey(account));
+  }, []);
+
+  const clearHover = useCallback(() => {
+    setHoveredKey(null);
+  }, []);
+
+  const previewUrl = activeAccount?.listPreviewUrl;
+  const previewAlt = activeAccount?.name ?? 'Directory preview';
+
+  const renderRow = (account: RegistryAccount) => {
+    const role = resolveRole(account);
+    const key = registryRowKey(account);
+    const artworkCountKey =
+      account.profileId && role === USER_ROLES.GALLERY
+        ? `${account.id}-${account.profileId}`
+        : account.id;
+    const artworkCount = artworkCounts[artworkCountKey] || 0;
+    const href = buildLinkUrl(account, role);
+    const isActive = activeAccount && registryRowKey(activeAccount) === key;
+
+    return (
+      <li key={key} className="leading-none">
+        <Link
+          href={href}
+          className={`group block py-3 md:py-4 outline-none transition-colors font-landing text-sm md:text-base tracking-[0.18em] uppercase ${
+            isActive ? 'text-wine' : 'text-ink/55 hover:text-wine'
+          }`}
+          onMouseEnter={() => setHoverFor(account)}
+          onFocus={() => setHoverFor(account)}
+        >
+          <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-normal">{account.name}</span>
+            {artworkCount > 0 && (
+              <span className="text-[10px] md:text-[11px] tracking-[0.2em] text-ink/35 font-light normal-case">
+                {artworkCount} {artworkCount === 1 ? 'work' : 'works'}
+              </span>
+            )}
+          </span>
+        </Link>
+      </li>
+    );
+  };
+
+  const empty = galleries.length === 0 && artists.length === 0;
+
+  return (
+    <div className="mx-auto max-w-6xl px-5 sm:px-8 py-10 md:py-16 font-landing">
+      <header className="mb-10 md:mb-14">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-[0.08em] sm:tracking-[0.12em] text-wine">
+          ARTISTS
+        </h1>
+        <p className="mt-4 text-xs sm:text-sm font-light tracking-[0.22em] text-ink/50 uppercase max-w-md">
+          Galleries and artists on Provenance — hover a name to preview work
+        </p>
+      </header>
+
+      {empty ? (
+        <p className="text-ink/60 font-serif text-lg py-16">No artists or galleries registered yet</p>
+      ) : (
+        <div
+          className="flex flex-col lg:flex-row lg:gap-16 xl:gap-24"
+          onMouseLeave={clearHover}
+        >
+          <div className="lg:w-[min(52%,28rem)] shrink-0 order-1">
+            {galleries.length > 0 && (
+              <>
+                <SectionHeader label="Galleries" />
+                <ul className="divide-y divide-wine/[0.06]">{galleries.map(renderRow)}</ul>
+              </>
+            )}
+
+            {artists.length > 0 && (
+              <>
+                <SectionHeader label="Artists" />
+                <ul className="divide-y divide-wine/[0.06]">{artists.map(renderRow)}</ul>
+              </>
+            )}
+          </div>
+
+          <aside className="order-2 lg:flex-1 mb-10 lg:mb-0 lg:max-w-md xl:max-w-lg lg:sticky lg:top-24 self-start w-full mx-auto lg:mx-0">
+            <div className="relative aspect-[4/5] w-full max-w-md mx-auto lg:max-w-none bg-wine/[0.04]">
+              {previewUrl ? (
+                <Image
+                  src={previewUrl}
+                  alt={previewAlt}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 420px"
+                  unoptimized
+                  priority={!hoveredKey}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-wine/[0.06]">
+                  <span className="text-ink/30 text-6xl font-bold tracking-widest uppercase">
+                    {(previewAlt || '?').charAt(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+            {activeAccount && (
+              <p className="mt-5 text-center lg:text-left text-[11px] tracking-[0.25em] text-ink/45 uppercase truncate">
+                {activeAccount.name}
+              </p>
+            )}
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}

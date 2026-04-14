@@ -51,6 +51,12 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           >
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
+          <Link 
+            href="/registry" 
+            className={desktopNavItemClass}
+          >
+            <Trans i18nKey="common:navigation.registry" defaults="Artists" />
+          </Link>
           {user.data && (
             <>
               <Link
@@ -64,12 +70,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 className={desktopNavItemClass}
               >
                 Portal
-              </Link>
-              <Link 
-                href="/registry" 
-                className={desktopNavItemClass}
-              >
-                <Trans i18nKey="common:navigation.registry" defaults="Registry" />
               </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger className={`${desktopNavItemClass} gap-1 font-medium data-[state=open]:text-wine`}>
@@ -213,6 +213,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             >
               <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
             </Link>
+            <Link 
+              href="/registry" 
+              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Trans i18nKey="common:navigation.registry" defaults="Artists" />
+            </Link>
             {user.data && (
               <>
                 <Link 
@@ -235,13 +242,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Portal
-                </Link>
-                <Link 
-                  href="/registry" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Trans i18nKey="common:navigation.registry" defaults="Registry" />
                 </Link>
                 <span className="block py-2 border-b border-wine/10 text-wine/80 font-medium text-xs uppercase tracking-wider">
                   Toolbox

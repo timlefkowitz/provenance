@@ -1,9 +1,10 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
 import { USER_ROLES } from '~/lib/user-roles';
+import { registryRowKey } from './_lib/registry-row-key';
 
 export const metadata = {
-  title: 'Registry | Provenance',
+  title: 'Artists | Provenance',
   description: 'A directory of artists and galleries on Provenance',
 };
 
@@ -11,32 +12,39 @@ type Account = {
   id: string;
   name: string;
   picture_url: string | null;
-  public_data: any;
+  public_data: unknown;
   created_at: string | null;
-  role?: string; // For gallery profiles, this will be set
-  profileId?: string; // For gallery profiles, this is the profile ID
-  /** Gallery public slug for /g/{slug} when present */
+  role?: string;
+  profileId?: string;
   profileSlug?: string | null;
+  listPreviewUrl: string | null;
+};
+
+type AccountRow = Omit<Account, 'listPreviewUrl'>;
+
+type PreviewCandidate = {
+  rowKey: string;
+  image_url: string;
+  created_at: string;
 };
 
 export default async function RegistryPage() {
+  console.log('[Registry] RegistryPage load started');
+
   const client = getSupabaseServerClient();
-  
-  // Fetch all accounts (read-only, safe)
-  // This uses the new public read policy that only exposes public fields
+
   const { data: accounts, error } = await client
     .from('accounts')
     .select('id, name, picture_url, public_data, created_at')
     .order('name', { ascending: true })
-    .limit(200); // Limit to prevent performance issues
+    .limit(200);
 
   if (error) {
-    console.error('Error fetching accounts:', error);
+    console.error('[Registry] Error fetching accounts', error);
   }
 
-  const accountsList: Account[] = accounts || [];
-  
-  // Fetch gallery profiles from user_profiles table
+  const accountsList = accounts || [];
+
   const { data: galleryProfiles, error: profilesError } = await client
     .from('user_profiles')
     .select('id, user_id, name, picture_url, role, created_at, slug')
@@ -46,18 +54,15 @@ export default async function RegistryPage() {
     .limit(200);
 
   if (profilesError) {
-    console.error('Error fetching gallery profiles:', profilesError);
+    console.error('[Registry] Error fetching gallery profiles', profilesError);
   }
 
-  // Combine accounts and gallery profiles
-  // For galleries, use the profile data instead of account data
-  const combinedList: Account[] = [];
-  
-  // Add gallery profiles (these take precedence over accounts for gallery role)
+  const combinedList: AccountRow[] = [];
+
   if (galleryProfiles) {
     galleryProfiles.forEach((profile) => {
       combinedList.push({
-        id: profile.user_id, // Use user_id for linking
+        id: profile.user_id,
         name: profile.name,
         picture_url: profile.picture_url,
         public_data: { role: USER_ROLES.GALLERY },
@@ -68,46 +73,34 @@ export default async function RegistryPage() {
       });
     });
   }
-  
-  // Add accounts that aren't already represented by gallery profiles
-  // (for artists and accounts without gallery profiles)
+
   accountsList.forEach((account) => {
-    // Only add if this account doesn't have a gallery profile already in the list
-    const hasGalleryProfile = galleryProfiles?.some(p => p.user_id === account.id);
+    const hasGalleryProfile = galleryProfiles?.some((p) => p.user_id === account.id);
     if (!hasGalleryProfile) {
       combinedList.push(account);
     }
   });
 
-  // Get artwork counts for each account/profile
-  // For gallery profiles, count by gallery_profile_id
-  // For artists/accounts, count by account_id
   const artworkCounts: Record<string, number> = {};
-  
-  // Get all profile IDs for galleries
+
   const galleryProfileIds = combinedList
-    .filter(a => a.role === USER_ROLES.GALLERY && a.profileId)
-    .map(a => a.profileId!);
-  
-  // Get account IDs for artists and accounts without gallery profiles
-  const artistAccountIds = combinedList
-    .filter(a => a.role !== USER_ROLES.GALLERY || !a.profileId)
-    .map(a => a.id);
-  
-  // Count artworks for gallery profiles (by gallery_profile_id)
+    .filter((a) => a.role === USER_ROLES.GALLERY && a.profileId)
+    .map((a) => a.profileId!);
+
+  const nonGalleryAccountIds = combinedList
+    .filter((a) => !(a.role === USER_ROLES.GALLERY && a.profileId))
+    .map((a) => a.id);
+
   if (galleryProfileIds.length > 0) {
     const { data: galleryArtworks } = await client
       .from('artworks')
       .select('gallery_profile_id, account_id')
       .in('gallery_profile_id', galleryProfileIds)
       .eq('status', 'verified');
-    
-    galleryArtworks?.forEach(artwork => {
+
+    galleryArtworks?.forEach((artwork) => {
       if (artwork.gallery_profile_id) {
-        // Use composite key: accountId-profileId for gallery profiles
-        const profile = combinedList.find(
-          a => a.profileId === artwork.gallery_profile_id
-        );
+        const profile = combinedList.find((a) => a.profileId === artwork.gallery_profile_id);
         if (profile) {
           const key = `${profile.id}-${profile.profileId}`;
           artworkCounts[key] = (artworkCounts[key] || 0) + 1;
@@ -115,36 +108,130 @@ export default async function RegistryPage() {
       }
     });
   }
-  
-  // Count artworks for artists/accounts (by account_id, excluding those already counted for galleries)
-  if (artistAccountIds.length > 0) {
+
+  if (nonGalleryAccountIds.length > 0) {
     const { data: artistArtworks } = await client
       .from('artworks')
       .select('account_id, gallery_profile_id')
-      .in('account_id', artistAccountIds)
+      .in('account_id', nonGalleryAccountIds)
       .eq('status', 'verified');
-    
-    artistArtworks?.forEach(artwork => {
-      // Only count if it's not associated with a gallery profile (or if gallery_profile_id is null)
-      // This ensures we don't double-count artworks
+
+    artistArtworks?.forEach((artwork) => {
       if (!artwork.gallery_profile_id) {
         artworkCounts[artwork.account_id] = (artworkCounts[artwork.account_id] || 0) + 1;
       }
     });
   }
 
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Registry
-        </h1>
-        <p className="text-ink/70 font-serif">
-          A directory of artists and galleries on Provenance
-        </p>
-      </div>
+  const previewByKey: Record<string, string | null> = {};
+  combinedList.forEach((a) => {
+    previewByKey[registryRowKey(a)] = a.picture_url;
+  });
 
-      <RegistryContent accounts={combinedList} artworkCounts={artworkCounts} />
+  try {
+    if (galleryProfileIds.length > 0) {
+      const { data: galleryArtRows, error: gErr } = await (client as any)
+        .from('artworks')
+        .select('gallery_profile_id, image_url, created_at')
+        .in('gallery_profile_id', galleryProfileIds)
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .not('image_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(2000);
+
+      if (gErr) {
+        console.error('[Registry] Gallery preview artwork query failed', gErr);
+      }
+
+      const seenGallery = new Set<string>();
+      for (const row of galleryArtRows || []) {
+        const gid = row.gallery_profile_id as string | null;
+        if (!gid || seenGallery.has(gid)) continue;
+        seenGallery.add(gid);
+        const profile = combinedList.find((a) => a.profileId === gid);
+        if (!profile) continue;
+        const key = registryRowKey(profile);
+        const url = row.image_url as string;
+        if (url) previewByKey[key] = url;
+      }
+    }
+
+    if (nonGalleryAccountIds.length > 0) {
+      const candidates: PreviewCandidate[] = [];
+
+      const { data: byUploader, error: uErr } = await (client as any)
+        .from('artworks')
+        .select('account_id, gallery_profile_id, image_url, created_at')
+        .in('account_id', nonGalleryAccountIds)
+        .is('gallery_profile_id', null)
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .not('image_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(2000);
+
+      if (uErr) {
+        console.error('[Registry] Artist preview (uploader) query failed', uErr);
+      }
+
+      for (const row of byUploader || []) {
+        const aid = row.account_id as string;
+        candidates.push({
+          rowKey: aid,
+          image_url: row.image_url as string,
+          created_at: row.created_at as string,
+        });
+      }
+
+      const { data: byCredit, error: cErr } = await (client as any)
+        .from('artworks')
+        .select('artist_account_id, image_url, created_at')
+        .in('artist_account_id', nonGalleryAccountIds)
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .not('image_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(2000);
+
+      if (cErr) {
+        console.error('[Registry] Artist preview (credit) query failed', cErr);
+      }
+
+      for (const row of byCredit || []) {
+        const aid = row.artist_account_id as string;
+        candidates.push({
+          rowKey: aid,
+          image_url: row.image_url as string,
+          created_at: row.created_at as string,
+        });
+      }
+
+      candidates.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
+      const assigned = new Set<string>();
+      for (const c of candidates) {
+        if (!nonGalleryAccountIds.includes(c.rowKey) || assigned.has(c.rowKey)) continue;
+        assigned.add(c.rowKey);
+        previewByKey[c.rowKey] = c.image_url;
+      }
+    }
+  } catch (previewErr) {
+    console.error('[Registry] Failed to resolve preview images', previewErr);
+  }
+
+  const withPreview: Account[] = combinedList.map((a) => ({
+    ...a,
+    listPreviewUrl: previewByKey[registryRowKey(a)] ?? a.picture_url,
+  }));
+
+  console.log('[Registry] RegistryPage load finished', { count: withPreview.length });
+
+  return (
+    <div className="min-h-screen bg-parchment">
+      <RegistryContent accounts={withPreview} artworkCounts={artworkCounts} />
     </div>
   );
 }
