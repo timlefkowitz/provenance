@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@kit/ui/utils';
+import { resolveRegistryDirectoryRole } from '~/config/registry-directory-role-overrides';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { registryRowKey } from '../_lib/registry-row-key';
 
@@ -26,7 +27,9 @@ type RegistryContentProps = {
 };
 
 function resolveRole(account: RegistryAccount) {
-  return account.role || getUserRole(account.public_data as Record<string, unknown> | null);
+  const base =
+    account.role || getUserRole(account.public_data as Record<string, unknown> | null);
+  return resolveRegistryDirectoryRole(account.name, base);
 }
 
 function buildLinkUrl(account: RegistryAccount, role: string | null) {

@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { isPublicDirectoryGallery } from '~/config/public-registry-galleries';
+import { MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY } from '~/config/registry-directory-requirements';
 import { registryRowKey } from './_lib/registry-row-key';
 
 export const metadata = {
@@ -263,11 +264,21 @@ export default async function RegistryPage() {
     };
   });
 
-  console.log('[Registry] RegistryPage load finished', { count: withPreview.length });
+  const minWorks = MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY;
+  const directoryAccounts = withPreview.filter((a) => {
+    const key = registryRowKey(a);
+    return (artworkCounts[key] ?? 0) >= minWorks;
+  });
+
+  console.log('[Registry] RegistryPage load finished', {
+    combined: withPreview.length,
+    afterMinArtworks: directoryAccounts.length,
+    minVerifiedArtworks: minWorks,
+  });
 
   return (
     <div className="min-h-screen bg-parchment">
-      <RegistryContent accounts={withPreview} artworkCounts={artworkCounts} />
+      <RegistryContent accounts={directoryAccounts} artworkCounts={artworkCounts} />
     </div>
   );
 }
