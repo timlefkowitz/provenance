@@ -52,7 +52,7 @@ export type AboutContent = {
 };
 
 /** Default roadmap when JSON predates this section or sections are empty. */
-export const DEFAULT_ROADMAP: AboutContent['roadmap'] = {
+const DEFAULT_ROADMAP: AboutContent['roadmap'] = {
   title: 'Roadmap',
   sections: [
     {
