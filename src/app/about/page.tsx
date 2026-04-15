@@ -11,6 +11,7 @@ import {
   Mail,
   Map,
   Plug,
+  Scale,
   Quote,
   Sparkles,
   User,
@@ -21,7 +22,7 @@ import { getAboutContent } from "../admin/about/_actions/about-content";
 export const metadata = {
   title: "About | Provenance",
   description:
-    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs, roadmap for blockchain and physical COAs, data compliance, and planets.",
+    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs, roadmap including valuation, blockchain, physical COAs, data compliance, and planets.",
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -34,7 +35,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 const serviceIcons = [FileCheck2, Building2, Plug, History] as const;
 
-const roadmapIcons = [Blocks, Mail, Database, Globe2] as const;
+const roadmapIcons = [Blocks, Mail, Database, Globe2, Scale] as const;
 
 export default async function AboutPage() {
   const content = await getAboutContent();
@@ -257,7 +258,7 @@ export default async function AboutPage() {
                   platform you use today, so nothing you publish now is left behind.
                 </p>
               </div>
-              <div className="relative mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
+              <div className="relative mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                 {content.roadmap.sections.map((item, idx) => {
                   const Icon = roadmapIcons[idx] ?? Blocks;
                   return (

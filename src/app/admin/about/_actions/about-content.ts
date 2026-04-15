@@ -75,6 +75,11 @@ const DEFAULT_ROADMAP: AboutContent['roadmap'] = {
       content:
         'Deploy dedicated planets that work like the Artworks planet—same certificate, custody, and verification flows—scoped to a vertical, estate, partner program, or white-label brand. Spin up a world without re-implementing the core stack.',
     },
+    {
+      title: 'Provenance valuation model',
+      content:
+        'A structured valuation system inspired by how major institutions such as The Met think about objects: weave together documented provenance, news and public sentiment, materials and condition notes, live market signals, and artist-level analysis—then synthesize them into a transparent, defensible artwork valuation you can revisit as the story of the work evolves.',
+    },
   ],
 };
 
