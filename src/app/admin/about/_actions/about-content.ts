@@ -71,8 +71,16 @@ export async function getAboutContent(): Promise<AboutContent> {
           title: "What We Provide",
           sections: [
             {
-              title: "Certificates of Authenticity",
-              content: "Artists can create official certificates of authentication for their work, establishing a permanent record of the artwork's origin, creator, and initial verification. Each certificate is uniquely numbered and can be verified by collectors, galleries, and institutions."
+              title: "Updatable COA, COO & COI · Artist-first toolset",
+              content: "Artists, collectors, and institutions can create certificates for their work, establishing a permanent record of the artwork's origin. Each certificate is uniquely numbered and can be verified by collectors, galleries, and institutions. The best solution is shared provenance: everyone who handles the work stays aligned on one authoritative record."
+            },
+            {
+              title: "Institutional tools",
+              content: "Run a serious collection from the same place you catalog: issue professional invoices with payment tracking and PDFs; generate artwork loan agreements with terms, insurance requirements, and digital signatures; and print exhibition- or storage-ready labels with artwork details and QR codes that link straight to certificates. Cataloging and provenance stay alongside those records so financial, exhibition, and custody history do not drift apart."
+            },
+            {
+              title: "Provenance API",
+              content: "Chain of custody is only as good as the systems that can record it: sales, loans, transfers, and locations need to land in one timeline as work moves between people and venues. Our API lets galleries, platforms, and institutions integrate Provenance so those events sync automatically—issue and verify certificates, pull object data, and keep custody current in the tools your team already uses."
             },
             {
               title: "Provenance Tracking",

@@ -2,9 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
+  Blocks,
+  Building2,
   FileCheck2,
   History,
-  Link2,
+  Plug,
   Quote,
   Sparkles,
   User,
@@ -15,7 +17,7 @@ import { getAboutContent } from "../admin/about/_actions/about-content";
 export const metadata = {
   title: "About | Provenance",
   description:
-    "Learn about Provenance, a platform helping artists track the provenance of their work with blockchain-verified certificates of authenticity.",
+    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs for chain of custody, and upcoming blockchain verification.",
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -26,7 +28,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const serviceIcons = [FileCheck2, History, Link2] as const;
+const serviceIcons = [
+  FileCheck2,
+  Building2,
+  Plug,
+  History,
+  Blocks,
+] as const;
 
 export default async function AboutPage() {
   const content = await getAboutContent();
@@ -102,12 +110,12 @@ export default async function AboutPage() {
                 {content.whatWeProvide.title}
               </h2>
             </div>
-            <div className="grid gap-6 md:grid-cols-3 md:gap-8">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {content.whatWeProvide.sections.map((section, idx) => {
                 const Icon = serviceIcons[idx] ?? FileCheck2;
                 return (
                   <div
-                    key={section.title}
+                    key={`${section.title}-${idx}`}
                     className="group flex flex-col rounded-2xl border border-wine/10 bg-white/50 p-8 shadow-sm ring-1 ring-wine/5 transition-shadow duration-300 hover:shadow-lg hover:shadow-wine/5"
                   >
                     <span className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-wine/10 text-wine transition-colors group-hover:bg-wine/15">
