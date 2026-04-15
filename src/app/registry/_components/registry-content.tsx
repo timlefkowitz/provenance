@@ -142,7 +142,7 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
           ARTISTS
         </h1>
         <p className="mt-4 text-xs sm:text-sm font-light tracking-[0.22em] text-ink/50 uppercase max-w-md">
-          Galleries and artists on Provenance — hover a name to preview work
+          Galleries and artists on Provenance
         </p>
       </header>
 
