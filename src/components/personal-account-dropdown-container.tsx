@@ -71,7 +71,7 @@ function ThemeIcon({ theme }: { theme: string | undefined }) {
     case 'system':
       return <Computer className="h-4 w-4" />;
     default:
-      return <BookOpen className="h-4 w-4" />;
+      return <Sun className="h-4 w-4" />;
   }
 }
 

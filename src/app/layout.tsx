@@ -62,7 +62,7 @@ export default async function RootLayout({
   const VALID_THEMES = new Set(['parchment', 'light', 'dark', 'system']);
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get('theme')?.value;
-  const currentTheme = themeCookie && VALID_THEMES.has(themeCookie) ? themeCookie : 'parchment';
+  const currentTheme = themeCookie && VALID_THEMES.has(themeCookie) ? themeCookie : 'light';
 
   try {
     const i18n = await createI18nServerInstance();

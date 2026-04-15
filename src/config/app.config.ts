@@ -17,7 +17,7 @@ const appConfig = AppConfigSchema.parse({
   description: 'Marketplace for digital collectibles and art.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   locale: 'en',
-  theme: 'parchment',
+  theme: 'light',
   themeColor: '#ffffff',
   themeColorDark: '#000000',
 });

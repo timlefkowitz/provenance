@@ -56,6 +56,7 @@ export function RootProviders({
               disableTransitionOnChange
               defaultTheme={theme}
               themes={['parchment', 'light', 'dark', 'system']}
+              storageKey="provenance-theme"
               enableColorScheme={false}
             >
               {children}
