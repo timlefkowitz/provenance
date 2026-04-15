@@ -4,8 +4,12 @@ import {
   ArrowRight,
   Blocks,
   Building2,
+  Database,
   FileCheck2,
+  Globe2,
   History,
+  Mail,
+  Map,
   Plug,
   Quote,
   Sparkles,
@@ -17,7 +21,7 @@ import { getAboutContent } from "../admin/about/_actions/about-content";
 export const metadata = {
   title: "About | Provenance",
   description:
-    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs for chain of custody, and upcoming blockchain verification.",
+    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs, roadmap for blockchain and physical COAs, data compliance, and planets.",
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -28,13 +32,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const serviceIcons = [
-  FileCheck2,
-  Building2,
-  Plug,
-  History,
-  Blocks,
-] as const;
+const serviceIcons = [FileCheck2, Building2, Plug, History] as const;
+
+const roadmapIcons = [Blocks, Mail, Database, Globe2] as const;
 
 export default async function AboutPage() {
   const content = await getAboutContent();
@@ -218,6 +218,75 @@ export default async function AboutPage() {
                   </div>
                 </article>
               ))}
+            </div>
+          </section>
+        </AboutReveal>
+
+        {/* Roadmap */}
+        <AboutReveal>
+          <section
+            className="relative"
+            aria-labelledby="about-roadmap-heading"
+          >
+            <div
+              className="pointer-events-none absolute inset-x-0 -top-6 flex justify-center"
+              aria-hidden
+            >
+              <div className="h-16 w-px bg-gradient-to-b from-transparent via-wine/25 to-transparent" />
+            </div>
+            <div className="relative overflow-hidden rounded-[2rem] border border-wine/12 bg-gradient-to-b from-white/60 via-parchment to-wine/[0.04] p-8 shadow-[0_32px_90px_-40px_rgba(74,47,37,0.22)] ring-1 ring-wine/[0.06] backdrop-blur-sm sm:p-10 md:p-12">
+              <div
+                className="pointer-events-none absolute -right-24 top-1/2 h-[min(70vw,420px)] w-[min(70vw,420px)] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(74,47,37,0.06)_0%,transparent_65%)]"
+                aria-hidden
+              />
+              <div className="relative mx-auto max-w-3xl text-center">
+                <div className="mb-5 flex flex-col items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-wine/10 bg-white/50 text-wine shadow-sm">
+                    <Map className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+                  </span>
+                  <SectionLabel>Horizon</SectionLabel>
+                </div>
+                <h2
+                  id="about-roadmap-heading"
+                  className="text-balance text-3xl font-semibold tracking-tight text-ink md:text-4xl lg:text-[2.5rem]"
+                >
+                  {content.roadmap.title}
+                </h2>
+                <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-ink/60 md:text-base">
+                  What we are building next with artists and partners—layered onto the same
+                  platform you use today, so nothing you publish now is left behind.
+                </p>
+              </div>
+              <div className="relative mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
+                {content.roadmap.sections.map((item, idx) => {
+                  const Icon = roadmapIcons[idx] ?? Blocks;
+                  return (
+                    <div
+                      key={`${item.title}-${idx}`}
+                      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-wine/10 bg-white/55 p-6 shadow-sm ring-1 ring-black/[0.02] transition-all duration-300 hover:-translate-y-0.5 hover:border-wine/18 hover:bg-white/70 hover:shadow-lg hover:shadow-wine/10 md:p-7"
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-y-3 left-0 w-px bg-gradient-to-b from-wine/35 via-wine/15 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                        aria-hidden
+                      />
+                      <div className="mb-5 flex items-start justify-between gap-3">
+                        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine/[0.09] text-wine transition-colors duration-300 group-hover:bg-wine/[0.14]">
+                          <Icon className="h-5 w-5" strokeWidth={1.5} />
+                        </span>
+                        <span className="select-none pt-0.5 font-mono text-[10px] font-medium tabular-nums tracking-widest text-wine/35">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <h3 className="mb-2.5 text-lg font-semibold tracking-tight text-ink md:text-xl">
+                        {item.title}
+                      </h3>
+                      <p className="text-sm leading-relaxed text-ink/65 md:text-[15px]">
+                        {item.content}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </section>
         </AboutReveal>

@@ -38,11 +38,58 @@ export type AboutContent = {
       photo_url?: string | null;
     }>;
   };
+  roadmap: {
+    title: string;
+    sections: Array<{
+      title: string;
+      content: string;
+    }>;
+  };
   callToAction: {
     title: string;
     description: string;
   };
 };
+
+/** Default roadmap when JSON predates this section or sections are empty. */
+export const DEFAULT_ROADMAP: AboutContent['roadmap'] = {
+  title: 'Roadmap',
+  sections: [
+    {
+      title: 'Blockchain verification',
+      content:
+        'Coming soon: All certificates and provenance records will be secured on the Avalanche blockchain, ensuring immutability and permanent verification. This blockchain-backed system provides an unalterable record that can be trusted by collectors, auction houses, and museums worldwide.',
+    },
+    {
+      title: 'Certificates in the mail',
+      content:
+        'Order premium printed certificates of authenticity, mailed to your studio or directly to a collector. Pair the live digital record with a physical document for vault files, shipments, and the wall-adjacent story of the work.',
+    },
+    {
+      title: 'ProvenData API',
+      content:
+        'An API for data provenance: who touched a dataset, how it was transformed, and where it moved next—so teams can show lineage and custody with clarity. Designed with European operators in mind, it supports audit-friendly workflows that sit alongside GDPR-era expectations for traceability and defensible documentation.',
+    },
+    {
+      title: 'Planets',
+      content:
+        'Deploy dedicated planets that work like the Artworks planet—same certificate, custody, and verification flows—scoped to a vertical, estate, partner program, or white-label brand. Spin up a world without re-implementing the core stack.',
+    },
+  ],
+};
+
+function applyAboutDefaults(data: AboutContent): AboutContent {
+  const hasRoadmap =
+    data.roadmap &&
+    typeof data.roadmap.title === 'string' &&
+    Array.isArray(data.roadmap.sections) &&
+    data.roadmap.sections.length > 0;
+
+  if (hasRoadmap) {
+    return data;
+  }
+  return { ...data, roadmap: DEFAULT_ROADMAP };
+}
 
 /**
  * Read about page content from JSON file
@@ -50,7 +97,8 @@ export type AboutContent = {
 export async function getAboutContent(): Promise<AboutContent> {
   try {
     const fileContents = await fs.readFile(ABOUT_CONTENT_PATH, 'utf8');
-    return JSON.parse(fileContents) as AboutContent;
+    const parsed = JSON.parse(fileContents) as AboutContent;
+    return applyAboutDefaults(parsed);
   } catch (error) {
     // If file doesn't exist, try to create it with default content
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -85,10 +133,6 @@ export async function getAboutContent(): Promise<AboutContent> {
             {
               title: "Provenance Tracking",
               content: "Maintain a complete chain of custody for your artwork. Document every sale, transfer, and location change. Know where your art has been sold, who has owned it, and where it currently resides. This comprehensive history adds value and authenticity to your work."
-            },
-            {
-              title: "Blockchain Verification",
-              content: "Coming soon: All certificates and provenance records will be secured on the Avalanche blockchain, ensuring immutability and permanent verification. This blockchain-backed system provides an unalterable record that can be trusted by collectors, auction houses, and museums worldwide."
             }
           ]
         },
@@ -122,6 +166,7 @@ export async function getAboutContent(): Promise<AboutContent> {
             }
           ]
         },
+        roadmap: DEFAULT_ROADMAP,
         callToAction: {
           title: "Get Started",
           description: "Begin documenting your artwork's journey today. Create your first certificate of authenticity and start building the provenance record that will protect and enhance your work's value for years to come."
@@ -164,12 +209,23 @@ export async function updateAboutContent(content: AboutContent) {
     }
 
     // Validate content structure
-    if (!content.header || !content.mission || !content.whatWeProvide || !content.whyItMatters || !content.founders || !content.callToAction) {
+    const normalized = applyAboutDefaults(content);
+
+    if (
+      !normalized.header ||
+      !normalized.mission ||
+      !normalized.whatWeProvide ||
+      !normalized.whyItMatters ||
+      !normalized.founders ||
+      !normalized.roadmap ||
+      !normalized.callToAction
+    ) {
       return { error: 'Invalid content structure' };
     }
 
     // Write to file
-    await fs.writeFile(ABOUT_CONTENT_PATH, JSON.stringify(content, null, 2), 'utf8');
+    await fs.writeFile(ABOUT_CONTENT_PATH, JSON.stringify(normalized, null, 2), 'utf8');
+    console.log('[About] updateAboutContent wrote about-content.json');
 
     // Revalidate the about page
     revalidatePath('/about');

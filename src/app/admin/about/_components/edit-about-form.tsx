@@ -329,6 +329,59 @@ export function EditAboutForm({ initialContent }: { initialContent: AboutContent
         ))}
       </div>
 
+      {/* Roadmap Section */}
+      <div className="border-4 border-double border-wine p-6 space-y-4">
+        <h2 className="font-display text-2xl text-wine">Roadmap</h2>
+        <div>
+          <Label htmlFor="roadmap-title">Title</Label>
+          <Input
+            id="roadmap-title"
+            value={content.roadmap.title}
+            onChange={(e) => setContent({
+              ...content,
+              roadmap: { ...content.roadmap, title: e.target.value }
+            })}
+            className="mt-1"
+          />
+        </div>
+        {content.roadmap.sections.map((section, idx) => (
+          <div key={idx} className="border border-wine/30 p-4 space-y-2">
+            <div>
+              <Label htmlFor={`roadmap-section-title-${idx}`}>Roadmap card {idx + 1} title</Label>
+              <Input
+                id={`roadmap-section-title-${idx}`}
+                value={section.title}
+                onChange={(e) => {
+                  const newSections = [...content.roadmap.sections];
+                  newSections[idx] = { ...newSections[idx], title: e.target.value };
+                  setContent({
+                    ...content,
+                    roadmap: { ...content.roadmap, sections: newSections }
+                  });
+                }}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`roadmap-section-content-${idx}`}>Roadmap card {idx + 1} content</Label>
+              <Textarea
+                id={`roadmap-section-content-${idx}`}
+                value={section.content}
+                onChange={(e) => {
+                  const newSections = [...content.roadmap.sections];
+                  newSections[idx] = { ...newSections[idx], content: e.target.value };
+                  setContent({
+                    ...content,
+                    roadmap: { ...content.roadmap, sections: newSections }
+                  });
+                }}
+                className="mt-1 min-h-[100px]"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Call to Action Section */}
       <div className="border-4 border-double border-wine p-6 space-y-4">
         <h2 className="font-display text-2xl text-wine">Call to Action</h2>
