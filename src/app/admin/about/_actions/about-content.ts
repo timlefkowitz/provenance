@@ -56,11 +56,6 @@ const DEFAULT_ROADMAP: AboutContent['roadmap'] = {
   title: 'Roadmap',
   sections: [
     {
-      title: 'Blockchain verification',
-      content:
-        'Coming soon: All certificates and provenance records will be secured on the Avalanche blockchain, ensuring immutability and permanent verification. This blockchain-backed system provides an unalterable record that can be trusted by collectors, auction houses, and museums worldwide.',
-    },
-    {
       title: 'Certificates in the mail',
       content:
         'Order premium printed certificates of authenticity, mailed to your studio or directly to a collector. Pair the live digital record with a physical document for vault files, shipments, and the wall-adjacent story of the work.',

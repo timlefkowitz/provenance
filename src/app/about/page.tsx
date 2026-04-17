@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
-  Blocks,
   Building2,
   Database,
   FileCheck2,
@@ -22,7 +21,7 @@ import { getAboutContent } from "../admin/about/_actions/about-content";
 export const metadata = {
   title: "About | Provenance",
   description:
-    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs, roadmap including valuation, blockchain, physical COAs, data compliance, and planets.",
+    "Learn about Provenance: certificates, institutional tools, provenance tracking, APIs, roadmap including valuation, physical COAs, data compliance, and planets.",
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -35,7 +34,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 const serviceIcons = [FileCheck2, Building2, Plug, History] as const;
 
-const roadmapIcons = [Blocks, Mail, Database, Globe2, Scale] as const;
+const roadmapIcons = [Mail, Database, Globe2, Scale] as const;
 
 export default async function AboutPage() {
   const content = await getAboutContent();
@@ -260,7 +259,7 @@ export default async function AboutPage() {
               </div>
               <div className="relative mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                 {content.roadmap.sections.map((item, idx) => {
-                  const Icon = roadmapIcons[idx] ?? Blocks;
+                  const Icon = roadmapIcons[idx] ?? Mail;
                   return (
                     <div
                       key={`${item.title}-${idx}`}
