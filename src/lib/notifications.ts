@@ -20,6 +20,7 @@ export type NotificationType =
   | 'artist_claim_denied'
   | 'artist_claim_other_certificates'
   | 'artwork_favorited'
+  | 'provenance_service_request'
   | 'message';
 
 export interface CreateNotificationParams {

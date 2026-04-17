@@ -3,7 +3,15 @@
 import { useState, useTransition, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Circle, AlertCircle, MessageSquare, FileText, UserPlus } from 'lucide-react';
+import {
+  CheckCircle2,
+  Circle,
+  AlertCircle,
+  MessageSquare,
+  FileText,
+  UserPlus,
+  ScrollText,
+} from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { markNotificationAsRead } from '~/lib/notifications';
 import { claimCertificate } from '~/app/artworks/[id]/_actions/claim-certificate';
@@ -95,6 +103,8 @@ export function NotificationsList({
         return <UserPlus className="h-5 w-5" />;
       case 'message':
         return <MessageSquare className="h-5 w-5" />;
+      case 'provenance_service_request':
+        return <ScrollText className="h-5 w-5" />;
       default:
         return <AlertCircle className="h-5 w-5" />;
     }
@@ -117,6 +127,8 @@ export function NotificationsList({
         return 'text-red-600';
       case 'artist_claim_other_certificates':
         return 'text-ink';
+      case 'provenance_service_request':
+        return 'text-wine';
       default:
         return 'text-ink';
     }
@@ -195,6 +207,18 @@ export function NotificationsList({
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
                           View Artwork
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'provenance_service_request' && notification.artwork_id && (
+                      <Link href={`/artworks/${notification.artwork_id}/certificate`}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          View certificate
                         </Button>
                       </Link>
                     )}

@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { useCurrentUser } from '~/hooks/use-current-user';
@@ -19,6 +19,7 @@ import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
 import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { requestProvenanceResearch } from '../_actions/request-provenance-research';
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
@@ -80,6 +81,7 @@ type Artwork = {
 export function CertificateOfAuthenticity({ 
   artwork, 
   isOwner = false,
+  canRequestProvenance = false,
   isAdmin = false,
   creatorInfo = null,
   exhibition = null,
@@ -89,6 +91,8 @@ export function CertificateOfAuthenticity({
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
+  /** Owner or gallery manager (CoS); server-computed */
+  canRequestProvenance?: boolean;
   isAdmin?: boolean;
   creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
   exhibition?: { 
@@ -115,6 +119,13 @@ export function CertificateOfAuthenticity({
   const [scanLocations, setScanLocations] = useState<ScanLocation[]>(initialScanLocations);
 
   const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
+  const [requestingProvenance, setRequestingProvenance] = useState(false);
+
+  const showProvenanceRequestCta =
+    canRequestProvenance &&
+    (certificateType === CERTIFICATE_TYPES.OWNERSHIP ||
+      certificateType === CERTIFICATE_TYPES.SHOW ||
+      certificateType === 'collection');
 
   const artistPublicHref = useMemo(
     () =>
@@ -419,6 +430,37 @@ export function CertificateOfAuthenticity({
       {/* Print controls - hidden when printing, only visible to owner */}
       <div className="container mx-auto px-4 py-4 sm:py-6 print:hidden">
         <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
+          {showProvenanceRequestCta && (
+            <Button
+              type="button"
+              variant="outline"
+              className="font-serif text-xs sm:text-sm border-wine/40 bg-parchment hover:bg-wine/10"
+              size="sm"
+              disabled={requestingProvenance || pending}
+              onClick={() => {
+                setRequestingProvenance(true);
+                startTransition(async () => {
+                  try {
+                    const result = await requestProvenanceResearch(artwork.id);
+                    if (result.success) {
+                      toast.success('Request sent. Our team has been notified and will follow up.');
+                      router.refresh();
+                    } else {
+                      toast.error(result.error || 'Could not send request');
+                    }
+                  } catch (e) {
+                    console.error('[Certificate] requestProvenanceResearch failed', e);
+                    toast.error('Could not send request. Please try again.');
+                  } finally {
+                    setRequestingProvenance(false);
+                  }
+                });
+              }}
+            >
+              <ScrollText className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" aria-hidden />
+              {requestingProvenance || pending ? 'Sending…' : 'Request provenance'}
+            </Button>
+          )}
           {isOwner && (
             <>
               <Button

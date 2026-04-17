@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
-import { isAdmin } from '~/lib/admin';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
+import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
+import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
+
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 
 export const metadata = {
@@ -66,7 +67,8 @@ export default async function CertificatePage({
         metadata,
         status,
         certificate_status,
-        certificate_type
+        certificate_type,
+        gallery_profile_id
       `)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
@@ -108,7 +110,8 @@ export default async function CertificatePage({
         metadata,
         status,
         certificate_status,
-        certificate_type
+        certificate_type,
+        gallery_profile_id
       `)
       .eq('id', id)
       .eq('status', 'verified')
@@ -124,6 +127,19 @@ export default async function CertificatePage({
 
   // Check if the current user is the owner
   const isOwner = !!(user && artwork.account_id === user.id);
+
+  let canRequestProvenanceAsGallery = false;
+  if (user && artwork.certificate_type === CERTIFICATE_TYPES.SHOW && artwork.gallery_profile_id) {
+    try {
+      canRequestProvenanceAsGallery = await canManageGallery(
+        user.id,
+        artwork.gallery_profile_id as string,
+      );
+    } catch (e) {
+      console.error('[Certificate] canManageGallery check failed', e);
+    }
+  }
+  const canRequestProvenance = isOwner || canRequestProvenanceAsGallery;
   
   // Get creator account info and check admin status in parallel
   let creatorInfo: { name: string; role: string | null } | null = null;
@@ -223,6 +239,7 @@ export default async function CertificatePage({
     <CertificateOfAuthenticity 
       artwork={artwork} 
       isOwner={isOwner} 
+      canRequestProvenance={canRequestProvenance}
       isAdmin={userIsAdmin}
       creatorInfo={creatorInfo}
       exhibition={exhibition}
