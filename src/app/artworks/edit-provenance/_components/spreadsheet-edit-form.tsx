@@ -156,8 +156,8 @@ function ExhibitionCombobox({
           aria-expanded={open}
           aria-label="Link to exhibition"
           className={cn(
-            'font-serif text-sm h-9 w-[200px] flex items-center justify-between rounded-md border border-wine/20 bg-background px-3 py-2 text-left',
-            'hover:border-wine/40 focus:outline-none focus:ring-1 focus:ring-wine/30',
+            'font-serif text-sm min-h-11 h-auto w-full max-w-full sm:h-9 sm:min-h-0 sm:w-[200px] flex items-center justify-between rounded-md border border-wine/20 bg-background px-3 py-2 text-left',
+            'hover:border-wine/40 focus:outline-none focus:ring-2 focus:ring-wine/30 focus:ring-offset-2 focus:ring-offset-parchment',
             !selected && 'text-ink/50',
           )}
         >
@@ -171,7 +171,10 @@ function ExhibitionCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[260px] p-0" align="start">
+      <PopoverContent
+        className="w-[min(calc(100vw-2rem),280px)] sm:w-[260px] p-0"
+        align="start"
+      >
         <Command>
           <CommandInput placeholder="Search exhibitions..." className="font-serif text-sm" />
           <CommandList>
@@ -527,13 +530,13 @@ export function SpreadsheetEditForm({
         </Alert>
       )}
 
-      <div className="space-y-2">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-          <p className="text-sm text-ink/70 font-serif">
-            Scroll to choose an artwork, then edit its details below.
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <p className="text-sm text-ink/70 font-serif leading-relaxed">
+            Swipe the row to browse pieces, tap to select or deselect, then edit below.
           </p>
-          <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto">
-            <div className="w-full sm:w-[280px]">
+          <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:min-w-0">
+            <div className="w-full min-w-0 sm:w-[280px]">
               <p className="text-xs text-ink/60 font-serif mb-1">Collection in viewer</p>
               <Select
                 value={selectedCollectionFilter}
@@ -561,7 +564,7 @@ export function SpreadsheetEditForm({
                 </SelectContent>
               </Select>
             </div>
-            <div className="w-full sm:w-[280px]">
+            <div className="w-full min-w-0 sm:w-[280px]">
               <p className="text-xs text-ink/60 font-serif mb-1">Search artworks</p>
               <Input
                 value={artworkSearchTerm}
@@ -573,15 +576,19 @@ export function SpreadsheetEditForm({
             </div>
           </div>
         </div>
-        <div className="max-w-full overflow-x-auto pb-2">
+        <div
+          className="max-w-full overflow-x-auto pb-3 -mx-1 px-1 scroll-pl-3 scroll-pr-3 snap-x snap-mandatory [scrollbar-width:thin] sm:scroll-pl-0 sm:scroll-pr-0 sm:mx-0 sm:px-0"
+          role="region"
+          aria-label="Artwork thumbnails"
+        >
           {filteredArtworks.length === 0 ? (
-            <div className="py-6 text-center">
-              <p className="text-sm text-ink/60 font-serif">
-                No artworks found for this collection filter.
+            <div className="py-8 text-center rounded-xl border border-dashed border-wine/20 bg-wine/[0.03]">
+              <p className="text-sm text-ink/60 font-serif px-4">
+                No artworks match this filter. Try “All collections” or clear search.
               </p>
             </div>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex gap-3 py-1">
               {filteredArtworks.map((artwork) => {
                 const isSelected = selectedArtworkIds.has(artwork.id);
                 return (
@@ -589,21 +596,23 @@ export function SpreadsheetEditForm({
                     key={artwork.id}
                     type="button"
                     onClick={() => toggleArtworkSelection(artwork.id)}
-                    className={`w-[132px] p-2 rounded-md border text-left transition-colors ${
+                    className={cn(
+                      'snap-start shrink-0 w-[min(9.25rem,calc(50vw-1.75rem))] sm:w-[132px] p-2 rounded-xl border text-left transition-all touch-manipulation',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
                       isSelected
-                        ? 'border-wine bg-wine/10'
-                        : 'border-wine/25 bg-wine/10 hover:bg-wine/10 opacity-70'
-                    }`}
+                        ? 'border-wine bg-wine/10 shadow-sm ring-1 ring-wine/20'
+                        : 'border-wine/20 bg-parchment/80 opacity-80 hover:opacity-100 active:scale-[0.99]',
+                    )}
                     aria-pressed={isSelected}
                   >
-                    <div className="relative w-full h-[92px] rounded overflow-hidden border border-wine/20 bg-ink/5">
+                    <div className="relative w-full aspect-[4/3] min-h-[5.5rem] rounded-lg overflow-hidden border border-wine/20 bg-ink/5">
                       {artwork.image_url ? (
                         <Image
                           src={artwork.image_url}
                           alt={artwork.title || 'Artwork'}
                           fill
                           className="object-cover"
-                          sizes="132px"
+                          sizes="(max-width:640px) 45vw, 132px"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -616,7 +625,7 @@ export function SpreadsheetEditForm({
                         </div>
                       ) : null}
                     </div>
-                    <p className="mt-2 text-xs font-serif text-ink truncate">
+                    <p className="mt-2 text-xs font-serif text-ink line-clamp-2 min-h-[2.25rem] text-left leading-snug">
                       {artwork.title || 'Untitled'}
                     </p>
                   </button>
@@ -625,16 +634,16 @@ export function SpreadsheetEditForm({
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-ink/60 font-serif">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <p className="text-xs text-ink/60 font-serif order-2 sm:order-1">
             {visibleArtworks.length} selected of {filteredArtworks.length} in view
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 order-1 sm:order-2 justify-end sm:justify-start">
             <Button
               type="button"
               variant="outline"
               onClick={handleSelectAll}
-              className="h-7 px-2 text-xs font-serif"
+              className="h-9 min-h-9 px-3 text-xs font-serif touch-manipulation sm:h-7 sm:min-h-0 sm:px-2"
             >
               Select all
             </Button>
@@ -642,7 +651,7 @@ export function SpreadsheetEditForm({
               type="button"
               variant="outline"
               onClick={handleClearSelection}
-              className="h-7 px-2 text-xs font-serif"
+              className="h-9 min-h-9 px-3 text-xs font-serif touch-manipulation sm:h-7 sm:min-h-0 sm:px-2"
             >
               Clear
             </Button>
@@ -651,7 +660,7 @@ export function SpreadsheetEditForm({
       </div>
 
       {/* Which extra fields appear in each row (below image, title, artist, description, value) */}
-      <div className="rounded-lg border border-wine/20 bg-parchment/50 px-4 py-3 space-y-3">
+      <div className="rounded-2xl border border-wine/15 bg-gradient-to-b from-parchment to-wine/[0.04] px-4 py-4 sm:px-5 space-y-3 shadow-sm">
         <div>
           <p className="text-xs font-display font-semibold uppercase tracking-wide text-wine">
             Fields in each artwork row
@@ -671,7 +680,7 @@ export function SpreadsheetEditForm({
                 variant={active ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => toggleOptionalPrimaryField(field)}
-                className="font-serif text-xs h-8 rounded-full border-wine/25"
+                className="font-serif text-xs h-9 sm:h-8 rounded-full border-wine/25 touch-manipulation"
                 aria-pressed={active}
               >
                 {OPTIONAL_PRIMARY_LABELS[field]}
@@ -682,7 +691,7 @@ export function SpreadsheetEditForm({
       </div>
 
       {/* Spreadsheet: one column per artwork — core fields + toggled extras */}
-      <div className="max-w-full overflow-x-auto border border-wine/20 rounded-lg bg-parchment/60">
+      <div className="max-w-full overflow-x-auto border border-wine/15 rounded-2xl bg-parchment/70 shadow-sm">
         {visibleArtworks.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-ink/70 font-serif">
@@ -691,10 +700,10 @@ export function SpreadsheetEditForm({
           </div>
         ) : (
           <table className="w-full min-w-0">
-            <thead className="bg-wine/10 sticky top-0 z-10">
+            <thead className="bg-wine/[0.08] sticky top-0 z-10 backdrop-blur-sm">
               <tr>
-                <th className="px-4 py-3 text-left font-display text-wine font-bold border-b border-wine/20">
-                  Image & title
+                <th className="px-3 py-3 sm:px-5 sm:py-3.5 text-left text-xs sm:text-sm font-display text-wine font-bold tracking-wide uppercase border-b border-wine/15">
+                  Artwork details
                 </th>
               </tr>
             </thead>
@@ -712,25 +721,25 @@ export function SpreadsheetEditForm({
                     key={artwork.id}
                     className="border-b border-wine/10 bg-wine/10 hover:bg-wine/15"
                   >
-                    <td className="px-4 py-4 align-top">
-                      <div className="max-w-xl space-y-4">
-                        <div className="flex gap-4">
+                    <td className="px-3 py-4 sm:px-5 align-top">
+                      <div className="max-w-xl min-w-0 space-y-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                           {artwork.image_url ? (
-                            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-wine/20 shadow-sm">
+                            <div className="relative mx-auto w-full max-w-[11rem] aspect-square sm:mx-0 sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg overflow-hidden border border-wine/20 shadow-sm">
                               <Image
                                 src={artwork.image_url}
                                 alt={data.title || artwork.title}
                                 fill
                                 className="object-cover"
-                                sizes="80px"
+                                sizes="(max-width:640px) 90vw, 80px"
                               />
                             </div>
                           ) : (
-                            <div className="w-20 h-20 flex-shrink-0 rounded-lg border border-wine/20 bg-ink/5 flex items-center justify-center">
+                            <div className="mx-auto w-full max-w-[11rem] aspect-square sm:mx-0 sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg border border-wine/20 bg-ink/5 flex items-center justify-center">
                               <span className="text-ink/30 text-xs font-serif">No image</span>
                             </div>
                           )}
-                          <div className="min-w-0 flex-1 space-y-2">
+                          <div className="min-w-0 flex-1 space-y-2 w-full">
                             <div className="space-y-1">
                               <Label className="text-xs font-serif text-ink/60">Title</Label>
                               <Input
@@ -1023,24 +1032,31 @@ export function SpreadsheetEditForm({
       </div>
 
       {/* Submit Button */}
-      <div className="flex gap-4 justify-end sticky bottom-0 bg-parchment py-4 border-t border-wine/20">
+      <div
+        className={cn(
+          'flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:items-center',
+          'sticky bottom-0 z-20 -mx-4 px-4 sm:mx-0 sm:px-0',
+          'border-t border-wine/20 bg-parchment/95 backdrop-blur-md py-4',
+          'pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4',
+        )}
+      >
         <Button
           type="button"
           variant="outline"
           onClick={() => router.push('/artworks/my')}
           disabled={pending}
-          className="font-serif"
+          className="font-serif h-11 w-full sm:h-10 sm:w-auto touch-manipulation"
         >
           Cancel
         </Button>
         <Button
           type="submit"
           disabled={pending || visibleArtworks.length === 0}
-          className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+          className="bg-wine text-parchment hover:bg-wine/90 font-serif h-11 w-full sm:h-10 sm:w-auto touch-manipulation"
         >
           {pending
             ? 'Saving...'
-            : `Save All Changes (${visibleArtworks.length} artworks selected)`}
+            : `Save changes (${visibleArtworks.length})`}
         </Button>
       </div>
     </form>
