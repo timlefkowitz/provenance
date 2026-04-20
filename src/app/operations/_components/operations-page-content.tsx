@@ -53,6 +53,7 @@ import {
   updateInvoice,
 } from '../_actions/invoices';
 import { LoanArtworkPicker } from './loan-artwork-picker';
+import { Clock } from 'lucide-react';
 
 type Props = {
   initialLoans: LoanAgreementRow[];
@@ -87,6 +88,23 @@ function insuranceSnippet(text: string | null) {
   if (!text?.trim()) return '—';
   const t = text.trim().replace(/\s+/g, ' ');
   return t.length > 48 ? `${t.slice(0, 48)}…` : t;
+}
+
+function ComingSoonTab({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="max-w-2xl rounded-md border border-wine/15 bg-parchment/40 p-8">
+      <Badge variant="secondary" className="mb-4 font-serif">
+        Coming soon
+      </Badge>
+      <div className="flex gap-4">
+        <Clock className="h-10 w-10 shrink-0 text-wine/40" aria-hidden />
+        <div>
+          <h3 className="font-display text-lg text-wine">{title}</h3>
+          <p className="mt-2 font-serif text-sm text-ink/70">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const loanStatuses = ['draft', 'sent', 'signed', 'active', 'closed'] as const;
@@ -356,12 +374,33 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
   return (
     <>
       <Tabs defaultValue="loans" className="w-full">
-        <TabsList className="mb-6 bg-parchment border border-wine/20">
+        <TabsList className="mb-6 flex h-auto min-h-10 w-full flex-wrap items-center justify-start gap-1 bg-parchment border border-wine/20">
           <TabsTrigger value="loans" className="font-serif data-[state=active]:bg-wine/10">
-            Loan agreements
+            Loan Management
           </TabsTrigger>
           <TabsTrigger value="invoices" className="font-serif data-[state=active]:bg-wine/10">
-            Invoices
+            Financial Tracking & Budgeting
+          </TabsTrigger>
+          <TabsTrigger value="shipping" className="font-serif data-[state=active]:bg-wine/10">
+            Shipping & Logistics Tracking
+          </TabsTrigger>
+          <TabsTrigger value="insurance" className="font-serif data-[state=active]:bg-wine/10">
+            Insurance & Valuation Management
+          </TabsTrigger>
+          <TabsTrigger value="condition" className="font-serif data-[state=active]:bg-wine/10">
+            Condition & Conservation Reports
+          </TabsTrigger>
+          <TabsTrigger value="acquisition" className="font-serif data-[state=active]:bg-wine/10">
+            Acquisition & Accession Workflows
+          </TabsTrigger>
+          <TabsTrigger value="exhibitions" className="font-serif data-[state=active]:bg-wine/10">
+            Exhibition Planning & Object Scheduling
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="font-serif data-[state=active]:bg-wine/10">
+            Inventory & Location Tracking
+          </TabsTrigger>
+          <TabsTrigger value="vendors" className="font-serif data-[state=active]:bg-wine/10">
+            Vendor & Partner Management
           </TabsTrigger>
         </TabsList>
 
@@ -658,6 +697,49 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="shipping">
+          <ComingSoonTab
+            title="Shipping & Logistics Tracking"
+            description="Track artwork shipments, couriers, crating, and transit insurance in one place."
+          />
+        </TabsContent>
+        <TabsContent value="insurance">
+          <ComingSoonTab
+            title="Insurance & Valuation Management"
+            description="Schedule appraisals, manage policies, and link valuations to objects in your collection."
+          />
+        </TabsContent>
+        <TabsContent value="condition">
+          <ComingSoonTab
+            title="Condition & Conservation Reports"
+            description="Store condition reports, conservation treatments, and inspection notes over time."
+          />
+        </TabsContent>
+        <TabsContent value="acquisition">
+          <ComingSoonTab
+            title="Acquisition & Accession Workflows"
+            description="Document accession numbers, provenance checks, and intake workflows from offer to catalog."
+          />
+        </TabsContent>
+        <TabsContent value="exhibitions">
+          <ComingSoonTab
+            title="Exhibition Planning & Object Scheduling"
+            description="Plan venues, loan requests, object availability, and install schedules across shows."
+          />
+        </TabsContent>
+        <TabsContent value="inventory">
+          <ComingSoonTab
+            title="Inventory & Location Tracking"
+            description="See current storage locations, moves, and counts tied to artworks and crates."
+          />
+        </TabsContent>
+        <TabsContent value="vendors">
+          <ComingSoonTab
+            title="Vendor & Partner Management"
+            description="Maintain framers, shippers, conservators, and other partners in one directory."
+          />
         </TabsContent>
       </Tabs>
 
