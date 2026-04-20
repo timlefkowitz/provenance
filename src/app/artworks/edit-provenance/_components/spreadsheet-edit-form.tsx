@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Check, ChevronsUpDown, Eye, Sparkles, X } from 'lucide-react';
+import { PrintQRSheet } from './print-qr-sheet';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -1023,6 +1024,10 @@ export function SpreadsheetEditForm({
             >
               Clear
             </Button>
+            <PrintQRSheet
+              artworks={artworks}
+              selectedArtworkIds={selectedArtworkIds}
+            />
           </div>
         </div>
       </div>
