@@ -58,14 +58,15 @@ function disabledTitle(
   recipient: 'artist' | 'collector' | 'gallery' | 'institution',
   senderRole: UserRole | null | undefined,
 ): string {
+  const roleLabel = senderRole ? senderRole.charAt(0).toUpperCase() + senderRole.slice(1) : 'Your';
   switch (recipient) {
     case 'artist':
-      return 'Send artist invite from gallery, institution or collector accounts';
+      return `${roleLabel} account can't send artist invites — switch to a gallery, institution or collector account`;
     case 'collector':
-      return 'Send collector invite from an artist account';
+      return `Only artists can invite collectors (${roleLabel} accounts can't send this)`;
     case 'gallery':
     case 'institution':
-      return 'Send gallery/institution invite from an artist account';
+      return `Only artists can invite galleries or institutions (${roleLabel} accounts can't send this)`;
     default:
       return 'Not available for your account type';
   }

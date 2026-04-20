@@ -3,7 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { normalizeInviteEmail, generateClaimToken, hashClaimToken } from '~/lib/certificate-claims/tokens';
-import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { CERTIFICATE_TYPES, USER_ROLES, getUserRole } from '~/lib/user-roles';
 import { sendArtistCoaInviteEmail } from '~/lib/certificate-claims/send-certificate-invite-email';
 import { logger } from '~/lib/logger';
 
@@ -32,7 +32,7 @@ export async function sendArtistClaimInvite(
 
     const { data: artwork, error: artworkError } = await (client as any)
       .from('artworks')
-      .select('id, account_id, title, artist_name, certificate_type')
+      .select('id, account_id, title, artist_name, certificate_type, certificate_status')
       .eq('id', artworkId)
       .single();
 
@@ -45,13 +45,33 @@ export async function sendArtistClaimInvite(
       return { success: false, error: 'Only the certificate owner can send this invite' };
     }
 
+    // Primary path: use the stored certificate_type.
+    // Fallback: for legacy rows where certificate_type is missing or set to
+    // 'authenticity' but the record is clearly pending an artist claim, derive
+    // the claim kind from the owner account's role so gallery/collector
+    // uploads from before the role-aware logic still work.
     const certType = artwork.certificate_type || 'authenticity';
-    let claimKind: 'artist_coa_from_show' | 'artist_coa_from_coo';
+    let claimKind: 'artist_coa_from_show' | 'artist_coa_from_coo' | null = null;
+
     if (certType === CERTIFICATE_TYPES.SHOW) {
       claimKind = 'artist_coa_from_show';
     } else if (certType === CERTIFICATE_TYPES.OWNERSHIP) {
       claimKind = 'artist_coa_from_coo';
-    } else {
+    } else if (artwork.certificate_status === 'pending_artist_claim') {
+      const { data: ownerAccount } = await (client as any)
+        .from('accounts')
+        .select('public_data')
+        .eq('id', artwork.account_id)
+        .single();
+      const ownerRole = getUserRole(ownerAccount?.public_data as Record<string, any> | null);
+      if (ownerRole === USER_ROLES.GALLERY || ownerRole === USER_ROLES.INSTITUTION) {
+        claimKind = 'artist_coa_from_show';
+      } else if (ownerRole === USER_ROLES.COLLECTOR) {
+        claimKind = 'artist_coa_from_coo';
+      }
+    }
+
+    if (!claimKind) {
       return {
         success: false,
         error: 'Artist claim invite can only be sent from a Certificate of Show or Certificate of Ownership',
