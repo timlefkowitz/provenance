@@ -15,6 +15,20 @@ const INTERNAL_PACKAGES = [
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  async redirects() {
+    // Enforce www as the canonical domain. Any request to the apex domain
+    // is permanently redirected so Google only indexes one version.
+    return IS_PRODUCTION
+      ? [
+          {
+            source: '/:path*',
+            has: [{ type: 'host', value: 'provenance.guru' }],
+            destination: 'https://www.provenance.guru/:path*',
+            permanent: true,
+          },
+        ]
+      : [];
+  },
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
   images: {

@@ -1,7 +1,7 @@
-import Image from 'next/image';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { ArrowRightIcon, LayoutDashboard } from 'lucide-react';
+import { ArrowRightIcon, ShieldCheck } from 'lucide-react';
 
 import {
   CtaButton,
@@ -12,108 +12,161 @@ import {
   Hero,
   Pill,
 } from '@kit/ui/marketing';
-import { Trans } from '@kit/ui/trans';
 
 import { PersonaInternalLinks } from '~/(marketing)/_components/persona-internal-links';
+import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: appConfig.url,
+  },
+  keywords: [
+    'certificate of authenticity',
+    'art provenance',
+    'provenance registry',
+    'artwork documentation',
+    'certificate of ownership',
+    'gallery management software',
+    'artist CRM',
+    'collection management',
+    'open calls art',
+    'art authentication',
+    'museum collection software',
+  ],
+};
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: appConfig.name,
+    url: appConfig.url,
+    description: appConfig.description,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: appConfig.name,
+    url: appConfig.url,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${appConfig.url}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  },
+];
 
 function Home() {
   return (
-    <div className={'mt-4 flex flex-col space-y-24 py-14'}>
-      <div className={'container mx-auto'}>
-        <Hero
-          pill={
-            <Pill label={'New'}>
-              <span>The leading SaaS Starter Kit for ambitious developers</span>
-            </Pill>
-          }
-          title={
-            <>
-              <span>The ultimate SaaS Starter</span>
-              <span>for your next project</span>
-            </>
-          }
-          subtitle={
-            <span>
-              Build and Ship a SaaS faster than ever before with the next-gen
-              SaaS Starter Kit. Ship your SaaS in days, not months.
-            </span>
-          }
-          cta={<MainCallToActionButton />}
-          image={
-            <Image
-              priority
-              className={
-                'dark:border-primary/10 rounded-2xl border border-gray-200'
-              }
-              width={3558}
-              height={2222}
-              src={`/images/dashboard.webp`}
-              alt={`App Image`}
-            />
-          }
-        />
-      </div>
+    <>
+      <script
+        key="ld:json"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
-      <div className={'container mx-auto max-w-5xl px-4'}>
-        <PersonaInternalLinks />
-      </div>
-
-      <div className={'container mx-auto'}>
-        <div
-          className={'flex flex-col space-y-16 xl:space-y-32 2xl:space-y-36'}
-        >
-          <FeatureShowcase
-            heading={
-              <>
-                <b className="font-semibold dark:text-white">
-                  The ultimate SaaS Starter Kit
-                </b>
-                .{' '}
-                <span className="text-muted-foreground font-normal">
-                  Unleash your creativity and build your SaaS faster than ever
-                  with Makerkit.
+      <div className={'mt-4 flex flex-col space-y-24 py-14'}>
+        <div className={'container mx-auto'}>
+          <Hero
+            pill={
+              <Pill label={'Registry'}>
+                <span>
+                  For artists, collectors, galleries, and institutions
                 </span>
+              </Pill>
+            }
+            title={
+              <>
+                <span>Provenance for every</span>
+                <span>artwork, object, and transfer</span>
               </>
             }
-            icon={
-              <FeatureShowcaseIconContainer>
-                <LayoutDashboard className="h-5" />
-                <span>All-in-one solution</span>
-              </FeatureShowcaseIconContainer>
+            subtitle={
+              <span>
+                The registry where artists issue certificates, collectors build
+                defensible records, galleries run shows, and institutions track
+                custody — all on one verifiable platform.
+              </span>
+            }
+            cta={<MainCallToActionButton />}
+          />
+        </div>
+
+        <div className={'container mx-auto max-w-5xl px-4'}>
+          <PersonaInternalLinks />
+        </div>
+
+        <div className={'container mx-auto'}>
+          <div
+            className={
+              'flex flex-col space-y-16 xl:space-y-32 2xl:space-y-36'
             }
           >
-            <FeatureGrid>
-              <FeatureCard
-                className={'relative col-span-2 overflow-hidden'}
-                label={'Beautiful Dashboard'}
-                description={`Makerkit provides a beautiful dashboard to manage your SaaS business.`}
-              />
+            <FeatureShowcase
+              heading={
+                <>
+                  <b className="font-semibold dark:text-white">
+                    The complete provenance stack.
+                  </b>{' '}
+                  <span className="text-muted-foreground font-normal">
+                    One platform for certificates, registries, and everyone who
+                    depends on them.
+                  </span>
+                </>
+              }
+              icon={
+                <FeatureShowcaseIconContainer>
+                  <ShieldCheck className="h-5" />
+                  <span>Trust by design</span>
+                </FeatureShowcaseIconContainer>
+              }
+            >
+              <FeatureGrid>
+                <FeatureCard
+                  className={'relative col-span-2 overflow-hidden'}
+                  label={'Certificates of Authenticity'}
+                  description={
+                    'Artist-first CoA workflows with claim, verify, and publish states. A structured digital record stronger than a PDF stored in email.'
+                  }
+                />
 
-              <FeatureCard
-                className={
-                  'relative col-span-2 w-full overflow-hidden lg:col-span-1'
-                }
-                label={'Authentication'}
-                description={`Makerkit provides a variety of providers to allow your users to sign in.`}
-              />
+                <FeatureCard
+                  className={
+                    'relative col-span-2 w-full overflow-hidden lg:col-span-1'
+                  }
+                  label={'Collector Records'}
+                  description={
+                    'Ownership certificates tied to rich provenance fields — auction history, former owners, and private drafts you control.'
+                  }
+                />
 
-              <FeatureCard
-                className={'relative col-span-2 overflow-hidden lg:col-span-1'}
-                label={'Multi Tenancy'}
-                description={`Multi tenant memberships for your SaaS business.`}
-              />
+                <FeatureCard
+                  className={
+                    'relative col-span-2 overflow-hidden lg:col-span-1'
+                  }
+                  label={'Gallery & Open Calls'}
+                  description={
+                    'Exhibitions, submission windows, and staff permissions in one system. Certificates of show aligned to gallery workflows.'
+                  }
+                />
 
-              <FeatureCard
-                className={'relative col-span-2 overflow-hidden'}
-                label={'Billing'}
-                description={`Makerkit supports multiple payment gateways to charge your customers.`}
-              />
-            </FeatureGrid>
-          </FeatureShowcase>
+                <FeatureCard
+                  className={'relative col-span-2 overflow-hidden'}
+                  label={'Institution-Grade Tools'}
+                  description={
+                    'Loans, invoicing, accessioning, and an append-only audit trail. Scoped API keys for partner verification — built for the standards museums and foundations require.'
+                  }
+                />
+              </FeatureGrid>
+            </FeatureShowcase>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -125,9 +178,7 @@ function MainCallToActionButton() {
       <CtaButton>
         <Link href={'/auth/sign-up'}>
           <span className={'flex items-center space-x-0.5'}>
-            <span>
-              <Trans i18nKey={'common:getStarted'} />
-            </span>
+            <span>Start free</span>
 
             <ArrowRightIcon
               className={
@@ -140,8 +191,8 @@ function MainCallToActionButton() {
       </CtaButton>
 
       <CtaButton variant={'link'}>
-        <Link href={'/contact'}>
-          <Trans i18nKey={'common:contactUs'} />
+        <Link href={'/create-certificate-of-authenticity'}>
+          How certificates work
         </Link>
       </CtaButton>
     </div>

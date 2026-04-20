@@ -10,43 +10,48 @@ import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 export const generateMetadata = async () => {
-  const { t } = await createI18nServerInstance();
-
   return {
-    title: t('marketing:faq'),
+    title: 'FAQ — Provenance | Certificates, Registries & Art Provenance',
+    description:
+      'Answers to common questions about Provenance — certificates of authenticity, collection records, gallery tools, and how the provenance registry works.',
   };
 };
 
 async function FAQPage() {
   const { t } = await createI18nServerInstance();
 
-  // replace this content with translations
   const faqItems = [
     {
-      // or: t('marketing:faq.question1')
-      question: `Do you offer a free trial?`,
-      // or: t('marketing:faq.answer1')
-      answer: `Yes, we offer a 14-day free trial. You can cancel at any time during the trial period and you won't be charged.`,
+      question: `What is Provenance?`,
+      answer: `Provenance is a registry platform for artworks, collectibles, and objects. Artists issue certificates of authenticity, collectors build ownership records with full provenance history, galleries manage exhibitions and open calls, and institutions track custody with an append-only audit trail — all on one verifiable platform.`,
     },
     {
-      question: `Can I cancel my subscription?`,
-      answer: `You can cancel your subscription at any time. You can do this from your account settings.`,
+      question: `Is there a free plan?`,
+      answer: `Yes. You can start free and register your first artworks without entering a credit card. Paid plans unlock higher volume, advanced certificate workflows, and institution-grade features.`,
     },
     {
-      question: `Where can I find my invoices?`,
-      answer: `You can find your invoices in your account settings.`,
+      question: `What is a certificate of authenticity on Provenance?`,
+      answer: `It is a structured digital record tied to your artwork that moves through artist claim, owner verification, and public verified states. It is stronger than a PDF stored in email because it carries provenance history, custody transfers, and a clear audit trail that travels with the object.`,
     },
     {
-      question: `What payment methods do you accept?`,
-      answer: `We accept all major credit cards and PayPal.`,
+      question: `What types of certificates does Provenance support?`,
+      answer: `Provenance supports certificates of authenticity (artist-issued), certificates of ownership (collector-facing), certificates of show (gallery-issued), and certificates of intermediary (for institutions handling consignment and loans). All share a unified registry so authenticity, title, and handoff context stay aligned.`,
     },
     {
-      question: `Can I upgrade or downgrade my plan?`,
-      answer: `Yes, you can upgrade or downgrade your plan at any time. You can do this from your account settings.`,
+      question: `Can I keep my artworks and collection private?`,
+      answer: `Yes. Objects support private draft, published, and verified visibility states. You control what appears in public feeds and what is shared only with advisors, galleries, or counterparties — without losing the structured provenance record underneath.`,
     },
     {
-      question: `Do you offer discounts for non-profits?`,
-      answer: `Yes, we offer a 50% discount for non-profits. Please contact us to learn more.`,
+      question: `Who is Provenance for?`,
+      answer: `Provenance is built for artists who want a defensible record from day one, collectors who need ownership documentation that survives resale, galleries running exhibitions and open calls, and museums or foundations that require loans, invoicing, accessioning, and API-level verification for partner institutions.`,
+    },
+    {
+      question: `How do galleries use Provenance for open calls and exhibitions?`,
+      answer: `Galleries can create exhibitions and link artworks, manage staff with team permissions, and publish open calls with submission open and close dates, call types, and location eligibility. Artists see only the calls they are eligible to apply to.`,
+    },
+    {
+      question: `What makes a digital certificate of authenticity better than a PDF?`,
+      answer: `A PDF freezes time. A Provenance certificate is a living record: it can receive custody transfers, provenance updates, exhibition history, and conservation notes without replacing or reprinting the original. Corrections go through structured update requests, so there is an audit trail instead of a silent edit.`,
     },
   ];
 

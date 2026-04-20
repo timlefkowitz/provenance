@@ -13,6 +13,9 @@ export const generateRootMetadata = async (): Promise<Metadata> => {
   const csrfToken = headersStore.get('x-csrf-token') ?? '';
   const defaultOg = new URL('/opengraph-image', appConfig.url).href;
 
+  const googleVerification =
+    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
+
   return {
     title: appConfig.title,
     description: appConfig.description,
@@ -21,6 +24,9 @@ export const generateRootMetadata = async (): Promise<Metadata> => {
     other: {
       'csrf-token': csrfToken,
     },
+    ...(googleVerification && {
+      verification: { google: googleVerification },
+    }),
     openGraph: {
       url: appConfig.url,
       siteName: appConfig.name,
