@@ -18,7 +18,7 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(PERSPECTIVE_KEY);
-      if (saved && (saved === USER_ROLES.ARTIST || saved === USER_ROLES.COLLECTOR || saved === USER_ROLES.GALLERY)) {
+      if (saved && (saved === USER_ROLES.ARTIST || saved === USER_ROLES.COLLECTOR || saved === USER_ROLES.GALLERY || saved === USER_ROLES.INSTITUTION)) {
         setPerspective(saved as UserRole);
       }
     }
@@ -88,6 +88,19 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
           >
             Gallery
           </Button>
+          <Button
+            variant={perspective === USER_ROLES.INSTITUTION ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePerspectiveChange(USER_ROLES.INSTITUTION)}
+            className={cn(
+              'w-full justify-start font-serif text-sm',
+              perspective === USER_ROLES.INSTITUTION
+                ? 'bg-wine text-parchment hover:bg-wine/90'
+                : 'border-wine text-ink hover:bg-wine/10'
+            )}
+          >
+            Institution
+          </Button>
         </div>
       </div>
     );
@@ -131,6 +144,15 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
             Gallery
           </Label>
         </div>
+        <div className="flex items-center space-x-3">
+          <RadioGroupItem value={USER_ROLES.INSTITUTION} id="institution" className="border-wine" />
+          <Label
+            htmlFor="institution"
+            className="font-serif text-sm cursor-pointer flex-1 text-ink"
+          >
+            Institution
+          </Label>
+        </div>
       </RadioGroup>
     </div>
   );
@@ -145,7 +167,7 @@ export function getPerspective(): UserRole {
   }
   
   const saved = localStorage.getItem(PERSPECTIVE_KEY);
-  if (saved && (saved === USER_ROLES.ARTIST || saved === USER_ROLES.COLLECTOR || saved === USER_ROLES.GALLERY)) {
+  if (saved && (saved === USER_ROLES.ARTIST || saved === USER_ROLES.COLLECTOR || saved === USER_ROLES.GALLERY || saved === USER_ROLES.INSTITUTION)) {
     return saved as UserRole;
   }
   

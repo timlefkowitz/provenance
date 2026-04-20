@@ -44,6 +44,7 @@ export function RoleModeSwitcher({
     { value: USER_ROLES.ARTIST, label: getRoleLabel(USER_ROLES.ARTIST) },
     { value: USER_ROLES.COLLECTOR, label: getRoleLabel(USER_ROLES.COLLECTOR) },
     { value: USER_ROLES.GALLERY, label: getRoleLabel(USER_ROLES.GALLERY) },
+    { value: USER_ROLES.INSTITUTION, label: getRoleLabel(USER_ROLES.INSTITUTION) },
   ];
 
   return (

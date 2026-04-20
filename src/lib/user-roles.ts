@@ -6,6 +6,7 @@ export const USER_ROLES = {
   COLLECTOR: 'collector',
   ARTIST: 'artist',
   GALLERY: 'gallery',
+  INSTITUTION: 'institution',
 } as const;
 
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
@@ -17,6 +18,7 @@ export const ALL_USER_ROLES: UserRole[] = [
   USER_ROLES.COLLECTOR,
   USER_ROLES.ARTIST,
   USER_ROLES.GALLERY,
+  USER_ROLES.INSTITUTION,
 ];
 
 /**
@@ -35,6 +37,7 @@ export function getRoleLabel(role: UserRole): string {
     [USER_ROLES.COLLECTOR]: 'Collector',
     [USER_ROLES.ARTIST]: 'Artist',
     [USER_ROLES.GALLERY]: 'Gallery',
+    [USER_ROLES.INSTITUTION]: 'Institution',
   };
   return labels[role] || role;
 }
@@ -63,6 +66,7 @@ export type CertificateType = typeof CERTIFICATE_TYPES[keyof typeof CERTIFICATE_
 
 export function getCertificateTypeForRole(role: UserRole | null): CertificateType {
   if (role === USER_ROLES.GALLERY) return CERTIFICATE_TYPES.SHOW;
+  if (role === USER_ROLES.INSTITUTION) return CERTIFICATE_TYPES.SHOW;
   if (role === USER_ROLES.COLLECTOR) return CERTIFICATE_TYPES.OWNERSHIP;
   return CERTIFICATE_TYPES.AUTHENTICITY;
 }

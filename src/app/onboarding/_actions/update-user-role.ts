@@ -15,7 +15,7 @@ export async function updateUserRole(role: string) {
 
   // Validate role
   if (!isValidRole(role)) {
-    throw new Error('Invalid role. Must be collector, artist, or gallery.');
+    throw new Error('Invalid role. Must be collector, artist, gallery, or institution.');
   }
 
   // Get existing public data

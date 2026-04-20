@@ -301,7 +301,9 @@ export function ProfileAccountDropdownContainer(props: {
                         href={
                           profile.role === USER_ROLES.GALLERY
                             ? `/artists/${userId}?role=gallery&profileId=${profile.id}`
-                            : `/artists/${userId}?role=${profile.role}`
+                            : profile.role === USER_ROLES.INSTITUTION
+                              ? `/artists/${userId}?role=institution&profileId=${profile.id}`
+                              : `/artists/${userId}?role=${profile.role}`
                         }
                         className={cn(rowClass, 'flex items-center space-x-2')}
                         onClick={() => {
@@ -318,6 +320,7 @@ export function ProfileAccountDropdownContainer(props: {
                         </span>
                       </Link>
                       {(profile.role === USER_ROLES.GALLERY ||
+                        profile.role === USER_ROLES.INSTITUTION ||
                         profile.role === USER_ROLES.ARTIST) && (
                         <Link
                           href={`/profiles/${profile.id}/edit`}

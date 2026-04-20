@@ -56,6 +56,12 @@ export function AddArtworkPageContent({
           description: 'Upload artwork for your gallery. The certificate will need to be claimed by the artist before it can be verified.',
           info: 'You are adding artwork as a Gallery. The artist will need to claim the certificate before it can be verified.',
         };
+      case USER_ROLES.INSTITUTION:
+        return {
+          title: 'Add Artwork to Your Institution',
+          description: 'Upload artwork on behalf of your institution. A certificate of exhibition will be created and the artist will need to claim it before it can be verified.',
+          info: 'You are adding artwork as an Institution. The artist will need to claim the certificate before it can be verified.',
+        };
       case USER_ROLES.COLLECTOR:
         return {
           title: 'Add Artwork to Your Collection',
