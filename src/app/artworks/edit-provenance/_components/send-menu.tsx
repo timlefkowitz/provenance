@@ -18,9 +18,12 @@ import { SendToGalleryDialog } from './send-to-gallery-dialog';
 
 type ActiveDialog = 'artist' | 'collector' | 'gallery' | 'institution' | null;
 
+type GalleryProfile = { id: string; name: string; role: string };
+
 type Props = {
   selectedArtworkIds: Set<string>;
   senderRole?: UserRole | null;
+  galleryProfiles?: GalleryProfile[];
 };
 
 /**
@@ -68,7 +71,7 @@ function disabledTitle(
   }
 }
 
-export function SendMenu({ selectedArtworkIds, senderRole }: Props) {
+export function SendMenu({ selectedArtworkIds, senderRole, galleryProfiles = [] }: Props) {
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
 
   const disabled = selectedArtworkIds.size === 0;
@@ -144,6 +147,7 @@ export function SendMenu({ selectedArtworkIds, senderRole }: Props) {
         open={activeDialog === 'artist'}
         onOpenChange={(open) => setActiveDialog(open ? 'artist' : null)}
         selectedArtworkIds={selectedArtworkIds}
+        galleryProfiles={galleryProfiles}
       />
 
       <SendToCollectorDialog

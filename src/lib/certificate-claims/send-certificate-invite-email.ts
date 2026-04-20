@@ -54,17 +54,19 @@ export async function sendArtistCoaInviteEmail(params: {
   recipientName: string;
   artworkTitle: string;
   token: string;
+  senderName?: string;
 }): Promise<void> {
-  const { to, recipientName, artworkTitle, token } = params;
+  const { to, recipientName, artworkTitle, token, senderName } = params;
   const claimUrl = getCertificateClaimUrl(token);
-  console.log('[Certificates] sendArtistCoaInviteEmail', { to, artworkTitle });
+  const fromLine = senderName ? ` from ${senderName}` : '';
+  console.log('[Certificates] sendArtistCoaInviteEmail', { to, artworkTitle, senderName });
   await sendNotificationEmail(
     to,
     recipientName,
     `Complete your Certificate of Authenticity — ${artworkTitle}`,
     {
-      title: 'Complete your certificate of authenticity',
-      body: `Your claim as artist for "${artworkTitle}" was approved. Use the same email you provided and sign in to complete your Certificate of Authenticity linked to this work.`,
+      title: 'Complete your Certificate of Authenticity',
+      body: `You have been invited${fromLine} to complete your Certificate of Authenticity for "${artworkTitle}". Sign in with this email address to complete your certificate — it will be automatically linked to the existing provenance record.`,
       ctaUrl: claimUrl,
       ctaLabel: 'Complete certificate',
     },

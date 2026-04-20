@@ -495,15 +495,17 @@ export function SpreadsheetEditForm({
   assignExhibitionTitle = null,
   galleryName,
   senderRole,
+  galleryProfiles = [],
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
   initialExhibitionIdByArtworkId: Record<string, string | null>;
-  receiverName: string;
+  receiverName?: string;
   assignExhibitionId?: string | null;
   assignExhibitionTitle?: string | null;
   galleryName?: string;
   senderRole?: UserRole | null;
+  galleryProfiles?: { id: string; name: string; role: string }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -1039,6 +1041,7 @@ export function SpreadsheetEditForm({
             <SendMenu
               selectedArtworkIds={selectedArtworkIds}
               senderRole={senderRole}
+              galleryProfiles={galleryProfiles}
             />
           </div>
         </div>

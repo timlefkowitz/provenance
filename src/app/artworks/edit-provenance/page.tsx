@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { getUserRole } from '~/lib/user-roles';
+import { readPerspective } from '~/lib/read-perspective';
 import { SpreadsheetEditForm } from './_components/spreadsheet-edit-form';
 
 export const metadata = {
@@ -27,6 +28,27 @@ export default async function MassEditProvenancePage({
     .eq('id', user.id)
     .single();
   const senderRole = getUserRole((accountRow?.public_data ?? {}) as Record<string, unknown>);
+
+  // Fetch gallery/institution profiles for the "Sending as" selector in the Send dialogs
+  const perspective = await readPerspective();
+  const profileRole = perspective === 'gallery' || perspective === 'institution'
+    ? perspective
+    : (senderRole === 'gallery' || senderRole === 'institution' ? senderRole : null);
+
+  let galleryProfiles: { id: string; name: string; role: string }[] = [];
+  if (profileRole) {
+    const { data: profileRows } = await (client as any)
+      .from('user_profiles')
+      .select('id, name, role')
+      .eq('user_id', user.id)
+      .in('role', ['gallery', 'institution'])
+      .eq('is_active', true);
+    galleryProfiles = (profileRows ?? []).map((p: { id: string; name: string; role: string }) => ({
+      id: p.id,
+      name: p.name,
+      role: p.role,
+    }));
+  }
 
   const artworkIds = params.ids?.split(',').filter(Boolean) || [];
 
@@ -107,6 +129,7 @@ export default async function MassEditProvenancePage({
         linkableExhibitions={linkableExhibitions}
         initialExhibitionIdByArtworkId={initialExhibitionIdByArtworkId}
         senderRole={senderRole}
+        galleryProfiles={galleryProfiles}
       />
     </div>
   );

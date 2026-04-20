@@ -15,17 +15,19 @@ export type BatchSendArtistClaimInvitesResult = {
 export async function batchSendArtistClaimInvites(
   artworkIds: string[],
   inviteEmail: string,
+  senderName?: string,
 ): Promise<BatchSendArtistClaimInvitesResult> {
   console.log('[Collection] batchSendArtistClaimInvites started', {
     count: artworkIds.length,
     inviteEmail,
+    senderName,
   });
 
   const errors: string[] = [];
   let sent = 0;
 
   for (const artworkId of artworkIds) {
-    const result = await sendArtistClaimInvite(artworkId, inviteEmail);
+    const result = await sendArtistClaimInvite(artworkId, inviteEmail, senderName);
     if (result.success) {
       sent++;
     } else {

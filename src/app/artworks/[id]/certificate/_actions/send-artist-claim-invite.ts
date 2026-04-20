@@ -12,6 +12,7 @@ const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 export async function sendArtistClaimInvite(
   artworkId: string,
   inviteEmail: string,
+  senderName?: string,
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[Certificates] sendArtistClaimInvite started', { artworkId });
   try {
@@ -91,6 +92,7 @@ export async function sendArtistClaimInvite(
         recipientName: normalizedEmail.split('@')[0] || 'there',
         artworkTitle: artwork.title || 'Your artwork',
         token,
+        senderName,
       });
     } catch (emailError) {
       console.error('[Certificates] sendArtistClaimInvite email failed', emailError);
