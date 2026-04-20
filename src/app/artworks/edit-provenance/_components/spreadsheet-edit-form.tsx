@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Check, ChevronsUpDown, Eye, Sparkles, X } from 'lucide-react';
 import { PrintQRSheet } from './print-qr-sheet';
 import { PrintWallLabels } from './print-wall-labels';
+import { PrintCatalog } from './print-catalog';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -492,6 +493,7 @@ export function SpreadsheetEditForm({
   receiverName,
   assignExhibitionId = null,
   assignExhibitionTitle = null,
+  galleryName,
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
@@ -499,6 +501,7 @@ export function SpreadsheetEditForm({
   receiverName: string;
   assignExhibitionId?: string | null;
   assignExhibitionTitle?: string | null;
+  galleryName?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -1033,6 +1036,12 @@ export function SpreadsheetEditForm({
               artworks={artworks}
               artworkData={artworkData}
               selectedArtworkIds={selectedArtworkIds}
+            />
+            <PrintCatalog
+              artworks={artworks}
+              artworkData={artworkData}
+              selectedArtworkIds={selectedArtworkIds}
+              galleryName={galleryName}
             />
           </div>
         </div>

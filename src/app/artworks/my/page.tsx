@@ -37,7 +37,7 @@ export default async function MyArtworksPage({
   const perspective = await readPerspective();
   const { data: accountRow } = await client
     .from('accounts')
-    .select('public_data')
+    .select('public_data, name')
     .eq('id', user.id)
     .single();
   const accountRole: UserRole | null = getUserRole(
@@ -222,6 +222,7 @@ export default async function MyArtworksPage({
           receiverName={receiverName}
           assignExhibitionId={assignExhibitionId}
           assignExhibitionTitle={assignExhibitionTitle}
+          galleryName={accountRow?.name ?? undefined}
         />
       </div>
     </div>
