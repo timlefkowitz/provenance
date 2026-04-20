@@ -8,13 +8,18 @@ import {
   FileCheck2,
   FileStack,
   Handshake,
+  KeyRound,
   Layers3,
+  Lock,
   MousePointerClick,
   Package,
   Quote,
   Receipt,
+  ShieldCheck,
   Sparkles,
   Tag,
+  UserCog,
+  UsersRound,
 } from "lucide-react";
 
 import { AboutReveal } from "@/components/about-reveal";
@@ -97,6 +102,39 @@ const operationsFeatures = [
     description:
       "Full accessioning, provenance tracking, and location management. Record every detail — dimensions, medium, condition, exhibition history, and ownership chain.",
     icon: Package,
+  },
+  {
+    title: "Team and staff linked accounts",
+    description:
+      "Link registrars, curators, and operations staff to your institution workspace with role-aware access—shared collection and certificate context, individual sign-ins, and clearer accountability than a single shared login.",
+    icon: UsersRound,
+  },
+] as const;
+
+const securityFeatures = [
+  {
+    title: "Append-only event ledger",
+    description:
+      "Custody and movement changes record actor, timestamp, and payload—authenticated inserts only, so history cannot be silently overwritten.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Scoped API keys",
+    description:
+      "Keys are stored with scopes and rate limits in mind, so partner verification and integrations expose only what your institution configures.",
+    icon: KeyRound,
+  },
+  {
+    title: "Encryption in transit and at rest",
+    description:
+      "Industry-standard TLS protects traffic between browsers, apps, and our services; data at rest is encrypted within our cloud infrastructure.",
+    icon: Lock,
+  },
+  {
+    title: "Role-aware team access",
+    description:
+      "Registrars, curators, and operations staff use individual accounts tied to your institution workspace—not a single shared login—so access stays accountable.",
+    icon: UserCog,
   },
 ] as const;
 
@@ -353,6 +391,39 @@ export function InstitutionLanding() {
                     {item.answer}
                   </p>
                 </details>
+              ))}
+            </div>
+          </section>
+        </AboutReveal>
+
+        <AboutReveal>
+          <section aria-labelledby="inst-security-heading">
+            <div className="mb-12 text-center md:mb-16">
+              <SectionLabel>Security</SectionLabel>
+              <h2
+                id="inst-security-heading"
+                className="mt-4 text-3xl font-semibold tracking-tight text-ink md:text-5xl"
+              >
+                Built for boards, donors, and partner scrutiny
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-pretty text-base leading-relaxed text-ink/65 md:text-lg">
+                Museums need more than a login page. Provenance pairs collection accountability with
+                controls designed for institutional trust—from tamper-evident history to scoped access
+                for verification.
+              </p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:gap-8">
+              {securityFeatures.map(({ title, description, icon: Icon }) => (
+                <div
+                  key={title}
+                  className="group flex flex-col rounded-2xl border border-wine/10 bg-white/50 p-8 shadow-sm ring-1 ring-wine/5 transition-shadow duration-300 hover:shadow-lg hover:shadow-wine/5"
+                >
+                  <span className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-wine/10 text-wine transition-colors group-hover:bg-wine/15">
+                    <Icon className="h-6 w-6" strokeWidth={1.5} />
+                  </span>
+                  <h3 className="mb-3 text-xl font-semibold tracking-tight text-ink">{title}</h3>
+                  <p className="text-sm leading-relaxed text-ink/65 md:text-[15px]">{description}</p>
+                </div>
               ))}
             </div>
           </section>
