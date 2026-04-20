@@ -159,15 +159,16 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {getRoleLabel(profile.role)} Profile</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete &quot;{profile.name}&quot;?
-                      {profile.role === 'gallery' && (
-                        <span className="block mt-2 text-ink/80">
-                          Note: This will delete the gallery profile. Your exhibitions and artworks will remain, but they will no longer be associated with this specific gallery profile.
-                        </span>
-                      )}
-                      <span className="block mt-2 font-semibold">This action cannot be undone.</span>
+                    <AlertDialogTitle>Remove {getRoleLabel(profile.role)} Profile</AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                      <div className="space-y-2 text-sm">
+                        <p>Remove &quot;{profile.name}&quot; from your account?</p>
+                        <p className="text-ink/70">
+                          Your exhibitions, artworks, and open calls are{' '}
+                          <span className="font-semibold">completely safe</span> — nothing is
+                          deleted. Only the profile page itself is removed.
+                        </p>
+                      </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -177,7 +178,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       disabled={deletingId === profile.id}
                     >
-                      {deletingId === profile.id ? 'Deleting...' : 'Delete'}
+                      {deletingId === profile.id ? 'Removing…' : 'Yes, remove profile'}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

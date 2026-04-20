@@ -53,15 +53,11 @@ export function DeleteProfileButton({ profileId, profileName, profileRole }: Pro
   return (
     <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
       <h3 className="font-display text-base font-semibold text-destructive mb-1">
-        Danger Zone
+        Remove Profile
       </h3>
       <p className="text-sm font-serif text-ink/60 mb-4">
-        Permanently delete this {getRoleLabel(profileRole).toLowerCase()} profile. This cannot be undone.
-        {profileRole === 'gallery' && (
-          <span className="block mt-1">
-            Your exhibitions and artworks will remain — only this profile page will be removed.
-          </span>
-        )}
+        Remove this {getRoleLabel(profileRole).toLowerCase()} profile from your account. All your
+        data — exhibitions, artworks, open calls — is kept safe and will not be deleted.
       </p>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
@@ -73,26 +69,24 @@ export function DeleteProfileButton({ profileId, profileName, profileRole }: Pro
             disabled={isPending}
           >
             <Trash2 className="h-3.5 w-3.5 mr-2" />
-            Delete this profile
+            Remove this profile
           </Button>
         </AlertDialogTrigger>
 
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {getRoleLabel(profileRole)} Profile</AlertDialogTitle>
+            <AlertDialogTitle>Remove {getRoleLabel(profileRole)} Profile</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>
-                  Are you sure you want to permanently delete{' '}
-                  <span className="font-semibold text-ink">&ldquo;{profileName}&rdquo;</span>?
+                  Remove{' '}
+                  <span className="font-semibold text-ink">&ldquo;{profileName}&rdquo;</span>{' '}
+                  from your account?
                 </p>
-                {profileRole === 'gallery' && (
-                  <p className="text-ink/70">
-                    Your exhibitions and artworks will remain intact — only this gallery profile
-                    page will be deleted.
-                  </p>
-                )}
-                <p className="font-semibold text-destructive">This action cannot be undone.</p>
+                <p className="text-ink/70">
+                  Your exhibitions, artworks, and open calls are <span className="font-semibold">completely safe</span> — nothing
+                  is deleted. Only the profile page itself is removed.
+                </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -103,7 +97,7 @@ export function DeleteProfileButton({ profileId, profileName, profileRole }: Pro
               disabled={isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isPending ? 'Deleting…' : 'Yes, delete this profile'}
+              {isPending ? 'Removing…' : 'Yes, remove this profile'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

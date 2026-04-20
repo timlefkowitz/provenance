@@ -2,24 +2,30 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { getExhibitionsForGallery } from '~/app/exhibitions/_actions/get-exhibitions';
 
 /**
- * Delete a role profile
+ * Soft-delete a role profile by marking it inactive.
+ *
+ * We deliberately avoid hard-deleting the row because several tables
+ * (open_calls, gallery_members) have ON DELETE CASCADE foreign keys that
+ * would silently destroy real user data. A soft delete removes the profile
+ * from every UI query (all queries filter is_active = true) while keeping
+ * all linked records — exhibitions, artworks, open calls — intact.
  */
 export async function deleteProfile(profileId: string) {
+  console.log('[deleteProfile] Soft-deleting profile', profileId);
   try {
     const client = getSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
-      return { error: 'You must be signed in to delete a profile' };
+      return { error: 'You must be signed in to remove a profile' };
     }
 
-    // Verify the profile belongs to the user and get role
+    // Verify ownership
     const { data: profile, error: fetchError } = await client
       .from('user_profiles')
-      .select('user_id, role')
+      .select('user_id, role, name')
       .eq('id', profileId)
       .single();
 
@@ -28,40 +34,30 @@ export async function deleteProfile(profileId: string) {
     }
 
     if (profile.user_id !== user.id) {
-      return { error: 'You do not have permission to delete this profile' };
+      return { error: 'You do not have permission to remove this profile' };
     }
 
-    // For gallery profiles, check if there are exhibitions
-    // Note: Exhibitions are linked to gallery_id (account ID), not profile ID
-    // So deleting a gallery profile won't delete exhibitions, but we should warn
-    if (profile.role === 'gallery') {
-      const exhibitions = await getExhibitionsForGallery(profile.user_id);
-      if (exhibitions.length > 0) {
-        // Note: Exhibitions will remain, but the profile will be deleted
-        // The exhibitions are tied to the account, not the specific profile
-        // This is informational - we'll still allow deletion
-      }
-    }
-
-    // Delete the profile
+    // Soft delete: set is_active = false so every UI query (which filters
+    // is_active = true) stops seeing this profile, but no linked data is lost.
     const { error } = await client
       .from('user_profiles')
-      .delete()
+      .update({ is_active: false })
       .eq('id', profileId);
 
     if (error) {
-      console.error('Error deleting profile:', error);
-      return { error: error.message || 'Failed to delete profile' };
+      console.error('[deleteProfile] Supabase update failed', error);
+      return { error: error.message || 'Failed to remove profile' };
     }
+
+    console.log('[deleteProfile] Profile deactivated successfully', { profileId, role: profile.role });
 
     revalidatePath('/profile');
     revalidatePath('/profiles');
     revalidatePath(`/artists/${profile.user_id}`);
 
     return { success: true };
-  } catch (error) {
-    console.error('Error in deleteProfile:', error);
+  } catch (err) {
+    console.error('[deleteProfile] Unexpected error', err);
     return { error: 'An unexpected error occurred' };
   }
 }
-
