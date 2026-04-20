@@ -4,9 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Check, ChevronsUpDown, Eye, Sparkles, X } from 'lucide-react';
-import { PrintQRSheet } from './print-qr-sheet';
-import { PrintWallLabels } from './print-wall-labels';
-import { PrintCatalog, PrintChecklist } from './print-catalog';
+import { PrintMenu } from './print-menu';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -1028,22 +1026,7 @@ export function SpreadsheetEditForm({
             >
               Clear
             </Button>
-            <PrintQRSheet
-              artworks={artworks}
-              selectedArtworkIds={selectedArtworkIds}
-            />
-            <PrintWallLabels
-              artworks={artworks}
-              artworkData={artworkData}
-              selectedArtworkIds={selectedArtworkIds}
-            />
-            <PrintCatalog
-              artworks={artworks}
-              artworkData={artworkData}
-              selectedArtworkIds={selectedArtworkIds}
-              galleryName={galleryName}
-            />
-            <PrintChecklist
+            <PrintMenu
               artworks={artworks}
               artworkData={artworkData}
               selectedArtworkIds={selectedArtworkIds}
