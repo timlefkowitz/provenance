@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { ProfileForm } from '../../_components/profile-form';
 import { getUserProfileById } from '../../_actions/get-user-profiles';
 import { GalleryMembersManager } from '../../_components/gallery-members-manager';
+import { DeleteProfileButton } from '../../_components/delete-profile-button';
 import { USER_ROLES } from '~/lib/user-roles';
 
 export const metadata = {
@@ -66,6 +67,15 @@ export default async function EditProfilePage({
           <GalleryMembersManager 
             galleryProfileId={id} 
             userId={user.id}
+          />
+        )}
+
+        {/* Danger Zone — only owners can delete */}
+        {isOwner && (
+          <DeleteProfileButton
+            profileId={profile.id}
+            profileName={profile.name}
+            profileRole={profile.role}
           />
         )}
       </div>
