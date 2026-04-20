@@ -6,16 +6,14 @@ import type { NewsPublicationInput } from '~/lib/news-publications';
 
 export type PressArticleSuggestion = NewsPublicationInput;
 
+/** Chat Completions web-search model (see OpenAI web search docs; Responses API uses different model IDs). */
+const PRESS_SEARCH_MODEL = 'gpt-4o-search-preview';
+
 type RawArticle = {
   title: string;
   url: string;
   publication_name?: string;
   date?: string;
-};
-
-type ResponseOutputItem = {
-  type: string;
-  content?: Array<{ type: string; text?: string }>;
 };
 
 export async function findPressArticles(profileId: string): Promise<{
@@ -31,7 +29,6 @@ export async function findPressArticles(profileId: string): Promise<{
     return { articles: [], error: 'Article discovery is not configured.' };
   }
 
-  // Fetch profile to build the search query
   const supabase = getSupabaseServerClient();
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
@@ -49,58 +46,59 @@ export async function findPressArticles(profileId: string): Promise<{
     role === 'artist' ? 'artist' : role === 'gallery' ? 'art gallery' : 'art institution';
   const locationHint = location ? ` based in ${location}` : '';
 
+  const userPrompt = `Search the web for real press articles, interviews, exhibition reviews, and news coverage about the ${roleLabel} named "${name}"${locationHint}.
+
+Return a JSON object with a single key "articles" whose value is an array of up to 10 items. Each item must have:
+- "title": the article headline
+- "url": the direct URL to the article (https)
+- "publication_name": the name of the publication or website
+- "date": publication date in YYYY-MM-DD or year only (omit if unknown)
+
+Only include real, verifiable articles with actual URLs.`;
+
   try {
-    console.log('[Press] Calling OpenAI Responses API with web search', { name, role });
+    console.log('[Press] Calling OpenAI Chat Completions (web search model)', {
+      model: PRESS_SEARCH_MODEL,
+      name,
+      role,
+    });
     const openai = new OpenAI({ apiKey });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (openai.responses as any).create({
-      model: 'gpt-4o-mini-search-preview',
-      tools: [{ type: 'web_search_preview' }],
-      input: `Search the web for real press articles, interviews, exhibition reviews, and news coverage about the ${roleLabel} named "${name}"${locationHint}.
-
-Return a JSON array of up to 10 articles. Each item must have:
-- "title": the article headline
-- "url": the direct URL to the article
-- "publication_name": the name of the publication or website
-- "date": publication date in YYYY-MM-DD format or year only (omit if unknown)
-
-Only include real, verifiable articles with actual URLs. Return ONLY valid JSON with no markdown fences, no explanation.`,
+    const completion = await openai.chat.completions.create({
+      model: PRESS_SEARCH_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You search the web and return only valid JSON matching the user instructions. No markdown.',
+        },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
     });
 
-    // Extract the text output from the response
-    const textContent = ((response.output as ResponseOutputItem[]) ?? [])
-      .filter((item) => item.type === 'message')
-      .flatMap((item) => item.content ?? [])
-      .filter((c) => c.type === 'output_text')
-      .map((c) => c.text ?? '')
-      .join('');
-
-    if (!textContent.trim()) {
-      console.log('[Press] Empty response from OpenAI');
+    const content = completion.choices[0]?.message?.content;
+    if (!content?.trim()) {
+      console.log('[Press] Empty completion from OpenAI');
       return { articles: [], error: null };
     }
-
-    // Strip markdown fences if the model included them despite instructions
-    const jsonStr = textContent
-      .replace(/^```(?:json)?\s*/m, '')
-      .replace(/\s*```\s*$/m, '')
-      .trim();
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      console.error('[Press] Failed to parse JSON response', jsonStr.slice(0, 300));
+      parsed = JSON.parse(content);
+    } catch (parseErr) {
+      console.error('[Press] Failed to parse JSON from OpenAI', parseErr, content.slice(0, 400));
       return { articles: [], error: null };
     }
 
-    if (!Array.isArray(parsed)) {
-      console.error('[Press] Response is not a JSON array');
+    const raw = parsed as { articles?: unknown };
+    const list = raw.articles;
+    if (!Array.isArray(list)) {
+      console.error('[Press] Response JSON missing articles array');
       return { articles: [], error: null };
     }
 
-    const articles: PressArticleSuggestion[] = (parsed as unknown[])
+    const articles: PressArticleSuggestion[] = list
       .filter((item): item is RawArticle => {
         if (typeof item !== 'object' || item === null) return false;
         const r = item as Record<string, unknown>;
