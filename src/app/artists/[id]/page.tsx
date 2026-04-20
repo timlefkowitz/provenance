@@ -21,6 +21,7 @@ import {
   type UnclaimedArtistProfileRow,
 } from './_components/unclaimed-artist-public-view';
 import { GalleryPublicLinks } from './_components/gallery-public-links';
+import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
 
@@ -365,42 +366,23 @@ export default async function ArtistProfilePage({
         </Card>
       )}
 
-      {/* Links */}
-      {links.length > 0 && (
+      {/* Links & Website */}
+      {(links.length > 0 || website) && (
         <Card className="mb-10 border-wine/20 bg-parchment/60">
           <CardContent className="p-5 md:p-6">
             <h2 className="font-display text-xl text-wine mb-3">Links</h2>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
+              {website && (
+                <li>
+                  <SocialLinkItem url={website} />
+                </li>
+              )}
               {links.map((link) => (
                 <li key={link}>
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-wine hover:text-wine/80 hover:underline break-all font-serif text-sm"
-                  >
-                    {link}
-                  </a>
+                  <SocialLinkItem url={link} />
                 </li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Website */}
-      {website && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-3">Website</h2>
-            <a
-              href={website}
-              target="_blank"
-              rel="noreferrer"
-              className="text-wine hover:text-wine/80 hover:underline break-all font-serif text-sm"
-            >
-              {website}
-            </a>
           </CardContent>
         </Card>
       )}
