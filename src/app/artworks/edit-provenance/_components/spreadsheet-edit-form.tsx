@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Check, ChevronsUpDown, Eye, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Eye, Sparkles, X } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -488,21 +488,29 @@ export function SpreadsheetEditForm({
   linkableExhibitions,
   initialExhibitionIdByArtworkId,
   receiverName,
+  assignExhibitionId = null,
+  assignExhibitionTitle = null,
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
   initialExhibitionIdByArtworkId: Record<string, string | null>;
   receiverName: string;
+  assignExhibitionId?: string | null;
+  assignExhibitionTitle?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [previewArtworkId, setPreviewArtworkId] = useState<string | null>(null);
-  const [selectedCollectionFilter, setSelectedCollectionFilter] = useState('__all__');
+  const isAssignFlow = Boolean(assignExhibitionId);
+  const [selectedCollectionFilter, setSelectedCollectionFilter] = useState(
+    isAssignFlow ? '__unassigned__' : '__all__',
+  );
   const [artworkSearchTerm, setArtworkSearchTerm] = useState('');
+  const [assignConfirmation, setAssignConfirmation] = useState<number | null>(null);
   const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(() => {
-    if (artworks.length === 0) {
+    if (artworks.length === 0 || isAssignFlow) {
       return new Set();
     }
     return new Set([artworks[0].id]);
@@ -786,8 +794,96 @@ export function SpreadsheetEditForm({
     });
   };
 
+  const handleBulkAssignToExhibition = () => {
+    if (!assignExhibitionId) return;
+    const targetIds = Array.from(selectedArtworkIds);
+    if (targetIds.length === 0) {
+      setError('Select at least one artwork to add to this exhibition.');
+      return;
+    }
+    console.log('[Collection] bulk assign artworks to exhibition', {
+      exhibitionId: assignExhibitionId,
+      count: targetIds.length,
+    });
+    setArtworkData((prev) => {
+      const next = { ...prev };
+      for (const artworkId of targetIds) {
+        const current = next[artworkId];
+        if (!current) continue;
+        next[artworkId] = { ...current, exhibition_id: assignExhibitionId };
+      }
+      return next;
+    });
+    // After assignment these rows are no longer "unassigned"; switch the viewer
+    // to the new exhibition so the selection and the Save button both reflect
+    // the pending changes the user is about to persist.
+    setSelectedCollectionFilter(assignExhibitionId);
+    setAssignConfirmation(targetIds.length);
+    setError(null);
+    if (typeof document !== 'undefined') {
+      requestAnimationFrame(() => {
+        const saveButton = document.querySelector<HTMLButtonElement>(
+          'button[type="submit"][data-save-changes]',
+        );
+        saveButton?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
+    }
+  };
+
+  const handleSkipAssign = () => {
+    router.replace('/artworks/my');
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-full overflow-x-hidden">
+      {isAssignFlow && assignExhibitionId && (
+        <div className="sticky top-0 z-30 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="rounded-2xl border border-ink/20 bg-ink text-parchment shadow-lg px-4 py-4 sm:px-5 sm:py-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-parchment/10">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[11px] font-landing font-light tracking-[0.28em] uppercase text-parchment/70">
+                    New exhibition
+                  </p>
+                  <p className="font-display text-lg sm:text-xl font-semibold truncate">
+                    Add artworks to {assignExhibitionTitle || 'your exhibition'}
+                  </p>
+                  <p className="font-serif text-sm text-parchment/80">
+                    Tap the unassigned thumbnails below to select pieces, then press Assign selected. Save changes when you are done.
+                  </p>
+                  {assignConfirmation !== null && (
+                    <p className="font-serif text-xs text-parchment/85">
+                      Queued {assignConfirmation} {assignConfirmation === 1 ? 'artwork' : 'artworks'} for this exhibition. Scroll down and hit Save changes to persist.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
+                <Button
+                  type="button"
+                  onClick={handleBulkAssignToExhibition}
+                  disabled={selectedArtworkIds.size === 0}
+                  className="bg-parchment text-ink hover:bg-parchment/90 font-serif h-10 px-4 text-sm disabled:opacity-60"
+                >
+                  Assign selected ({selectedArtworkIds.size})
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSkipAssign}
+                  className="border-parchment/40 bg-transparent text-parchment hover:bg-parchment/10 font-serif h-10 px-4 text-sm"
+                >
+                  Skip for now
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{error}</AlertDescription>
@@ -1423,6 +1519,7 @@ export function SpreadsheetEditForm({
         </Button>
         <Button
           type="submit"
+          data-save-changes
           disabled={pending || visibleArtworks.length === 0}
           className="bg-wine text-parchment hover:bg-wine/90 font-serif h-11 w-full sm:h-10 sm:w-auto touch-manipulation"
         >

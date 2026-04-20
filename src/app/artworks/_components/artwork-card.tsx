@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trash2, MoreVertical } from 'lucide-react';
+import { Trash2, MoreVertical, Globe, EyeOff } from 'lucide-react';
 import { Card, CardFooter, CardHeader } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import {
@@ -25,9 +25,11 @@ import {
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
+import { cn } from '@kit/ui/utils';
 import { FollowButton } from './follow-button';
 import { FavoriteButton } from './favorite-button';
 import { deleteArtwork } from '../[id]/_actions/delete-artwork';
+import { toggleArtworkVisibility } from '../_actions/toggle-artwork-visibility';
 import { SignInInvitationDialog } from '~/components/sign-in-invitation-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 
@@ -41,6 +43,7 @@ export type ArtworkCardArtwork = {
   account_id: string;
   artist_account_id?: string | null;
   artist_profile_id?: string | null;
+  is_public?: boolean | null;
 };
 
 type Artwork = ArtworkCardArtwork;
@@ -60,9 +63,37 @@ export function ArtworkCard({
   const [imageError, setImageError] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [visibilityPending, startVisibilityTransition] = useTransition();
+  const [optimisticIsPublic, setOptimisticIsPublic] = useState<boolean | null>(
+    artwork.is_public ?? null,
+  );
   const [showSignInDialog, setShowSignInDialog] = useState(false);
   const isOwnArtwork = currentUserId === artwork.account_id;
   const isAuthenticated = !!currentUserId;
+  const resolvedIsPublic = optimisticIsPublic ?? artwork.is_public ?? null;
+
+  const handleToggleVisibility = (next: boolean) => {
+    setOptimisticIsPublic(next);
+    console.log('[Artworks] card toggle visibility', {
+      artworkId: artwork.id,
+      next,
+    });
+    startVisibilityTransition(async () => {
+      try {
+        const result = await toggleArtworkVisibility(artwork.id, next);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+        setOptimisticIsPublic(result.isPublic);
+        toast.success(result.isPublic ? 'Artwork is now public.' : 'Artwork unlisted.');
+        router.refresh();
+      } catch (err) {
+        console.error('[Artworks] card toggle visibility failed', err);
+        setOptimisticIsPublic(artwork.is_public ?? null);
+        toast.error((err as Error).message || 'Could not update visibility.');
+      }
+    });
+  };
 
   const handleArtworkClick = (e: React.MouseEvent) => {
     if (!isAuthenticated) {
@@ -218,7 +249,7 @@ export function ArtworkCard({
           );
         })()}
       </CardHeader>
-      <CardFooter className="pt-0 pb-4">
+      <CardFooter className="pt-0 pb-4 flex flex-col items-stretch gap-2">
         <div className="flex items-center justify-between w-full text-xs text-ink/50 font-serif">
           {isOwnArtwork ? (
             <span className="uppercase tracking-wider">
@@ -237,6 +268,51 @@ export function ArtworkCard({
             })}
           </span>
         </div>
+        {isOwnArtwork && resolvedIsPublic !== null && (
+          <div className="flex items-center justify-between gap-2 border-t border-wine/10 pt-2">
+            {resolvedIsPublic ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-wine/20 bg-wine/5 px-2 py-0.5 text-[11px] font-serif text-wine">
+                  <Globe className="h-3 w-3" aria-hidden />
+                  Public
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={visibilityPending}
+                  onClick={() => handleToggleVisibility(false)}
+                  className={cn(
+                    'h-7 px-2 text-[11px] font-serif text-ink/60 hover:text-ink hover:bg-wine/5',
+                    visibilityPending && 'opacity-60',
+                  )}
+                >
+                  <EyeOff className="h-3 w-3 mr-1" aria-hidden />
+                  {visibilityPending ? 'Updating…' : 'Unlist'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] font-serif text-ink/55">
+                  Not on the public feed yet
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={visibilityPending}
+                  onClick={() => handleToggleVisibility(true)}
+                  className={cn(
+                    'h-8 px-3 text-[11px] font-serif bg-ink text-parchment hover:bg-ink/90',
+                    visibilityPending && 'opacity-60',
+                  )}
+                >
+                  <Globe className="h-3 w-3 mr-1" aria-hidden />
+                  {visibilityPending ? 'Publishing…' : 'Make public'}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </CardFooter>
     </Card>
     <SignInInvitationDialog

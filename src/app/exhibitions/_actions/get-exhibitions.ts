@@ -11,6 +11,7 @@ export type Exhibition = {
   end_date: string | null;
   location: string | null;
   image_url: string | null;
+  owner_role: 'gallery' | 'institution' | null;
   created_at: string;
   updated_at: string;
 };
@@ -28,17 +29,26 @@ export type ExhibitionWithDetails = Exhibition & {
   }>;
 };
 
-export async function getExhibitionsForGallery(galleryId: string): Promise<Exhibition[]> {
+export async function getExhibitionsForGallery(
+  galleryId: string,
+  options?: { ownerRole?: 'gallery' | 'institution' },
+): Promise<Exhibition[]> {
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any)
+  let query = (client as any)
     .from('exhibitions')
     .select('*')
     .eq('gallery_id', galleryId)
     .order('start_date', { ascending: false });
 
+  if (options?.ownerRole) {
+    query = query.eq('owner_role', options.ownerRole);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    console.error('Error fetching exhibitions:', error);
+    console.error('[Exhibitions] getExhibitionsForGallery failed', error);
     return [];
   }
 

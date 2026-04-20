@@ -1,22 +1,56 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { Images } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
+import { getUserRole, type UserRole } from '~/lib/user-roles';
+import { readPerspective, perspectiveToOwnerRole } from '~/lib/read-perspective';
 import { SpreadsheetEditForm } from '../edit-provenance/_components/spreadsheet-edit-form';
+import { CollectionHeaderActions } from './_components/collection-header-actions';
 
 export const metadata = {
   title: 'Collection Management | Provenance',
 };
 
-export default async function MyArtworksPage() {
+export default async function MyArtworksPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ exhibition?: string; assign?: string }>;
+}) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const assignExhibitionIdParam =
+    typeof resolvedSearchParams.exhibition === 'string' && resolvedSearchParams.exhibition.length > 0
+      ? resolvedSearchParams.exhibition
+      : null;
+  const isAssignFlow = resolvedSearchParams.assign === '1' && assignExhibitionIdParam !== null;
+
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
     redirect('/auth/sign-in');
   }
+
+  // Resolve the active "mode": client perspective (cookie) for UI defaults,
+  // falling back to the DB account role so server-rendered state is sensible
+  // even before the client hydrates.
+  const perspective = await readPerspective();
+  const { data: accountRow } = await client
+    .from('accounts')
+    .select('public_data')
+    .eq('id', user.id)
+    .single();
+  const accountRole: UserRole | null = getUserRole(
+    (accountRow?.public_data ?? {}) as Record<string, any>,
+  );
+  const activeRole: UserRole | null = perspective ?? accountRole;
+  const ownerRole = perspectiveToOwnerRole(activeRole);
+  console.log('[Collection] my page loaded', {
+    accountRole,
+    perspective,
+    ownerRole,
+    isAssignFlow,
+  });
 
   // Fetch artworks user owns (explicit filter so we never show other users' artworks)
   const { data: artworks } = await client
@@ -37,20 +71,25 @@ export default async function MyArtworksPage() {
       <div className="min-h-[calc(100vh-5rem)] bg-parchment">
         <div className="border-b border-wine/15 bg-gradient-to-b from-wine/[0.06] to-transparent">
           <div className="container mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12">
-            <div className="max-w-2xl space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
-                <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
-                  Your collection
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="max-w-2xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
+                  <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
+                    Your collection
+                  </p>
+                </div>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
+                  Collection
+                </h1>
+                <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
+                  Register artworks, refine provenance, and keep your holdings organized in one
+                  place.
                 </p>
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
-                Collection
-              </h1>
-              <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
-                Register artworks, refine provenance, and keep your holdings organized in one
-                place.
-              </p>
+              <div className="shrink-0">
+                <CollectionHeaderActions accountRole={accountRole} />
+              </div>
             </div>
           </div>
         </div>
@@ -101,12 +140,23 @@ export default async function MyArtworksPage() {
 
   let linkableExhibitions = await getUserExhibitions(user.id, {
     forCollectionManagement: true,
+    ownerRole: ownerRole ?? undefined,
   });
   const linkableIds = new Set(linkableExhibitions.map((e) => e.id));
   const linkedIds = new Set(
     Object.values(initialExhibitionIdByArtworkId).filter(Boolean) as string[],
   );
   const missingExhibitionIds = [...linkedIds].filter((id) => !linkableIds.has(id));
+
+  // Ensure the just-created exhibition from the New Exhibition dialog is visible
+  // in the picker even before any link exists yet.
+  if (
+    assignExhibitionIdParam &&
+    !linkableIds.has(assignExhibitionIdParam) &&
+    !missingExhibitionIds.includes(assignExhibitionIdParam)
+  ) {
+    missingExhibitionIds.push(assignExhibitionIdParam);
+  }
 
   if (missingExhibitionIds.length > 0) {
     const { data: extraRows } = await (client as any)
@@ -122,32 +172,44 @@ export default async function MyArtworksPage() {
     }
   }
 
+  const assignExhibition =
+    isAssignFlow && assignExhibitionIdParam
+      ? linkableExhibitions.find((ex) => ex.id === assignExhibitionIdParam) ?? null
+      : null;
+  const assignExhibitionId = assignExhibition?.id ?? null;
+  const assignExhibitionTitle = assignExhibition?.title ?? null;
+
   const count = artworks.length;
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-parchment pb-8">
       <div className="border-b border-wine/15 bg-gradient-to-b from-wine/[0.06] to-transparent">
         <div className="container mx-auto max-w-7xl w-full min-w-0 overflow-x-hidden px-4 sm:px-6 py-8 sm:py-10">
-          <div className="min-w-0 space-y-4 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
-              <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
-                Your collection
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0 space-y-4 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
+                <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
+                  Your collection
+                </p>
+                <span
+                  className="rounded-full border border-wine/20 bg-parchment/90 px-3 py-0.5 font-serif text-xs text-ink/70"
+                  aria-label={`${count} artworks in collection`}
+                >
+                  {count} {count === 1 ? 'artwork' : 'artworks'}
+                </span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
+                Collection
+              </h1>
+              <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
+                Tap thumbnails to choose what you are editing, then update provenance in the panel
+                below. Save when you are done.
               </p>
-              <span
-                className="rounded-full border border-wine/20 bg-parchment/90 px-3 py-0.5 font-serif text-xs text-ink/70"
-                aria-label={`${count} artworks in collection`}
-              >
-                {count} {count === 1 ? 'artwork' : 'artworks'}
-              </span>
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
-              Collection
-            </h1>
-            <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
-              Tap thumbnails to choose what you are editing, then update provenance in the panel
-              below. Save when you are done.
-            </p>
+            <div className="shrink-0">
+              <CollectionHeaderActions accountRole={accountRole} />
+            </div>
           </div>
         </div>
       </div>
@@ -158,6 +220,8 @@ export default async function MyArtworksPage() {
           linkableExhibitions={linkableExhibitions}
           initialExhibitionIdByArtworkId={initialExhibitionIdByArtworkId}
           receiverName={receiverName}
+          assignExhibitionId={assignExhibitionId}
+          assignExhibitionTitle={assignExhibitionTitle}
         />
       </div>
     </div>

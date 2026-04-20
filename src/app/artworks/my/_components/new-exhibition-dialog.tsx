@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -15,27 +16,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@kit/ui/dialog';
-import { createExhibition } from '../../../exhibitions/_actions/create-exhibition';
 import { Plus } from 'lucide-react';
-import { getPerspective } from '~/components/perspective-switcher';
-import { USER_ROLES, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { createExhibition } from '~/app/exhibitions/_actions/create-exhibition';
 
-type UserExhibition = {
-  id: string;
-  title: string;
-  start_date: string | null;
-  end_date: string | null;
-};
+type OwnerMode = typeof USER_ROLES.GALLERY | typeof USER_ROLES.INSTITUTION;
 
-export function CreateExhibitionDialog({
-  onExhibitionCreated,
+export function NewExhibitionDialog({
+  ownerRole,
+  disabled,
+  disabledReason,
 }: {
-  onExhibitionCreated: (exhibition: UserExhibition) => void;
+  ownerRole: OwnerMode | null;
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [perspective, setPerspective] = useState<UserRole | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -46,24 +45,25 @@ export function CreateExhibitionDialog({
     theme: '',
   });
 
-  useEffect(() => {
-    setPerspective(getPerspective());
-    const handler = (event: Event) => {
-      const custom = event as CustomEvent<UserRole>;
-      if (custom.detail) setPerspective(custom.detail);
-    };
-    window.addEventListener('user_perspective_changed', handler);
-    return () => window.removeEventListener('user_perspective_changed', handler);
-  }, []);
+  const effectiveDisabled = disabled || !ownerRole;
+
+  const modeLabel = ownerRole ? getRoleLabel(ownerRole as UserRole) : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (!ownerRole) {
+      setError('Switch to Gallery or Institution mode to create an exhibition.');
+      return;
+    }
+
     if (!formData.title || !formData.startDate) {
       setError('Title and start date are required');
       return;
     }
+
+    console.log('[Collection] NewExhibitionDialog submit', { ownerRole });
 
     startTransition(async () => {
       try {
@@ -75,47 +75,35 @@ export function CreateExhibitionDialog({
         formDataObj.append('location', formData.location);
         formDataObj.append('curator', formData.curator);
         formDataObj.append('theme', formData.theme);
-        formDataObj.append('artistIds', JSON.stringify([])); // Empty for now
-        // Thread the active mode so create-exhibition stores owner_role correctly.
-        // Fall back to 'gallery' when the user is in a perspective that is not
-        // allowed to create exhibitions (the server will reject if the DB role
-        // also disagrees, so this stays safe).
-        const ownerRole =
-          perspective === USER_ROLES.INSTITUTION
-            ? USER_ROLES.INSTITUTION
-            : USER_ROLES.GALLERY;
+        formDataObj.append('artistIds', JSON.stringify([]));
         formDataObj.append('ownerRole', ownerRole);
 
         const result = await createExhibition(formDataObj);
-        
-        if (result.success && result.exhibitionId) {
-          // Create the exhibition object to pass back
-          const newExhibition: UserExhibition = {
-            id: result.exhibitionId,
-            title: formData.title,
-            start_date: formData.startDate,
-            end_date: formData.endDate || null,
-          };
-          
-          toast.success('Exhibition created successfully');
-          onExhibitionCreated(newExhibition);
-          
-          // Reset form and close dialog
-          setFormData({
-            title: '',
-            description: '',
-            startDate: '',
-            endDate: '',
-            location: '',
-            curator: '',
-            theme: '',
-          });
-          setOpen(false);
-        } else {
+
+        if (!result?.success || !result.exhibitionId) {
           throw new Error('Failed to create exhibition');
         }
+
+        toast.success('Exhibition created. Select artworks to add.');
+        setFormData({
+          title: '',
+          description: '',
+          startDate: '',
+          endDate: '',
+          location: '',
+          curator: '',
+          theme: '',
+        });
+        setOpen(false);
+
+        const query = new URLSearchParams({
+          exhibition: result.exhibitionId,
+          assign: '1',
+        });
+        router.push(`/artworks/my?${query.toString()}`);
+        router.refresh();
       } catch (e: any) {
-        console.error('[CreateExhibitionDialog] Error creating exhibition', e);
+        console.error('[Collection] NewExhibitionDialog failed', e);
         const errorMessage = e?.message || 'Failed to create exhibition';
         setError(errorMessage);
         toast.error(errorMessage);
@@ -128,21 +116,22 @@ export function CreateExhibitionDialog({
       <DialogTrigger asChild>
         <Button
           type="button"
-          variant="outline"
-          size="sm"
-          className="font-serif border-wine/30 hover:bg-wine/10"
+          disabled={effectiveDisabled}
+          title={effectiveDisabled ? disabledReason : undefined}
+          aria-disabled={effectiveDisabled}
+          className="bg-ink text-parchment hover:bg-ink/90 font-serif h-10 px-4 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <Plus className="h-4 w-4 mr-1" />
-          Create New Exhibition
+          <Plus className="h-4 w-4 mr-1.5" />
+          New Exhibition
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-wine">
-            Create New Exhibition
+            New Exhibition{modeLabel ? ` — ${modeLabel}` : ''}
           </DialogTitle>
           <DialogDescription className="font-serif">
-            Create a new exhibition and link it to your artwork
+            Create the exhibition, then select artworks from your collection to add.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -153,23 +142,23 @@ export function CreateExhibitionDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title">Exhibition Title *</Label>
+            <Label htmlFor="new-exhibition-title">Exhibition Title *</Label>
             <Input
-              id="title"
+              id="new-exhibition-title"
               value={formData.title}
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
-              placeholder="e.g., Spring Collection 2024"
+              placeholder="e.g., Spring Collection 2026"
               className="font-serif"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="new-exhibition-description">Description</Label>
             <Textarea
-              id="description"
+              id="new-exhibition-description"
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
@@ -182,9 +171,9 @@ export function CreateExhibitionDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date *</Label>
+              <Label htmlFor="new-exhibition-start">Start Date *</Label>
               <Input
-                id="startDate"
+                id="new-exhibition-start"
                 type="date"
                 value={formData.startDate}
                 onChange={(e) =>
@@ -194,11 +183,10 @@ export function CreateExhibitionDialog({
                 required
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
+              <Label htmlFor="new-exhibition-end">End Date</Label>
               <Input
-                id="endDate"
+                id="new-exhibition-end"
                 type="date"
                 value={formData.endDate}
                 onChange={(e) =>
@@ -211,9 +199,9 @@ export function CreateExhibitionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="new-exhibition-location">Location</Label>
             <Input
-              id="location"
+              id="new-exhibition-location"
               value={formData.location}
               onChange={(e) =>
                 setFormData({ ...formData, location: e.target.value })
@@ -224,9 +212,9 @@ export function CreateExhibitionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="curator">Curator</Label>
+            <Label htmlFor="new-exhibition-curator">Curator</Label>
             <Input
-              id="curator"
+              id="new-exhibition-curator"
               value={formData.curator}
               onChange={(e) =>
                 setFormData({ ...formData, curator: e.target.value })
@@ -237,9 +225,9 @@ export function CreateExhibitionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="theme">Theme</Label>
+            <Label htmlFor="new-exhibition-theme">Theme</Label>
             <Input
-              id="theme"
+              id="new-exhibition-theme"
               value={formData.theme}
               onChange={(e) =>
                 setFormData({ ...formData, theme: e.target.value })
@@ -252,10 +240,10 @@ export function CreateExhibitionDialog({
           <div className="flex gap-4 pt-4">
             <Button
               type="submit"
-              disabled={pending}
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              disabled={pending || effectiveDisabled}
+              className="bg-ink text-parchment hover:bg-ink/90 font-serif"
             >
-              {pending ? 'Creating...' : 'Create Exhibition'}
+              {pending ? 'Creating…' : 'Create and add artworks'}
             </Button>
             <Button
               type="button"
@@ -271,4 +259,3 @@ export function CreateExhibitionDialog({
     </Dialog>
   );
 }
-

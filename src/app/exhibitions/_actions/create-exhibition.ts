@@ -2,9 +2,10 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, type UserRole } from '~/lib/user-roles';
 
 export async function createExhibition(formData: FormData) {
+  console.log('[Exhibitions] createExhibition started');
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
@@ -12,7 +13,7 @@ export async function createExhibition(formData: FormData) {
     throw new Error('Unauthorized');
   }
 
-  // Verify user is a gallery
+  // Authorization: only gallery or institution accounts can create exhibitions.
   const { data: account } = await client
     .from('accounts')
     .select('id, public_data')
@@ -24,8 +25,9 @@ export async function createExhibition(formData: FormData) {
   }
 
   const userRole = getUserRole(account.public_data as Record<string, any>);
-  if (userRole !== USER_ROLES.GALLERY) {
-    throw new Error('Only galleries can create exhibitions');
+  const allowedRoles = new Set<UserRole>([USER_ROLES.GALLERY, USER_ROLES.INSTITUTION]);
+  if (!userRole || !allowedRoles.has(userRole)) {
+    throw new Error('Only galleries and institutions can create exhibitions');
   }
 
   const title = formData.get('title') as string;
@@ -36,6 +38,20 @@ export async function createExhibition(formData: FormData) {
   const curator = formData.get('curator') as string | null;
   const theme = formData.get('theme') as string | null;
   const artistIdsJson = formData.get('artistIds') as string | null;
+  const ownerRoleInput = (formData.get('ownerRole') as string | null) || userRole;
+
+  // The requested owner_role must match the authenticated user's account role.
+  // This prevents a gallery account from creating an "institution" exhibition
+  // (or vice versa) that would then not show in their pickers.
+  if (ownerRoleInput !== userRole) {
+    console.error('[Exhibitions] createExhibition mode mismatch', {
+      userRole,
+      ownerRoleInput,
+    });
+    throw new Error('Cannot create exhibition for a mode that does not match your account role');
+  }
+  const ownerRole: 'gallery' | 'institution' =
+    ownerRoleInput === USER_ROLES.INSTITUTION ? 'institution' : 'gallery';
 
   if (!title || !startDate) {
     throw new Error('Title and start date are required');
@@ -60,11 +76,11 @@ export async function createExhibition(formData: FormData) {
     metadata.theme = theme.trim();
   }
 
-  // Create exhibition
   const { data: exhibition, error } = await (client as any)
     .from('exhibitions')
     .insert({
       gallery_id: user.id,
+      owner_role: ownerRole,
       title: title.trim(),
       description: description?.trim() || null,
       start_date: startDate,
@@ -78,9 +94,13 @@ export async function createExhibition(formData: FormData) {
     .single();
 
   if (error) {
-    console.error('Error creating exhibition:', error);
+    console.error('[Exhibitions] createExhibition insert failed', error);
     throw new Error('Failed to create exhibition');
   }
+  console.log('[Exhibitions] createExhibition succeeded', {
+    exhibitionId: exhibition.id,
+    ownerRole,
+  });
 
   // Add artists to exhibition
   if (artistIds.length > 0) {

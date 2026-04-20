@@ -93,7 +93,7 @@ export default async function ArtworksPage({
       .eq('is_public', true);
     const baseData = db
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public')
       .eq('status', 'verified')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
@@ -119,13 +119,13 @@ export default async function ArtworksPage({
       .neq('account_id', user.id);
     const ownBaseData = db
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public')
       .eq('status', 'verified')
       .eq('account_id', user.id)
       .order('created_at', { ascending: false });
     const publicBaseData = db
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public')
       .eq('status', 'verified')
       .eq('is_public', true)
       .neq('account_id', user.id)

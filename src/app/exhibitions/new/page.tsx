@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, getRoleLabel, USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { ExhibitionForm } from '../_components/exhibition-form';
 
 export const metadata = {
@@ -15,7 +15,6 @@ export default async function NewExhibitionPage() {
     redirect('/auth/sign-in');
   }
 
-  // Verify user is a gallery
   const { data: account } = await client
     .from('accounts')
     .select('public_data')
@@ -27,9 +26,13 @@ export default async function NewExhibitionPage() {
   }
 
   const userRole = getUserRole(account.public_data as Record<string, any>);
-  if (userRole !== USER_ROLES.GALLERY) {
+  const allowedRoles = new Set<UserRole>([USER_ROLES.GALLERY, USER_ROLES.INSTITUTION]);
+  if (!userRole || !allowedRoles.has(userRole)) {
+    console.warn('[Exhibitions] NewExhibitionPage access denied', { userRole });
     redirect('/registry');
   }
+
+  const modeLabel = getRoleLabel(userRole);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -38,7 +41,7 @@ export default async function NewExhibitionPage() {
           New Exhibition
         </h1>
         <p className="text-ink/70 font-serif">
-          Create a new exhibition for your gallery
+          Create a new exhibition for your {modeLabel.toLowerCase()}
         </p>
       </div>
 

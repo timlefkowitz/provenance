@@ -19,6 +19,12 @@ export type GetUserExhibitionsOptions = {
    * so personal collections are not flooded with unrelated shows or open-call listings.
    */
   forCollectionManagement?: boolean;
+  /**
+   * When set, only return exhibitions that were created under the given mode.
+   * Scopes pickers so a gallery account in gallery mode does not see the
+   * institution-mode exhibitions it also owns (and vice versa).
+   */
+  ownerRole?: 'gallery' | 'institution';
 };
 
 export async function getUserExhibitions(
@@ -27,7 +33,8 @@ export async function getUserExhibitions(
 ): Promise<UserExhibition[]> {
   const client = getSupabaseServerClient();
   const forCollectionManagement = options?.forCollectionManagement === true;
-  console.log('[getUserExhibitions] started', { forCollectionManagement });
+  const ownerRole = options?.ownerRole ?? null;
+  console.log('[getUserExhibitions] started', { forCollectionManagement, ownerRole });
 
   const galleryAccountIds = new Set<string>();
 
@@ -89,11 +96,17 @@ export async function getUserExhibitions(
   const deduped: UserExhibition[] = [];
 
   if (galleryAccountIds.size > 0) {
-    const { data, error } = await (client as any)
+    let ownedQuery = (client as any)
       .from('exhibitions')
-      .select('id, title, start_date, end_date')
+      .select('id, title, start_date, end_date, owner_role')
       .in('gallery_id', [...galleryAccountIds])
       .order('start_date', { ascending: false });
+
+    if (ownerRole) {
+      ownedQuery = ownedQuery.eq('owner_role', ownerRole);
+    }
+
+    const { data, error } = await ownedQuery;
 
     if (error) {
       console.error('[getUserExhibitions] Error fetching gallery exhibitions:', error);
@@ -102,7 +115,12 @@ export async function getUserExhibitions(
     for (const row of data || []) {
       if (row?.id && !seen.has(row.id) && !openCallExhibitionIds.has(row.id)) {
         seen.add(row.id);
-        deduped.push(row);
+        deduped.push({
+          id: row.id,
+          title: row.title,
+          start_date: row.start_date,
+          end_date: row.end_date,
+        });
       }
     }
   }
@@ -130,11 +148,17 @@ export async function getUserExhibitions(
     ].filter((id) => !seen.has(id as string)) as string[];
 
     if (linkedExhibitionIds.length > 0) {
-      const { data: linkedExhibitions, error: linkedError } = await (client as any)
+      let linkedQuery = (client as any)
         .from('exhibitions')
-        .select('id, title, start_date, end_date')
+        .select('id, title, start_date, end_date, owner_role')
         .in('id', linkedExhibitionIds)
         .order('start_date', { ascending: false });
+
+      if (ownerRole) {
+        linkedQuery = linkedQuery.eq('owner_role', ownerRole);
+      }
+
+      const { data: linkedExhibitions, error: linkedError } = await linkedQuery;
 
       if (linkedError) {
         console.error('[getUserExhibitions] Error fetching artwork-linked exhibitions:', linkedError);
@@ -143,7 +167,12 @@ export async function getUserExhibitions(
       for (const row of linkedExhibitions || []) {
         if (row?.id && !seen.has(row.id)) {
           seen.add(row.id);
-          deduped.push(row);
+          deduped.push({
+            id: row.id,
+            title: row.title,
+            start_date: row.start_date,
+            end_date: row.end_date,
+          });
         }
       }
     }

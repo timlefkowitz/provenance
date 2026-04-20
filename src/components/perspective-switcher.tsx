@@ -5,21 +5,39 @@ import { useRouter } from 'next/navigation';
 import { RadioGroup, RadioGroupItem } from '@kit/ui/radio-group';
 import { Label } from '@kit/ui/label';
 import { Button } from '@kit/ui/button';
-import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { cn } from '@kit/ui/utils';
 
 const PERSPECTIVE_KEY = 'user_perspective';
+/** One year in seconds — matches typical session-like preferences. */
+const PERSPECTIVE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function isSupportedPerspective(value: string | null | undefined): value is UserRole {
+  return (
+    value === USER_ROLES.ARTIST ||
+    value === USER_ROLES.COLLECTOR ||
+    value === USER_ROLES.GALLERY ||
+    value === USER_ROLES.INSTITUTION
+  );
+}
+
+/** Persist the perspective to a cookie so server components can read it without a round trip. */
+function writePerspectiveCookie(value: UserRole) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${PERSPECTIVE_KEY}=${encodeURIComponent(
+    value,
+  )}; path=/; max-age=${PERSPECTIVE_COOKIE_MAX_AGE}; samesite=lax`;
+}
 
 export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [perspective, setPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
 
-  // Load perspective from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(PERSPECTIVE_KEY);
-      if (saved && (saved === USER_ROLES.ARTIST || saved === USER_ROLES.COLLECTOR || saved === USER_ROLES.GALLERY || saved === USER_ROLES.INSTITUTION)) {
-        setPerspective(saved as UserRole);
+      if (isSupportedPerspective(saved)) {
+        setPerspective(saved);
       }
     }
   }, []);
@@ -28,20 +46,17 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
     setPerspective(value);
 
     if (typeof window !== 'undefined') {
-      // Save to localStorage
       localStorage.setItem(PERSPECTIVE_KEY, value);
+      writePerspectiveCookie(value);
 
-      // Notify other components in this tab that the perspective changed
       window.dispatchEvent(
         new CustomEvent('user_perspective_changed', { detail: value }),
       );
     }
 
-    // Refresh to apply perspective changes
     router.refresh();
   };
 
-  // Compact button-based version for mobile menu
   if (compact) {
     return (
       <div className="space-y-2 py-3 border-b border-wine/10">
@@ -88,12 +103,24 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
           >
             Gallery
           </Button>
+          <Button
+            variant={perspective === USER_ROLES.INSTITUTION ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePerspectiveChange(USER_ROLES.INSTITUTION)}
+            className={cn(
+              'w-full justify-start font-serif text-sm',
+              perspective === USER_ROLES.INSTITUTION
+                ? 'bg-wine text-parchment hover:bg-wine/90'
+                : 'border-wine text-ink hover:bg-wine/10'
+            )}
+          >
+            Institution
+          </Button>
         </div>
       </div>
     );
   }
 
-  // Full radio button version for other contexts
   return (
     <div className="space-y-3 py-3 border-b border-wine/10">
       <Label className="text-sm font-serif font-semibold text-ink/80 uppercase tracking-wide">
@@ -131,24 +158,33 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
             Gallery
           </Label>
         </div>
+        <div className="flex items-center space-x-3">
+          <RadioGroupItem value={USER_ROLES.INSTITUTION} id="institution" className="border-wine" />
+          <Label
+            htmlFor="institution"
+            className="font-serif text-sm cursor-pointer flex-1 text-ink"
+          >
+            Institution
+          </Label>
+        </div>
       </RadioGroup>
     </div>
   );
 }
 
 /**
- * Get the current user perspective from localStorage
+ * Get the current user perspective from localStorage (client only).
+ * On the server, use `readPerspective()` from `~/lib/read-perspective`.
  */
 export function getPerspective(): UserRole {
   if (typeof window === 'undefined') {
-    return USER_ROLES.ARTIST; // Default on server
+    return USER_ROLES.ARTIST;
   }
-  
-  const saved = localStorage.getItem(PERSPECTIVE_KEY);
-  if (saved && (saved === USER_ROLES.ARTIST || saved === USER_ROLES.COLLECTOR || saved === USER_ROLES.GALLERY || saved === USER_ROLES.INSTITUTION)) {
-    return saved as UserRole;
-  }
-  
-  return USER_ROLES.ARTIST; // Default
-}
 
+  const saved = localStorage.getItem(PERSPECTIVE_KEY);
+  if (isSupportedPerspective(saved)) {
+    return saved;
+  }
+
+  return USER_ROLES.ARTIST;
+}
