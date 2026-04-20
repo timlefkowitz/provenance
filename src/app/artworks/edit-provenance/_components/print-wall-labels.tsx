@@ -32,10 +32,10 @@ type LabelSize = {
 };
 
 const SIZES: Record<'small' | 'standard' | 'medium' | 'extended', LabelSize> = {
-  small:    { label: '3 × 5 in',   wIn: 3,  hIn: 5  },
-  standard: { label: '4 × 6 in',   wIn: 4,  hIn: 6  },
-  medium:   { label: '5 × 7 in',   wIn: 5,  hIn: 7  },
-  extended: { label: '8 × 10 in',  wIn: 8,  hIn: 10 },
+  small:    { label: '2 × 3 in',   wIn: 2,  hIn: 3  },
+  standard: { label: '2 × 4 in',   wIn: 2,  hIn: 4  },
+  medium:   { label: '2 × 5 in',   wIn: 2,  hIn: 5  },
+  extended: { label: '2 × 6 in',   wIn: 2,  hIn: 6  },
 };
 
 /**
@@ -166,50 +166,48 @@ export function PrintWallLabels({
     .label {
       break-inside: avoid;
       page-break-inside: avoid;
-      border: 0.5pt solid #ccc;
-      padding: 14px 16px 28px;
+      border: 0.4pt solid #ccc;
+      padding: 7px 9px 18px;
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      gap: 6px;
+      gap: 3px;
       overflow: hidden;
     }
     .artist {
-      font-size: 15pt;
+      font-size: 9pt;
       font-weight: bold;
       line-height: 1.2;
       letter-spacing: 0.01em;
     }
     .title {
-      font-size: 12pt;
+      font-size: 8pt;
       font-style: italic;
-      line-height: 1.35;
+      line-height: 1.3;
       color: #1a1209;
     }
     .meta {
-      font-size: 9pt;
-      line-height: 1.45;
+      font-size: 6.5pt;
+      line-height: 1.4;
       color: #333;
-      margin-top: 2px;
-    }
-    .edition {
-      font-size: 8pt;
-      color: #555;
       margin-top: 1px;
     }
-    .credit {
-      font-size: 8pt;
+    .edition {
+      font-size: 6pt;
       color: #555;
-      margin-top: 2px;
+    }
+    .credit {
+      font-size: 6pt;
+      color: #555;
       font-style: normal;
     }
     /* Tiny size indicator — visible in screen preview, suppressed in print */
     .size-badge {
       position: absolute;
-      bottom: 4px;
-      right: 6px;
-      font-size: 6pt;
+      bottom: 3px;
+      right: 5px;
+      font-size: 5pt;
       color: #bbb;
       font-family: 'Courier New', monospace;
       letter-spacing: 0.04em;

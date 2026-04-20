@@ -1,7 +1,9 @@
 import { Resend } from 'resend';
 import {
   getCertificationEmailSubject,
+  getArtworkFeaturedEmailSubject,
   getWelcomeEmailSubject,
+  renderArtworkFeaturedEmailHtml,
   renderCertificationEmailHtml,
   renderNotificationEmailHtml,
   renderSummaryEmailHtml,
@@ -150,6 +152,23 @@ export async function sendCertificationEmail(
     subject,
     html,
   });
+}
+
+/**
+ * Send featured email to an artist when their artwork is added to the homepage queue
+ */
+export async function sendArtworkFeaturedEmail(
+  email: string,
+  artistName: string,
+  artworkTitle: string,
+  artworkUrl: string,
+): Promise<void> {
+  const [subject, html] = await Promise.all([
+    getArtworkFeaturedEmailSubject(),
+    renderArtworkFeaturedEmailHtml(artistName, artworkTitle, artworkUrl),
+  ]);
+
+  await sendEmail({ to: email, subject, html });
 }
 
 export interface NotificationEmailParams {

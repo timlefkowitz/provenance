@@ -278,6 +278,33 @@ export async function renderSummaryEmailHtml(
   return buildEmailHtml(`Your ${periodLabel}`, inner, theme);
 }
 
+export async function renderArtworkFeaturedEmailHtml(
+  artistName: string,
+  artworkTitle: string,
+  artworkUrl: string,
+): Promise<string> {
+  const theme = await getResolvedEmailTheme();
+  const { bodyMarkdown } = await getResolvedTemplateMarkdown('artwork_featured');
+  const safeArtworkUrl = isSafeHttpUrl(artworkUrl) ? artworkUrl : 'https://provenance.guru';
+
+  const md = interpolateTemplate(
+    bodyMarkdown,
+    {
+      artistName: escapeHtml(artistName || 'Artist'),
+      artworkTitle: escapeHtml(artworkTitle),
+    },
+    { artworkUrl: safeArtworkUrl },
+  );
+
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, safeArtworkUrl, 'View Your Artwork')}</div>`;
+  return buildEmailHtml('Your Artwork Has Been Featured', inner, theme);
+}
+
+export async function getArtworkFeaturedEmailSubject(): Promise<string> {
+  const { subject } = await getResolvedTemplateMarkdown('artwork_featured');
+  return subject;
+}
+
 export async function renderUpdateEmailHtml(
   name: string,
   title: string,

@@ -15,6 +15,7 @@ export const DEFAULT_EMAIL_SUBJECTS = {
   notification: 'Notification from Provenance',
   summary: 'Your Provenance activity summary',
   update: 'Update from Provenance',
+  artwork_featured: 'Congratulations – Your Work Has Been Queued for Our Landing Page!',
 } as const;
 
 export const DEFAULT_EMAIL_MARKDOWN = {
@@ -103,6 +104,24 @@ Hi {{name}},
 
 Best regards,  
 The Provenance Team
+`,
+
+  artwork_featured: `## Congratulations – Your Work Has Been Queued for Our Landing Page!
+
+Dear {{artistName}},
+
+We are thrilled to share some wonderful news: your artwork **"{{artworkTitle}}"** has been selected and is now queued to be featured on the Provenance landing page.
+
+Our team personally reviews every piece that appears on the homepage, and yours stood out for its exceptional quality and provenance story. This is a remarkable achievement and a testament to the work you bring to the platform.
+
+[View Your Artwork]({{artworkUrl}})
+
+---
+
+Thank you for being a part of the Provenance community.
+
+Warm regards,  
+**The Provenance Team**
 `,
 } as const;
 

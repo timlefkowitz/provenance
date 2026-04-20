@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { isAdmin } from '~/lib/admin';
+import { sendArtworkFeaturedEmail } from '~/lib/email';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -93,10 +94,10 @@ export async function addFeaturedArtwork(artworkId: string) {
 
     const adminClient = getSupabaseServerAdminClient();
 
-    // Verify artwork exists and is verified
+    // Verify artwork exists and is verified — also fetch fields needed for email and featured update
     const { data: artwork, error: artworkError } = await (adminClient as any)
       .from('artworks')
-      .select('id, status')
+      .select('id, status, title, artist_name, account_id')
       .eq('id', artworkId)
       .single();
 
@@ -172,6 +173,44 @@ export async function addFeaturedArtwork(artworkId: string) {
     if (!updatedRows || updatedRows.length === 0) {
       console.error('[FeaturedArtworks] Update affected 0 rows', { targetAccountId });
       return { error: 'Failed to add featured artwork: no account row updated' };
+    }
+
+    // Mark artwork as featured in the artworks table (non-fatal if it fails)
+    const { error: featuredFlagError } = await (adminClient as any)
+      .from('artworks')
+      .update({ featured: true, featured_at: new Date().toISOString() })
+      .eq('id', artworkId);
+    if (featuredFlagError) {
+      console.error('[FeaturedArtworks] Failed to set artworks.featured flag (non-fatal)', featuredFlagError);
+    } else {
+      console.log('[FeaturedArtworks] artworks.featured set to true for', artworkId);
+    }
+
+    // Send notification email to the artwork's owner (non-fatal)
+    try {
+      const { data: ownerAccount } = await adminClient
+        .from('accounts')
+        .select('email, name')
+        .eq('id', artwork.account_id)
+        .single();
+
+      if (ownerAccount?.email) {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+        const artworkUrl = `${siteUrl}/artworks/${artworkId}`;
+        const artistName =
+          artwork.artist_name ||
+          ownerAccount.name ||
+          ownerAccount.email.split('@')[0] ||
+          'Artist';
+
+        console.log('[FeaturedArtworks] Sending artwork_featured email to', ownerAccount.email);
+        await sendArtworkFeaturedEmail(ownerAccount.email, artistName, artwork.title, artworkUrl);
+        console.log('[FeaturedArtworks] artwork_featured email sent to', ownerAccount.email);
+      } else {
+        console.log('[FeaturedArtworks] No owner email found for artwork, skipping email', { artworkId, account_id: artwork.account_id });
+      }
+    } catch (emailErr) {
+      console.error('[FeaturedArtworks] artwork_featured email send failed (non-fatal)', emailErr);
     }
 
     // Clean up: remove featured_artworks from any OTHER accounts so the canonical list
@@ -287,6 +326,17 @@ export async function removeFeaturedArtwork(artworkId: string) {
     console.log(
       `[FeaturedArtworks] featured_artworks now has ${updatedFeaturedArtworks.length} items on account ${featuredAccountId}`,
     );
+
+    // Clear featured flag on the artwork (non-fatal)
+    const { error: clearFlagError } = await (adminClient as any)
+      .from('artworks')
+      .update({ featured: false, featured_at: null })
+      .eq('id', artworkId);
+    if (clearFlagError) {
+      console.error('[FeaturedArtworks] Failed to clear artworks.featured flag (non-fatal)', clearFlagError);
+    } else {
+      console.log('[FeaturedArtworks] artworks.featured cleared for', artworkId);
+    }
 
     revalidatePath('/');
     revalidatePath('/admin');
