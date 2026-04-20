@@ -1,17 +1,44 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
-import { Calendar, MapPin, User, Image as ImageIcon, Edit } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
 import { ExhibitionDetails } from '../_components/exhibition-details';
 
 export const metadata = {
   title: 'Exhibition | Provenance',
 };
+
+function getStatus(startDate: string, endDate: string | null): 'upcoming' | 'ongoing' | 'past' {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  if (start > now) return 'upcoming';
+  if (!end || end >= now) return 'ongoing';
+  return 'past';
+}
+
+const STATUS_STYLES = {
+  upcoming: { dot: 'bg-sky-400',     label: 'Upcoming', text: 'text-sky-700' },
+  ongoing:  { dot: 'bg-emerald-400', label: 'Ongoing',  text: 'text-emerald-700' },
+  past:     { dot: 'bg-ink/25',      label: 'Past',     text: 'text-ink/40' },
+};
+
+function formatRange(start: string, end: string | null) {
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+  const s = new Date(start);
+  const e = end ? new Date(end) : null;
+  if (!e) return s.toLocaleDateString('en-US', opts);
+  const sameYear = s.getFullYear() === e.getFullYear();
+  const startStr = sameYear
+    ? s.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    : s.toLocaleDateString('en-US', opts);
+  return `${startStr} – ${e.toLocaleDateString('en-US', opts)}`;
+}
 
 export default async function ExhibitionPage({
   params,
@@ -26,102 +53,149 @@ export default async function ExhibitionPage({
   const { data: { user } } = await client.auth.getUser();
 
   const exhibition = await getExhibitionWithDetails(id);
+  if (!exhibition) redirect('/exhibitions');
 
-  if (!exhibition) {
-    redirect('/exhibitions');
-  }
-
-  // Check if user is the gallery owner
   const isOwner = user?.id === exhibition.gallery_id;
 
-  // Determine back link - if from gallery, link back to gallery profile
+  // Resolve back link
   let backLink = '/exhibitions';
-  let backLabel = '← Back to Exhibitions';
-  
-  // Check if we came from a gallery (via query param or by checking if gallery_id exists)
+  let backLabel = 'Exhibitions';
   if (resolvedSearchParams?.from === 'gallery' || exhibition.gallery_id) {
     try {
-      // Get gallery profile to build proper link
       const galleryProfile = await getUserProfileByRole(exhibition.gallery_id, USER_ROLES.GALLERY);
-      
       if (galleryProfile) {
-        // Use profileId from query param if provided, otherwise use the first gallery profile
         const profileId = resolvedSearchParams?.profileId || galleryProfile.id;
         backLink = `/artists/${exhibition.gallery_id}?role=gallery&profileId=${profileId}`;
-        backLabel = '← Back to Gallery';
+        backLabel = 'Gallery';
       } else {
-        // Fallback to gallery account page without profileId
         backLink = `/artists/${exhibition.gallery_id}?role=gallery`;
-        backLabel = '← Back to Gallery';
+        backLabel = 'Gallery';
       }
-    } catch (error) {
-      // If error, fall back to exhibitions page
-      console.error('Error fetching gallery profile:', error);
+    } catch {
+      // fallback silently
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  const status = getStatus(exhibition.start_date, exhibition.end_date ?? null);
+  const statusStyle = STATUS_STYLES[status];
+  const metadata = (exhibition as any).metadata as { curator?: string; theme?: string } | undefined;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <Button
-          asChild
-          variant="ghost"
-          className="mb-4 font-serif"
-        >
-          <Link href={backLink}>{backLabel}</Link>
-        </Button>
+    <div className="min-h-screen">
+      {/* ── HERO ──────────────────────────────────────────────── */}
+      <div className="border-b border-wine/15">
+        <div className="container mx-auto px-4 max-w-6xl pt-8 pb-12 md:pb-16">
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-display font-bold text-wine mb-2">
-              {exhibition.title}
-            </h1>
-            {exhibition.description && (
-              <p className="text-ink/70 font-serif text-lg mb-4">
-                {exhibition.description}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-4 text-sm text-ink/70">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span className="font-serif">
-                  {formatDate(exhibition.start_date)}
-                  {exhibition.end_date && ` - ${formatDate(exhibition.end_date)}`}
-                </span>
-              </div>
-              {exhibition.location && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  <span className="font-serif">{exhibition.location}</span>
-                </div>
-              )}
+          {/* Back nav */}
+          <Link
+            href={backLink}
+            className="inline-flex items-center gap-1.5 text-xs text-ink/40 hover:text-wine font-serif transition-colors mb-10 group"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            {backLabel}
+          </Link>
+
+          {/* Status + edit row */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
+              <span className={`text-[10px] uppercase tracking-widest font-serif ${statusStyle.text}`}>
+                {statusStyle.label}
+              </span>
             </div>
+            {isOwner && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif text-ink/40 hover:text-wine h-8 gap-1.5"
+              >
+                <Link href={`/exhibitions/${id}/edit`}>
+                  <Edit className="h-3.5 w-3.5" />
+                  Edit
+                </Link>
+              </Button>
+            )}
           </div>
-          {isOwner && (
-            <Button
-              asChild
-              variant="outline"
-              className="font-serif border-wine/30 hover:bg-wine/10"
-            >
-              <Link href={`/exhibitions/${id}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
+
+          {/* Title */}
+          <h1 className="font-display font-bold text-ink text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.92] tracking-tight mb-6 max-w-4xl">
+            {exhibition.title}
+          </h1>
+
+          {/* Description */}
+          {exhibition.description && (
+            <p className="text-ink/55 font-serif text-base md:text-lg leading-relaxed max-w-2xl mb-8">
+              {exhibition.description}
+            </p>
+          )}
+
+          {/* Meta pills row */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink/45 font-serif">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-wine/40" />
+              {formatRange(exhibition.start_date, exhibition.end_date ?? null)}
+            </span>
+            {exhibition.location && (
+              <span className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-wine/40" />
+                {exhibition.location}
+              </span>
+            )}
+            {metadata?.curator && (
+              <span className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-wine/40" />
+                Curated by {metadata.curator}
+              </span>
+            )}
+          </div>
+
+          {/* Theme tag */}
+          {metadata?.theme && (
+            <div className="mt-4">
+              <span className="inline-flex items-center text-xs font-serif border border-wine/20 rounded-full px-3 py-1 text-ink/50">
+                {metadata.theme}
+              </span>
+            </div>
           )}
         </div>
       </div>
 
-      <ExhibitionDetails exhibition={exhibition} isOwner={isOwner} />
+      {/* ── ARTISTS STRIP ─────────────────────────────────────── */}
+      {exhibition.artists.length > 0 && (
+        <div className="border-b border-wine/10 bg-parchment/40">
+          <div className="container mx-auto px-4 max-w-6xl py-5">
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
+              <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mr-4">
+                Artists
+              </p>
+              {exhibition.artists.map((artist, i) => (
+                <span key={artist.id} className="flex items-center gap-1">
+                  <Link
+                    href={`/artists/${artist.id}`}
+                    className="font-serif text-sm text-ink/70 hover:text-wine transition-colors"
+                  >
+                    {artist.name}
+                  </Link>
+                  {i < exhibition.artists.length - 1 && (
+                    <span className="text-ink/25 mx-1">·</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ARTWORKS ──────────────────────────────────────────── */}
+      <div className="container mx-auto px-4 max-w-6xl py-12 pb-24">
+        {exhibition.artworks.length > 0 && (
+          <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-8">
+            Works in Exhibition · {exhibition.artworks.length}
+          </p>
+        )}
+        <ExhibitionDetails exhibition={exhibition} isOwner={isOwner} />
+      </div>
     </div>
   );
 }
-

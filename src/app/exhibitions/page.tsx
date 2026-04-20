@@ -35,17 +35,18 @@ export default async function ExhibitionsPage() {
   const exhibitions = await getExhibitionsForGallery(user.id);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Exhibitions
-        </h1>
-        <p className="text-ink/70 font-serif">
-          Manage your gallery exhibitions and shows
-        </p>
+    <div className="min-h-screen">
+      <div className="border-b border-wine/15">
+        <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14">
+          <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">Gallery</p>
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-ink tracking-tight">
+            Exhibitions
+          </h1>
+        </div>
       </div>
-
-      <ExhibitionsList exhibitions={exhibitions} galleryId={user.id} />
+      <div className="container mx-auto px-4 max-w-6xl py-10 pb-24">
+        <ExhibitionsList exhibitions={exhibitions} galleryId={user.id} />
+      </div>
     </div>
   );
 }
