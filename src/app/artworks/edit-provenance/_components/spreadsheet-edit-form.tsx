@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Eye, X } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -26,6 +26,12 @@ import {
   CommandItem,
   CommandList,
 } from '@kit/ui/command';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@kit/ui/sheet';
 import { cn } from '@kit/ui/utils';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
 
@@ -124,6 +130,260 @@ const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
   is_public: 'Public listing',
   received: 'Received',
 };
+
+function CertificatePreviewPanel({
+  artwork,
+  data,
+  exhibition,
+  onClose,
+}: {
+  artwork: Artwork;
+  data: ArtworkFormData;
+  exhibition: LinkableExhibition | null;
+  onClose: () => void;
+}) {
+  const [imageError, setImageError] = useState(false);
+
+  const formatDate = (iso: string | null | undefined) => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return iso;
+    }
+  };
+
+  const hasProvenance =
+    data.former_owners ||
+    data.auction_history ||
+    data.exhibition_history ||
+    data.historic_context ||
+    data.celebrity_notes;
+
+  return (
+    <div className="h-full overflow-y-auto bg-parchment">
+      {/* Header strip */}
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-wine/20 bg-parchment/95 backdrop-blur-md px-4 py-3">
+        <p className="text-xs font-serif text-ink/60">
+          Certificate preview — edits appear live
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full p-1 text-ink/50 hover:text-ink/80 transition-colors"
+          aria-label="Close preview"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Certificate body */}
+      <div className="p-4 sm:p-6">
+        <div className="bg-white border-double-box p-4 sm:p-8 shadow-md">
+          {/* Cert header */}
+          <div className="text-center mb-6 border-b-2 border-wine pb-5">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-wine mb-1 tracking-widest">
+              CERTIFICATE OF AUTHENTICITY
+            </h1>
+            <p className="text-ink/70 font-serif text-sm">
+              Provenance | A Journal of Art, Objects &amp; Their Histories
+            </p>
+          </div>
+
+          {/* Certificate number */}
+          {artwork.certificate_number && (
+            <div className="mb-5">
+              <p className="text-xs text-ink/60 font-serif mb-0.5">Certificate Number</p>
+              <p className="text-base font-display font-bold text-wine break-all">
+                {artwork.certificate_number}
+              </p>
+            </div>
+          )}
+
+          {/* Artwork image */}
+          {artwork.image_url && !imageError && (
+            <div className="mb-6 text-center">
+              <div className="inline-block border-2 border-wine p-2 sm:p-3 bg-parchment max-w-full">
+                <div className="relative w-full max-w-full">
+                  <Image
+                    src={artwork.image_url}
+                    alt={data.title || artwork.title || 'Artwork'}
+                    width={400}
+                    height={280}
+                    className="object-contain w-full h-auto max-h-52 sm:max-h-64"
+                    unoptimized
+                    onError={() => setImageError(true)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Core fields */}
+          <div className="space-y-3 mb-6">
+            <div className="border-b border-wine/20 pb-2">
+              <p className="text-xs text-ink/60 font-serif mb-0.5">Title</p>
+              <p className="text-xl font-display font-bold text-wine break-words">
+                {data.title || 'Untitled Artwork'}
+              </p>
+            </div>
+
+            {data.artist_name && (
+              <div className="border-b border-wine/20 pb-2">
+                <p className="text-xs text-ink/60 font-serif mb-0.5">Artist</p>
+                <p className="text-base font-serif text-wine break-words">{data.artist_name}</p>
+              </div>
+            )}
+
+            {data.description && (
+              <div className="border-b border-wine/20 pb-2">
+                <p className="text-xs text-ink/60 font-serif mb-0.5">Description</p>
+                <p className="text-sm font-serif text-ink whitespace-pre-wrap break-words">
+                  {data.description}
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {data.creation_date && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Creation Date</p>
+                  <p className="text-sm font-serif text-ink">{formatDate(data.creation_date)}</p>
+                </div>
+              )}
+              {data.medium && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Medium</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.medium}</p>
+                </div>
+              )}
+              {data.dimensions && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Dimensions</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.dimensions}</p>
+                </div>
+              )}
+              {data.edition && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Edition</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.edition}</p>
+                </div>
+              )}
+              {data.production_location && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Production Location</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.production_location}</p>
+                </div>
+              )}
+              {data.value && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Value</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.value}</p>
+                </div>
+              )}
+              {data.owned_by && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Owned By</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.owned_by}</p>
+                </div>
+              )}
+              {data.sold_by && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Sold By</p>
+                  <p className="text-sm font-serif text-ink break-words">{data.sold_by}</p>
+                </div>
+              )}
+              {exhibition && (
+                <div className="border-b border-wine/20 pb-2 sm:col-span-2">
+                  <p className="text-xs text-ink/60 font-serif mb-0.5">Exhibition</p>
+                  <p className="text-sm font-serif text-wine break-words">{exhibition.title}</p>
+                  {exhibition.start_date && (
+                    <p className="text-xs text-ink/60 font-serif mt-0.5">
+                      {formatDate(exhibition.start_date)}
+                      {exhibition.end_date ? ` – ${formatDate(exhibition.end_date)}` : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Provenance section */}
+          {hasProvenance && (
+            <div className="border-t-2 border-wine pt-5 mt-5">
+              <h2 className="text-xl font-display font-bold text-wine mb-3">Provenance</h2>
+              <div className="space-y-3">
+                {data.former_owners && (
+                  <div>
+                    <p className="text-xs text-ink/60 font-serif mb-0.5 font-semibold">Former Owners</p>
+                    <p className="text-sm font-serif text-ink whitespace-pre-wrap break-words">
+                      {data.former_owners}
+                    </p>
+                  </div>
+                )}
+                {data.auction_history && (
+                  <div>
+                    <p className="text-xs text-ink/60 font-serif mb-0.5 font-semibold">Auction History</p>
+                    <p className="text-sm font-serif text-ink whitespace-pre-wrap break-words">
+                      {data.auction_history}
+                    </p>
+                  </div>
+                )}
+                {data.exhibition_history && (
+                  <div>
+                    <p className="text-xs text-ink/60 font-serif mb-0.5 font-semibold">Exhibition History</p>
+                    <p className="text-sm font-serif text-ink whitespace-pre-wrap break-words">
+                      {data.exhibition_history}
+                    </p>
+                  </div>
+                )}
+                {data.historic_context && (
+                  <div>
+                    <p className="text-xs text-ink/60 font-serif mb-0.5 font-semibold">Historic Context</p>
+                    <p className="text-sm font-serif text-ink whitespace-pre-wrap break-words">
+                      {data.historic_context}
+                    </p>
+                  </div>
+                )}
+                {data.celebrity_notes && (
+                  <div>
+                    <p className="text-xs text-ink/60 font-serif mb-0.5 font-semibold">Special Notes</p>
+                    <p className="text-sm font-serif text-ink whitespace-pre-wrap break-words">
+                      {data.celebrity_notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Authentication statement */}
+          <div className="border-t-2 border-wine pt-5 mt-6">
+            <p className="text-sm font-serif text-ink leading-relaxed break-words">
+              This certifies that the artwork described above has been registered in the Provenance
+              registry and assigned the certificate number{' '}
+              <span className="font-bold text-wine break-all">
+                {artwork.certificate_number || '—'}
+              </span>
+              . This certificate serves as a record of authenticity and provenance for the artwork.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-8 pt-4 border-t border-wine/20 text-center">
+            <p className="text-xs text-ink/50 font-serif">
+              Provenance | Verified provenance entries and immutable historical timelines
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ExhibitionCombobox({
   artworkId,
@@ -238,6 +498,7 @@ export function SpreadsheetEditForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [previewArtworkId, setPreviewArtworkId] = useState<string | null>(null);
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState('__all__');
   const [artworkSearchTerm, setArtworkSearchTerm] = useState('');
   const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(() => {
@@ -734,6 +995,21 @@ export function SpreadsheetEditForm({
                   >
                     <td className="px-3 py-4 sm:px-5 align-top">
                       <div className="max-w-xl min-w-0 space-y-4">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-[10px] text-ink/40 font-serif uppercase tracking-wide">
+                            Editing
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewArtworkId(artwork.id)}
+                            className="flex items-center gap-1 rounded-full border border-wine/25 bg-parchment px-2.5 py-1 text-[11px] font-serif text-wine hover:bg-wine/10 hover:border-wine/50 transition-colors touch-manipulation"
+                            aria-label="Preview certificate"
+                          >
+                            <Eye className="h-3 w-3" />
+                            Preview certificate
+                          </button>
+                        </div>
+
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                           {artwork.image_url ? (
                             <div className="relative mx-auto w-full max-w-[11rem] aspect-square sm:mx-0 sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg overflow-hidden border border-wine/20 shadow-sm">
@@ -1092,6 +1368,40 @@ export function SpreadsheetEditForm({
           </table>
         )}
       </div>
+
+      {/* Certificate preview sheet */}
+      <Sheet
+        open={previewArtworkId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewArtworkId(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg p-0 bg-parchment border-wine/20"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Certificate Preview</SheetTitle>
+          </SheetHeader>
+          {previewArtworkId && (() => {
+            const previewArtwork = artworks.find((a) => a.id === previewArtworkId);
+            const previewData = artworkData[previewArtworkId];
+            if (!previewArtwork || !previewData) return null;
+            const linkedExhibitionId = previewData.exhibition_id;
+            const linkedExhibition = linkedExhibitionId
+              ? (linkableExhibitions.find((e) => e.id === linkedExhibitionId) ?? null)
+              : null;
+            return (
+              <CertificatePreviewPanel
+                artwork={previewArtwork}
+                data={previewData}
+                exhibition={linkedExhibition}
+                onClose={() => setPreviewArtworkId(null)}
+              />
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
 
       {/* Submit Button */}
       <div
