@@ -102,6 +102,7 @@ const OPTIONAL_PRIMARY_FIELDS = [
   'owned_by',
   'sold_by',
   'is_public',
+  'received',
 ] as const;
 
 type OptionalPrimaryField = (typeof OPTIONAL_PRIMARY_FIELDS)[number];
@@ -121,6 +122,7 @@ const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
   owned_by: 'Owned by',
   sold_by: 'Sold by',
   is_public: 'Public listing',
+  received: 'Received',
 };
 
 function ExhibitionCombobox({
@@ -225,10 +227,12 @@ export function SpreadsheetEditForm({
   artworks,
   linkableExhibitions,
   initialExhibitionIdByArtworkId,
+  receiverName,
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
   initialExhibitionIdByArtworkId: Record<string, string | null>;
+  receiverName: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -246,6 +250,13 @@ export function SpreadsheetEditForm({
   const [optionalPrimaryFields, setOptionalPrimaryFields] = useState<Set<OptionalPrimaryField>>(
     () => new Set(),
   );
+  /** Per-artwork date for the "Received" stamp, defaults to today's date. */
+  const todayIso = new Date().toISOString().split('T')[0];
+  const [receivedDates, setReceivedDates] = useState<Record<string, string>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, todayIso])),
+  );
+  /** Per-artwork confirmation that a "Received" stamp was applied this session. */
+  const [receivedStamped, setReceivedStamped] = useState<Set<string>>(() => new Set());
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -1017,6 +1028,57 @@ export function SpreadsheetEditForm({
                                     updateField(artwork.id, 'is_public', checked)
                                   }
                                 />
+                              </div>
+                            ) : null}
+                            {field === 'received' ? (
+                              <div className="rounded-md border border-wine/20 bg-wine/[0.03] p-3 space-y-3">
+                                <div>
+                                  <p className="text-xs font-serif font-medium text-ink/80">
+                                    {OPTIONAL_PRIMARY_LABELS.received}
+                                  </p>
+                                  <p className="text-[10px] text-ink/50 font-serif mt-0.5 leading-snug">
+                                    Stamps &ldquo;Received by {receiverName}&rdquo; into Former owners on Save.
+                                  </p>
+                                </div>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                  <Input
+                                    type="date"
+                                    value={receivedDates[artwork.id] ?? todayIso}
+                                    onChange={(e) =>
+                                      setReceivedDates((prev) => ({
+                                        ...prev,
+                                        [artwork.id]: e.target.value,
+                                      }))
+                                    }
+                                    className="font-serif text-sm h-9 border-wine/20 w-full sm:w-auto"
+                                    aria-label="Date received"
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                      const dateStr = receivedDates[artwork.id] ?? todayIso;
+                                      const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                      });
+                                      const entry = `Received by ${receiverName}, ${formattedDate}`;
+                                      const existing = data.former_owners.trim();
+                                      const updated = existing ? `${existing}\n${entry}` : entry;
+                                      updateField(artwork.id, 'former_owners', updated);
+                                      setReceivedStamped((prev) => new Set(prev).add(artwork.id));
+                                    }}
+                                    className="font-serif text-xs h-9 sm:h-8 bg-wine text-parchment hover:bg-wine/90 whitespace-nowrap touch-manipulation"
+                                  >
+                                    Mark as Received
+                                  </Button>
+                                </div>
+                                {receivedStamped.has(artwork.id) ? (
+                                  <p className="text-[10px] text-green-700 font-serif">
+                                    ✓ Stamped — hit Save changes to persist.
+                                  </p>
+                                ) : null}
                               </div>
                             ) : null}
                           </div>

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Images } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
+import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { SpreadsheetEditForm } from '../edit-provenance/_components/spreadsheet-edit-form';
 
 export const metadata = {
@@ -36,36 +37,20 @@ export default async function MyArtworksPage() {
       <div className="min-h-[calc(100vh-5rem)] bg-parchment">
         <div className="border-b border-wine/15 bg-gradient-to-b from-wine/[0.06] to-transparent">
           <div className="container mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-2xl space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
-                  <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
-                    Your collection
-                  </p>
-                </div>
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
-                  Collection
-                </h1>
-                <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
-                  Register artworks, refine provenance, and keep your holdings organized in one
-                  place.
+            <div className="max-w-2xl space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
+                <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
+                  Your collection
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <Link
-                  href="/artworks/add"
-                  className="inline-flex h-11 items-center justify-center rounded-lg bg-wine px-6 font-serif text-sm font-medium text-parchment transition-colors hover:bg-wine/90"
-                >
-                  Add your first artwork
-                </Link>
-                <Link
-                  href="/subscription?role=collector"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-wine/30 bg-parchment/80 px-6 font-serif text-sm font-medium text-wine transition-colors hover:border-wine/50 hover:bg-wine/5"
-                >
-                  Collector subscription
-                </Link>
-              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
+                Collection
+              </h1>
+              <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
+                Register artworks, refine provenance, and keep your holdings organized in one
+                place.
+              </p>
             </div>
           </div>
         </div>
@@ -105,6 +90,15 @@ export default async function MyArtworksPage() {
     }
   }
 
+  // Resolve the best display name for the "Received by" stamp
+  const userProfiles = await getUserProfiles(user.id);
+  const ROLE_PRIORITY = ['gallery', 'institution', 'artist', 'collector'];
+  const bestProfile = ROLE_PRIORITY.reduce<(typeof userProfiles)[number] | null>((best, role) => {
+    if (best) return best;
+    return userProfiles.find((p) => p.role === role && p.is_active) ?? null;
+  }, null);
+  const receiverName = bestProfile?.name ?? user.email ?? 'Unknown';
+
   let linkableExhibitions = await getUserExhibitions(user.id, {
     forCollectionManagement: true,
   });
@@ -134,42 +128,26 @@ export default async function MyArtworksPage() {
     <div className="min-h-[calc(100vh-5rem)] bg-parchment pb-8">
       <div className="border-b border-wine/15 bg-gradient-to-b from-wine/[0.06] to-transparent">
         <div className="container mx-auto max-w-7xl w-full min-w-0 overflow-x-hidden px-4 sm:px-6 py-8 sm:py-10">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0 space-y-4 max-w-3xl">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
-                <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
-                  Your collection
-                </p>
-                <span
-                  className="rounded-full border border-wine/20 bg-parchment/90 px-3 py-0.5 font-serif text-xs text-ink/70"
-                  aria-label={`${count} artworks in collection`}
-                >
-                  {count} {count === 1 ? 'artwork' : 'artworks'}
-                </span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
-                Collection
-              </h1>
-              <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
-                Tap thumbnails to choose what you are editing, then update provenance in the panel
-                below. Save when you are done.
+          <div className="min-w-0 space-y-4 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="h-px w-10 bg-wine/35 shrink-0" aria-hidden />
+              <p className="text-[11px] font-landing font-light tracking-[0.28em] text-ink/45 uppercase">
+                Your collection
               </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end shrink-0">
-              <Link
-                href="/artworks/add"
-                className="inline-flex h-11 items-center justify-center rounded-lg bg-wine px-5 font-serif text-sm font-medium text-parchment transition-colors hover:bg-wine/90 sm:min-w-[9.5rem]"
+              <span
+                className="rounded-full border border-wine/20 bg-parchment/90 px-3 py-0.5 font-serif text-xs text-ink/70"
+                aria-label={`${count} artworks in collection`}
               >
-                Add artwork
-              </Link>
-              <Link
-                href="/subscription?role=collector"
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-wine/30 bg-parchment/80 px-5 font-serif text-sm font-medium text-wine transition-colors hover:border-wine/50 hover:bg-wine/5 sm:min-w-[9.5rem]"
-              >
-                Subscribe
-              </Link>
+                {count} {count === 1 ? 'artwork' : 'artworks'}
+              </span>
             </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-wine tracking-tight">
+              Collection
+            </h1>
+            <p className="text-base sm:text-lg text-ink/70 font-serif leading-relaxed">
+              Tap thumbnails to choose what you are editing, then update provenance in the panel
+              below. Save when you are done.
+            </p>
           </div>
         </div>
       </div>
@@ -179,6 +157,7 @@ export default async function MyArtworksPage() {
           artworks={artworks}
           linkableExhibitions={linkableExhibitions}
           initialExhibitionIdByArtworkId={initialExhibitionIdByArtworkId}
+          receiverName={receiverName}
         />
       </div>
     </div>
