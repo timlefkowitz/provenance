@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { Card, CardContent } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
@@ -262,317 +261,349 @@ export default async function ArtistProfilePage({
     artworks = artworksData;
   }
 
+  const hasSidebarContent =
+    Boolean(bio) ||
+    galleries.length > 0 ||
+    newsPublications.length > 0 ||
+    (isGallery && isOwner && roleProfile?.id);
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      {/* Header */}
-      <div className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="flex items-center gap-6">
-          {/* Avatar */}
-          <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-2 border-wine/30 bg-wine/10">
-            {pictureUrl ? (
-              <Image
-                src={pictureUrl}
-                alt={displayName}
-                fill
-                className="object-cover"
-                unoptimized
-                loading="eager"
-                priority
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-wine/10">
-                <span className="text-3xl font-display font-bold text-wine uppercase">
-                  {displayName?.charAt(0) || '?'}
-                </span>
-              </div>
-            )}
-          </div>
+    <div className="min-h-screen">
+      {/* ── HERO HEADER ─────────────────────────────────────────── */}
+      <div className="border-b border-wine/15">
+        <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14">
+          <div className="flex flex-col sm:flex-row gap-7 sm:gap-10 items-start">
 
-          <div>
-            <h1 className="text-3xl md:text-4xl font-display font-bold text-wine mb-1">
-              {displayName}
-            </h1>
-            {medium && !isGallery && (
-              <p className="text-ink/70 font-serif text-base md:text-lg italic">
-                {medium}
-              </p>
-            )}
-            {location && (
-              <p className="text-sm text-ink/60 font-serif mt-1">
-                {location}
-                {isGallery && establishedYear && ` • Established ${establishedYear}`}
-              </p>
-            )}
-            {!isGallery && account.created_at && (
-              <p className="text-xs text-ink/50 font-serif mt-2">
-                Member since{' '}
-                {new Date(account.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                })}
-              </p>
-            )}
-            {streak && (
-              <div className="mt-2 space-y-1">
-                <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
-                {streak.longestStreakDays > 0 ? (
-                  <p className="text-xs text-ink/60 font-serif">
-                    Longest streak: {streak.longestStreakDays} days
+            {/* Avatar — square for galleries, circle for artists */}
+            <div
+              className={[
+                'relative flex-shrink-0 overflow-hidden border border-wine/20 bg-wine/5',
+                isGallery
+                  ? 'w-24 h-24 md:w-32 md:h-32 rounded-xl shadow-sm'
+                  : 'w-24 h-24 md:w-28 md:h-28 rounded-full',
+              ].join(' ')}
+            >
+              {pictureUrl ? (
+                <Image
+                  src={pictureUrl}
+                  alt={displayName}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                  loading="eager"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-wine/8">
+                  <span className="text-3xl md:text-4xl font-display font-bold text-wine/60 uppercase select-none">
+                    {displayName?.charAt(0) || '?'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Identity block */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="min-w-0">
+                  {/* Type label */}
+                  <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
+                    {isGallery ? 'Gallery' : medium || 'Artist'}
                   </p>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {isOwner && (
-          <div className="flex flex-col gap-3 w-full md:max-w-md">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                asChild
-                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-                size="sm"
-              >
-                <Link href={requestedProfileId && roleProfile ? `/profiles/${roleProfile.id}/edit` : '/profile'}>
-                  Edit Profile
-                </Link>
-              </Button>
-              {isGallery && (
-                <Button
-                  asChild
-                  variant="outline"
-                  className="font-serif border-wine/30 hover:bg-wine/10"
-                  size="sm"
-                >
-                  <Link href="/exhibitions">Manage Exhibitions</Link>
-                </Button>
-              )}
-              <AccountSettingsButton />
-            </div>
-            {isGallery && roleProfile?.id ? (
-              <GalleryPublicLinks profileId={roleProfile.id} slug={roleProfile.slug} />
-            ) : null}
-          </div>
-        )}
-      </div>
+                  {/* Name */}
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-ink leading-tight tracking-tight mb-3 break-words">
+                    {displayName}
+                  </h1>
 
-      {/* Bio */}
-      {bio && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-3">About</h2>
-            <p className="text-ink font-serif whitespace-pre-wrap">{bio}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Links & Website */}
-      {(links.length > 0 || website) && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-3">Links</h2>
-            <ul className="space-y-3">
-              {website && (
-                <li>
-                  <SocialLinkItem url={website} />
-                </li>
-              )}
-              {links.map((link) => (
-                <li key={link}>
-                  <SocialLinkItem url={link} />
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Galleries */}
-      {galleries.length > 0 && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-3">
-              Galleries
-            </h2>
-            <ul className="list-disc list-inside space-y-1 text-sm md:text-base font-serif text-ink">
-              {galleries.map((gallery) => (
-                <li key={gallery}>{gallery}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* News & Publications */}
-      {newsPublications.length > 0 && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <h2 className="font-display text-xl text-wine mb-3 flex items-center gap-2">
-              <Newspaper className="h-5 w-5" />
-              News & Publications
-            </h2>
-            <ul className="space-y-3">
-              {newsPublications.map((pub, index) => (
-                <li key={index} className="border-b border-wine/10 last:border-0 pb-3 last:pb-0">
-                  <a
-                    href={pub.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-wine hover:text-wine/80 hover:underline font-serif font-medium block"
-                  >
-                    {pub.title}
-                  </a>
-                  {(pub.publication_name || pub.date) && (
-                    <p className="text-sm text-ink/70 font-serif mt-1">
-                      {[pub.publication_name, pub.date].filter(Boolean).join(' • ')}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Exhibitions (for galleries) */}
-      {isGallery && exhibitions.length > 0 && (
-        <Card className="mb-10 border-wine/20 bg-parchment/60">
-          <CardContent className="p-5 md:p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display text-xl text-wine">Exhibitions</h2>
-              {isOwner && (
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="font-serif border-wine/30 hover:bg-wine/10"
-                >
-                  <Link href="/exhibitions">Manage</Link>
-                </Button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {exhibitions.slice(0, 6).map((exhibition) => (
-                <Link
-                  key={exhibition.id}
-                  href={`/exhibitions/${exhibition.id}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`}
-                  className="block p-4 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors"
-                >
-                  <h3 className="font-display font-semibold text-wine mb-2">
-                    {exhibition.title}
-                  </h3>
-                  <div className="space-y-1 text-sm text-ink/70 font-serif">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      <span>
-                        {new Date(exhibition.start_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                        {exhibition.end_date &&
-                          ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}`}
+                  {/* Meta row */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink/50 font-serif">
+                    {location && (
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-wine/40" />
+                        {location}
+                        {isGallery && establishedYear && ` · Est. ${establishedYear}`}
                       </span>
-                    </div>
-                    {exhibition.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3" />
-                        <span>{exhibition.location}</span>
-                      </div>
+                    )}
+                    {!isGallery && account.created_at && (
+                      <span>
+                        Member since{' '}
+                        {new Date(account.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                        })}
+                      </span>
                     )}
                   </div>
-                </Link>
-              ))}
-            </div>
-            {exhibitions.length > 6 && (
-              <div className="mt-4 text-center">
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="font-serif"
-                >
-                  <Link href="/exhibitions">
-                    View All Exhibitions ({exhibitions.length})
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Artworks Grid */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl md:text-2xl font-display font-bold text-wine">
-          {isGallery ? 'Exhibition Artworks' : 'Artworks'}
-        </h2>
-        {isOwner && !isGallery && (
-          <Button
-            asChild
-            size="sm"
-            className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-          >
-            <Link href="/artworks/add">Add Artwork</Link>
-          </Button>
-        )}
+                  {/* Streak */}
+                  {streak && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+                      {streak.longestStreakDays > 0 && (
+                        <span className="text-xs text-ink/45 font-serif">
+                          Longest streak: {streak.longestStreakDays} days
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Social links — inline horizontal */}
+                  {(links.length > 0 || website) && (
+                    <div className="flex flex-wrap gap-4 mt-4">
+                      {website && <SocialLinkItem url={website} />}
+                      {links.map((link) => (
+                        <SocialLinkItem key={link} url={link} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Owner actions */}
+                {isOwner && (
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+                    >
+                      <Link
+                        href={
+                          requestedProfileId && roleProfile
+                            ? `/profiles/${roleProfile.id}/edit`
+                            : '/profile'
+                        }
+                      >
+                        Edit Profile
+                      </Link>
+                    </Button>
+                    {isGallery && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="font-serif border-wine/30 hover:bg-wine/10"
+                      >
+                        <Link href="/exhibitions">Manage Exhibitions</Link>
+                      </Button>
+                    )}
+                    <AccountSettingsButton />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {artworks && artworks.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {artworks.map((artwork) => (
-            <ArtworkCard
-              key={artwork.id}
-              artwork={artwork as any}
-              currentUserId={user?.id}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 border border-dashed border-wine/20 rounded-lg bg-parchment/40">
-          <p className="text-ink/70 font-serif text-base md:text-lg mb-2">
-            {isGallery
-              ? isOwner
-                ? 'No artworks have been added to your exhibitions yet.'
-                : 'This gallery has no artworks in their exhibitions yet.'
-              : isOwner
-                ? 'You have not added any artworks yet.'
-                : 'This artist has not added any artworks yet.'}
-          </p>
-          {isOwner && !isGallery && (
-            <Button
-              asChild
-              size="sm"
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif mt-2"
-            >
-              <Link href="/artworks/add">Add Your First Artwork</Link>
-            </Button>
+      {/* ── BODY ────────────────────────────────────────────────── */}
+      <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14 pb-20">
+        <div
+          className={
+            hasSidebarContent
+              ? 'grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-10 lg:gap-16 items-start'
+              : ''
+          }
+        >
+          {/* ── SIDEBAR ── */}
+          {hasSidebarContent && (
+            <aside className="space-y-8 lg:sticky lg:top-8">
+
+              {bio && (
+                <section>
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
+                    About
+                  </p>
+                  <p className="text-ink/80 font-serif text-sm leading-relaxed whitespace-pre-wrap">
+                    {bio}
+                  </p>
+                </section>
+              )}
+
+              {galleries.length > 0 && (
+                <section className={bio ? 'border-t border-wine/10 pt-8' : ''}>
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
+                    Gallery Affiliations
+                  </p>
+                  <ul className="space-y-2">
+                    {galleries.map((gallery) => (
+                      <li key={gallery} className="font-serif text-sm text-ink/80 flex items-start gap-2">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-wine/40 flex-shrink-0" />
+                        {gallery}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {newsPublications.length > 0 && (
+                <section className="border-t border-wine/10 pt-8">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-4 flex items-center gap-1.5">
+                    <Newspaper className="h-3 w-3" />
+                    Press
+                  </p>
+                  <ul className="space-y-4">
+                    {newsPublications.map((pub, index) => (
+                      <li key={index}>
+                        <a
+                          href={pub.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-wine/90 hover:text-wine font-serif text-sm font-medium leading-snug hover:underline block"
+                        >
+                          {pub.title}
+                        </a>
+                        {(pub.publication_name || pub.date) && (
+                          <p className="text-xs text-ink/45 font-serif mt-1">
+                            {[pub.publication_name, pub.date].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {isGallery && isOwner && roleProfile?.id && (
+                <section className="border-t border-wine/10 pt-8">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
+                    Public Links
+                  </p>
+                  <GalleryPublicLinks profileId={roleProfile.id} slug={roleProfile.slug} />
+                </section>
+              )}
+            </aside>
           )}
-          {isOwner && isGallery && (
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
-              <Button
-                asChild
-                size="sm"
-                className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-              >
-                <Link href="/exhibitions">Manage Exhibitions</Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="font-serif border-wine/30 hover:bg-wine/10"
-              >
-                <Link href="/artworks/add">Add Artwork to Exhibition</Link>
-              </Button>
-            </div>
-          )}
+
+          {/* ── MAIN CONTENT ── */}
+          <main className="min-w-0">
+
+            {/* Exhibitions (galleries only) */}
+            {isGallery && exhibitions.length > 0 && (
+              <section className="mb-12">
+                <div className="flex items-baseline justify-between mb-6">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif">
+                    Exhibitions
+                  </p>
+                  {isOwner && (
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="font-serif text-xs text-wine/70 hover:text-wine h-auto py-0"
+                    >
+                      <Link href="/exhibitions">Manage all</Link>
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-wine/10 rounded-lg overflow-hidden border border-wine/10">
+                  {exhibitions.slice(0, 6).map((exhibition) => (
+                    <Link
+                      key={exhibition.id}
+                      href={`/exhibitions/${exhibition.id}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`}
+                      className="group block p-5 bg-parchment hover:bg-wine/5 transition-colors"
+                    >
+                      <h3 className="font-display font-semibold text-ink group-hover:text-wine transition-colors mb-3 leading-snug">
+                        {exhibition.title}
+                      </h3>
+                      <div className="space-y-1.5 text-xs text-ink/50 font-serif">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-wine/40" />
+                          <span>
+                            {new Date(exhibition.start_date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                            {exhibition.end_date &&
+                              ` – ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}`}
+                          </span>
+                        </div>
+                        {exhibition.location && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-wine/40" />
+                            <span>{exhibition.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {exhibitions.length > 6 && (
+                  <div className="mt-4 text-center">
+                    <Button asChild variant="ghost" size="sm" className="font-serif text-wine/70 hover:text-wine">
+                      <Link href="/exhibitions">View all {exhibitions.length} exhibitions</Link>
+                    </Button>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Artworks */}
+            <section>
+              <div className="flex items-baseline justify-between mb-6">
+                <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif">
+                  {isGallery ? 'Exhibition Artworks' : 'Works'}
+                </p>
+                {isOwner && !isGallery && (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="bg-wine text-parchment hover:bg-wine/90 font-serif text-xs"
+                  >
+                    <Link href="/artworks/add">Add Artwork</Link>
+                  </Button>
+                )}
+              </div>
+
+              {artworks && artworks.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+                  {artworks.map((artwork) => (
+                    <ArtworkCard
+                      key={artwork.id}
+                      artwork={artwork as any}
+                      currentUserId={user?.id}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 border border-dashed border-wine/15 rounded-xl">
+                  <p className="text-ink/50 font-serif text-sm mb-4">
+                    {isGallery
+                      ? isOwner
+                        ? 'No artworks have been added to your exhibitions yet.'
+                        : 'This gallery has no artworks in their exhibitions yet.'
+                      : isOwner
+                        ? 'You have not added any artworks yet.'
+                        : 'This artist has not added any artworks yet.'}
+                  </p>
+                  {isOwner && !isGallery && (
+                    <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
+                      <Link href="/artworks/add">Add Your First Artwork</Link>
+                    </Button>
+                  )}
+                  {isOwner && isGallery && (
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
+                        <Link href="/exhibitions">Manage Exhibitions</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="font-serif border-wine/30 hover:bg-wine/10">
+                        <Link href="/artworks/add">Add Artwork to Exhibition</Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          </main>
         </div>
-      )}
+      </div>
     </div>
   );
 }
