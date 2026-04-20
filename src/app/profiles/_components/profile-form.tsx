@@ -461,7 +461,9 @@ export function ProfileForm({
               Add press mentions, articles, or interviews (title, link, publication, date).
             </p>
             {profile?.id &&
-              (profile.role === USER_ROLES.GALLERY || profile.role === USER_ROLES.ARTIST) && (
+              (profile.role === USER_ROLES.GALLERY ||
+                profile.role === USER_ROLES.ARTIST ||
+                profile.role === USER_ROLES.INSTITUTION) && (
                 <div className="mb-6">
                   <PressArticleDiscovery
                     profileId={profile.id}
