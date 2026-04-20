@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@kit/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Building2, GalleryHorizontal, Plus } from 'lucide-react';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { createExhibition } from '~/app/exhibitions/_actions/create-exhibition';
 
@@ -48,6 +48,7 @@ export function NewExhibitionDialog({
   const effectiveDisabled = disabled || !ownerRole;
 
   const modeLabel = ownerRole ? getRoleLabel(ownerRole as UserRole) : '';
+  const ModeIcon = ownerRole === USER_ROLES.INSTITUTION ? Building2 : GalleryHorizontal;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,12 +129,36 @@ export function NewExhibitionDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-wine">
-            New Exhibition{modeLabel ? ` — ${modeLabel}` : ''}
+            New Exhibition
           </DialogTitle>
           <DialogDescription className="font-serif">
             Create the exhibition, then select artworks from your collection to add.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Mode indicator — always visible before form fields */}
+        {ownerRole ? (
+          <div className="flex items-center gap-2.5 rounded-xl border border-ink/15 bg-ink px-3.5 py-2.5">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-parchment/15">
+              <ModeIcon className="h-3.5 w-3.5 text-parchment" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-landing font-light tracking-[0.25em] uppercase text-parchment/60">
+                Creating as
+              </p>
+              <p className="font-serif text-sm font-semibold text-parchment leading-tight">
+                {modeLabel}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-xl border border-wine/20 bg-wine/5 px-3.5 py-2.5">
+            <p className="font-serif text-sm text-wine/80">
+              Switch to Gallery or Institution mode to create an exhibition.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="destructive">

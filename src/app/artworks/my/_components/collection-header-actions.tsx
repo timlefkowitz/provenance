@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { USER_ROLES, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { getPerspective } from '~/components/perspective-switcher';
 import { NewExhibitionDialog } from './new-exhibition-dialog';
 
@@ -47,6 +47,7 @@ export function CollectionHeaderActions({
   // Server renders a disabled placeholder; once mounted we can trust localStorage.
   const activeRole: UserRole | null = mounted ? perspective : accountRole;
   const ownerMode = perspectiveToOwner(activeRole);
+  const modeLabel = ownerMode ? getRoleLabel(ownerMode as UserRole) : null;
 
   const disabledReason =
     ownerMode === null
@@ -54,12 +55,19 @@ export function CollectionHeaderActions({
       : undefined;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col items-end gap-1.5">
       <NewExhibitionDialog
         ownerRole={ownerMode}
         disabled={ownerMode === null}
         disabledReason={disabledReason}
       />
+      {mounted && (
+        <p className="text-[11px] font-serif text-ink/50 text-right">
+          {modeLabel
+            ? <>Creating as <span className="font-semibold text-ink/70">{modeLabel}</span></>
+            : <span className="text-wine/70">Switch to Gallery or Institution to create</span>}
+        </p>
+      )}
     </div>
   );
 }
