@@ -7,6 +7,68 @@ import { sendArtworkFeaturedEmail } from '~/lib/email';
 import { revalidatePath } from 'next/cache';
 
 /**
+ * Resolve the owner email for an account, falling back to auth.users when
+ * accounts.email is null (e.g. team/gallery accounts or older rows).
+ */
+async function resolveOwnerEmail(
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  accountId: string,
+): Promise<{ email: string; name: string } | null> {
+  const { data: account } = await adminClient
+    .from('accounts')
+    .select('email, name')
+    .eq('id', accountId)
+    .single();
+
+  if (account?.email) {
+    return { email: account.email, name: account.name || '' };
+  }
+
+  // Fallback: look up directly in auth.users (covers gallery/team accounts
+  // where accounts.email may be null, or older rows before the email trigger)
+  try {
+    const { data: authUser } = await (adminClient.auth.admin as any).getUserById(accountId);
+    if (authUser?.user?.email) {
+      return { email: authUser.user.email, name: account?.name || '' };
+    }
+  } catch {
+    // auth.admin may not be available in all environments
+  }
+
+  return null;
+}
+
+/**
+ * Send the artwork_featured email for a single artwork. Shared by both the
+ * add-featured flow and the retroactive bulk-send action.
+ */
+async function sendFeaturedEmailForArtwork(
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  artworkId: string,
+  accountId: string,
+  artistName: string | null,
+  artworkTitle: string,
+): Promise<void> {
+  const owner = await resolveOwnerEmail(adminClient, accountId);
+  if (!owner) {
+    console.log('[FeaturedArtworks] No owner email found for artwork, skipping email', {
+      artworkId,
+      accountId,
+    });
+    return;
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+  const artworkUrl = `${siteUrl}/artworks/${artworkId}`;
+  const resolvedName =
+    artistName || owner.name || owner.email.split('@')[0] || 'Artist';
+
+  console.log('[FeaturedArtworks] Sending artwork_featured email to', owner.email);
+  await sendArtworkFeaturedEmail(owner.email, resolvedName, artworkTitle, artworkUrl);
+  console.log('[FeaturedArtworks] artwork_featured email sent to', owner.email);
+}
+
+/**
  * Get all featured artwork IDs across all accounts (consolidated)
  * Optimized to only fetch accounts that might have featured_artworks
  */
@@ -188,27 +250,7 @@ export async function addFeaturedArtwork(artworkId: string) {
 
     // Send notification email to the artwork's owner (non-fatal)
     try {
-      const { data: ownerAccount } = await adminClient
-        .from('accounts')
-        .select('email, name')
-        .eq('id', artwork.account_id)
-        .single();
-
-      if (ownerAccount?.email) {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
-        const artworkUrl = `${siteUrl}/artworks/${artworkId}`;
-        const artistName =
-          artwork.artist_name ||
-          ownerAccount.name ||
-          ownerAccount.email.split('@')[0] ||
-          'Artist';
-
-        console.log('[FeaturedArtworks] Sending artwork_featured email to', ownerAccount.email);
-        await sendArtworkFeaturedEmail(ownerAccount.email, artistName, artwork.title, artworkUrl);
-        console.log('[FeaturedArtworks] artwork_featured email sent to', ownerAccount.email);
-      } else {
-        console.log('[FeaturedArtworks] No owner email found for artwork, skipping email', { artworkId, account_id: artwork.account_id });
-      }
+      await sendFeaturedEmailForArtwork(adminClient, artworkId, artwork.account_id, artwork.artist_name, artwork.title);
     } catch (emailErr) {
       console.error('[FeaturedArtworks] artwork_featured email send failed (non-fatal)', emailErr);
     }
@@ -346,6 +388,79 @@ export async function removeFeaturedArtwork(artworkId: string) {
   } catch (error) {
     console.error('[FeaturedArtworks] removeFeaturedArtwork failed', error);
     return { error: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Retroactively send the artwork_featured notification email to every owner
+ * of the current featured artworks queue. Safe to call more than once — the
+ * email system is fire-and-forget, but you should only use this for artworks
+ * that were featured before the per-add email was wired up.
+ */
+export async function sendFeaturedNotificationsToAll(): Promise<{
+  sent: number;
+  skipped: number;
+  errors: number;
+  error?: string;
+}> {
+  console.log('[FeaturedArtworks] sendFeaturedNotificationsToAll started');
+  try {
+    const client = getSupabaseServerClient();
+    const {
+      data: { user },
+    } = await client.auth.getUser();
+
+    if (!user) return { sent: 0, skipped: 0, errors: 0, error: 'You must be signed in' };
+
+    const userIsAdmin = await isAdmin(user.id);
+    if (!userIsAdmin) {
+      return { sent: 0, skipped: 0, errors: 0, error: 'You do not have permission' };
+    }
+
+    const adminClient = getSupabaseServerAdminClient();
+    const featuredIds = await getAllFeaturedArtworkIds();
+
+    if (featuredIds.length === 0) {
+      console.log('[FeaturedArtworks] sendFeaturedNotificationsToAll: no featured artworks');
+      return { sent: 0, skipped: 0, errors: 0 };
+    }
+
+    const { data: artworks } = await (adminClient as any)
+      .from('artworks')
+      .select('id, title, artist_name, account_id')
+      .in('id', featuredIds);
+
+    let sent = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const artwork of artworks || []) {
+      try {
+        const owner = await resolveOwnerEmail(adminClient, artwork.account_id);
+        if (!owner) {
+          console.log('[FeaturedArtworks] No email for artwork, skipping', artwork.id);
+          skipped++;
+          continue;
+        }
+        await sendFeaturedEmailForArtwork(
+          adminClient,
+          artwork.id,
+          artwork.account_id,
+          artwork.artist_name,
+          artwork.title,
+        );
+        sent++;
+      } catch (err) {
+        console.error('[FeaturedArtworks] Error sending email for artwork', artwork.id, err);
+        errors++;
+      }
+    }
+
+    console.log('[FeaturedArtworks] sendFeaturedNotificationsToAll complete', { sent, skipped, errors });
+    return { sent, skipped, errors };
+  } catch (error) {
+    console.error('[FeaturedArtworks] sendFeaturedNotificationsToAll failed', error);
+    return { sent: 0, skipped: 0, errors: 1, error: 'An unexpected error occurred' };
   }
 }
 

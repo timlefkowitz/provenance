@@ -6,11 +6,11 @@ import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { toast } from '@kit/ui/sonner';
-import { X } from 'lucide-react';
+import { X, Mail } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getFeaturedArtworksList } from '../_actions/get-featured-entry';
-import { removeFeaturedArtwork } from '../_actions/manage-featured-artworks';
+import { removeFeaturedArtwork, sendFeaturedNotificationsToAll } from '../_actions/manage-featured-artworks';
 
 type Artwork = {
   id: string;
@@ -22,6 +22,7 @@ type Artwork = {
 export function FeaturedArtworksManager() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [notifying, startNotifyTransition] = useTransition();
   const [loading, setLoading] = useState(true);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +44,26 @@ export function FeaturedArtworksManager() {
     }
     loadFeaturedArtworks();
   }, []);
+
+  const handleNotifyAll = () => {
+    startNotifyTransition(async () => {
+      try {
+        const result = await sendFeaturedNotificationsToAll();
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          const parts: string[] = [];
+          if (result.sent > 0) parts.push(`${result.sent} email${result.sent !== 1 ? 's' : ''} sent`);
+          if (result.skipped > 0) parts.push(`${result.skipped} skipped (no email)`);
+          if (result.errors > 0) parts.push(`${result.errors} failed`);
+          toast.success(parts.length > 0 ? parts.join(', ') : 'Done');
+        }
+      } catch (e) {
+        console.error('[FeaturedArtworksManager] Error sending notifications', e);
+        toast.error('Something went wrong. Please try again.');
+      }
+    });
+  };
 
   const handleRemove = (artworkId: string) => {
     startTransition(async () => {
@@ -95,6 +116,18 @@ export function FeaturedArtworksManager() {
             <p className="text-sm text-ink/70 font-serif">
               {artworks.length} of 10 artworks featured
             </p>
+            {artworks.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNotifyAll}
+                disabled={notifying}
+                className="gap-2 text-wine border-wine/30 hover:bg-wine/5"
+              >
+                <Mail className="h-4 w-4" />
+                {notifying ? 'Sending…' : 'Notify all artists'}
+              </Button>
+            )}
           </div>
 
           {artworks.length === 0 ? (
