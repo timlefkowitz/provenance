@@ -9,7 +9,18 @@ export const metadata = {
   description: 'Loan agreements and invoices for your collection',
 };
 
-export type OperationsArtworkOption = { id: string; title: string };
+export type OperationsExhibitionRef = {
+  id: string;
+  title: string;
+  start_date: string | null;
+};
+
+export type OperationsArtworkOption = {
+  id: string;
+  title: string;
+  artist_name: string | null;
+  exhibitions: OperationsExhibitionRef[];
+};
 
 export type LoanAgreementRow = {
   id: string;
@@ -125,7 +136,21 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any).from('artworks').select('id, title').eq('account_id', user.id).order('title'),
+    (client as any)
+      .from('artworks')
+      .select(
+        `
+        id,
+        title,
+        artist_name,
+        exhibition_artworks (
+          exhibition_id,
+          exhibitions!exhibition_artworks_exhibition_id_fkey ( id, title, start_date )
+        )
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('title'),
   ]);
 
   if (loansRes.error) {
@@ -152,7 +177,32 @@ export default async function OperationsPage() {
     return { ...(inv as unknown as InvoiceRow), invoice_line_items: sorted };
   });
 
-  const artworks = (artworksRes.data ?? []) as OperationsArtworkOption[];
+  const rawArtworks = (artworksRes.data ?? []) as Record<string, unknown>[];
+  const artworks: OperationsArtworkOption[] = rawArtworks.map((row) => {
+    const links = (row.exhibition_artworks as Record<string, unknown>[] | null) ?? [];
+    const exById = new Map<string, OperationsExhibitionRef>();
+    for (const link of links) {
+      const exRaw = link.exhibitions as
+        | { id: string; title: string; start_date: string | null }
+        | { id: string; title: string; start_date: string | null }[]
+        | null
+        | undefined;
+      const ex = Array.isArray(exRaw) ? exRaw[0] : exRaw;
+      if (ex?.id) {
+        exById.set(ex.id, {
+          id: ex.id,
+          title: typeof ex.title === 'string' ? ex.title : 'Exhibition',
+          start_date: ex.start_date ?? null,
+        });
+      }
+    }
+    return {
+      id: row.id as string,
+      title: (row.title as string) ?? '',
+      artist_name: (row.artist_name as string | null) ?? null,
+      exhibitions: [...exById.values()],
+    };
+  });
 
   console.log('[Operations] page loaded', {
     loans: loans.length,

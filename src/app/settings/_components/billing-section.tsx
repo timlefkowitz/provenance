@@ -144,9 +144,9 @@ export function BillingSection({ subscription }: Props) {
           {!isActive && !isTrialing && (
             <div className="space-y-3">
               <p className="font-serif text-sm text-ink/70">
-                Subscribe to access the Toolbox: Grants, Open Calls,
-                Opportunities & Relationships, and Operations (loans and
-                invoices). Certificates remain free for everyone.
+                Subscribe to access the Toolbox: Grants, Open Calls, CRM, and
+                Operations (loans and invoices). Certificates remain free for
+                everyone.
               </p>
               <Button
                 asChild

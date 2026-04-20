@@ -52,6 +52,7 @@ import {
   markInvoiceSent,
   updateInvoice,
 } from '../_actions/invoices';
+import { LoanArtworkPicker } from './loan-artwork-picker';
 
 type Props = {
   initialLoans: LoanAgreementRow[];
@@ -109,6 +110,7 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
   const [conditionsText, setConditionsText] = useState('');
   const [insuranceText, setInsuranceText] = useState('');
   const [loanStatus, setLoanStatus] = useState<string>('draft');
+  const [loanPickerSeed, setLoanPickerSeed] = useState(0);
 
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceRow | null>(null);
@@ -145,6 +147,7 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
     setConditionsText('');
     setInsuranceText('');
     setLoanStatus('draft');
+    setLoanPickerSeed((s) => s + 1);
     setLoanOpen(true);
   }
 
@@ -161,6 +164,7 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
     setConditionsText(row.conditions_text ?? '');
     setInsuranceText(row.insurance_requirements_text ?? '');
     setLoanStatus(row.status);
+    setLoanPickerSeed((s) => s + 1);
     setLoanOpen(true);
   }
 
@@ -658,31 +662,24 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
       </Tabs>
 
       <Dialog open={loanOpen} onOpenChange={setLoanOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg font-serif border-wine/20">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl font-serif border-wine/20">
           <DialogHeader>
             <DialogTitle className="font-display text-wine">
               {editingLoan ? 'Edit loan agreement' : 'New loan agreement'}
             </DialogTitle>
             <DialogDescription>
-              Capture terms, conditions, and insurance. Use PDF export for a printable copy.
+              Find the piece by exhibition or search, then capture terms, conditions, and insurance. Use PDF export
+              for a printable copy.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <div className="grid gap-2">
-              <Label>Artwork</Label>
-              <Select value={loanArtworkId} onValueChange={setLoanArtworkId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select artwork" />
-                </SelectTrigger>
-                <SelectContent>
-                  {artworks.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <LoanArtworkPicker
+              key={loanPickerSeed}
+              artworks={artworks}
+              value={loanArtworkId}
+              onChange={setLoanArtworkId}
+              disabled={busy}
+            />
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
               <div className="grid gap-2">
                 <Label>Borrower name</Label>

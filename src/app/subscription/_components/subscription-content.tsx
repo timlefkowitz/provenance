@@ -32,7 +32,7 @@ const ROLES: SubscriptionRole[] = ['artist', 'collector', 'gallery'];
 
 const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
   artist: [
-    'Toolbox (Grants, OR, Operations)',
+    'Toolbox (Grants, CRM, Operations)',
     'Grant list',
     'Open call list',
     'Residency list',
@@ -181,7 +181,7 @@ export function SubscriptionContent({
         <Card className="border-wine/30 bg-wine/5">
           <CardContent className="pt-6">
             <p className="font-serif text-wine">
-              Subscribe to access the Toolbox: Grants, Open Calls, Opportunities &amp; Relationships, and Operations (loan agreements and invoices). Certificates remain free for everyone.
+              Subscribe to access the Toolbox: Grants, Open Calls, CRM, and Operations (loan agreements and invoices). Certificates remain free for everyone.
             </p>
           </CardContent>
         </Card>

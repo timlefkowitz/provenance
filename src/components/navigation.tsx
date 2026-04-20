@@ -84,7 +84,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/portal/or" className="cursor-pointer">
-                      OR
+                      CRM
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -263,7 +263,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  OR
+                  CRM
                 </Link>
                 <Link 
                   href="/operations" 
