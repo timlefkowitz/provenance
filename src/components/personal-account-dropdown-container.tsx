@@ -39,6 +39,13 @@ import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
 
 const SELECTED_PROFILE_KEY = 'selected_profile_id';
+const PERSPECTIVE_KEY = 'user_perspective';
+const PERSPECTIVE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function writePerspectiveCookie(value: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${PERSPECTIVE_KEY}=${encodeURIComponent(value)}; path=/; max-age=${PERSPECTIVE_COOKIE_MAX_AGE}; samesite=lax`;
+}
 
 const paths = {
   home: pathsConfig.app.home,
@@ -149,11 +156,21 @@ export function ProfileAccountDropdownContainer(props: {
       });
   }, [userId, client]);
 
-  const setSelectedProfileAndNavigate = useCallback((profileId: string) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SELECTED_PROFILE_KEY, profileId);
-    }
-  }, []);
+  const setSelectedProfileAndNavigate = useCallback(
+    (profileId: string, role: string) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SELECTED_PROFILE_KEY, profileId);
+        localStorage.setItem(PERSPECTIVE_KEY, role);
+        writePerspectiveCookie(role);
+        window.dispatchEvent(
+          new CustomEvent('user_perspective_changed', { detail: role }),
+        );
+        console.log('[ProfileDropdown] Switched perspective to', role, 'with profile', profileId);
+      }
+      router.refresh();
+    },
+    [router],
+  );
 
   const signedInAsLabel = useMemo(() => {
     const email = userData?.email ?? undefined;
@@ -307,7 +324,7 @@ export function ProfileAccountDropdownContainer(props: {
                         }
                         className={cn(rowClass, 'flex items-center space-x-2')}
                         onClick={() => {
-                          setSelectedProfileAndNavigate(profile.id);
+                          setSelectedProfileAndNavigate(profile.id, profile.role);
                           close();
                         }}
                       >
