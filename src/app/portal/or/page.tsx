@@ -74,17 +74,23 @@ export default async function OpportunitiesPage() {
   }));
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Opportunities and Relationships
-        </h1>
-        <p className="text-ink/70 font-serif">
-          Track opportunities of interest. Four stages: Interested → Contacted → Negotiating → Sold.
-        </p>
+    <div className="min-h-screen">
+      {/* Editorial header */}
+      <div className="border-b border-wine/15">
+        <div className="container mx-auto px-4 max-w-7xl py-10 md:py-12">
+          <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">Toolbox</p>
+          <h1 className="text-3xl md:text-4xl font-display font-bold text-ink mb-2">
+            CRM
+          </h1>
+          <p className="text-ink/50 font-serif text-sm max-w-lg">
+            Track collector and buyer relationships across four stages: Interested → Contacted → Negotiating → Sold.
+          </p>
+        </div>
       </div>
 
-      <LeadsKanban initialLeads={leads} artistArtworks={artistArtworks} />
+      <div className="container mx-auto px-4 max-w-7xl py-8 pb-20">
+        <LeadsKanban initialLeads={leads} artistArtworks={artistArtworks} />
+      </div>
     </div>
   );
 }
