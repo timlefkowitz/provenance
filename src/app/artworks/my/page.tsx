@@ -223,6 +223,7 @@ export default async function MyArtworksPage({
           assignExhibitionId={assignExhibitionId}
           assignExhibitionTitle={assignExhibitionTitle}
           galleryName={accountRow?.name ?? undefined}
+          senderRole={activeRole}
         />
       </div>
     </div>

@@ -1,6 +1,32 @@
 import { sendNotificationEmail } from '~/lib/email';
 import { getCertificateClaimUrl } from '~/lib/certificate-claims/site-url';
 
+export async function sendGalleryCoSInviteEmail(params: {
+  to: string;
+  recipientName: string;
+  artworkTitle: string;
+  artistName?: string;
+  recipientRole: 'gallery' | 'institution';
+  token: string;
+}): Promise<void> {
+  const { to, recipientName, artworkTitle, artistName, recipientRole, token } = params;
+  const claimUrl = getCertificateClaimUrl(token);
+  const roleLabel = recipientRole === 'institution' ? 'institution' : 'gallery';
+  const artistLine = artistName ? ` by ${artistName}` : '';
+  console.log('[Certificates] sendGalleryCoSInviteEmail', { to, artworkTitle, recipientRole });
+  await sendNotificationEmail(
+    to,
+    recipientName,
+    `Create Certificate of Show — ${artworkTitle}`,
+    {
+      title: `Create a Certificate of Show`,
+      body: `An artist has invited your ${roleLabel} to issue a Certificate of Show for "${artworkTitle}"${artistLine}. Sign in with this email address and accept to create the certificate — it will be automatically linked to the artist's provenance record.`,
+      ctaUrl: claimUrl,
+      ctaLabel: 'Create Certificate of Show',
+    },
+  );
+}
+
 export async function sendOwnerCoownershipInviteEmail(params: {
   to: string;
   recipientName: string;

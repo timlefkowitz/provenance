@@ -11,6 +11,7 @@ import {
   insertLinkedCertificateOfOwnershipFromCoa,
   insertArtistCoaFromSourceCertificate,
 } from '~/lib/certificate-claims/insert-linked-certificate';
+import { insertLinkedCoSFromArtistCoa } from '~/lib/certificate-claims/insert-linked-cos-from-artist-coa';
 
 export type ConsumeCertificateClaimResult =
   | { success: true; artworkId: string }
@@ -299,6 +300,72 @@ export async function consumeCertificateClaim(token: string): Promise<ConsumeCer
       revalidatePath('/portal');
       revalidatePath(`/artworks/${primaryCoaId}/certificate`);
       return { success: true, artworkId: primaryCoaId };
+    }
+
+    if (kind === 'gallery_cos_from_artist') {
+      // Gallery/institution creating a CoS linked to the artist's CoA
+      const { data: account } = await (client as any)
+        .from('accounts')
+        .select('public_data')
+        .eq('id', user.id)
+        .single();
+
+      if (!account) {
+        return { success: false, error: 'Account not found' };
+      }
+
+      const role = getUserRole(account.public_data as Record<string, unknown>);
+      if (role !== USER_ROLES.GALLERY && role !== USER_ROLES.INSTITUTION) {
+        return { success: false, error: 'Only gallery or institution accounts can claim this certificate' };
+      }
+
+      // Resolve the gallery profile (if any) to attach to the CoS
+      const { data: galleryProfile } = await (client as any)
+        .from('user_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', role)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      console.log('[Certificates] consumeCertificateClaim gallery_cos_from_artist', {
+        sourceArtworkId: sourceArtwork.id,
+        galleryAccountId: user.id,
+        role,
+      });
+
+      const { id: newId } = await insertLinkedCoSFromArtistCoa(adminClient, sourceArtwork, {
+        galleryAccountId: user.id,
+        createdByUserId: user.id,
+        galleryProfileId: galleryProfile?.id ?? null,
+      });
+
+      await (adminClient as any)
+        .from('certificate_claim_invites')
+        .update({
+          status: 'consumed',
+          consumed_at: new Date().toISOString(),
+          consumed_by: user.id,
+          result_artwork_id: newId,
+        })
+        .eq('id', invite.id);
+
+      try {
+        await createNotification({
+          userId: sourceArtwork.account_id as string,
+          type: 'certificate_claimed',
+          title: `Certificate of Show created: ${sourceArtwork.title}`,
+          message: `A ${role} has created a Certificate of Show for "${sourceArtwork.title}" linked to your provenance record.`,
+          artworkId: newId,
+          relatedUserId: user.id,
+        });
+      } catch (e) {
+        logger.error('consume_gallery_cos_owner_notify_failed', { error: e });
+      }
+
+      revalidatePath('/portal');
+      revalidatePath(`/artworks/${newId}/certificate`);
+      return { success: true, artworkId: newId };
     }
 
     return { success: false, error: 'Unsupported claim type' };

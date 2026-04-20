@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Check, ChevronsUpDown, Eye, Sparkles, X } from 'lucide-react';
 import { PrintMenu } from './print-menu';
+import { SendMenu } from './send-menu';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -35,6 +36,7 @@ import {
 } from '@kit/ui/sheet';
 import { cn } from '@kit/ui/utils';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
+import type { UserRole } from '~/lib/user-roles';
 
 type LinkableExhibition = {
   id: string;
@@ -492,6 +494,7 @@ export function SpreadsheetEditForm({
   assignExhibitionId = null,
   assignExhibitionTitle = null,
   galleryName,
+  senderRole,
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
@@ -500,6 +503,7 @@ export function SpreadsheetEditForm({
   assignExhibitionId?: string | null;
   assignExhibitionTitle?: string | null;
   galleryName?: string;
+  senderRole?: UserRole | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -1031,6 +1035,10 @@ export function SpreadsheetEditForm({
               artworkData={artworkData}
               selectedArtworkIds={selectedArtworkIds}
               galleryName={galleryName}
+            />
+            <SendMenu
+              selectedArtworkIds={selectedArtworkIds}
+              senderRole={senderRole}
             />
           </div>
         </div>

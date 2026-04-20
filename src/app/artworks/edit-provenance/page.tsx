@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
+import { getUserRole } from '~/lib/user-roles';
 import { SpreadsheetEditForm } from './_components/spreadsheet-edit-form';
 
 export const metadata = {
@@ -19,6 +20,13 @@ export default async function MassEditProvenancePage({
   if (!user) {
     redirect('/auth/sign-in');
   }
+
+  const { data: accountRow } = await client
+    .from('accounts')
+    .select('public_data')
+    .eq('id', user.id)
+    .single();
+  const senderRole = getUserRole((accountRow?.public_data ?? {}) as Record<string, unknown>);
 
   const artworkIds = params.ids?.split(',').filter(Boolean) || [];
 
@@ -98,6 +106,7 @@ export default async function MassEditProvenancePage({
         artworks={artworks}
         linkableExhibitions={linkableExhibitions}
         initialExhibitionIdByArtworkId={initialExhibitionIdByArtworkId}
+        senderRole={senderRole}
       />
     </div>
   );
