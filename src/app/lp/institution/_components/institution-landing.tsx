@@ -4,6 +4,7 @@ import {
   Building2,
   Check,
   ChevronDown,
+  ClipboardList,
   FileCheck2,
   FileStack,
   Handshake,
@@ -86,6 +87,12 @@ const operationsFeatures = [
     icon: Tag,
   },
   {
+    title: "Exhibitions checklist",
+    description:
+      "Coordinate install, condition checks, lender requirements, and registrar sign-offs on one checklist tied to the exhibition record—so curatorial, prep, and front-of-house stay aligned from load-in through deinstall.",
+    icon: ClipboardList,
+  },
+  {
     title: "Cataloging & provenance",
     description:
       "Full accessioning, provenance tracking, and location management. Record every detail — dimensions, medium, condition, exhibition history, and ownership chain.",
@@ -117,17 +124,6 @@ export function InstitutionLanding() {
             verification, and less friction every time work moves between studio, market, and public
             trust.
           </p>
-          <div className="flex h-px w-12 bg-wine/35" />
-          <Link
-            href={config.cta.href}
-            className="group inline-flex items-center gap-2 rounded-xl bg-wine px-8 py-3.5 text-sm font-medium text-parchment shadow-sm transition-colors hover:bg-wine/90"
-          >
-            {config.cta.label}
-            <ArrowRight
-              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-              strokeWidth={1.5}
-            />
-          </Link>
           <ul className="mt-10 max-w-2xl space-y-3 text-left">
             {config.outcomes.map((line) => (
               <li
