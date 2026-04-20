@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@kit/ui/button';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, List } from 'lucide-react';
 
 type ArtworkForCatalog = {
   id: string;
@@ -559,6 +559,200 @@ function buildCatalogHtml(
   </script>
 </body>
 </html>`;
+}
+
+function buildChecklistOnlyHtml(
+  artworks: ArtworkForCatalog[],
+  artworkData: Record<string, ArtworkFormDataForCatalog>,
+  galleryName: string,
+  printDate: string,
+): string {
+  const checklistRows = artworks
+    .map((artwork, idx) => {
+      const form = artworkData[artwork.id];
+      const title = escapeHtml(merge(form?.title, artwork.title) || 'Untitled');
+      const artist = escapeHtml(merge(form?.artist_name, artwork.artist_name));
+      const year = getYear(form?.creation_date || artwork.creation_date);
+      const medium = escapeHtml(merge(form?.medium, artwork.medium));
+      const dims = escapeHtml(merge(form?.dimensions, artwork.dimensions));
+
+      return `
+        <tr>
+          <td class="num">${idx + 1}</td>
+          <td class="title-cell">${title}${year ? `, ${year}` : ''}</td>
+          <td>${artist}</td>
+          <td>${medium}</td>
+          <td>${dims}</td>
+        </tr>`;
+    })
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Checklist of Works — ${escapeHtml(galleryName)}</title>
+  <style>
+    @page { size: letter; margin: 0.75in; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: #fff;
+      color: #0e0b07;
+      line-height: 1.5;
+    }
+
+    .header {
+      border-top: 2pt solid #0e0b07;
+      padding-top: 0.25in;
+      margin-bottom: 0.35in;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .header-left {}
+    .header-gallery {
+      font-size: 7.5pt;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 400;
+      color: #999;
+    }
+    .header-title {
+      font-size: 22pt;
+      font-weight: bold;
+      line-height: 1.1;
+      margin-top: 0.06in;
+    }
+    .header-meta {
+      font-size: 7.5pt;
+      color: #aaa;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    table.checklist {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+    table.checklist thead tr { border-bottom: 0.75pt solid #0e0b07; }
+    table.checklist th {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 7pt;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #999;
+      text-align: left;
+      padding: 0 0.08in 0.06in 0;
+    }
+    table.checklist th:first-child { width: 0.3in; }
+    table.checklist td {
+      padding: 0.07in 0.08in 0.07in 0;
+      vertical-align: top;
+      border-bottom: 0.5pt solid #eae5df;
+      color: #1a1209;
+      line-height: 1.4;
+    }
+    table.checklist td.num {
+      color: #ccc;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 7.5pt;
+    }
+    table.checklist td.title-cell { font-style: italic; }
+
+    @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-gallery">${escapeHtml(galleryName)}</div>
+      <div class="header-title">Checklist of Works</div>
+    </div>
+    <div class="header-meta">
+      ${artworks.length} ${artworks.length === 1 ? 'work' : 'works'}<br />${escapeHtml(printDate)}
+    </div>
+  </div>
+  <table class="checklist">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Title &amp; Year</th>
+        <th>Artist</th>
+        <th>Medium</th>
+        <th>Dimensions</th>
+      </tr>
+    </thead>
+    <tbody>${checklistRows}</tbody>
+  </table>
+  <script>
+    window.onload = function () {
+      window.print();
+      window.onafterprint = function () { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+}
+
+export function PrintChecklist({
+  artworks,
+  artworkData,
+  selectedArtworkIds,
+  galleryName = 'Provenance',
+}: {
+  artworks: ArtworkForCatalog[];
+  artworkData: Record<string, ArtworkFormDataForCatalog>;
+  selectedArtworkIds: Set<string>;
+  galleryName?: string;
+}) {
+  const selectedArtworks = artworks.filter((a) => selectedArtworkIds.has(a.id));
+
+  const handlePrint = () => {
+    if (selectedArtworks.length === 0) return;
+    console.log('[Collection] PrintChecklist generating checklist', { count: selectedArtworks.length });
+
+    const printDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const html = buildChecklistOnlyHtml(selectedArtworks, artworkData, galleryName, printDate);
+
+    const win = window.open('', '_blank', 'width=960,height=780');
+    if (!win) {
+      alert('Pop-up blocked. Please allow pop-ups for this site and try again.');
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handlePrint}
+      disabled={selectedArtworks.length === 0}
+      className="h-9 min-h-9 px-3 text-xs font-serif touch-manipulation sm:h-7 sm:min-h-0 sm:px-2"
+      title={
+        selectedArtworks.length === 0
+          ? 'Select artworks to print checklist'
+          : `Print checklist for ${selectedArtworks.length} selected ${selectedArtworks.length === 1 ? 'artwork' : 'artworks'}`
+      }
+    >
+      <List className="h-3.5 w-3.5 mr-1.5" />
+      Checklist
+    </Button>
+  );
 }
 
 export function PrintCatalog({
