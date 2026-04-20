@@ -257,32 +257,35 @@ export const PERSONA_LANDING_PAGES: Record<
   institution: {
     slug: 'institution',
     pill: 'For institutions',
-    title: 'Collection accountability, loans, and public verification APIs',
+    title: 'Institutional tools that keep collections accountable—and help artists grow',
     subtitle:
-      'Align curatorial records with a modern certificate registry, immutable event logs, and partner-ready verification endpoints.',
+      'Certificates of authenticity, ownership, and intermediary share one registry with collection management, invoicing, loan agreements, and verification-ready APIs.',
     seo: {
-      pageTitle: 'Institutions — Collection provenance API, audit events & certificates | Provenance',
+      pageTitle:
+        'Institutions — Collection management, certificates & provenance transfers | Provenance',
       description:
-        'Museums and foundations get append-only asset events, globally unique certificate numbers with versions, and scoped API keys for integrations and public verification.',
+        'Museums and foundations unify COA, ownership, and intermediary certificates with accessioning, loans, invoicing, and append-only events—plus scoped API keys for partner verification.',
       keywords: [
-        'museum collection database',
+        'museum collection management',
+        'certificate of intermediary',
+        'certificate of authenticity museum',
+        'collection provenance software',
+        'art loan agreement software',
+        'museum invoicing art collection',
         'provenance API',
-        'collection management API',
         'digital collection audit trail',
-        'certificate verification API',
-        'institutional provenance',
       ],
     },
     faqs: [
       {
-        question: 'What does an append-only asset event log provide?',
+        question: 'How do certificates of authenticity, ownership, and intermediary work together?',
         answer:
-          'Each mutation emits a transparent record with actor, payload, and timestamp—ideal for custody transfers, loans, and cross-department accountability.',
+          'They share the same registry-backed record so authenticity, title, and handoff context stay aligned. Structured transfers let counterparties accept provenance updates in one action instead of reconciling separate PDFs.',
       },
       {
-        question: 'Are certificate numbers globally unique?',
+        question: 'What does append-only asset event logging give our registrar team?',
         answer:
-          'The unified certificates table issues numbers that are unique across asset planets so partners can verify without guessing which silo to query.',
+          'Each custody or movement change emits a transparent record with actor, payload, and timestamp—ideal for loans, cross-department accountability, and the traveling-exhibition paper trail boards expect.',
       },
       {
         question: 'How mature is the HTTP verification API?',
@@ -291,9 +294,9 @@ export const PERSONA_LANDING_PAGES: Record<
       },
     ],
     outcomes: [
-      'Append-only asset events across departments for transparent custody and movement history.',
-      'Globally unique certificate numbers with versioning and verification scores for partner lookups.',
-      'API keys with scopes and per-planet rate limits for integrations and donor reporting.',
+      'Shared certificate graph for authenticity, ownership, and intermediary roles—no siloed PDFs.',
+      'Collection management with accessioning, loans, labels, invoicing, and provenance in one workflow.',
+      'Append-only events, globally unique certificate numbers, and scoped API keys for partner verification.',
     ],
     proofSectionTitle: 'Early proof & previews',
     proofCards: [
