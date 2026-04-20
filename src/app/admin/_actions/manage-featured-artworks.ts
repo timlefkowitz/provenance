@@ -76,6 +76,7 @@ export async function isArtworkFeatured(artworkId: string): Promise<boolean> {
 }
 
 export async function addFeaturedArtwork(artworkId: string) {
+  console.log('[FeaturedArtworks] addFeaturedArtwork started', { artworkId });
   try {
     const client = getSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
@@ -90,8 +91,10 @@ export async function addFeaturedArtwork(artworkId: string) {
       return { error: 'You do not have permission to manage featured artworks' };
     }
 
+    const adminClient = getSupabaseServerAdminClient();
+
     // Verify artwork exists and is verified
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await (adminClient as any)
       .from('artworks')
       .select('id, status')
       .eq('id', artworkId)
@@ -116,32 +119,41 @@ export async function addFeaturedArtwork(artworkId: string) {
       return { error: 'Maximum of 10 featured artworks allowed. Please remove one first.' };
     }
 
-    // Find the account that has the featured_artworks array, or use current user's account
-    const featuredAccountId = await getFeaturedArtworksAccountId();
-    const targetAccountId = featuredAccountId || user.id;
+    // Prefer the current admin's own account so the canonical list lives there.
+    // If a different account currently holds featured_artworks, we'll migrate and clean it up below.
+    const existingFeaturedAccountId = await getFeaturedArtworksAccountId();
+    const targetAccountId = user.id;
+    console.log('[FeaturedArtworks] addFeaturedArtwork target account', {
+      targetAccountId,
+      existingFeaturedAccountId,
+    });
 
-    // Get target account data
-    const { data: account } = await client
+    // Get target account data via admin client so RLS cannot silently drop the row
+    const { data: account } = await adminClient
       .from('accounts')
       .select('public_data')
       .eq('id', targetAccountId)
       .single();
 
     if (!account) {
+      console.error('[FeaturedArtworks] Target account not found', { targetAccountId });
       return { error: 'Account not found' };
     }
 
     const currentPublicData = (account.public_data as Record<string, any>) || {};
-    
+
     // Consolidate: use all featured IDs from all accounts, then add the new one
     // This ensures we don't lose any artworks that might be in other accounts
     const consolidatedFeaturedArtworks = [...allFeaturedIds, artworkId];
-    
+
     // Remove duplicates (shouldn't happen, but just in case)
     const uniqueFeaturedArtworks = Array.from(new Set(consolidatedFeaturedArtworks));
 
-    // Update public_data on the target account with consolidated list
-    const { error } = await client
+    // Update public_data on the target account with consolidated list.
+    // We use the admin client because RLS on accounts only allows auth.uid()=id for UPDATE,
+    // and the targetAccountId may differ from the current user's row; admin access is
+    // already gated by the isAdmin() check above.
+    const { data: updatedRows, error } = await adminClient
       .from('accounts')
       .update({
         public_data: {
@@ -149,36 +161,46 @@ export async function addFeaturedArtwork(artworkId: string) {
           featured_artworks: uniqueFeaturedArtworks,
         },
       })
-      .eq('id', targetAccountId);
+      .eq('id', targetAccountId)
+      .select('id');
 
-    // Clean up: Remove featured_artworks from other accounts to avoid duplication
-    if (featuredAccountId) {
-      const adminClient = getSupabaseServerAdminClient();
-      const { data: otherAccounts } = await adminClient
-        .from('accounts')
-        .select('id, public_data')
-        .neq('id', targetAccountId)
-        .limit(100);
+    if (error) {
+      console.error('[FeaturedArtworks] Error adding featured artwork', error);
+      return { error: error.message || 'Failed to add featured artwork' };
+    }
 
-      for (const otherAccount of otherAccounts || []) {
-        const otherPublicData = (otherAccount.public_data as Record<string, any>) || {};
-        if (otherPublicData?.featured_artworks && Array.isArray(otherPublicData.featured_artworks)) {
-          // Remove featured_artworks from this account
-          const { featured_artworks, ...restPublicData } = otherPublicData;
-          await adminClient
-            .from('accounts')
-            .update({
-              public_data: restPublicData,
-            })
-            .eq('id', otherAccount.id);
-        }
+    if (!updatedRows || updatedRows.length === 0) {
+      console.error('[FeaturedArtworks] Update affected 0 rows', { targetAccountId });
+      return { error: 'Failed to add featured artwork: no account row updated' };
+    }
+
+    // Clean up: remove featured_artworks from any OTHER accounts so the canonical list
+    // stays on targetAccountId. Uses admin client because these rows may belong to other users.
+    const { data: otherAccounts } = await adminClient
+      .from('accounts')
+      .select('id, public_data')
+      .neq('id', targetAccountId)
+      .limit(100);
+
+    for (const otherAccount of otherAccounts || []) {
+      const otherPublicData = (otherAccount.public_data as Record<string, any>) || {};
+      if (otherPublicData?.featured_artworks && Array.isArray(otherPublicData.featured_artworks)) {
+        const { featured_artworks, ...restPublicData } = otherPublicData;
+        await adminClient
+          .from('accounts')
+          .update({
+            public_data: restPublicData,
+          })
+          .eq('id', otherAccount.id);
+        console.log('[FeaturedArtworks] Cleaned featured_artworks from other account', {
+          accountId: otherAccount.id,
+        });
       }
     }
 
-    if (error) {
-      console.error('Error adding featured artwork:', error);
-      return { error: error.message || 'Failed to add featured artwork' };
-    }
+    console.log(
+      `[FeaturedArtworks] featured_artworks now has ${uniqueFeaturedArtworks.length} items on account ${targetAccountId}`,
+    );
 
     revalidatePath('/');
     revalidatePath('/admin');
@@ -187,12 +209,13 @@ export async function addFeaturedArtwork(artworkId: string) {
 
     return { success: true };
   } catch (error) {
-    console.error('Error in addFeaturedArtwork:', error);
+    console.error('[FeaturedArtworks] addFeaturedArtwork failed', error);
     return { error: 'An unexpected error occurred' };
   }
 }
 
 export async function removeFeaturedArtwork(artworkId: string) {
+  console.log('[FeaturedArtworks] removeFeaturedArtwork started', { artworkId });
   try {
     const client = getSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
@@ -207,20 +230,26 @@ export async function removeFeaturedArtwork(artworkId: string) {
       return { error: 'You do not have permission to manage featured artworks' };
     }
 
+    const adminClient = getSupabaseServerAdminClient();
+
     // Find the account that has the featured_artworks array
     const featuredAccountId = await getFeaturedArtworksAccountId();
     if (!featuredAccountId) {
       return { error: 'No featured artworks found' };
     }
+    console.log('[FeaturedArtworks] removeFeaturedArtwork target account', {
+      featuredAccountId,
+    });
 
-    // Get account data
-    const { data: account } = await client
+    // Get account data via admin client so RLS cannot silently drop the row
+    const { data: account } = await adminClient
       .from('accounts')
       .select('public_data')
       .eq('id', featuredAccountId)
       .single();
 
     if (!account) {
+      console.error('[FeaturedArtworks] Featured account not found', { featuredAccountId });
       return { error: 'Account not found' };
     }
 
@@ -230,8 +259,11 @@ export async function removeFeaturedArtwork(artworkId: string) {
     // Remove from list
     const updatedFeaturedArtworks = featuredArtworks.filter((id: string) => id !== artworkId);
 
-    // Update public_data on the account that has featured artworks
-    const { error } = await client
+    // Update public_data on the account that has featured artworks.
+    // We use the admin client because RLS on accounts only allows auth.uid()=id for UPDATE,
+    // and the featuredAccountId may differ from the current user's row; admin access is
+    // already gated by the isAdmin() check above.
+    const { data: updatedRows, error } = await adminClient
       .from('accounts')
       .update({
         public_data: {
@@ -239,12 +271,22 @@ export async function removeFeaturedArtwork(artworkId: string) {
           featured_artworks: updatedFeaturedArtworks,
         },
       })
-      .eq('id', featuredAccountId);
+      .eq('id', featuredAccountId)
+      .select('id');
 
     if (error) {
-      console.error('Error removing featured artwork:', error);
+      console.error('[FeaturedArtworks] Error removing featured artwork', error);
       return { error: error.message || 'Failed to remove featured artwork' };
     }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      console.error('[FeaturedArtworks] Remove update affected 0 rows', { featuredAccountId });
+      return { error: 'Failed to remove featured artwork: no account row updated' };
+    }
+
+    console.log(
+      `[FeaturedArtworks] featured_artworks now has ${updatedFeaturedArtworks.length} items on account ${featuredAccountId}`,
+    );
 
     revalidatePath('/');
     revalidatePath('/admin');
@@ -252,7 +294,7 @@ export async function removeFeaturedArtwork(artworkId: string) {
 
     return { success: true };
   } catch (error) {
-    console.error('Error in removeFeaturedArtwork:', error);
+    console.error('[FeaturedArtworks] removeFeaturedArtwork failed', error);
     return { error: 'An unexpected error occurred' };
   }
 }
