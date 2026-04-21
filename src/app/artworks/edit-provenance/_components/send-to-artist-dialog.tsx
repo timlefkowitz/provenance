@@ -45,14 +45,48 @@ export function SendToArtistDialog({ open, onOpenChange, selectedArtworkIds, gal
     console.log('[Collection] SendToArtistDialog submit', { count, senderName });
     startTransition(async () => {
       const result = await batchSendArtistClaimInvites([...selectedArtworkIds], email, senderName || undefined);
+      console.log('[Collection] SendToArtistDialog result', {
+        sent: result.sent,
+        errorCount: result.errors.length,
+        errors: result.errors,
+      });
+
       if (result.sent === 0) {
-        toast.error(result.errors[0] ?? 'No invites sent');
+        // Nothing sent — show every reason so the user knows what to fix.
+        toast.error('No certificates sent', {
+          description: (
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 font-serif text-sm">
+              {result.errors.map((e, i) => (
+                <li key={i}>{e}</li>
+              ))}
+            </ul>
+          ),
+          duration: 12000,
+        });
         return;
       }
+
       if (result.errors.length > 0) {
-        toast.message(
-          `Email sent for ${result.sent} of ${count} work${result.sent === 1 ? '' : 's'}`,
-          { description: result.errors[0] },
+        // Partial success — list every skipped artwork with its reason so the
+        // user understands why the email ended up with fewer works than expected.
+        toast.warning(
+          `Sent ${result.sent} of ${count} — ${count - result.sent} skipped`,
+          {
+            description: (
+              <div className="font-serif text-sm">
+                <p className="mb-2">
+                  Email delivered with {result.sent} work{result.sent === 1 ? '' : 's'}.
+                </p>
+                <p className="mb-1 font-semibold">Skipped:</p>
+                <ul className="list-disc space-y-0.5 pl-4">
+                  {result.errors.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            ),
+            duration: 14000,
+          },
         );
       } else {
         toast.success(

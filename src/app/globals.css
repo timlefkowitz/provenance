@@ -17,14 +17,12 @@
 @source "../../src/{app,components,config,lib}/**/*.{ts,tsx}";
 
 /*
- * dark: utility classes fire on .dark AND on html.system when the OS prefers dark.
- * Without the second condition, Shadcn/Radix components that use dark: utilities
- * never receive dark styles in "system" mode — the html class is "system", not "dark".
+ * `dark:` utility variant. next-themes with `attribute="class"` + `enableSystem`
+ * resolves `theme === 'system'` to the OS preference and applies `.light` or
+ * `.dark` on <html> — it never applies a `.system` class. So we only need to
+ * target `.dark`; the explicit Dark theme and System-Dark both end up there.
  */
-@variant dark {
-  &:where(.dark, .dark *) { @slot }
-  @media (prefers-color-scheme: dark) { html.system & { @slot } }
-}
+@variant dark (&:where(.dark, .dark *));
 
 /* User Custom Theme */
 @theme {

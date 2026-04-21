@@ -153,173 +153,81 @@
     }
 
     /*
-     * next-themes sets class "system" on <html> when System is selected.
+     * -------------------------------------------------------------------------
+     *  .dark — modern Linux-inspired dark theme (GitHub dark + Tokyo Night)
+     * -------------------------------------------------------------------------
      *
-     * System Light  — stone palette: very slightly warm whites, stone-600 accent.
-     *                 Clean, minimal, contemporary (not the branded parchment/wine).
+     *  Used for BOTH the explicit "Dark" theme AND the "System" theme when the
+     *  user's OS prefers dark. next-themes with `attribute="class"` +
+     *  `enableSystem` resolves `theme === 'system'` to the OS preference and
+     *  applies `.light` or `.dark` on <html> — it never applies a `.system`
+     *  class. So all System-dark styling lives here.
      *
-     * System Dark   — slate + indigo palette: deep slate-950 ground, slate-900 cards,
-     *                 indigo-400 accent throughout. Modern SaaS aesthetic.
-     *                 --color-parchment / --color-wine / --color-ink are set so every
-     *                 component that references these brand tokens (nav, buttons, etc.)
-     *                 adapts automatically with zero component changes.
+     *  Design goals (user request: "modern, Linux-style, no brown"):
+     *    • Deep neutral charcoal base (#0D1117 — GitHub dark canvas)
+     *    • Cool-gray elevated surfaces for nav/cards (#161B22)
+     *    • Clean cool-white body text (#E6EDF3) — readable at all sizes
+     *    • Blue accent (#7AA2F7 — Tokyo Night blue) replaces wine/brown
+     *    • NO parchment cream, NO wine brown, NO beige
+     *
+     *  Brand-token remaps: the navbar, CTAs and shared components reference
+     *  `text-wine`, `text-ink`, `bg-parchment` directly. Overriding the three
+     *  `--color-*` tokens makes the entire UI adapt with zero per-component
+     *  changes:
+     *      bg-parchment    → #161B22 (frosted charcoal nav)
+     *      text-ink        → #C9D1D9 (readable cool gray body)
+     *      text-wine       → #7AA2F7 (blue logo + link hover + button fill)
+     *      bg-wine         → #7AA2F7 (CTA button background)
+     *      text-parchment  → #0D1117 (deep charcoal text on blue CTA)
+     *      border-wine/20  → blue at 20% opacity (borders, dividers)
      */
-
-    @media (prefers-color-scheme: light) {
-        html.system {
-            /* Brand token remaps — stone-based for a contemporary, editorial feel */
-            --color-parchment: #FAFAF9;   /* stone-50  — slightly warm white nav bg   */
-            --color-ink:       #1C1917;   /* stone-900 — warm near-black body text     */
-            --color-wine:      #57534E;   /* stone-600 — warm mid-gray accent          */
-
-            --background:          #FFFFFF;
-            --foreground:          #1C1917;
-
-            --card:                #FFFFFF;
-            --card-foreground:     #1C1917;
-
-            --popover:             #FAFAF9;
-            --popover-foreground:  #1C1917;
-
-            --primary:             #1C1917;
-            --primary-foreground:  #FAFAF9;
-
-            --secondary:           #F5F5F4;   /* stone-100 */
-            --secondary-foreground:#1C1917;
-
-            --muted:               #F5F5F4;
-            --muted-foreground:    #78716C;   /* stone-500 */
-
-            --accent:              #F5F5F4;
-            --accent-foreground:   #1C1917;
-
-            --destructive:         #EF4444;
-            --destructive-foreground: #FFFFFF;
-
-            --border:              #E7E5E4;   /* stone-200 */
-            --input:               #D6D3D1;   /* stone-300 */
-            --ring:                #57534E;   /* stone-600 */
-
-            --chart-1:             #57534E;
-            --chart-2:             #78716C;
-            --chart-3:             #A8A29E;
-            --chart-4:             #D6D3D1;
-            --chart-5:             #292524;   /* stone-800 */
-
-            --sidebar-background:  #F5F5F4;
-            --sidebar-foreground:  #1C1917;
-            --sidebar-primary:     #1C1917;
-            --sidebar-primary-foreground: #FAFAF9;
-            --sidebar-accent:      #E7E5E4;
-            --sidebar-accent-foreground:  #1C1917;
-            --sidebar-border:      #E7E5E4;
-            --sidebar-ring:        #57534E;
-        }
-    }
-
-    @media (prefers-color-scheme: dark) {
-        html.system {
-            /*
-             * Brand token remaps — slate-900 ground, indigo-400 accent.
-             * The nav uses bg-parchment/95, text-wine, text-ink, bg-wine, text-parchment
-             * directly. By overriding these three tokens, the entire UI adapts:
-             *   bg-parchment/95  → slate-900 frosted glass nav
-             *   text-wine        → indigo-400 logo + link hovers + button fills
-             *   text-ink         → slate-300 body text
-             *   bg-wine          → indigo-400 CTA button fill
-             *   text-parchment   → slate-900 CTA button text (high contrast)
-             */
-            --color-parchment: #0F172A;   /* slate-900 — nav bg, card bg              */
-            --color-ink:       #CBD5E1;   /* slate-300 — readable body text            */
-            --color-wine:      #818CF8;   /* indigo-400 — modern accent / link hover   */
-
-            --background:          #020617;   /* slate-950 — deepest bg layer          */
-            --foreground:          #F1F5F9;   /* slate-100                             */
-
-            --card:                #0F172A;   /* slate-900                             */
-            --card-foreground:     #F1F5F9;
-
-            --popover:             #1E293B;   /* slate-800 — elevated surface          */
-            --popover-foreground:  #F1F5F9;
-
-            --primary:             #818CF8;   /* indigo-400 — interactive primary      */
-            --primary-foreground:  #1E1B4B;   /* indigo-950 — dark text on indigo btn  */
-
-            --secondary:           #1E293B;   /* slate-800                             */
-            --secondary-foreground:#CBD5E1;   /* slate-300                             */
-
-            --muted:               #1E293B;
-            --muted-foreground:    #64748B;   /* slate-500                             */
-
-            --accent:              #312E81;   /* indigo-900 — subtle tinted surface    */
-            --accent-foreground:   #E0E7FF;   /* indigo-100                            */
-
-            --destructive:         #F87171;   /* red-400 — legible on dark             */
-            --destructive-foreground: #1C1917;
-
-            --border:              #1E293B;   /* slate-800                             */
-            --input:               #334155;   /* slate-700                             */
-            --ring:                #818CF8;   /* indigo-400                            */
-
-            --chart-1:             #818CF8;   /* indigo-400                            */
-            --chart-2:             #34D399;   /* emerald-400                           */
-            --chart-3:             #FB923C;   /* orange-400                            */
-            --chart-4:             #C084FC;   /* purple-400                            */
-            --chart-5:             #F472B6;   /* pink-400                              */
-
-            --sidebar-background:  #020617;   /* slate-950                             */
-            --sidebar-foreground:  #F1F5F9;
-            --sidebar-primary:     #818CF8;   /* indigo-400                            */
-            --sidebar-primary-foreground: #1E1B4B;
-            --sidebar-accent:      #1E293B;   /* slate-800                             */
-            --sidebar-accent-foreground:  #F1F5F9;
-            --sidebar-border:      #1E293B;
-            --sidebar-ring:        #818CF8;
-        }
-    }
-
     .dark {
-        --background: var(--color-neutral-900);
-        --foreground: var(--color-white);
+        /* Brand token remaps — drop the brown/cream entirely */
+        --color-parchment: #161B22;   /* nav bg, card bg, surface 1               */
+        --color-ink:       #C9D1D9;   /* readable body text                        */
+        --color-wine:      #7AA2F7;   /* Tokyo Night blue — headline/accent/CTA    */
 
-        --card: var(--color-neutral-900);
-        --card-foreground: var(--color-white);
+        --background:          #0D1117;   /* GitHub dark canvas                    */
+        --foreground:          #E6EDF3;   /* GitHub dark primary text              */
 
-        --popover: var(--color-neutral-900);
-        --popover-foreground: var(--color-white);
+        --card:                #161B22;   /* elevated surface                      */
+        --card-foreground:     #E6EDF3;
 
-        --primary: var(--color-white);
-        --primary-foreground: var(--color-neutral-900);
+        --popover:             #1C2128;   /* menu / dropdown                       */
+        --popover-foreground:  #E6EDF3;
 
-        --secondary: var(--color-neutral-800);
-        --secondary-foreground: oklch(98.43% 0.0017 247.84);
+        --primary:             #7AA2F7;   /* blue — interactive primary            */
+        --primary-foreground:  #0D1117;   /* dark text on bright blue              */
 
-        --muted: var(--color-neutral-800);
-        --muted-foreground: oklch(71.19% 0.0129 286.07);
+        --secondary:           #21262D;   /* pressed surface                       */
+        --secondary-foreground:#E6EDF3;
 
-        --accent: var(--color-neutral-800);
-        --accent-foreground: oklch(98.48% 0 0);
+        --muted:               #1C2128;
+        --muted-foreground:    #8B949E;   /* GitHub dark muted text                */
 
-        --destructive: var(--color-red-700);
-        --destructive-foreground: var(--color-white);
+        --accent:              #1F6FEB26; /* blue tint @ 15% for hover bg          */
+        --accent-foreground:   #E6EDF3;
 
-        --border: var(--color-neutral-800);
-        --input: var(--color-neutral-700);
-        --ring: oklch(87.09% 0.0055 286.29);
+        --destructive:         #F85149;   /* GitHub dark red                       */
+        --destructive-foreground: #0D1117;
 
-        --chart-1: var(--color-blue-600);
-        --chart-2: var(--color-emerald-400);
-        --chart-3: var(--color-orange-400);
-        --chart-4: var(--color-purple-500);
-        --chart-5: var(--color-pink-500);
+        --border:              #30363D;   /* GitHub dark border                    */
+        --input:               #30363D;
+        --ring:                #7AA2F7;
 
-        --sidebar-background: var(--color-neutral-900);
-        --sidebar-foreground: var(--color-white);
-        --sidebar-primary: var(--color-blue-500);
-        --sidebar-primary-foreground: var(--color-white);
-        --sidebar-accent: var(--color-neutral-800);
-        --sidebar-accent-foreground: var(--color-white);
-        --sidebar-border: var(--border);
-        --sidebar-ring: var(--color-blue-500);
+        --chart-1:             #7AA2F7;   /* blue                                  */
+        --chart-2:             #7EE787;   /* green                                 */
+        --chart-3:             #F0883E;   /* orange                                */
+        --chart-4:             #BC8CFF;   /* purple                                */
+        --chart-5:             #FF7B72;   /* salmon                                */
+
+        --sidebar-background:  #0D1117;
+        --sidebar-foreground:  #E6EDF3;
+        --sidebar-primary:     #7AA2F7;
+        --sidebar-primary-foreground: #0D1117;
+        --sidebar-accent:      #161B22;
+        --sidebar-accent-foreground:  #E6EDF3;
+        --sidebar-border:      #21262D;
+        --sidebar-ring:        #7AA2F7;
     }
 }

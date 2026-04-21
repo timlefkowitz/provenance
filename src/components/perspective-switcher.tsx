@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@kit/ui/sonner';
 import { RadioGroup, RadioGroupItem } from '@kit/ui/radio-group';
 import { Label } from '@kit/ui/label';
 import { Button } from '@kit/ui/button';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { cn } from '@kit/ui/utils';
+import { updateUserRole } from '~/app/onboarding/_actions/update-user-role';
 
 const PERSPECTIVE_KEY = 'user_perspective';
 /** One year in seconds — matches typical session-like preferences. */
@@ -32,6 +34,7 @@ function writePerspectiveCookie(value: UserRole) {
 export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [perspective, setPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
+  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -42,19 +45,53 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
     }
   }, []);
 
+  /**
+   * Switching perspective must update BOTH:
+   *   1. The client-side cookie/localStorage (fast, drives UI filtering)
+   *   2. The authoritative DB role in `accounts.public_data.role`
+   *      (so server-side `getUserRole()` checks like
+   *      `consumeCertificateClaim` / `claimCertificate` see the new role)
+   *
+   * Without (2), a user who switches from "collector" to "artist" in the UI
+   * could still fail server-side role checks — e.g. clicking
+   * "Complete certificate" in an invite email would return
+   * "Only artist accounts can claim this certificate".
+   */
   const handlePerspectiveChange = (value: UserRole) => {
-    setPerspective(value);
+    if (value === perspective || pending) return;
 
+    console.log('[Perspective] change requested', { from: perspective, to: value });
+
+    // Optimistic UI update — client filters flip immediately
+    setPerspective(value);
     if (typeof window !== 'undefined') {
       localStorage.setItem(PERSPECTIVE_KEY, value);
       writePerspectiveCookie(value);
-
       window.dispatchEvent(
         new CustomEvent('user_perspective_changed', { detail: value }),
       );
     }
 
-    router.refresh();
+    startTransition(async () => {
+      try {
+        await updateUserRole(value);
+        console.log('[Perspective] DB role synced', { role: value });
+        router.refresh();
+      } catch (err) {
+        console.error('[Perspective] failed to sync DB role', err);
+        toast.error('Could not switch mode. Please try again.');
+        // Roll the UI back so it matches the DB
+        const prev = perspective;
+        setPerspective(prev);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(PERSPECTIVE_KEY, prev);
+          writePerspectiveCookie(prev);
+          window.dispatchEvent(
+            new CustomEvent('user_perspective_changed', { detail: prev }),
+          );
+        }
+      }
+    });
   };
 
   if (compact) {
@@ -68,6 +105,7 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
             variant={perspective === USER_ROLES.ARTIST ? 'default' : 'outline'}
             size="sm"
             onClick={() => handlePerspectiveChange(USER_ROLES.ARTIST)}
+            disabled={pending}
             className={cn(
               'w-full justify-start font-serif text-sm',
               perspective === USER_ROLES.ARTIST
@@ -75,12 +113,13 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
                 : 'border-wine text-ink hover:bg-wine/10'
             )}
           >
-            Artist
+            {pending && perspective === USER_ROLES.ARTIST ? 'Switching…' : 'Artist'}
           </Button>
           <Button
             variant={perspective === USER_ROLES.COLLECTOR ? 'default' : 'outline'}
             size="sm"
             onClick={() => handlePerspectiveChange(USER_ROLES.COLLECTOR)}
+            disabled={pending}
             className={cn(
               'w-full justify-start font-serif text-sm',
               perspective === USER_ROLES.COLLECTOR
@@ -88,12 +127,13 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
                 : 'border-wine text-ink hover:bg-wine/10'
             )}
           >
-            Collector
+            {pending && perspective === USER_ROLES.COLLECTOR ? 'Switching…' : 'Collector'}
           </Button>
           <Button
             variant={perspective === USER_ROLES.GALLERY ? 'default' : 'outline'}
             size="sm"
             onClick={() => handlePerspectiveChange(USER_ROLES.GALLERY)}
+            disabled={pending}
             className={cn(
               'w-full justify-start font-serif text-sm',
               perspective === USER_ROLES.GALLERY
@@ -101,12 +141,13 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
                 : 'border-wine text-ink hover:bg-wine/10'
             )}
           >
-            Gallery
+            {pending && perspective === USER_ROLES.GALLERY ? 'Switching…' : 'Gallery'}
           </Button>
           <Button
             variant={perspective === USER_ROLES.INSTITUTION ? 'default' : 'outline'}
             size="sm"
             onClick={() => handlePerspectiveChange(USER_ROLES.INSTITUTION)}
+            disabled={pending}
             className={cn(
               'w-full justify-start font-serif text-sm',
               perspective === USER_ROLES.INSTITUTION
@@ -114,7 +155,7 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
                 : 'border-wine text-ink hover:bg-wine/10'
             )}
           >
-            Institution
+            {pending && perspective === USER_ROLES.INSTITUTION ? 'Switching…' : 'Institution'}
           </Button>
         </div>
       </div>
@@ -129,6 +170,7 @@ export function PerspectiveSwitcher({ compact = false }: { compact?: boolean }) 
       <RadioGroup
         value={perspective}
         onValueChange={(value) => handlePerspectiveChange(value as UserRole)}
+        disabled={pending}
         className="space-y-3"
       >
         <div className="flex items-center space-x-3">

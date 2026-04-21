@@ -78,8 +78,20 @@ export function stripMarkdownLinkLineByHref(
 }
 
 /**
- * Gallery-quality CTA button — uppercase tracked label on wine bg.
- * Bulletproof nested-table approach for Outlook compatibility.
+ * Gallery-quality CTA button — readable sentence-case label on wine bg.
+ *
+ * Typography rationale:
+ *   - 15px with 1.3 line-height = comfortable reading (was 11px uppercase,
+ *     which tested poorly on mobile and with older eyes).
+ *   - Sentence case preserves the label the caller passes in (e.g.
+ *     "Complete certificate", "Claim certificate", "Create Certificate
+ *     of Show"). No forced `text-transform: uppercase` — uppercase
+ *     destroys readability on long button labels.
+ *   - Slight +0.01em tracking for a refined feel without shouting.
+ *   - 18px / 36px padding gives a generous, tappable target (min 44×44
+ *     per iOS HIG even on small screens).
+ *   - 4px radius — a touch of softness without being childish.
+ *   - Bulletproof: VML fallback wrapping for Outlook 07–19 on Windows.
  */
 export function buildBulletproofButtonTable(
   href: string,
@@ -90,12 +102,20 @@ export function buildBulletproofButtonTable(
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);
   return `
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:36px 0 4px;border-collapse:collapse;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:32px 0 8px;border-collapse:collapse;">
   <tr>
-    <td align="left" bgcolor="${wine}" style="background-color:${wine};border-radius:2px;">
-      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:16px 40px;font-family:${fontFamily};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;line-height:1.2;color:#F5F1E8;text-decoration:none;border-radius:2px;">
+    <td align="left" bgcolor="${wine}" style="background-color:${wine};border-radius:4px;mso-padding-alt:0;">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:52px;v-text-anchor:middle;width:240px;" arcsize="8%" stroke="f" fillcolor="${wine}">
+        <w:anchorlock/>
+        <center style="color:#F5F1E8;font-family:${fontFamily};font-size:15px;font-weight:600;letter-spacing:0.01em;">${safeLabel}</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-- -->
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:18px 36px;font-family:${fontFamily};font-size:15px;font-weight:600;letter-spacing:0.01em;line-height:1.3;color:#F5F1E8;text-decoration:none;border-radius:4px;mso-hide:all;">
         ${safeLabel}
       </a>
+      <!--<![endif]-->
     </td>
   </tr>
 </table>`.trim();

@@ -42,28 +42,16 @@ Optimize dropdowns for mobile
     );
 }
 
-@media (prefers-color-scheme: light) {
-    html.system .site-header > .container:before,
-    html.system .site-footer > .container:before {
-        background: radial-gradient(
-            62.87% 100% at 50% 100%,
-            color-mix(in srgb, var(--border, #d4cdc0) 90%, transparent) 0%,
-            transparent 100%
-        );
-    }
-}
-
-@media (prefers-color-scheme: dark) {
-    html.system .site-header > .container:before,
-    html.system .site-footer > .container:before {
-        /* indigo-400 at 12% — matches the system dark accent color */
-        background: radial-gradient(62.87% 100% at 50% 100%, rgba(129, 140, 248, .12) 0%, rgba(129, 140, 248, 0) 100%);
-    }
-}
-
+/*
+ * Note: next-themes with `enableSystem` resolves the "system" theme to
+ * `.light` or `.dark` on <html> — it never applies a `.system` class. So the
+ * old `html.system` rules here were dead code and have been removed. The
+ * `.dark` block below now covers both explicit Dark and System-Dark.
+ */
 .dark .site-header > .container:before,
 .dark .site-footer > .container:before {
-    background: radial-gradient(62.87% 100% at 50% 100%, rgba(255, 255, 255, .10) 0%, rgba(255, 255, 255, 0) 100%);
+    /* Tokyo Night blue @ 14% — matches the accent in the .dark palette */
+    background: radial-gradient(62.87% 100% at 50% 100%, rgba(122, 162, 247, .14) 0%, rgba(122, 162, 247, 0) 100%);
 }
 
 .site-footer > .container:before {
