@@ -1,14 +1,18 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 
 /**
  * Admin-only: delete any artwork regardless of ownership.
+ * Uses the service-role admin client to bypass RLS (the artworks DELETE policy
+ * only allows the owner to delete their own rows via the regular authed client).
  */
 export async function adminDeleteArtwork(artworkId: string) {
   console.log('[AdminDeleteArtwork] started', { artworkId });
 
+  // Verify the caller is authenticated
   const client = getSupabaseServerClient();
   const {
     data: { user },
@@ -35,8 +39,10 @@ export async function adminDeleteArtwork(artworkId: string) {
     throw new Error('Forbidden: admin access required');
   }
 
-  // Delete the artwork
-  const { error: deleteError } = await (client as any)
+  // Use the service-role admin client so RLS is bypassed — the regular
+  // authed client would silently no-op because the admin is not the owner.
+  const adminClient = getSupabaseServerAdminClient();
+  const { error: deleteError } = await (adminClient as any)
     .from('artworks')
     .delete()
     .eq('id', artworkId);
