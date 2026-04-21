@@ -182,52 +182,64 @@
      *      border-wine/20  → blue at 20% opacity (borders, dividers)
      */
     .dark {
-        /* Brand token remaps — drop the brown/cream entirely */
-        --color-parchment: #161B22;   /* nav bg, card bg, surface 1               */
-        --color-ink:       #C9D1D9;   /* readable body text                        */
-        --color-wine:      #7AA2F7;   /* Tokyo Night blue — headline/accent/CTA    */
+        /*
+         * Brand token remaps — Tokyo Night palette (Arch Linux terminal aesthetic).
+         *
+         * Reference: the neofetch screenshot with Arch logo.
+         *   label text ("OS:", "Hostname:") → cyan    #7DCFFF
+         *   body / value text               → lavender-white #C0CAF5
+         *   background                      → #1A1B26 (Tokyo Night bg)
+         *   nav / card surface              → #16161E (Tokyo Night terminal bg)
+         *
+         *   --color-wine    → cyan  #7DCFFF  (logo, headings, CTAs, link hovers)
+         *   --color-ink     → #C0CAF5        (body copy — slightly lavender white)
+         *   --color-parchment → #16161E      (nav bg, card bg, frosted surface)
+         */
+        --color-parchment: #16161E;   /* Tokyo Night terminal bg — nav/cards       */
+        --color-ink:       #C0CAF5;   /* Tokyo Night fg — lavender-white body text  */
+        --color-wine:      #7DCFFF;   /* Tokyo Night cyan — headline/accent/CTA     */
 
-        --background:          #0D1117;   /* GitHub dark canvas                    */
-        --foreground:          #E6EDF3;   /* GitHub dark primary text              */
+        --background:          #1A1B26;   /* Tokyo Night canvas                    */
+        --foreground:          #C0CAF5;   /* Tokyo Night fg                        */
 
-        --card:                #161B22;   /* elevated surface                      */
-        --card-foreground:     #E6EDF3;
+        --card:                #16161E;   /* terminal surface                      */
+        --card-foreground:     #C0CAF5;
 
-        --popover:             #1C2128;   /* menu / dropdown                       */
-        --popover-foreground:  #E6EDF3;
+        --popover:             #1F2335;   /* elevated menu / dropdown              */
+        --popover-foreground:  #C0CAF5;
 
-        --primary:             #7AA2F7;   /* blue — interactive primary            */
-        --primary-foreground:  #0D1117;   /* dark text on bright blue              */
+        --primary:             #7DCFFF;   /* cyan — interactive primary            */
+        --primary-foreground:  #1A1B26;   /* dark bg text on cyan CTA              */
 
-        --secondary:           #21262D;   /* pressed surface                       */
-        --secondary-foreground:#E6EDF3;
+        --secondary:           #24283B;   /* subtle inset surface                  */
+        --secondary-foreground:#C0CAF5;
 
-        --muted:               #1C2128;
-        --muted-foreground:    #8B949E;   /* GitHub dark muted text                */
+        --muted:               #1F2335;
+        --muted-foreground:    #565F89;   /* Tokyo Night comment — dimmed text     */
 
-        --accent:              #1F6FEB26; /* blue tint @ 15% for hover bg          */
-        --accent-foreground:   #E6EDF3;
+        --accent:              #2AC3DE1A; /* cyan tint @ 10% for hover bg          */
+        --accent-foreground:   #C0CAF5;
 
-        --destructive:         #F85149;   /* GitHub dark red                       */
-        --destructive-foreground: #0D1117;
+        --destructive:         #F7768E;   /* Tokyo Night red                       */
+        --destructive-foreground: #1A1B26;
 
-        --border:              #30363D;   /* GitHub dark border                    */
-        --input:               #30363D;
-        --ring:                #7AA2F7;
+        --border:              #292E42;   /* Tokyo Night border                    */
+        --input:               #292E42;
+        --ring:                #7DCFFF;
 
-        --chart-1:             #7AA2F7;   /* blue                                  */
-        --chart-2:             #7EE787;   /* green                                 */
-        --chart-3:             #F0883E;   /* orange                                */
-        --chart-4:             #BC8CFF;   /* purple                                */
-        --chart-5:             #FF7B72;   /* salmon                                */
+        --chart-1:             #7DCFFF;   /* cyan                                  */
+        --chart-2:             #9ECE6A;   /* Tokyo Night green                     */
+        --chart-3:             #E0AF68;   /* Tokyo Night yellow/orange             */
+        --chart-4:             #BB9AF7;   /* Tokyo Night purple                    */
+        --chart-5:             #F7768E;   /* Tokyo Night red                       */
 
-        --sidebar-background:  #0D1117;
-        --sidebar-foreground:  #E6EDF3;
-        --sidebar-primary:     #7AA2F7;
-        --sidebar-primary-foreground: #0D1117;
-        --sidebar-accent:      #161B22;
-        --sidebar-accent-foreground:  #E6EDF3;
-        --sidebar-border:      #21262D;
-        --sidebar-ring:        #7AA2F7;
+        --sidebar-background:  #1A1B26;
+        --sidebar-foreground:  #C0CAF5;
+        --sidebar-primary:     #7DCFFF;
+        --sidebar-primary-foreground: #1A1B26;
+        --sidebar-accent:      #16161E;
+        --sidebar-accent-foreground:  #C0CAF5;
+        --sidebar-border:      #292E42;
+        --sidebar-ring:        #7DCFFF;
     }
 }

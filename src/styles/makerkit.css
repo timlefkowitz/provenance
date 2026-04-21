@@ -50,8 +50,8 @@ Optimize dropdowns for mobile
  */
 .dark .site-header > .container:before,
 .dark .site-footer > .container:before {
-    /* Tokyo Night blue @ 14% — matches the accent in the .dark palette */
-    background: radial-gradient(62.87% 100% at 50% 100%, rgba(122, 162, 247, .14) 0%, rgba(122, 162, 247, 0) 100%);
+    /* Tokyo Night cyan (#7DCFFF) @ 12% — matches the .dark accent color */
+    background: radial-gradient(62.87% 100% at 50% 100%, rgba(125, 207, 255, .12) 0%, rgba(125, 207, 255, 0) 100%);
 }
 
 .site-footer > .container:before {
