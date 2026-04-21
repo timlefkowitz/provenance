@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export type NotificationType = 
   | 'certificate_claim_request'
+  | 'certificate_claim_pending'
   | 'certificate_claimed'
   | 'certificate_verified'
   | 'certificate_rejected'
@@ -21,6 +22,7 @@ export type NotificationType =
   | 'artist_claim_other_certificates'
   | 'artwork_favorited'
   | 'provenance_service_request'
+  | 'provenance_updated'
   | 'message';
 
 export interface CreateNotificationParams {

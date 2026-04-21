@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
+import {
+  getAccountDisplayName,
+  propagateProvenanceAfterLinkedCertificate,
+} from '~/lib/certificate-claims/propagate-provenance';
 
 export type SourceArtworkRow = Record<string, unknown>;
 
@@ -77,7 +81,21 @@ export async function insertLinkedCertificateOfOwnershipFromCoa(
     logger.error('insert_linked_coo_failed', { sourceId, error });
     throw new Error(error?.message || 'Failed to create Certificate of Ownership');
   }
-  return { id: data.id as string };
+
+  const newId = data.id as string;
+  try {
+    const actorName = await getAccountDisplayName(adminClient, params.ownerAccountId);
+    await propagateProvenanceAfterLinkedCertificate(adminClient, {
+      eventKind: 'coo_issued',
+      newArtworkId: newId,
+      actorAccountId: params.ownerAccountId,
+      actorDisplayName: actorName,
+    });
+  } catch (propErr) {
+    logger.error('insert_linked_coo_propagate_failed', { newId, error: propErr });
+  }
+
+  return { id: newId };
 }
 
 /**
@@ -150,5 +168,18 @@ export async function insertArtistCoaFromSourceCertificate(
     logger.error('insert_artist_coa_update_source_failed', { sourceId, error: updateSourceError });
   }
 
-  return { id: newArtwork.id as string };
+  const outId = newArtwork.id as string;
+  try {
+    const actorName = await getAccountDisplayName(adminClient, artistId);
+    await propagateProvenanceAfterLinkedCertificate(adminClient, {
+      eventKind: 'coa_issued',
+      newArtworkId: outId,
+      actorAccountId: artistId,
+      actorDisplayName: actorName,
+    });
+  } catch (propErr) {
+    logger.error('insert_artist_coa_propagate_failed', { outId, error: propErr });
+  }
+
+  return { id: outId };
 }

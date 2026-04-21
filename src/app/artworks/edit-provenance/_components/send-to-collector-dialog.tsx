@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -14,6 +14,7 @@ import {
 } from '@kit/ui/dialog';
 import { toast } from '@kit/ui/sonner';
 import { batchSendCollectorInvites } from '../_actions/batch-send-collector-invites';
+import { getEmailConfigStatus } from '../_actions/get-email-config-status';
 
 type Props = {
   open: boolean;
@@ -24,6 +25,14 @@ type Props = {
 export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }: Props) {
   const [email, setEmail] = useState('');
   const [pending, startTransition] = useTransition();
+  const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    void getEmailConfigStatus().then((s) => setEmailConfigured(s.configured));
+  }, [open]);
 
   const count = selectedArtworkIds.size;
 
@@ -59,13 +68,22 @@ export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }
         <DialogHeader>
           <DialogTitle className="font-serif text-wine">Send to Collector</DialogTitle>
           <DialogDescription className="font-serif text-ink/60">
-            The collector will receive an email with a link to claim their Certificate
-            {count === 1 ? '' : 's'} of Ownership for the {count} selected work
-            {count === 1 ? '' : 's'}, linked to your Certificate{count === 1 ? '' : 's'} of Authenticity.
+            The collector receives <span className="font-semibold">one email</span> listing all{' '}
+            {count} work{count === 1 ? '' : 's'} with a single button to accept every Certificate of
+            Ownership linked to your Certificate{count === 1 ? '' : 's'} of Authenticity.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
+          {emailConfigured === false && (
+            <div
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-serif text-amber-900"
+              role="status"
+            >
+              Invites will be saved but emails will not be delivered until{' '}
+              <code className="rounded bg-amber-100/80 px-1">RESEND_API_KEY</code> is set on the server.
+            </div>
+          )}
           <Label htmlFor="collector-email" className="font-serif text-sm text-ink">
             Collector email
           </Label>

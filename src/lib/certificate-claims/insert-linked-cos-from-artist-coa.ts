@@ -2,6 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
 import { generateCertificateNumber } from './insert-linked-certificate';
+import {
+  getAccountDisplayName,
+  propagateProvenanceAfterLinkedCertificate,
+} from '~/lib/certificate-claims/propagate-provenance';
 
 /**
  * Creates a Gallery/Institution Certificate of Show linked to an artist's CoA.
@@ -62,5 +66,18 @@ export async function insertLinkedCoSFromArtistCoa(
     throw new Error(error?.message || 'Failed to create Certificate of Show');
   }
 
-  return { id: data.id as string };
+  const newId = data.id as string;
+  try {
+    const actorName = await getAccountDisplayName(adminClient, params.galleryAccountId);
+    await propagateProvenanceAfterLinkedCertificate(adminClient, {
+      eventKind: 'cos_issued',
+      newArtworkId: newId,
+      actorAccountId: params.galleryAccountId,
+      actorDisplayName: actorName,
+    });
+  } catch (propErr) {
+    logger.error('insert_linked_cos_propagate_failed', { newId, error: propErr });
+  }
+
+  return { id: newId };
 }

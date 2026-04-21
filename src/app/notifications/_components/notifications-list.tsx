@@ -96,6 +96,8 @@ export function NotificationsList({
       case 'artist_claim_approved':
       case 'artist_claim_denied':
       case 'artist_claim_other_certificates':
+      case 'certificate_claim_pending':
+      case 'provenance_updated':
         return <FileText className="h-5 w-5" />;
       case 'artist_profile_claim_request':
       case 'artist_profile_claim_approved':
@@ -129,6 +131,10 @@ export function NotificationsList({
         return 'text-ink';
       case 'provenance_service_request':
         return 'text-wine';
+      case 'certificate_claim_pending':
+        return 'text-amber-700';
+      case 'provenance_updated':
+        return 'text-blue-700';
       default:
         return 'text-ink';
     }
@@ -287,6 +293,30 @@ export function NotificationsList({
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
                           Go to Portal
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'certificate_claim_pending' && (
+                      <Link href="/portal/pending-claims">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          View pending certificate claims
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'provenance_updated' && notification.artwork_id && (
+                      <Link href={`/artworks/${notification.artwork_id}/certificate`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View linked certificate
                         </Button>
                       </Link>
                     )}

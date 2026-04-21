@@ -111,3 +111,67 @@ export async function sendBatchArtistCoaInviteEmail(params: {
     ctaLabel: isSingle ? 'Complete certificate' : `Accept all ${count} certificates`,
   });
 }
+
+/**
+ * One email listing all selected works; one token accepts the whole batch in consumeCertificateClaim.
+ */
+export async function sendBatchCollectorCooInviteEmail(params: {
+  to: string;
+  recipientName: string;
+  artworkTitles: string[];
+  token: string;
+}): Promise<void> {
+  const { to, recipientName, artworkTitles, token } = params;
+  const claimUrl = getCertificateClaimUrl(token);
+  const count = artworkTitles.length;
+  console.log('[Certificates] sendBatchCollectorCooInviteEmail', { to, count });
+
+  const isSingle = count === 1;
+  const subject = isSingle
+    ? `Claim your Certificate of Ownership — ${artworkTitles[0]}`
+    : `Claim your ${count} Certificates of Ownership`;
+
+  const worksList = artworkTitles.map((t) => `- "${t}"`).join('\n');
+  const body = isSingle
+    ? `You have been invited to claim a Certificate of Ownership for "${artworkTitles[0]}" linked to the artist's Certificate of Authenticity. Sign in with this email and accept to complete your claim.`
+    : `You have been invited to claim Certificates of Ownership for ${count} works:\n\n${worksList}\n\nClick below to sign in and accept all ${count} certificates at once.`;
+
+  await sendNotificationEmail(to, recipientName, subject, {
+    title: isSingle ? 'Claim your certificate of ownership' : `Claim your ${count} certificates of ownership`,
+    body,
+    ctaUrl: claimUrl,
+    ctaLabel: isSingle ? 'Claim certificate' : `Accept all ${count} certificates`,
+  });
+}
+
+export async function sendBatchGalleryCoSInviteEmail(params: {
+  to: string;
+  recipientName: string;
+  artworkTitles: string[];
+  artistNamesByTitle?: Record<string, string | undefined>;
+  recipientRole: 'gallery' | 'institution';
+  token: string;
+}): Promise<void> {
+  const { to, recipientName, artworkTitles, recipientRole, token } = params;
+  const claimUrl = getCertificateClaimUrl(token);
+  const roleLabel = recipientRole === 'institution' ? 'institution' : 'gallery';
+  const count = artworkTitles.length;
+  console.log('[Certificates] sendBatchGalleryCoSInviteEmail', { to, count, recipientRole });
+
+  const isSingle = count === 1;
+  const subject = isSingle
+    ? `Create Certificate of Show — ${artworkTitles[0]}`
+    : `Create ${count} Certificates of Show`;
+
+  const worksList = artworkTitles.map((t) => `- "${t}"`).join('\n');
+  const body = isSingle
+    ? `An artist has invited your ${roleLabel} to issue a Certificate of Show for "${artworkTitles[0]}". Sign in with this email and accept to create the certificate — it will be linked to the artist's provenance record.`
+    : `An artist has invited your ${roleLabel} to issue Certificates of Show for ${count} works:\n\n${worksList}\n\nClick below to sign in and accept all ${count} at once.`;
+
+  await sendNotificationEmail(to, recipientName, subject, {
+    title: isSingle ? 'Create a Certificate of Show' : `Create ${count} Certificates of Show`,
+    body,
+    ctaUrl: claimUrl,
+    ctaLabel: isSingle ? 'Create Certificate of Show' : `Accept all ${count}`,
+  });
+}

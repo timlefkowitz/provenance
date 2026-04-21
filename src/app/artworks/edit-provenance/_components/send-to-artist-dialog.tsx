@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -22,6 +22,7 @@ import {
 import { toast } from '@kit/ui/sonner';
 import { Building2 } from 'lucide-react';
 import { batchSendArtistClaimInvites } from '../_actions/batch-send-artist-claim-invites';
+import { getEmailConfigStatus } from '../_actions/get-email-config-status';
 
 type GalleryProfile = { id: string; name: string; role: string };
 
@@ -36,6 +37,14 @@ export function SendToArtistDialog({ open, onOpenChange, selectedArtworkIds, gal
   const [email, setEmail] = useState('');
   const [selectedProfileId, setSelectedProfileId] = useState<string>(galleryProfiles[0]?.id ?? '');
   const [pending, startTransition] = useTransition();
+  const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    void getEmailConfigStatus().then((s) => setEmailConfigured(s.configured));
+  }, [open]);
 
   const count = selectedArtworkIds.size;
   const selectedProfile = galleryProfiles.find((p) => p.id === selectedProfileId) ?? galleryProfiles[0];
@@ -120,6 +129,15 @@ export function SendToArtistDialog({ open, onOpenChange, selectedArtworkIds, gal
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {emailConfigured === false && (
+            <div
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-serif text-amber-900"
+              role="status"
+            >
+              Invites will be saved but emails will not be delivered until{' '}
+              <code className="rounded bg-amber-100/80 px-1">RESEND_API_KEY</code> is set on the server.
+            </div>
+          )}
           {galleryProfiles.length > 0 && (
             <div className="space-y-2">
               <Label className="font-serif text-sm text-ink">
