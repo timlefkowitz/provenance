@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { getArtistGrants } from './_actions/get-artist-grants';
 import { USER_ROLES } from '~/lib/user-roles';
-import { getActiveArtistSubscription } from '~/lib/subscription';
+import { getActiveSubscription } from '~/lib/subscription';
 import { GrantsPageContent } from './_components/grants-page-content';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
@@ -55,7 +55,7 @@ export default async function GrantsPage() {
     );
   }
 
-  const artistSubscription = await getActiveArtistSubscription(user.id);
+  const artistSubscription = await getActiveSubscription(user.id);
   if (!artistSubscription) {
     redirect('/subscription?upgrade=1');
   }

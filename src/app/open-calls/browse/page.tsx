@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
-import { getActiveArtistSubscription } from '~/lib/subscription';
+import { getActiveSubscription } from '~/lib/subscription';
 import { getOpenCallsList, type OpenCallListEntry } from '../_actions/get-open-calls-list';
 import { qualifiesByLocation } from '../_lib/open-call-utils';
 import { getMediumLabel } from '../_actions/open-call-constants';
@@ -113,7 +113,7 @@ export default async function BrowseOpenCallsPage({
         (artistProfile.artist_cv_json as { location?: string })?.location ??
         artistProfile.location ??
         null;
-      const artistSubscription = await getActiveArtistSubscription(user.id);
+      const artistSubscription = await getActiveSubscription(user.id);
       if (!artistSubscription) {
         redirect('/subscription?upgrade=1');
       }

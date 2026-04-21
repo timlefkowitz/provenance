@@ -49,12 +49,20 @@ const ScanLocationsMap = dynamic(
 );
 
 type ScanLocation = {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   city?: string;
   region?: string;
   country?: string;
   formatted?: string;
+  ip_city?: string;
+  ip_region?: string;
+  ip_country?: string;
+  ip_latitude?: number;
+  ip_longitude?: number;
+  user_agent?: string;
+  accept_language?: string;
+  location_source?: 'gps' | 'ip' | 'none';
   scanned_at: string;
 };
 
@@ -152,11 +160,11 @@ export function CertificateOfAuthenticity({
   const scanLocationsWithCoordinates = useMemo(
     () =>
       scanLocations.filter(
-        (scan) =>
+        (scan): scan is ScanLocation & { latitude: number; longitude: number } =>
           Number.isFinite(scan.latitude) &&
           Number.isFinite(scan.longitude) &&
-          Math.abs(scan.latitude) <= 90 &&
-          Math.abs(scan.longitude) <= 180,
+          Math.abs(scan.latitude!) <= 90 &&
+          Math.abs(scan.longitude!) <= 180,
       ),
     [scanLocations],
   );
@@ -254,50 +262,42 @@ export function CertificateOfAuthenticity({
                   : geoData.countryName || null,
             };
 
-            // Record the scan location
             try {
-              await recordScanLocation(artwork.id, location);
-              
-              // Update local state to show the new scan immediately
-              setScanLocations(prev => [...prev, {
-                ...location,
-                scanned_at: new Date().toISOString(),
-              }]);
-              
-              // Refresh page data to sync with server
+              const result = await recordScanLocation(artwork.id, location);
+              setScanLocations(prev => [...prev, (result?.scan ?? { ...location, scanned_at: new Date().toISOString() }) as ScanLocation]);
               router.refresh();
-              
-              // Remove the scan parameter from URL to avoid re-triggering
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
             } catch (error) {
-              console.error('Error recording scan location:', error);
+              console.error('[CertificateScan] Error recording scan location:', error);
             }
           } catch (geoError) {
-            // If reverse geocoding fails, just store coordinates
-            const location = {
-              latitude,
-              longitude,
-            };
+            // Reverse geocoding failed — store raw coordinates only
+            const location = { latitude, longitude };
 
             try {
-              await recordScanLocation(artwork.id, location);
-              setScanLocations(prev => [...prev, {
-                ...location,
-                scanned_at: new Date().toISOString(),
-              }]);
+              const result = await recordScanLocation(artwork.id, location);
+              setScanLocations(prev => [...prev, (result?.scan ?? { ...location, scanned_at: new Date().toISOString() }) as ScanLocation]);
               router.refresh();
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
             } catch (error) {
-              console.error('Error recording scan location:', error);
+              console.error('[CertificateScan] Error recording scan (coords only):', error);
             }
           }
         },
-        (error) => {
-          // User denied geolocation or error occurred
-          console.log('Geolocation not available:', error);
-          // Remove scan parameter even if geolocation fails
+        async (error) => {
+          // User denied geolocation or it errored — still record the scan event
+          // so the owner sees it happened. Server-side IP data will be captured.
+          console.log('[CertificateScan] Geolocation not available:', error);
+          try {
+            const result = await recordScanLocation(artwork.id, null);
+            if (result?.scan) {
+              setScanLocations(prev => [...prev, result.scan as ScanLocation]);
+            }
+          } catch (err) {
+            console.error('[CertificateScan] Error recording scan (no GPS):', err);
+          }
           const newUrl = window.location.pathname;
           window.history.replaceState({}, '', newUrl);
         },
@@ -308,8 +308,16 @@ export function CertificateOfAuthenticity({
         }
       );
     } else {
-      // Geolocation not supported
-      console.log('Geolocation is not supported by this browser');
+      // Geolocation API not available — still record the scan with server-side data
+      console.log('[CertificateScan] Geolocation not supported by this browser');
+      try {
+        const result = await recordScanLocation(artwork.id, null);
+        if (result?.scan) {
+          setScanLocations(prev => [...prev, result.scan as ScanLocation]);
+        }
+      } catch (err) {
+        console.error('[CertificateScan] Error recording scan (no geo API):', err);
+      }
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
@@ -1143,28 +1151,60 @@ export function CertificateOfAuthenticity({
                     </div>
                   )}
                   <div className="space-y-2">
-                    {scanLocations.map((scan, index) => (
-                      <div key={index} className="text-sm sm:text-base font-serif text-ink bg-wine/5 p-2 sm:p-3 rounded border border-wine/30">
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 text-wine mt-0.5 flex-shrink-0" />
-                          <div className="flex-1">
-                            <p className="font-semibold mb-1 text-wine">
-                              Scanned on {new Date(scan.scanned_at).toLocaleDateString('en-US', {
-                                month: 'long',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })}
-                            </p>
-                            <p className="text-ink/80">
-                              {scan.formatted || `${scan.city || ''}${scan.city && scan.country ? ', ' : ''}${scan.country || ''}`.trim() || 
-                               `Lat: ${scan.latitude.toFixed(4)}, Lng: ${scan.longitude.toFixed(4)}`}
-                            </p>
+                    {scanLocations.map((scan, index) => {
+                      // Build a human-readable location string, falling through from most
+                      // precise (GPS) to IP-based approximation to "Location not shared".
+                      const gpsLabel =
+                        scan.formatted ||
+                        [scan.city, scan.region, scan.country].filter(Boolean).join(', ') ||
+                        (scan.latitude != null && scan.longitude != null
+                          ? `${scan.latitude.toFixed(4)}, ${scan.longitude.toFixed(4)}`
+                          : null);
+
+                      const ipLabel =
+                        [scan.ip_city, scan.ip_country].filter(Boolean).join(', ') || null;
+
+                      const locationLabel = gpsLabel
+                        ? gpsLabel
+                        : ipLabel
+                          ? `~${ipLabel} (approximate)`
+                          : 'Location not shared';
+
+                      const sourceTag =
+                        scan.location_source === 'gps'
+                          ? null
+                          : scan.location_source === 'ip'
+                            ? ' · IP estimate'
+                            : ' · location denied';
+
+                      return (
+                        <div key={index} className="text-sm sm:text-base font-serif text-ink bg-wine/5 p-2 sm:p-3 rounded border border-wine/30">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-wine mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="font-semibold mb-1 text-wine">
+                                Scanned on {new Date(scan.scanned_at).toLocaleDateString('en-US', {
+                                  month: 'long',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              <p className="text-ink/80">
+                                {locationLabel}
+                                {sourceTag && (
+                                  <span className="text-ink/50 text-xs">{sourceTag}</span>
+                                )}
+                              </p>
+                              {(isOwner || isAdmin) && scan.user_agent && (
+                                <p className="text-ink/40 text-xs mt-1 truncate">{scan.user_agent}</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

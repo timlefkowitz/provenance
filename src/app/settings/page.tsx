@@ -27,6 +27,7 @@ export default async function SettingsPage() {
     redirect('/auth/sign-in');
   }
 
+  const subscriptionNowIso = new Date().toISOString();
   const [accountResult, allProfiles, galleryProfiles, subscriptionResult] =
     await Promise.all([
       client
@@ -41,6 +42,9 @@ export default async function SettingsPage() {
         .select('id, role, status, current_period_end, trial_end')
         .eq('user_id', user.id)
         .in('status', ['active', 'trialing'])
+        .or(
+          `current_period_end.is.null,current_period_end.gte.${subscriptionNowIso}`,
+        )
         .order('current_period_end', { ascending: false })
         .limit(1),
     ]);

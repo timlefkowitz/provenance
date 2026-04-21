@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getActiveArtistSubscription } from '~/lib/subscription';
+import { getActiveSubscription } from '~/lib/subscription';
 import { OperationsPageContent } from './_components/operations-page-content';
 
 export const metadata = {
@@ -80,7 +80,7 @@ export default async function OperationsPage() {
     redirect('/auth/sign-in');
   }
 
-  const subscription = await getActiveArtistSubscription(user.id);
+  const subscription = await getActiveSubscription(user.id);
   if (!subscription) {
     redirect('/subscription?upgrade=1');
   }

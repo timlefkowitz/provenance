@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import OpenAI from 'openai';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
-import { getActiveArtistSubscription } from '~/lib/subscription';
+import { getActiveSubscription } from '~/lib/subscription';
 import type { ArtistCvJson, Grant } from '~/lib/grants';
 import { ALL_TOOLS } from './tools';
 import {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
     }
 
-    const artistSubscription = await getActiveArtistSubscription(user.id);
+    const artistSubscription = await getActiveSubscription(user.id);
     if (!artistSubscription) {
       console.error('[Opportunities] no active subscription', user.id);
       return NextResponse.json(

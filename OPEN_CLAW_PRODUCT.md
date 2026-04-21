@@ -51,7 +51,7 @@ Yearly plans are described in-product as roughly **“two months free”** vs pa
 
 The subscription page lists **high-level benefits per role** (toolbox, grant lists, open calls, collection management, exhibition tooling, etc.—see `ROLE_FEATURES` in `src/app/subscription/_components/subscription-content.tsx`). Treat those bullets as **onboarding / marketing highlights**, not a guarantee that every bullet maps 1:1 to a permission flag in SQL.
 
-**Known gate in application code:** some **artist** flows require **any** subscription in `active` or `trialing` with a valid period (e.g. **Grants** and **Open Calls browse** call `getActiveArtistSubscription` in `src/lib/subscription.ts`—the helper name reflects artist-centric pages, but it selects **any** eligible paid row, not `role = artist` only). **Certificates are explicitly treated as free for everyone** in the subscription helper’s comment—do not tell users they must pay to issue a CoA unless product policy changes.
+**Known gate in application code:** some **artist** flows require **any** subscription in `active` or `trialing` with a valid period (e.g. **Grants** and **Open Calls browse** call `getActiveSubscription` in `src/lib/subscription.ts`; it selects **any** eligible paid row by role, not `role = artist` only). **Certificates are explicitly treated as free for everyone** in the subscription helper’s comment—do not tell users they must pay to issue a CoA unless product policy changes.
 
 ---
 

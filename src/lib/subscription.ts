@@ -1,11 +1,11 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
- * Returns the current user's eligible subscription if any.
+ * Returns the current user's eligible subscription if any (any billing role).
  * Used to gate subscription-gated features (e.g. Grants, Open Calls, grants assistant).
  * Certificates remain free for everyone.
  */
-export async function getActiveArtistSubscription(userId: string): Promise<{
+export async function getActiveSubscription(userId: string): Promise<{
   id: string;
   role: string;
   status: string;

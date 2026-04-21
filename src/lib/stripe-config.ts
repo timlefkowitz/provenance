@@ -37,15 +37,6 @@ export function getStripePriceId(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-export function isStripeConfigured(): boolean {
-  const env = getEnv();
-  return Boolean(
-    env.STRIPE_SECRET_KEY &&
-      getStripePriceId('artist', 'month') &&
-      getStripePriceId('artist', 'year')
-  );
-}
-
 /** Display prices for the subscription page (not from Stripe) */
 export const SUBSCRIPTION_PRICES: Record<
   SubscriptionRole,

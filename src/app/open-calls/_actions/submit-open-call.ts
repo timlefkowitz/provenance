@@ -4,7 +4,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
-import { getActiveArtistSubscription } from '~/lib/subscription';
+import { getActiveSubscription } from '~/lib/subscription';
 
 const OPEN_CALL_BUCKET = 'open-call-submissions';
 
@@ -24,7 +24,7 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
   if (user) {
     const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);
     if (artistProfile) {
-      const artistSubscription = await getActiveArtistSubscription(user.id);
+      const artistSubscription = await getActiveSubscription(user.id);
       if (!artistSubscription) {
         return { error: 'An active subscription is required to submit to open calls. Subscribe in Toolbox → Subscription.' };
       }

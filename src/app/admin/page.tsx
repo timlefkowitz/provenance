@@ -109,6 +109,24 @@ export default async function AdminPage() {
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">User access</CardTitle>
+              <CardDescription className="font-serif">
+                Grant or revoke complimentary subscription access for support and partnerships.
+              </CardDescription>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
+            >
+              <Link href="/admin/users">Manage user access</Link>
+            </Button>
+          </CardHeader>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
               <CardTitle className="font-display text-xl text-wine">Verification API keys</CardTitle>
               <CardDescription className="font-serif">
                 Create Bearer tokens for the Provenance verification API (integrations, tooling).

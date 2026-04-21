@@ -38,11 +38,14 @@ export default async function SubscriptionPage({
     (account?.public_data as Record<string, unknown> | null) ?? null
   );
 
+  const nowIso = new Date().toISOString();
   const { data: subscriptionRows } = await (client as any)
     .from('subscriptions')
     .select('id, role, status, current_period_end, trial_end')
     .eq('user_id', user.id)
     .in('status', ['active', 'trialing'])
+    // Match getActiveSubscription gating: exclude expired periods
+    .or(`current_period_end.is.null,current_period_end.gte.${nowIso}`)
     .order('current_period_end', { ascending: false })
     .limit(1);
 

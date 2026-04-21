@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getActiveArtistSubscription } from '~/lib/subscription';
+import { getActiveSubscription } from '~/lib/subscription';
 import { buildInvoicePdfBytes } from '~/lib/operations/pdf';
 
 export async function GET(
@@ -21,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const sub = await getActiveArtistSubscription(user.id);
+    const sub = await getActiveSubscription(user.id);
     if (!sub) {
       return NextResponse.json({ error: 'Subscription required' }, { status: 403 });
     }

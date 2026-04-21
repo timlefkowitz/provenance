@@ -1,35 +1,73 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 
 export interface ScanLocation {
-  latitude: number;
-  longitude: number;
+  /** GPS coordinates — only present when user grants browser location permission */
+  latitude?: number;
+  longitude?: number;
   city?: string;
   region?: string;
   country?: string;
   formatted?: string;
+
+  /** IP-based location — captured server-side from Vercel edge headers */
+  ip_city?: string;
+  ip_region?: string;
+  ip_country?: string;
+  ip_latitude?: number;
+  ip_longitude?: number;
+
+  /** Device / browser context captured server-side */
+  user_agent?: string;
+  accept_language?: string;
+
+  /** How precise the stored location is */
+  location_source: 'gps' | 'ip' | 'none';
+
   scanned_at: string;
 }
 
 /**
- * Record a QR code scan location for an artwork
+ * Record a QR code scan event for an artwork.
+ *
+ * `gpsLocation` is optional — if the viewer denies the browser location prompt
+ * (or it errors), callers pass `null` and we still record the scan with
+ * server-side IP geolocation + device context so the owner knows it happened.
  */
 export async function recordScanLocation(
   artworkId: string,
-  location: {
+  gpsLocation: {
     latitude: number;
     longitude: number;
     city?: string;
     region?: string;
     country?: string;
     formatted?: string;
-  }
+  } | null,
 ) {
-  console.log('[CertificateScan] recordScanLocation started', { artworkId });
+  console.log('[CertificateScan] recordScanLocation started', {
+    artworkId,
+    hasGps: !!gpsLocation,
+  });
+
+  const requestHeaders = await headers();
+
+  // Vercel sets these headers at the edge with IP-based geolocation.
+  // In local development they will be absent — that is fine.
+  const ipCity = requestHeaders.get('x-vercel-ip-city') ?? undefined;
+  const ipRegion = requestHeaders.get('x-vercel-ip-region') ?? undefined;
+  const ipCountry = requestHeaders.get('x-vercel-ip-country') ?? undefined;
+  const ipLatRaw = requestHeaders.get('x-vercel-ip-latitude');
+  const ipLngRaw = requestHeaders.get('x-vercel-ip-longitude');
+  const ipLatitude = ipLatRaw ? parseFloat(ipLatRaw) : undefined;
+  const ipLongitude = ipLngRaw ? parseFloat(ipLngRaw) : undefined;
+  const userAgent = requestHeaders.get('user-agent') ?? undefined;
+  const acceptLanguage = requestHeaders.get('accept-language') ?? undefined;
 
   const client = getSupabaseServerClient();
   const adminClient = getSupabaseServerAdminClient();
@@ -37,7 +75,6 @@ export async function recordScanLocation(
     data: { user },
   } = await client.auth.getUser();
 
-  // Get current artwork metadata using admin client so anon scans can persist.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: artwork, error: fetchError } = await (adminClient as any)
     .from('artworks')
@@ -68,17 +105,31 @@ export async function recordScanLocation(
   const existingScanLocations = Array.isArray(currentMetadata['scan_locations'])
     ? (currentMetadata['scan_locations'] as ScanLocation[])
     : [];
-  const scanLocations = [...existingScanLocations];
 
-  // Add new scan location
+  const locationSource: ScanLocation['location_source'] = gpsLocation
+    ? 'gps'
+    : ipCity || ipCountry
+      ? 'ip'
+      : 'none';
+
   const newScan: ScanLocation = {
-    ...location,
+    // GPS fields — only set when permission was granted
+    ...(gpsLocation ?? {}),
+    // Server-side IP geolocation
+    ip_city: ipCity,
+    ip_region: ipRegion,
+    ip_country: ipCountry,
+    ip_latitude: Number.isFinite(ipLatitude) ? ipLatitude : undefined,
+    ip_longitude: Number.isFinite(ipLongitude) ? ipLongitude : undefined,
+    // Device context
+    user_agent: userAgent,
+    accept_language: acceptLanguage,
+    location_source: locationSource,
     scanned_at: new Date().toISOString(),
   };
 
-  scanLocations.push(newScan);
+  const scanLocations = [...existingScanLocations, newScan];
 
-  // Update artwork metadata
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updatedRow, error: updateError } = await (adminClient as any)
     .from('artworks')
@@ -99,36 +150,41 @@ export async function recordScanLocation(
     );
   }
 
-  console.log('[CertificateScan] Scan location saved', {
+  console.log('[CertificateScan] Scan saved', {
     artworkId,
     totalScans: scanLocations.length,
-    latitude: newScan.latitude,
-    longitude: newScan.longitude,
+    locationSource,
+    ipCountry,
+    hasGps: !!gpsLocation,
   });
 
-  // Get artwork owner to notify them
+  // Notify artwork owner
   const artworkData = {
     account_id: artwork.account_id as string | null,
     title: artwork.title as string | null,
   };
 
-  // Create notification for artwork owner about QR scan
   if (artworkData?.account_id) {
     try {
+      const locationLabel =
+        gpsLocation?.formatted ??
+        (ipCity && ipCountry ? `${ipCity}, ${ipCountry}` : ipCountry) ??
+        null;
+
       console.log('[CertificateScan] Creating owner notification', { artworkId });
       await createNotification({
         userId: artworkData.account_id,
         type: 'qr_code_scanned',
         title: 'QR Code Scanned',
-        message: `Your artwork "${artworkData.title}" was scanned${location.formatted ? ` in ${location.formatted}` : ''}`,
+        message: `Your artwork "${artworkData.title}" was scanned${locationLabel ? ` in ${locationLabel}` : ''}`,
         artworkId: artworkId,
         metadata: {
-          scan_location: location,
+          scan_location: newScan,
           scan_type: 'qr_code',
+          location_source: locationSource,
         },
       });
     } catch (error) {
-      // Don't fail the scan recording if notification fails
       console.error('[CertificateScan] Error creating scan notification', error);
     }
   }
@@ -138,6 +194,5 @@ export async function recordScanLocation(
   revalidatePath('/notifications');
 
   console.log('[CertificateScan] recordScanLocation completed', { artworkId });
-  return { success: true };
+  return { success: true, scan: newScan };
 }
-

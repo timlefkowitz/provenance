@@ -55,6 +55,7 @@ export async function AdminAnalytics() {
   startOfMonth.setUTCDate(1);
   startOfMonth.setUTCHours(0, 0, 0, 0);
   const startIso = startOfMonth.toISOString();
+  const nowIso = new Date().toISOString();
 
   const [
     totalUsers,
@@ -90,11 +91,12 @@ export async function AdminAnalytics() {
         .in('role', ['artist', 'gallery']);
       return { count, error: error as Error | null };
     }),
-    fetchCount('subscriptions_active', async () => {
+    fetchCount('subscriptions_active_or_trial', async () => {
       const { count, error } = await admin
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .in('status', ['active', 'trialing'])
+        .or(`current_period_end.is.null,current_period_end.gte.${nowIso}`);
       return { count, error: error as Error | null };
     }),
     fetchCount('accounts_new_month', async () => {
@@ -139,9 +141,9 @@ export async function AdminAnalytics() {
             description="Role profiles (excludes collector)"
           />
           <StatCard
-            title="Active subscriptions"
+            title="Active + trial subscribers"
             value={activeSubscriptions}
-            description="Stripe subscription status active"
+            description="Subscriptions in active or trialing with a current period that has not ended"
           />
           <StatCard
             title="New users this month"

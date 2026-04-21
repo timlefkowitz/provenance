@@ -84,7 +84,11 @@ export async function POST(request: NextRequest) {
   const role = (subscription.metadata?.role as string) || null;
   const userId = (subscription.metadata?.user_id as string) || null;
 
-  if (!userId || !role || !['artist', 'collector', 'gallery'].includes(role)) {
+  if (
+    !userId ||
+    !role ||
+    !['artist', 'collector', 'gallery', 'institution'].includes(role)
+  ) {
     console.error('[Stripe] Webhook: missing or invalid metadata', {
       subscriptionId,
       metadata: subscription.metadata,

@@ -29,8 +29,9 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set(
     'Permissions-Policy',
-    // Explicitly disable high‑risk browser features we do not rely on
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+    // geolocation=(self) allows our own pages to prompt for GPS (QR scan tracking).
+    // All other high-risk features remain blocked.
+    'camera=(), microphone=(), geolocation=(self), payment=(), usb=()',
   );
   response.headers.set('X-Frame-Options', 'DENY');
 
