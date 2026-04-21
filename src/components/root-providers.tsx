@@ -11,6 +11,7 @@ import { I18nProvider } from '@kit/i18n/provider';
 import { If } from '@kit/ui/if';
 
 import { AuthProvider } from '~/components/auth-provider';
+import { DarkThemeColorApplier } from '~/components/dark-theme-color-applier';
 import appConfig from '~/config/app.config';
 import authConfig from '~/config/auth.config';
 import featuresFlagConfig from '~/config/feature-flags.config';
@@ -59,6 +60,7 @@ export function RootProviders({
               storageKey="provenance-theme"
               enableColorScheme={false}
             >
+              <DarkThemeColorApplier />
               {children}
             </ThemeProvider>
           </AuthProvider>
