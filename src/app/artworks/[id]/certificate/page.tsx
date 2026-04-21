@@ -2,10 +2,11 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
-import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
+import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
+import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 
 export const metadata = {
   title: 'Certificate of Authenticity | Provenance',
@@ -128,6 +129,40 @@ export default async function CertificatePage({
   // Check if the current user is the owner
   const isOwner = !!(user && artwork.account_id === user.id);
 
+  let canEditCertificate = false;
+  if (user) {
+    try {
+      canEditCertificate = await canEditGalleryArtworks(user.id, {
+        account_id: artwork.account_id,
+        gallery_profile_id: artwork.gallery_profile_id ?? undefined,
+      });
+    } catch (e) {
+      console.error('[Certificate] canEditGalleryArtworks failed', e);
+    }
+  }
+
+  let attachments: ArtworkAttachmentRow[] = [];
+  if (artwork?.id) {
+    const { data: attRows, error: attErr } = await (client as any)
+      .from('artwork_attachments')
+      .select('id, file_url, file_name, file_type, created_at')
+      .eq('artwork_id', artwork.id)
+      .order('created_at', { ascending: true });
+    if (attErr) {
+      console.error('[Certificate] artwork_attachments query failed', attErr);
+    } else {
+      attachments = (attRows ?? []).map(
+        (a: { id: string; file_url: string; file_name: string; file_type: string; created_at: string }) => ({
+          id: a.id,
+          file_url: a.file_url,
+          file_name: a.file_name,
+          file_type: a.file_type === 'document' ? 'document' : 'image',
+          created_at: a.created_at,
+        }),
+      );
+    }
+  }
+
   let canRequestProvenanceAsGallery = false;
   if (user && artwork.certificate_type === CERTIFICATE_TYPES.SHOW && artwork.gallery_profile_id) {
     try {
@@ -239,6 +274,7 @@ export default async function CertificatePage({
     <CertificateOfAuthenticity 
       artwork={artwork} 
       isOwner={isOwner} 
+      canEditCertificate={canEditCertificate}
       canRequestProvenance={canRequestProvenance}
       isAdmin={userIsAdmin}
       creatorInfo={creatorInfo}
@@ -246,6 +282,7 @@ export default async function CertificatePage({
       showVerifyCta={showVerifyCta}
       certificateStatus={artwork.certificate_status ?? null}
       certificateType={certificateType}
+      attachments={attachments}
     />
   );
 }

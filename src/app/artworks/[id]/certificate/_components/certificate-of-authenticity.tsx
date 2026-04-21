@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useState, useTransition, useEffect, useRef } from 'react';
+import { useMemo, useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText, Facebook, Instagram, Trash2, Share2, Printer, Upload, ChevronDown, Link as LinkIcon } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Link as LinkIcon, FileText } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { adminDeleteArtwork } from '../../_actions/admin-delete-artwork';
-import { editArtwork } from '../_actions/edit-artwork';
+import { UploadAttachmentsDialog, type ArtworkAttachmentRow } from './upload-attachments-dialog';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { verifyCertificate } from '../../_actions/verify-certificate';
@@ -59,7 +59,7 @@ type ScanLocation = {
   scanned_at: string;
 };
 
-type Artwork = {
+export type Artwork = {
   id: string;
   account_id: string;
   title: string;
@@ -101,6 +101,7 @@ type Artwork = {
 export function CertificateOfAuthenticity({ 
   artwork, 
   isOwner = false,
+  canEditCertificate = false,
   canRequestProvenance = false,
   isAdmin = false,
   creatorInfo = null,
@@ -108,9 +109,12 @@ export function CertificateOfAuthenticity({
   showVerifyCta = false,
   certificateStatus = null,
   certificateType = 'authenticity',
+  attachments = [],
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
+  /** Owner or gallery team member who can edit artwork / uploads */
+  canEditCertificate?: boolean;
   /** Owner or gallery manager (CoS); server-computed */
   canRequestProvenance?: boolean;
   isAdmin?: boolean;
@@ -126,6 +130,7 @@ export function CertificateOfAuthenticity({
   showVerifyCta?: boolean;
   certificateStatus?: string | null;
   certificateType?: CertificateType | string;
+  attachments?: ArtworkAttachmentRow[];
 }) {
   const router = useRouter();
   const user = useCurrentUser();
@@ -140,8 +145,6 @@ export function CertificateOfAuthenticity({
 
   const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
   const [requestingProvenance, setRequestingProvenance] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showProvenanceRequestCta =
     canRequestProvenance &&
@@ -426,32 +429,6 @@ export function CertificateOfAuthenticity({
     toast.success('Link copied to clipboard.');
   };
 
-  const handleUploadClick = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    console.log('[Certificate] upload started', { artworkId: artwork.id, fileName: file.name });
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const result = await editArtwork(artwork.id, formData, true);
-      if (result.success) {
-        toast.success('Image updated!');
-        router.refresh();
-      } else {
-        toast.error(result.error || 'Upload failed');
-      }
-    } catch (err) {
-      console.error('[Certificate] upload failed', err);
-      toast.error('Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -567,15 +544,6 @@ export function CertificateOfAuthenticity({
     <div className="min-h-screen bg-parchment">
       {/* Toolbar — hidden when printing */}
       <div className="container mx-auto px-4 py-4 sm:py-6 print:hidden">
-        {/* Hidden file input for image upload */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-
         <div className="flex flex-wrap gap-2 justify-end items-center">
           {/* Request Provenance */}
           {showProvenanceRequestCta && (
@@ -622,18 +590,14 @@ export function CertificateOfAuthenticity({
             </Button>
           )}
 
-          {/* Upload image (owner only) */}
-          {isOwner && (
-            <Button
-              onClick={handleUploadClick}
-              variant="outline"
-              className="font-serif text-xs sm:text-sm gap-1.5"
-              size="sm"
-              disabled={uploading}
-            >
-              <Upload className="h-3.5 w-3.5" aria-hidden />
-              {uploading ? 'Uploading…' : 'Upload'}
-            </Button>
+          {/* Upload (owner or gallery team) */}
+          {canEditCertificate && (
+            <UploadAttachmentsDialog
+              artworkId={artwork.id}
+              artworkTitle={artwork.title || 'Untitled'}
+              attachments={attachments}
+              isCreatorForEdit={canEditCertificate}
+            />
           )}
 
           {/* Print dropdown (owner only) */}
@@ -1251,6 +1215,44 @@ export function CertificateOfAuthenticity({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Certificate attachments (photos & documents) */}
+          {attachments.length > 0 && (
+            <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8 print:break-inside-avoid">
+              <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
+                Attachments
+              </h2>
+              <ul className="space-y-4">
+                {attachments.map((att) => (
+                  <li key={att.id} className="rounded-md border border-wine/20 bg-parchment/40 p-3 sm:p-4">
+                    <p className="text-xs sm:text-sm font-serif text-ink/70 mb-2 break-all">{att.file_name}</p>
+                    {att.file_type === 'image' ? (
+                      <div className="relative mx-auto max-w-full">
+                        <Image
+                          src={att.file_url}
+                          alt={att.file_name}
+                          width={800}
+                          height={600}
+                          className="max-h-96 w-auto max-w-full object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    ) : (
+                      <a
+                        href={att.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm font-serif text-wine underline underline-offset-4 hover:text-wine/80"
+                      >
+                        <FileText className="h-4 w-4 shrink-0" aria-hidden />
+                        Open PDF
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
