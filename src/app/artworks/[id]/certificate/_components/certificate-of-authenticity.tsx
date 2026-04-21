@@ -1,18 +1,38 @@
 'use client';
 
-import { useMemo, useState, useTransition, useEffect } from 'react';
+import { useMemo, useState, useTransition, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText, Facebook, Instagram } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText, Facebook, Instagram, Trash2, Share2, Printer, Upload, ChevronDown, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@kit/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@kit/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { featureArtwork } from '../_actions/feature-artwork';
+import { adminDeleteArtwork } from '../../_actions/admin-delete-artwork';
+import { editArtwork } from '../_actions/edit-artwork';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { verifyCertificate } from '../../_actions/verify-certificate';
@@ -120,6 +140,8 @@ export function CertificateOfAuthenticity({
 
   const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
   const [requestingProvenance, setRequestingProvenance] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showProvenanceRequestCta =
     canRequestProvenance &&
@@ -336,28 +358,97 @@ export function CertificateOfAuthenticity({
   const handleShareInstagram = async () => {
     if (!shareUrl) return;
     console.log('[Certificate] share to Instagram', { artworkId: artwork.id });
-    const shareData = {
-      title: `${artwork.title} — Certificate of Authenticity`,
-      text: artwork.artist_name
-        ? `Certificate of Authenticity for "${artwork.title}" by ${artwork.artist_name}.`
-        : `Certificate of Authenticity for "${artwork.title}".`,
-      url: shareUrl,
-    };
+
+    const artworkTitle = artwork.title || 'Artwork';
+    const shareText = artwork.artist_name
+      ? `Certificate of Authenticity for "${artworkTitle}" by ${artwork.artist_name}.`
+      : `Certificate of Authenticity for "${artworkTitle}".`;
+
+    // On mobile: try sharing the actual image file so the native share sheet
+    // allows posting directly to Instagram Stories/Feed.
+    if (artwork.image_url && typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        const response = await fetch(artwork.image_url);
+        const blob = await response.blob();
+        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        const file = new File([blob], `${artworkTitle}.${ext}`, { type: blob.type });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: artworkTitle, text: shareText, url: shareUrl });
+          return;
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        console.error('[Certificate] image file share failed, falling back', err);
+      }
+    }
+
+    // Mobile without file share support: share URL via native sheet
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share(shareData);
+        await navigator.share({ title: artworkTitle, text: shareText, url: shareUrl });
+        return;
       } catch (err) {
-        // AbortError = user dismissed — that's fine
-        if (err instanceof Error && err.name !== 'AbortError') {
-          console.error('[Certificate] navigator.share failed', err);
-          await navigator.clipboard.writeText(shareUrl);
-          toast.success('Link copied — paste it into your Instagram story or bio.');
-        }
+        if (err instanceof Error && err.name === 'AbortError') return;
+        console.error('[Certificate] navigator.share failed', err);
       }
-    } else {
-      // Desktop: no native share sheet, copy to clipboard
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success('Link copied — paste it into your Instagram story or bio.');
+    }
+
+    // Desktop: download the artwork image + copy the link so the user can
+    // open Instagram and post both manually.
+    if (artwork.image_url) {
+      try {
+        const response = await fetch(artwork.image_url);
+        const blob = await response.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${artworkTitle}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Image downloaded & link copied — open Instagram to share!');
+        return;
+      } catch (e) {
+        console.error('[Certificate] image download failed', e);
+      }
+    }
+
+    // Last resort: copy link only
+    await navigator.clipboard.writeText(shareUrl);
+    toast.success('Link copied — paste it into your Instagram story or bio.');
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    toast.success('Link copied to clipboard.');
+  };
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    console.log('[Certificate] upload started', { artworkId: artwork.id, fileName: file.name });
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const result = await editArtwork(artwork.id, formData, true);
+      if (result.success) {
+        toast.success('Image updated!');
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('[Certificate] upload failed', err);
+      toast.error('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -474,9 +565,19 @@ export function CertificateOfAuthenticity({
 
   return (
     <div className="min-h-screen bg-parchment">
-      {/* Print controls - hidden when printing, only visible to owner */}
+      {/* Toolbar — hidden when printing */}
       <div className="container mx-auto px-4 py-4 sm:py-6 print:hidden">
-        <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
+        {/* Hidden file input for image upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        <div className="flex flex-wrap gap-2 justify-end items-center">
+          {/* Request Provenance */}
           {showProvenanceRequestCta && (
             <Button
               type="button"
@@ -508,63 +609,81 @@ export function CertificateOfAuthenticity({
               {requestingProvenance || pending ? 'Sending…' : 'Request provenance'}
             </Button>
           )}
+
+          {/* Edit (owner only) */}
           {isOwner && (
-            <>
-              <Button
-                onClick={handleDownload}
-                variant="outline"
-                className="font-serif text-xs sm:text-sm"
-                size="sm"
-              >
-                Download PDF
-              </Button>
-              <Button
-                onClick={handlePrint}
-                className="bg-wine text-parchment hover:bg-wine/90 font-serif text-xs sm:text-sm"
-                size="sm"
-              >
-                Print
-              </Button>
-              {certificateUrl && (
+            <Button
+              onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
+              variant="outline"
+              className="font-serif text-xs sm:text-sm"
+              size="sm"
+            >
+              Edit
+            </Button>
+          )}
+
+          {/* Upload image (owner only) */}
+          {isOwner && (
+            <Button
+              onClick={handleUploadClick}
+              variant="outline"
+              className="font-serif text-xs sm:text-sm gap-1.5"
+              size="sm"
+              disabled={uploading}
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden />
+              {uploading ? 'Uploading…' : 'Upload'}
+            </Button>
+          )}
+
+          {/* Print dropdown (owner only) */}
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
-                  onClick={handlePrintQR}
                   variant="outline"
-                  className="font-serif text-xs sm:text-sm"
+                  className="font-serif text-xs sm:text-sm gap-1.5"
                   size="sm"
                 >
-                  Print QR
+                  <Printer className="h-3.5 w-3.5" aria-hidden />
+                  Print
+                  <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
                 </Button>
-              )}
-            </>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="font-serif text-sm">
+                <DropdownMenuItem onClick={handlePrint}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print certificate
+                </DropdownMenuItem>
+                {certificateUrl && (
+                  <DropdownMenuItem onClick={handlePrintQR}>
+                    <Scan className="mr-2 h-4 w-4" />
+                    Print QR code
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDownload}>
+                  Download PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-          {isOwner && (
-            <>
-              <Button
-                onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
-                variant="outline"
-                className="font-serif text-xs sm:text-sm"
-                size="sm"
-              >
-                Edit
-              </Button>
-            </>
-          )}
+
+          {/* Admin: Feature */}
           {isAdmin && !loadingFeatured && (
             <Button
               onClick={handleFeature}
               disabled={pending || featured}
               variant="outline"
               className={`font-serif text-xs sm:text-sm ${
-                featured 
-                  ? 'border-wine bg-wine/10 text-wine' 
+                featured
+                  ? 'border-wine bg-wine/10 text-wine'
                   : 'border-wine/30 hover:bg-wine/10'
               }`}
               size="sm"
             >
-              <Star 
-                className={`mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 ${
-                  featured ? 'fill-wine text-wine' : ''
-                }`} 
+              <Star
+                className={`mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 ${featured ? 'fill-wine text-wine' : ''}`}
               />
               <span className="hidden sm:inline">
                 {pending ? 'Featuring...' : featured ? 'Featured!' : 'Feature on Homepage'}
@@ -574,27 +693,81 @@ export function CertificateOfAuthenticity({
               </span>
             </Button>
           )}
-          {/* Share buttons — visible to everyone */}
-          <Button
-            onClick={handleShareFacebook}
-            variant="outline"
-            className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
-            size="sm"
-            title="Share on Facebook"
-          >
-            <Facebook className="h-3.5 w-3.5" aria-hidden />
-            <span className="hidden sm:inline">Facebook</span>
-          </Button>
-          <Button
-            onClick={handleShareInstagram}
-            variant="outline"
-            className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
-            size="sm"
-            title="Share on Instagram"
-          >
-            <Instagram className="h-3.5 w-3.5" aria-hidden />
-            <span className="hidden sm:inline">Instagram</span>
-          </Button>
+
+          {/* Admin: Delete */}
+          {isAdmin && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-serif text-xs sm:text-sm border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                  disabled={pending}
+                >
+                  <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Delete</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this certificate?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete <strong>{artwork.title || 'this artwork'}</strong> and cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 text-white hover:bg-red-700"
+                    onClick={() => {
+                      startTransition(async () => {
+                        try {
+                          await adminDeleteArtwork(artwork.id);
+                          toast.success('Artwork deleted.');
+                          router.push('/artworks');
+                        } catch (err) {
+                          console.error('[Certificate] adminDeleteArtwork failed', err);
+                          toast.error(err instanceof Error ? err.message : 'Failed to delete artwork');
+                        }
+                      });
+                    }}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+
+          {/* Share dropdown — visible to everyone */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
+                size="sm"
+              >
+                <Share2 className="h-3.5 w-3.5" aria-hidden />
+                Share
+                <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="font-serif text-sm">
+              <DropdownMenuItem onClick={handleCopyLink}>
+                <LinkIcon className="mr-2 h-4 w-4" />
+                Copy link
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleShareFacebook}>
+                <Facebook className="mr-2 h-4 w-4" />
+                Facebook
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShareInstagram}>
+                <Instagram className="mr-2 h-4 w-4" />
+                Instagram
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             onClick={() => router.push('/artworks')}
