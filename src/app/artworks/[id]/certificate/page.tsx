@@ -8,12 +8,53 @@ import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 
-export const metadata = {
-  title: 'Certificate of Authenticity | Provenance',
-};
-
-// Enable dynamic rendering for better performance
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const client = getSupabaseServerClient();
+
+  const { data: artwork } = await (client as any)
+    .from('artworks')
+    .select('title, artist_name, image_url, status')
+    .eq('id', id)
+    .single();
+
+  const title = artwork?.title
+    ? `${artwork.title}${artwork.artist_name ? ` by ${artwork.artist_name}` : ''} — Certificate of Authenticity | Provenance`
+    : 'Certificate of Authenticity | Provenance';
+
+  const description = artwork?.artist_name
+    ? `Certificate of Authenticity for "${artwork.title}" by ${artwork.artist_name}. Verified on Provenance.`
+    : artwork?.title
+    ? `Certificate of Authenticity for "${artwork.title}". Verified on Provenance.`
+    : 'Verified certificate of authenticity on Provenance.';
+
+  const images = artwork?.image_url
+    ? [{ url: artwork.image_url, width: 1200, height: 630, alt: artwork.title ?? 'Artwork' }]
+    : [];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      images,
+    },
+    twitter: {
+      card: images.length ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: images.map((i) => i.url),
+    },
+  };
+}
 
 export default async function CertificatePage({
   params,

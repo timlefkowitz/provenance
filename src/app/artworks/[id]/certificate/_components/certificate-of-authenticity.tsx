@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Link as LinkIcon, FileText } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Link as LinkIcon, FileText } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -39,7 +39,6 @@ import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
 import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
-import { requestProvenanceResearch } from '../_actions/request-provenance-research';
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
@@ -102,7 +101,6 @@ export function CertificateOfAuthenticity({
   artwork, 
   isOwner = false,
   canEditCertificate = false,
-  canRequestProvenance = false,
   isAdmin = false,
   creatorInfo = null,
   exhibition = null,
@@ -115,8 +113,6 @@ export function CertificateOfAuthenticity({
   isOwner?: boolean;
   /** Owner or gallery team member who can edit artwork / uploads */
   canEditCertificate?: boolean;
-  /** Owner or gallery manager (CoS); server-computed */
-  canRequestProvenance?: boolean;
   isAdmin?: boolean;
   creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
   exhibition?: { 
@@ -144,14 +140,6 @@ export function CertificateOfAuthenticity({
   const [scanLocations, setScanLocations] = useState<ScanLocation[]>(initialScanLocations);
 
   const [canClaimAsArtist, setCanClaimAsArtist] = useState(false);
-  const [requestingProvenance, setRequestingProvenance] = useState(false);
-
-  const showProvenanceRequestCta =
-    canRequestProvenance &&
-    (certificateType === CERTIFICATE_TYPES.OWNERSHIP ||
-      certificateType === CERTIFICATE_TYPES.SHOW ||
-      certificateType === 'collection');
-
   const artistPublicHref = useMemo(
     () =>
       getArtistPublicProfileHref({
@@ -350,12 +338,13 @@ export function CertificateOfAuthenticity({
   const handleShareFacebook = () => {
     if (!shareUrl) return;
     console.log('[Certificate] share to Facebook', { artworkId: artwork.id });
-    const popup = window.open(
+    // Open in a new tab — Facebook's crawler reads the og:image meta tag on the
+    // certificate page and shows the artwork image in the post/story preview.
+    window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-      'facebook-share',
-      'width=580,height=420,left=200,top=100',
+      '_blank',
+      'noopener,noreferrer',
     );
-    popup?.focus();
   };
 
   const handleShareInstagram = async () => {
@@ -545,39 +534,6 @@ export function CertificateOfAuthenticity({
       {/* Toolbar — hidden when printing */}
       <div className="container mx-auto px-4 py-4 sm:py-6 print:hidden">
         <div className="flex flex-wrap gap-2 justify-end items-center">
-          {/* Request Provenance */}
-          {showProvenanceRequestCta && (
-            <Button
-              type="button"
-              variant="outline"
-              className="font-serif text-xs sm:text-sm border-wine/40 bg-parchment hover:bg-wine/10"
-              size="sm"
-              disabled={requestingProvenance || pending}
-              onClick={() => {
-                setRequestingProvenance(true);
-                startTransition(async () => {
-                  try {
-                    const result = await requestProvenanceResearch(artwork.id);
-                    if (result.success) {
-                      toast.success('Request sent. Our team has been notified and will follow up.');
-                      router.refresh();
-                    } else {
-                      toast.error(result.error || 'Could not send request');
-                    }
-                  } catch (e) {
-                    console.error('[Certificate] requestProvenanceResearch failed', e);
-                    toast.error('Could not send request. Please try again.');
-                  } finally {
-                    setRequestingProvenance(false);
-                  }
-                });
-              }}
-            >
-              <ScrollText className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" aria-hidden />
-              {requestingProvenance || pending ? 'Sending…' : 'Request provenance'}
-            </Button>
-          )}
-
           {/* Edit (owner only) */}
           {isOwner && (
             <Button
@@ -633,45 +589,42 @@ export function CertificateOfAuthenticity({
             </DropdownMenu>
           )}
 
-          {/* Admin: Feature */}
-          {isAdmin && !loadingFeatured && (
-            <Button
-              onClick={handleFeature}
-              disabled={pending || featured}
-              variant="outline"
-              className={`font-serif text-xs sm:text-sm ${
-                featured
-                  ? 'border-wine bg-wine/10 text-wine'
-                  : 'border-wine/30 hover:bg-wine/10'
-              }`}
-              size="sm"
-            >
-              <Star
-                className={`mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 ${featured ? 'fill-wine text-wine' : ''}`}
-              />
-              <span className="hidden sm:inline">
-                {pending ? 'Featuring...' : featured ? 'Featured!' : 'Feature on Homepage'}
-              </span>
-              <span className="sm:hidden">
-                {pending ? '...' : featured ? '✓' : 'Feature'}
-              </span>
-            </Button>
-          )}
-
-          {/* Admin: Delete */}
+          {/* Admin dropdown */}
           {isAdmin && (
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="font-serif text-xs sm:text-sm border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
-                  disabled={pending}
-                >
-                  <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Delete</span>
-                </Button>
-              </AlertDialogTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-serif text-xs sm:text-sm border-wine/30 hover:bg-wine/10 gap-1.5"
+                    disabled={pending}
+                  >
+                    Admin
+                    <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="font-serif text-sm">
+                  <DropdownMenuItem
+                    onClick={handleFeature}
+                    disabled={pending || featured || loadingFeatured}
+                  >
+                    <Star className={`mr-2 h-4 w-4 ${featured ? 'fill-wine text-wine' : ''}`} aria-hidden />
+                    {pending ? 'Featuring...' : featured ? 'Featured!' : 'Feature on Homepage'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      disabled={pending}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                      Delete certificate
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete this certificate?</AlertDialogTitle>
