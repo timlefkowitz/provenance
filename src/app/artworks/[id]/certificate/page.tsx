@@ -152,11 +152,13 @@ export default async function CertificatePage({
       console.error('[Certificate] artwork_attachments query failed', attErr);
     } else {
       attachments = (attRows ?? []).map(
-        (a: { id: string; file_url: string; file_name: string; file_type: string; created_at: string }) => ({
+        (a: { id: string; file_url: string; file_name: string; file_type: string; label?: string | null; is_public?: boolean; created_at: string }) => ({
           id: a.id,
           file_url: a.file_url,
           file_name: a.file_name,
-          file_type: a.file_type === 'document' ? 'document' : 'image',
+          file_type: (a.file_type === 'document' ? 'document' : 'image') as 'image' | 'document',
+          label: a.label ?? null,
+          is_public: a.is_public ?? true,
           created_at: a.created_at,
         }),
       );

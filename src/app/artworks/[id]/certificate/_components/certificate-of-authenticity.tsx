@@ -1219,42 +1219,61 @@ export function CertificateOfAuthenticity({
           )}
 
           {/* Certificate attachments (photos & documents) */}
-          {attachments.length > 0 && (
-            <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8 print:break-inside-avoid">
-              <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
-                Attachments
-              </h2>
-              <ul className="space-y-4">
-                {attachments.map((att) => (
-                  <li key={att.id} className="rounded-md border border-wine/20 bg-parchment/40 p-3 sm:p-4">
-                    <p className="text-xs sm:text-sm font-serif text-ink/70 mb-2 break-all">{att.file_name}</p>
-                    {att.file_type === 'image' ? (
-                      <div className="relative mx-auto max-w-full">
-                        <Image
-                          src={att.file_url}
-                          alt={att.file_name}
-                          width={800}
-                          height={600}
-                          className="max-h-96 w-auto max-w-full object-contain"
-                          unoptimized
-                        />
+          {(() => {
+            // Non-owners only see public attachments; owners and admins see all
+            const visibleAttachments = (isOwner || isAdmin)
+              ? attachments
+              : attachments.filter((a) => a.is_public);
+            if (visibleAttachments.length === 0) return null;
+            return (
+              <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8 print:break-inside-avoid">
+                <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
+                  Attachments
+                </h2>
+                <ul className="space-y-4">
+                  {visibleAttachments.map((att) => (
+                    <li key={att.id} className="rounded-md border border-wine/20 bg-parchment/40 p-3 sm:p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm sm:text-base font-display font-semibold text-wine break-words">
+                          {att.label ?? att.file_name}
+                        </p>
+                        {(isOwner || isAdmin) && !att.is_public && (
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-ink/10 px-2 py-0.5 text-xs font-serif text-ink/60">
+                            Private
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      <a
-                        href={att.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm font-serif text-wine underline underline-offset-4 hover:text-wine/80"
-                      >
-                        <FileText className="h-4 w-4 shrink-0" aria-hidden />
-                        Open PDF
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                      {att.label && att.label !== att.file_name && (
+                        <p className="text-xs text-ink/50 font-serif mb-2 break-all">{att.file_name}</p>
+                      )}
+                      {att.file_type === 'image' ? (
+                        <div className="relative mx-auto max-w-full">
+                          <Image
+                            src={att.file_url}
+                            alt={att.label ?? att.file_name}
+                            width={800}
+                            height={600}
+                            className="max-h-96 w-auto max-w-full object-contain"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <a
+                          href={att.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-sm font-serif text-wine underline underline-offset-4 hover:text-wine/80"
+                        >
+                          <FileText className="h-4 w-4 shrink-0" aria-hidden />
+                          Open PDF
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
 
           {/* Authentication Statement */}
           <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">

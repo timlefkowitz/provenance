@@ -23,11 +23,15 @@ function sanitizeFileName(name: string): string {
 }
 
 export type AddArtworkAttachmentResult =
-  | { success: true; id: string; file_url: string; file_name: string; file_type: 'image' | 'document' }
+  | { success: true; id: string; file_url: string; file_name: string; file_type: 'image' | 'document'; label: string | null; is_public: boolean }
   | { success: false; error: string };
 
 /**
  * Owner or gallery team: upload an extra image or PDF attached to the certificate.
+ * formData fields:
+ *   file      — required File
+ *   label     — optional display name (string)
+ *   is_public — "true" | "false" (defaults true)
  */
 export async function addArtworkAttachment(
   artworkId: string,
@@ -48,6 +52,10 @@ export async function addArtworkAttachment(
   if (!(file instanceof File) || file.size <= 0) {
     return { success: false, error: 'Please choose a file' };
   }
+
+  const rawLabel = formData.get('label')?.toString().trim() ?? '';
+  const label = rawLabel.length > 0 ? rawLabel.slice(0, 200) : null;
+  const isPublic = formData.get('is_public')?.toString() !== 'false';
 
   if (file.size > MAX_BYTES) {
     return { success: false, error: 'File is too large (max 15 MB)' };
@@ -116,8 +124,10 @@ export async function addArtworkAttachment(
       file_url: fileUrl,
       file_name: safeName,
       file_type: fileType,
+      label,
+      is_public: isPublic,
     })
-    .select('id, file_url, file_name, file_type')
+    .select('id, file_url, file_name, file_type, label, is_public')
     .single();
 
   if (insertError || !row) {
@@ -137,5 +147,7 @@ export async function addArtworkAttachment(
     file_url: row.file_url,
     file_name: row.file_name,
     file_type: row.file_type,
+    label: row.label ?? null,
+    is_public: row.is_public ?? true,
   };
 }
