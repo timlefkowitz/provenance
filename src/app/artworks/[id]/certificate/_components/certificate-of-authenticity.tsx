@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, ScrollText, Facebook, Instagram } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { useCurrentUser } from '~/hooks/use-current-user';
@@ -314,6 +314,53 @@ export function CertificateOfAuthenticity({
     return '';
   }, [artwork.id, isOwner]);
 
+  // Public share URL — no query params, clean canonical link
+  const shareUrl = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/artworks/${artwork.id}/certificate`;
+    }
+    return '';
+  }, [artwork.id]);
+
+  const handleShareFacebook = () => {
+    if (!shareUrl) return;
+    console.log('[Certificate] share to Facebook', { artworkId: artwork.id });
+    const popup = window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      'facebook-share',
+      'width=580,height=420,left=200,top=100',
+    );
+    popup?.focus();
+  };
+
+  const handleShareInstagram = async () => {
+    if (!shareUrl) return;
+    console.log('[Certificate] share to Instagram', { artworkId: artwork.id });
+    const shareData = {
+      title: `${artwork.title} — Certificate of Authenticity`,
+      text: artwork.artist_name
+        ? `Certificate of Authenticity for "${artwork.title}" by ${artwork.artist_name}.`
+        : `Certificate of Authenticity for "${artwork.title}".`,
+      url: shareUrl,
+    };
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // AbortError = user dismissed — that's fine
+        if (err instanceof Error && err.name !== 'AbortError') {
+          console.error('[Certificate] navigator.share failed', err);
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Link copied — paste it into your Instagram story or bio.');
+        }
+      }
+    } else {
+      // Desktop: no native share sheet, copy to clipboard
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied — paste it into your Instagram story or bio.');
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -527,6 +574,28 @@ export function CertificateOfAuthenticity({
               </span>
             </Button>
           )}
+          {/* Share buttons — visible to everyone */}
+          <Button
+            onClick={handleShareFacebook}
+            variant="outline"
+            className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
+            size="sm"
+            title="Share on Facebook"
+          >
+            <Facebook className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">Facebook</span>
+          </Button>
+          <Button
+            onClick={handleShareInstagram}
+            variant="outline"
+            className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
+            size="sm"
+            title="Share on Instagram"
+          >
+            <Instagram className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">Instagram</span>
+          </Button>
+
           <Button
             onClick={() => router.push('/artworks')}
             variant="ghost"

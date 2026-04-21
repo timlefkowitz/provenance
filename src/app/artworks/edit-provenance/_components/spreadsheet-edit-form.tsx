@@ -629,6 +629,12 @@ export function SpreadsheetEditForm({
   const visibleArtworks = filteredArtworks.filter((artwork) =>
     selectedArtworkIds.has(artwork.id),
   );
+  // Only the IDs that are both selected AND visible in the current filter.
+  // This is what the user actually sees as "selected", and is what Send/Print
+  // should act on — preventing stale selections outside the current filter from
+  // silently inflating the batch (e.g. selecting all 93, then filtering to 3
+  // shows "3 selected of 3 in view" but the Set still held 93).
+  const visibleArtworkIds = new Set(visibleArtworks.map((a) => a.id));
 
   const toggleArtworkSelection = (artworkId: string) => {
     setSelectedArtworkIds((prev) => {
@@ -1039,11 +1045,11 @@ export function SpreadsheetEditForm({
             <PrintMenu
               artworks={artworks}
               artworkData={artworkData}
-              selectedArtworkIds={selectedArtworkIds}
+              selectedArtworkIds={visibleArtworkIds}
               galleryName={galleryName}
             />
             <SendMenu
-              selectedArtworkIds={selectedArtworkIds}
+              selectedArtworkIds={visibleArtworkIds}
               senderRole={senderRole}
               galleryProfiles={galleryProfiles}
             />

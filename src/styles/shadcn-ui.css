@@ -153,109 +153,128 @@
     }
 
     /*
-     * next-themes uses class "system" on <html> when System is selected (not "light"/"dark").
-     * Mirror resolved palettes so OS light/dark matches explicit Light/Dark themes.
+     * next-themes sets class "system" on <html> when System is selected.
+     *
+     * System Light  — stone palette: very slightly warm whites, stone-600 accent.
+     *                 Clean, minimal, contemporary (not the branded parchment/wine).
+     *
+     * System Dark   — slate + indigo palette: deep slate-950 ground, slate-900 cards,
+     *                 indigo-400 accent throughout. Modern SaaS aesthetic.
+     *                 --color-parchment / --color-wine / --color-ink are set so every
+     *                 component that references these brand tokens (nav, buttons, etc.)
+     *                 adapts automatically with zero component changes.
      */
+
     @media (prefers-color-scheme: light) {
         html.system {
-            --color-parchment: #f5f2eb;
-            --color-ink: #111111;
-            --color-wine: #111111;
+            /* Brand token remaps — stone-based for a contemporary, editorial feel */
+            --color-parchment: #FAFAF9;   /* stone-50  — slightly warm white nav bg   */
+            --color-ink:       #1C1917;   /* stone-900 — warm near-black body text     */
+            --color-wine:      #57534E;   /* stone-600 — warm mid-gray accent          */
 
-            --background: #f5f2eb;
-            --foreground: #111111;
+            --background:          #FFFFFF;
+            --foreground:          #1C1917;
 
-            --card: #f5f2eb;
-            --card-foreground: #111111;
+            --card:                #FFFFFF;
+            --card-foreground:     #1C1917;
 
-            --popover: #f8f5ee;
-            --popover-foreground: #111111;
+            --popover:             #FAFAF9;
+            --popover-foreground:  #1C1917;
 
-            --primary: #111111;
-            --primary-foreground: #f5f2eb;
+            --primary:             #1C1917;
+            --primary-foreground:  #FAFAF9;
 
-            --secondary: #ebe6dc;
-            --secondary-foreground: #111111;
+            --secondary:           #F5F5F4;   /* stone-100 */
+            --secondary-foreground:#1C1917;
 
-            --muted: #e8e3d9;
-            --muted-foreground: #525252;
+            --muted:               #F5F5F4;
+            --muted-foreground:    #78716C;   /* stone-500 */
 
-            --accent: #ebe6dc;
-            --accent-foreground: #111111;
+            --accent:              #F5F5F4;
+            --accent-foreground:   #1C1917;
 
-            --destructive: var(--color-red-500);
-            --destructive-foreground: var(--color-white);
+            --destructive:         #EF4444;
+            --destructive-foreground: #FFFFFF;
 
-            --border: #d4cdc0;
-            --input: #c9c2b5;
-            --ring: #111111;
+            --border:              #E7E5E4;   /* stone-200 */
+            --input:               #D6D3D1;   /* stone-300 */
+            --ring:                #57534E;   /* stone-600 */
 
-            --chart-1: #404040;
-            --chart-2: #737373;
-            --chart-3: #a3a3a3;
-            --chart-4: #d4d4d4;
-            --chart-5: #171717;
+            --chart-1:             #57534E;
+            --chart-2:             #78716C;
+            --chart-3:             #A8A29E;
+            --chart-4:             #D6D3D1;
+            --chart-5:             #292524;   /* stone-800 */
 
-            --sidebar-background: #f0ebe0;
-            --sidebar-foreground: #111111;
-            --sidebar-primary: #111111;
-            --sidebar-primary-foreground: #f5f2eb;
-            --sidebar-accent: #e5dfd3;
-            --sidebar-accent-foreground: #111111;
-            --sidebar-border: var(--border);
-            --sidebar-ring: #111111;
+            --sidebar-background:  #F5F5F4;
+            --sidebar-foreground:  #1C1917;
+            --sidebar-primary:     #1C1917;
+            --sidebar-primary-foreground: #FAFAF9;
+            --sidebar-accent:      #E7E5E4;
+            --sidebar-accent-foreground:  #1C1917;
+            --sidebar-border:      #E7E5E4;
+            --sidebar-ring:        #57534E;
         }
     }
 
     @media (prefers-color-scheme: dark) {
         html.system {
-            /* Brand utilities (nav, marketing) follow dark surfaces like .dark */
-            --color-parchment: var(--color-neutral-900);
-            --color-ink: var(--color-neutral-50);
-            --color-wine: var(--color-white);
+            /*
+             * Brand token remaps — slate-900 ground, indigo-400 accent.
+             * The nav uses bg-parchment/95, text-wine, text-ink, bg-wine, text-parchment
+             * directly. By overriding these three tokens, the entire UI adapts:
+             *   bg-parchment/95  → slate-900 frosted glass nav
+             *   text-wine        → indigo-400 logo + link hovers + button fills
+             *   text-ink         → slate-300 body text
+             *   bg-wine          → indigo-400 CTA button fill
+             *   text-parchment   → slate-900 CTA button text (high contrast)
+             */
+            --color-parchment: #0F172A;   /* slate-900 — nav bg, card bg              */
+            --color-ink:       #CBD5E1;   /* slate-300 — readable body text            */
+            --color-wine:      #818CF8;   /* indigo-400 — modern accent / link hover   */
 
-            --background: var(--color-neutral-900);
-            --foreground: var(--color-white);
+            --background:          #020617;   /* slate-950 — deepest bg layer          */
+            --foreground:          #F1F5F9;   /* slate-100                             */
 
-            --card: var(--color-neutral-900);
-            --card-foreground: var(--color-white);
+            --card:                #0F172A;   /* slate-900                             */
+            --card-foreground:     #F1F5F9;
 
-            --popover: var(--color-neutral-900);
-            --popover-foreground: var(--color-white);
+            --popover:             #1E293B;   /* slate-800 — elevated surface          */
+            --popover-foreground:  #F1F5F9;
 
-            --primary: var(--color-white);
-            --primary-foreground: var(--color-neutral-900);
+            --primary:             #818CF8;   /* indigo-400 — interactive primary      */
+            --primary-foreground:  #1E1B4B;   /* indigo-950 — dark text on indigo btn  */
 
-            --secondary: var(--color-neutral-800);
-            --secondary-foreground: oklch(98.43% 0.0017 247.84);
+            --secondary:           #1E293B;   /* slate-800                             */
+            --secondary-foreground:#CBD5E1;   /* slate-300                             */
 
-            --muted: var(--color-neutral-800);
-            --muted-foreground: oklch(71.19% 0.0129 286.07);
+            --muted:               #1E293B;
+            --muted-foreground:    #64748B;   /* slate-500                             */
 
-            --accent: var(--color-neutral-800);
-            --accent-foreground: oklch(98.48% 0 0);
+            --accent:              #312E81;   /* indigo-900 — subtle tinted surface    */
+            --accent-foreground:   #E0E7FF;   /* indigo-100                            */
 
-            --destructive: var(--color-red-700);
-            --destructive-foreground: var(--color-white);
+            --destructive:         #F87171;   /* red-400 — legible on dark             */
+            --destructive-foreground: #1C1917;
 
-            --border: var(--color-neutral-800);
-            --input: var(--color-neutral-700);
-            --ring: oklch(87.09% 0.0055 286.29);
+            --border:              #1E293B;   /* slate-800                             */
+            --input:               #334155;   /* slate-700                             */
+            --ring:                #818CF8;   /* indigo-400                            */
 
-            --chart-1: var(--color-blue-600);
-            --chart-2: var(--color-emerald-400);
-            --chart-3: var(--color-orange-400);
-            --chart-4: var(--color-purple-500);
-            --chart-5: var(--color-pink-500);
+            --chart-1:             #818CF8;   /* indigo-400                            */
+            --chart-2:             #34D399;   /* emerald-400                           */
+            --chart-3:             #FB923C;   /* orange-400                            */
+            --chart-4:             #C084FC;   /* purple-400                            */
+            --chart-5:             #F472B6;   /* pink-400                              */
 
-            --sidebar-background: var(--color-neutral-900);
-            --sidebar-foreground: var(--color-white);
-            --sidebar-primary: var(--color-blue-500);
-            --sidebar-primary-foreground: var(--color-white);
-            --sidebar-accent: var(--color-neutral-800);
-            --sidebar-accent-foreground: var(--color-white);
-            --sidebar-border: var(--border);
-            --sidebar-ring: var(--color-blue-500);
+            --sidebar-background:  #020617;   /* slate-950                             */
+            --sidebar-foreground:  #F1F5F9;
+            --sidebar-primary:     #818CF8;   /* indigo-400                            */
+            --sidebar-primary-foreground: #1E1B4B;
+            --sidebar-accent:      #1E293B;   /* slate-800                             */
+            --sidebar-accent-foreground:  #F1F5F9;
+            --sidebar-border:      #1E293B;
+            --sidebar-ring:        #818CF8;
         }
     }
 

@@ -70,24 +70,27 @@ export function renderMarkdownToEmailHtml(markdown: string, theme: EmailTheme): 
 }
 
 function applyEmailInlineStyles(html: string, theme: EmailTheme): string {
-  const { ink, wine } = theme;
+  const { ink, wine, inkMuted } = theme;
   const ff = EMAIL_FONT_FAMILY;
 
   return (
     html
-      .replace(/<h1(\s[^>]*)?>/gi, `<h1 style="margin:0 0 16px;font-family:${ff};font-size:32px;font-weight:600;color:${wine};line-height:1.2;">`)
-      .replace(/<h2(\s[^>]*)?>/gi, `<h2 style="margin:0 0 20px;font-family:${ff};font-size:28px;font-weight:600;color:${wine};line-height:1.2;">`)
-      .replace(/<h3(\s[^>]*)?>/gi, `<h3 style="margin:0 0 14px;font-size:22px;font-weight:600;color:${wine};line-height:1.2;">`)
-      .replace(/<p(\s[^>]*)?>/gi, `<p style="margin:0 0 16px;color:${ink};">`)
+      // Scaled-down heading hierarchy — 32px felt too large alongside the refined masthead
+      .replace(/<h1(\s[^>]*)?>/gi, `<h1 style="margin:0 0 18px;font-family:${ff};font-size:26px;font-weight:700;color:${wine};line-height:1.25;letter-spacing:-0.01em;">`)
+      .replace(/<h2(\s[^>]*)?>/gi, `<h2 style="margin:0 0 18px;font-family:${ff};font-size:22px;font-weight:700;color:${wine};line-height:1.25;letter-spacing:-0.01em;">`)
+      .replace(/<h3(\s[^>]*)?>/gi, `<h3 style="margin:0 0 12px;font-family:${ff};font-size:17px;font-weight:600;color:${wine};line-height:1.3;">`)
+      // Generous line-height on body copy for comfortable reading
+      .replace(/<p(\s[^>]*)?>/gi, `<p style="margin:0 0 18px;font-family:${ff};font-size:16px;line-height:1.75;color:${ink};">`)
       .replace(/<ul(\s[^>]*)?>/gi, `<ul style="margin:0 0 24px;padding-left:20px;color:${ink};">`)
       .replace(/<ol(\s[^>]*)?>/gi, `<ol style="margin:0 0 24px;padding-left:24px;color:${ink};">`)
-      .replace(/<li(\s[^>]*)?>/gi, `<li style="margin-bottom:10px;">`)
-      .replace(/<blockquote(\s[^>]*)?>/gi, `<blockquote style="margin:0 0 16px;padding-left:12px;border-left:3px solid ${wine};color:${ink};">`)
-      .replace(/<hr(\s[^>]*)?>/gi, `<hr style="border:none;border-top:1px solid ${wine};margin:28px 0 32px;" />`)
-      .replace(/<a /gi, `<a style="color:${wine};font-weight:600;" `)
-      .replace(/<strong(\s[^>]*)?>/gi, `<strong style="color:${ink};">`)
-      .replace(/<em(\s[^>]*)?>/gi, `<em style="color:${ink};">`)
-      .replace(/<code(\s[^>]*)?>/gi, `<code style="font-family:ui-monospace,monospace;background:${theme.parchment};padding:2px 4px;border-radius:3px;">`)
-      .replace(/<pre(\s[^>]*)?>/gi, `<pre style="font-family:ui-monospace,monospace;background:${theme.parchment};padding:12px;overflow:auto;">`)
+      .replace(/<li(\s[^>]*)?>/gi, `<li style="margin-bottom:10px;font-size:16px;line-height:1.65;color:${ink};">`)
+      .replace(/<blockquote(\s[^>]*)?>/gi, `<blockquote style="margin:0 0 20px;padding:16px 20px;border-left:3px solid ${wine};background-color:#F9F6F0;color:${inkMuted};">`)
+      // Ornamental divider — matches the masthead ornament motif
+      .replace(/<hr(\s[^>]*)?\/?>(\s*)?/gi, `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:32px 0 36px;border-collapse:collapse;"><tr><td align="center"><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:0 auto;"><tr><td width="40" height="1" bgcolor="#D6D0C8" style="width:40px;height:1px;line-height:1px;font-size:1px;">&nbsp;</td><td width="14" align="center" style="padding:0 5px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 auto;"><tr><td width="4" height="4" bgcolor="${wine}" style="width:4px;height:4px;border-radius:50%;line-height:1px;font-size:1px;">&nbsp;</td></tr></table></td><td width="40" height="1" bgcolor="#D6D0C8" style="width:40px;height:1px;line-height:1px;font-size:1px;">&nbsp;</td></tr></table></td></tr></table>`)
+      .replace(/<a /gi, `<a style="color:${wine};font-weight:600;text-decoration:underline;" `)
+      .replace(/<strong(\s[^>]*)?>/gi, `<strong style="font-weight:700;color:${ink};">`)
+      .replace(/<em(\s[^>]*)?>/gi, `<em style="font-style:italic;color:${ink};">`)
+      .replace(/<code(\s[^>]*)?>/gi, `<code style="font-family:ui-monospace,'Courier New',monospace;font-size:14px;background-color:#F5F1E8;padding:2px 5px;border-radius:2px;color:${wine};">`)
+      .replace(/<pre(\s[^>]*)?>/gi, `<pre style="font-family:ui-monospace,'Courier New',monospace;font-size:13px;background-color:#F5F1E8;padding:16px 20px;overflow:auto;border-left:3px solid ${wine};">`)
   );
 }

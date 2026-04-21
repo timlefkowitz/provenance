@@ -104,21 +104,41 @@ export async function getResolvedTemplateMarkdown(key: EmailTemplateKey): Promis
 
 function buildCertBlockHtml(theme: EmailTheme, certificateNumber: string): string {
   const safe = escapeHtml(certificateNumber);
-  return `<div style="background-color:#ebe6dc;border-left:4px solid ${theme.wine};padding:20px;margin:24px 0;border-radius:4px;">
-  <p style="margin:0;font-size:14px;color:${theme.inkMuted};margin-bottom:8px;"><strong>Certificate Number:</strong></p>
-  <p style="margin:0;font-size:20px;color:${theme.wine};font-weight:600;font-family:ui-monospace,monospace;">${safe}</p>
-</div>`;
+  const { wine, inkMuted, fontFamily } = theme;
+  // Table-based layout so Outlook renders the left accent border correctly
+  return `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0;border-collapse:collapse;">
+  <tr>
+    <td width="3" bgcolor="${wine}" style="width:3px;background-color:${wine};font-size:1px;line-height:1px;">&nbsp;</td>
+    <td style="padding:22px 24px;background-color:#F0EBE1;">
+      <p style="margin:0 0 8px;font-family:${fontFamily};font-size:9px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:${inkMuted};">Certificate Number</p>
+      <p style="margin:0;font-family:ui-monospace,'Courier New',monospace;font-size:20px;font-weight:600;letter-spacing:0.07em;color:${wine};">${safe}</p>
+    </td>
+  </tr>
+</table>`.trim();
 }
 
 function buildItemsHtml(theme: EmailTheme, items: SummaryItem[]): string {
-  const lines = items
+  const { wine, ink, inkMuted, fontFamily } = theme;
+  const rows = items
     .map((item) => {
       const t = escapeHtml(item.title);
-      const d = item.description ? `<br /><span style="font-size:14px;color:${theme.inkMuted};">${escapeHtml(item.description)}</span>` : '';
-      return `<li style="margin-bottom:16px;"><strong style="color:${theme.wine};">${t}</strong>${d}</li>`;
+      const d = item.description
+        ? `<p style="margin:4px 0 0;font-family:${fontFamily};font-size:14px;line-height:1.55;color:${inkMuted};">${escapeHtml(item.description)}</p>`
+        : '';
+      return `
+  <tr>
+    <td style="padding:16px 0;border-bottom:1px solid #E8E3DB;">
+      <p style="margin:0;font-family:${fontFamily};font-size:16px;font-weight:600;color:${wine};">${t}</p>
+      ${d}
+    </td>
+  </tr>`;
     })
     .join('');
-  return `<ul style="font-size:16px;margin:0 0 30px;padding-left:20px;list-style:none;color:${theme.ink};">${lines}</ul>`;
+  return `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:4px 0 28px;border-collapse:collapse;border-top:1px solid #E8E3DB;color:${ink};">
+  ${rows}
+</table>`.trim();
 }
 
 /**

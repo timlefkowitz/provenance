@@ -16,7 +16,15 @@
 @source "../{app,components,config,lib}/**/*.{ts,tsx}";
 @source "../../src/{app,components,config,lib}/**/*.{ts,tsx}";
 
-@variant dark (&:where(.dark, .dark *));
+/*
+ * dark: utility classes fire on .dark AND on html.system when the OS prefers dark.
+ * Without the second condition, Shadcn/Radix components that use dark: utilities
+ * never receive dark styles in "system" mode — the html class is "system", not "dark".
+ */
+@variant dark {
+  &:where(.dark, .dark *) { @slot }
+  @media (prefers-color-scheme: dark) { html.system & { @slot } }
+}
 
 /* User Custom Theme */
 @theme {
