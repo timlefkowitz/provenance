@@ -13,6 +13,7 @@ import {
   Pill,
 } from '@kit/ui/marketing';
 
+import { FoundersSection } from '~/(marketing)/_components/founders-section';
 import { PersonaInternalLinks } from '~/(marketing)/_components/persona-internal-links';
 import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -165,6 +166,7 @@ function Home() {
             </FeatureShowcase>
           </div>
         </div>
+        <FoundersSection />
       </div>
     </>
   );
