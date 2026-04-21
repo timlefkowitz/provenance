@@ -1,9 +1,16 @@
 import Link from 'next/link';
 import { requireAdmin } from '~/lib/admin';
 import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
-import { FixArtistNamesButton } from './_components/fix-artist-names-button';
-import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
-import { LinkArtworksToExhibitionButton } from './_components/link-artworks-to-exhibition-button';
+import { AdminAnalytics } from './_components/admin-analytics';
+// import { FixArtistNamesButton } from './_components/fix-artist-names-button';
+// import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
+// import { LinkArtworksToExhibitionButton } from './_components/link-artworks-to-exhibition-button';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 
 export const metadata = {
@@ -17,145 +24,130 @@ export default async function AdminPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Admin Panel
+          Admin
         </h1>
         <p className="text-ink/70 font-serif">
-          Manage site content and featured entries
+          Manage site content, analytics, and featured entries.
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Edit About Page */}
-        <div className="border-4 border-double border-wine p-6 bg-parchment">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-wine mb-2">
-                About Page
-              </h2>
-              <p className="text-ink/70 font-serif text-sm">
+      <div className="flex flex-col space-y-4">
+        <AdminAnalytics />
+
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">About page</CardTitle>
+              <CardDescription className="font-serif">
                 Edit the content of the about page. Changes are saved to a file and do not affect the database.
-              </p>
+              </CardDescription>
             </div>
             <Button
               asChild
-              className="bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
             >
-              <Link href="/admin/about">Edit About Page</Link>
+              <Link href="/admin/about">Edit about page</Link>
             </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
 
-        {/* Edit Pitch Deck */}
-        <div className="border-4 border-double border-wine p-6 bg-parchment">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-wine mb-2">
-                Pitch Deck
-              </h2>
-              <p className="text-ink/70 font-serif text-sm">
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">Pitch deck</CardTitle>
+              <CardDescription className="font-serif">
                 Edit the pitch deck slides using markdown. Changes are saved to a file and do not affect the database.
-              </p>
+              </CardDescription>
             </div>
             <Button
               asChild
-              className="bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
             >
-              <Link href="/admin/pitch">Edit Pitch Deck</Link>
+              <Link href="/admin/pitch">Edit pitch deck</Link>
             </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
 
-        {/* Blog */}
-        <div className="border-4 border-double border-wine p-6 bg-parchment">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-wine mb-2">
-                Blog
-              </h2>
-              <p className="text-ink/70 font-serif text-sm">
-                Write public SEO posts at /blog. Set byline to the author name
-                shown on each article.
-              </p>
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">Blog</CardTitle>
+              <CardDescription className="font-serif">
+                Write public SEO posts at /blog. Set byline to the author name shown on each article.
+              </CardDescription>
             </div>
             <Button
               asChild
-              className="bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
             >
               <Link href="/admin/blog">Manage blog</Link>
             </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
 
-        {/* Email templates */}
-        <div className="border-4 border-double border-wine p-6 bg-parchment">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-wine mb-2">
-                Email templates
-              </h2>
-              <p className="text-ink/70 font-serif text-sm">
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">Email templates</CardTitle>
+              <CardDescription className="font-serif">
                 Edit transactional emails (Markdown), colors, and masthead text.
-              </p>
+              </CardDescription>
             </div>
             <Button
               asChild
-              className="bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
             >
               <Link href="/admin/emails">Edit emails</Link>
             </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
 
-        {/* Verification API keys */}
-        <div className="border-4 border-double border-wine p-6 bg-parchment">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-wine mb-2">
-                Verification API keys
-              </h2>
-              <p className="text-ink/70 font-serif text-sm">
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">Verification API keys</CardTitle>
+              <CardDescription className="font-serif">
                 Create Bearer tokens for the Provenance verification API (integrations, tooling).
-              </p>
+              </CardDescription>
             </div>
             <Button
               asChild
-              className="bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
             >
               <Link href="/admin/api-keys">Manage API keys</Link>
             </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
 
-        {/* Queued Artworks */}
-        <div className="border-4 border-double border-wine p-6 bg-parchment">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-wine mb-2">
-                Queued Artworks
-              </h2>
-              <p className="text-ink/70 font-serif text-sm">
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">Queued artworks</CardTitle>
+              <CardDescription className="font-serif">
                 View verified artworks that are available to be featured on the homepage.
-              </p>
+              </CardDescription>
             </div>
             <Button
               asChild
-              className="bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
             >
-              <Link href="/admin/queued-artworks">View Queued Artworks</Link>
+              <Link href="/admin/queued-artworks">View queued artworks</Link>
             </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
 
         <FeaturedArtworksManager />
 
-        {/* Fix Artist Names */}
-        <FixArtistNamesButton />
-
-        {/* Fix Gallery Names */}
-        <FixGalleryNamesButton />
-
-        {/* Link Artworks to Exhibition */}
-        <LinkArtworksToExhibitionButton />
+        {/* Maintenance tools hidden for now — re-enable: FixArtistNamesButton, FixGalleryNamesButton, LinkArtworksToExhibitionButton */}
+        {/* <FixArtistNamesButton /> */}
+        {/* <FixGalleryNamesButton /> */}
+        {/* <LinkArtworksToExhibitionButton /> */}
       </div>
     </div>
   );
