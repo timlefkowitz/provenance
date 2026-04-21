@@ -51,14 +51,17 @@ export function SendToArtistDialog({ open, onOpenChange, selectedArtworkIds, gal
       }
       if (result.errors.length > 0) {
         toast.message(
-          `Sent ${result.sent} of ${count} invite${result.sent === 1 ? '' : 's'}`,
+          `Email sent for ${result.sent} of ${count} work${result.sent === 1 ? '' : 's'}`,
           { description: result.errors[0] },
         );
       } else {
         toast.success(
-          `Invite${result.sent === 1 ? '' : 's'} sent to ${email}`,
+          `Invitation email sent to ${email}`,
           {
-            description: `The artist will receive a link to complete their Certificate${result.sent === 1 ? '' : 's'} of Authenticity.`,
+            description:
+              result.sent === 1
+                ? 'The artist will receive a link to complete their Certificate of Authenticity.'
+                : `The artist will receive one email with a single button to accept all ${result.sent} certificates at once.`,
           },
         );
       }
@@ -73,9 +76,12 @@ export function SendToArtistDialog({ open, onOpenChange, selectedArtworkIds, gal
         <DialogHeader>
           <DialogTitle className="font-serif text-wine">Send to Artist</DialogTitle>
           <DialogDescription className="font-serif text-ink/60">
-            The artist will receive an email with a link to complete their Certificate
-            {count === 1 ? '' : 's'} of Authenticity for the {count} selected work
-            {count === 1 ? '' : 's'}, linked to your certificate{count === 1 ? '' : 's'} of show.
+            The artist will receive <span className="font-semibold text-ink/80">one email</span> listing{' '}
+            {count === 1
+              ? 'the selected work'
+              : `all ${count} selected works`}{' '}
+            with a single button to accept{' '}
+            {count === 1 ? 'their Certificate of Authenticity' : 'all certificates at once'}.
           </DialogDescription>
         </DialogHeader>
 
@@ -148,7 +154,7 @@ export function SendToArtistDialog({ open, onOpenChange, selectedArtworkIds, gal
             disabled={pending || !email.includes('@')}
             className="bg-wine text-parchment hover:bg-wine/90 font-serif"
           >
-            {pending ? 'Sending…' : `Send invite${count === 1 ? '' : 's'}`}
+            {pending ? 'Sending…' : count === 1 ? 'Send invite' : `Send invite (${count} works)`}
           </Button>
         </DialogFooter>
       </DialogContent>

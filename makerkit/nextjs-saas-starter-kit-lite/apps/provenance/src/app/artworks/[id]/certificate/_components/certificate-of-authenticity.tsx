@@ -4,7 +4,8 @@ import { Button } from '@kit/ui/button';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { Share2, Facebook, Instagram, Link, Check, X, Download } from 'lucide-react';
 
 type Artwork = {
   id: string;
@@ -33,8 +34,11 @@ export function CertificateOfAuthenticity({
   isOwner?: boolean;
 }) {
   const router = useRouter();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [instagramModal, setInstagramModal] = useState(false);
+  const shareRef = useRef<HTMLDivElement>(null);
 
-  // Generate the certificate URL
   const certificateUrl = useMemo(() => {
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/artworks/${artwork.id}/certificate`;
@@ -42,21 +46,203 @@ export function CertificateOfAuthenticity({
     return '';
   }, [artwork.id]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const shareText = useMemo(() => {
+    const parts = [`"${artwork.title}"`];
+    if (artwork.artist_name) parts.push(`by ${artwork.artist_name}`);
+    if (artwork.description) {
+      const truncated = artwork.description.length > 120
+        ? artwork.description.slice(0, 117) + '…'
+        : artwork.description;
+      parts.push(truncated);
+    }
+    parts.push(`View the verified Certificate of Authenticity on Provenance.`);
+    return parts.join(' — ');
+  }, [artwork.title, artwork.artist_name, artwork.description]);
 
-  const handleDownload = () => {
-    // In a real implementation, you might generate a PDF here
-    // For now, we'll just trigger print which allows saving as PDF
-    window.print();
-  };
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!shareOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (shareRef.current && !shareRef.current.contains(e.target as Node)) {
+        setShareOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [shareOpen]);
+
+  const handlePrint = () => window.print();
+  const handleDownload = () => window.print();
+
+  const handleShareFacebook = useCallback(() => {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(certificateUrl)}&quote=${encodeURIComponent(shareText)}`;
+    window.open(url, '_blank', 'width=600,height=500,noopener,noreferrer');
+    setShareOpen(false);
+    console.log('[Certificate] Shared to Facebook', { artworkId: artwork.id });
+  }, [certificateUrl, shareText, artwork.id]);
+
+  const handleShareInstagram = useCallback(async () => {
+    // On mobile browsers the Web Share API can hand off to Instagram
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: artwork.title,
+          text: shareText,
+          url: certificateUrl,
+        });
+        console.log('[Certificate] Shared via Web Share API', { artworkId: artwork.id });
+        setShareOpen(false);
+        return;
+      } catch (err) {
+        // User cancelled or API failed — fall through to manual instructions
+        console.log('[Certificate] Web Share API cancelled or failed', err);
+      }
+    }
+    // Desktop fallback: show download + instructions modal
+    setShareOpen(false);
+    setInstagramModal(true);
+  }, [artwork.title, artwork.id, shareText, certificateUrl]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(certificateUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      console.log('[Certificate] Certificate URL copied to clipboard', { artworkId: artwork.id });
+    } catch (err) {
+      console.error('[Certificate] Failed to copy link', err);
+    }
+    setShareOpen(false);
+  }, [certificateUrl, artwork.id]);
+
+  const handleDownloadImage = useCallback(() => {
+    if (!artwork.image_url) return;
+    const a = document.createElement('a');
+    a.href = artwork.image_url;
+    a.download = `${artwork.title.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.click();
+    console.log('[Certificate] Artwork image download triggered', { artworkId: artwork.id });
+  }, [artwork.image_url, artwork.title, artwork.id]);
 
   return (
     <div className="min-h-screen bg-parchment">
+      {/* Instagram share instructions modal */}
+      {instagramModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 relative">
+            <button
+              onClick={() => setInstagramModal(false)}
+              className="absolute top-4 right-4 text-ink/40 hover:text-ink transition-colors"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
+                <Instagram size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-ink text-lg">Share to Instagram</h3>
+                <p className="text-xs text-ink/50 font-serif">Two quick steps</p>
+              </div>
+            </div>
+            <ol className="space-y-3 mb-5">
+              <li className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-wine text-parchment text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                <p className="text-sm font-serif text-ink">
+                  Download the artwork image, then open Instagram and create a new post or story.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-wine text-parchment text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                <p className="text-sm font-serif text-ink">
+                  Paste the caption below into your post to include the title and description.
+                </p>
+              </li>
+            </ol>
+            {/* Pre-filled caption */}
+            <div className="bg-parchment border border-wine/20 rounded-lg p-3 mb-4">
+              <p className="text-xs text-ink/50 font-serif mb-1">Suggested caption</p>
+              <p className="text-sm font-serif text-ink leading-relaxed">{shareText}</p>
+              <p className="text-sm font-serif text-ink mt-1 break-all">{certificateUrl}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {artwork.image_url && (
+                <Button
+                  onClick={() => { handleDownloadImage(); setInstagramModal(false); }}
+                  className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white font-serif w-full hover:opacity-90"
+                >
+                  <Download size={16} className="mr-2" />
+                  Download Artwork Image
+                </Button>
+              )}
+              <Button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(`${shareText}\n${certificateUrl}`);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                variant="outline"
+                className="font-serif w-full"
+              >
+                {copied ? <Check size={16} className="mr-2 text-green-600" /> : <Link size={16} className="mr-2" />}
+                {copied ? 'Copied!' : 'Copy Caption & Link'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Print controls - hidden when printing */}
       <div className="container mx-auto px-4 py-6 print:hidden">
-        <div className="flex gap-4 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end">
+          {/* Share dropdown */}
+          <div className="relative" ref={shareRef}>
+            <Button
+              onClick={() => setShareOpen((v) => !v)}
+              variant="outline"
+              className="font-serif flex items-center gap-2 border-wine/40 text-wine hover:bg-wine hover:text-parchment transition-colors"
+            >
+              <Share2 size={16} />
+              Share Artwork
+            </Button>
+            {shareOpen && (
+              <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-wine/10 overflow-hidden z-40">
+                <p className="text-xs text-ink/40 font-serif px-4 pt-3 pb-1 uppercase tracking-widest">Share to</p>
+                <button
+                  onClick={handleShareFacebook}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-serif text-ink hover:bg-parchment transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#1877F2] flex items-center justify-center flex-shrink-0">
+                    <Facebook size={16} className="text-white" />
+                  </div>
+                  Facebook
+                </button>
+                <button
+                  onClick={handleShareInstagram}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-serif text-ink hover:bg-parchment transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
+                    <Instagram size={16} className="text-white" />
+                  </div>
+                  Instagram
+                </button>
+                <div className="border-t border-wine/10 mx-4" />
+                <button
+                  onClick={handleCopyLink}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-serif text-ink hover:bg-parchment transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center flex-shrink-0">
+                    {copied ? <Check size={16} className="text-green-600" /> : <Link size={16} className="text-ink" />}
+                  </div>
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </button>
+              </div>
+            )}
+          </div>
+
           <Button
             onClick={handleDownload}
             variant="outline"

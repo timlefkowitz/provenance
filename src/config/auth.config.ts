@@ -17,8 +17,8 @@ const authConfig = AuthConfigSchema.parse({
   captchaTokenSiteKey: process.env.NEXT_PUBLIC_CAPTCHA_SITE_KEY,
   displayTermsCheckbox: false,
   providers: {
-    password: false,
-    magicLink: false,
+    password: process.env.NEXT_PUBLIC_AUTH_PASSWORD === 'true',
+    magicLink: process.env.NEXT_PUBLIC_AUTH_MAGIC_LINK === 'true',
     oAuth: ['google'],
   },
 } satisfies z.infer<typeof AuthConfigSchema>);

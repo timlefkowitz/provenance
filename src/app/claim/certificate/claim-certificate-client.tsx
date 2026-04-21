@@ -17,6 +17,8 @@ export function ClaimCertificateClient() {
   const [status, setStatus] = useState<'loading' | 'needs_sign_in' | 'consuming' | 'done' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [artworkId, setArtworkId] = useState<string | null>(null);
+  // claimedCount > 1 means this token auto-claimed additional certificates
+  const [claimedCount, setClaimedCount] = useState<number>(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,8 +47,12 @@ export function ClaimCertificateClient() {
 
       if (result.success) {
         setArtworkId(result.artworkId);
+        if ('claimedCount' in result && typeof result.claimedCount === 'number') {
+          setClaimedCount(result.claimedCount);
+        }
         setStatus('done');
-        router.replace(`/artworks/${result.artworkId}/certificate`);
+        // Small delay so the success message is briefly visible before redirect
+        setTimeout(() => router.replace(`/artworks/${result.artworkId}/certificate`), 1800);
         return;
       }
 
@@ -81,7 +87,7 @@ export function ClaimCertificateClient() {
   if (status === 'loading' || status === 'consuming') {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center font-serif">
-        <p className="text-ink/80">Completing your certificate…</p>
+        <p className="text-ink/80">Completing your certificate{claimedCount > 1 ? 's' : ''}…</p>
       </div>
     );
   }
@@ -90,9 +96,13 @@ export function ClaimCertificateClient() {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center font-serif">
         <Heading level={4} className="text-wine mb-2">
-          Success
+          {claimedCount > 1 ? `${claimedCount} Certificates Accepted` : 'Certificate Accepted'}
         </Heading>
-        <p className="text-ink/80 mb-6">Redirecting to your certificate…</p>
+        <p className="text-ink/80 mb-6">
+          {claimedCount > 1
+            ? `All ${claimedCount} Certificates of Authenticity have been linked to your account. Redirecting…`
+            : 'Your Certificate of Authenticity has been linked to your account. Redirecting…'}
+        </p>
         <Button asChild className="bg-wine text-parchment hover:bg-wine/90">
           <Link href={`/artworks/${artworkId}/certificate`}>View certificate</Link>
         </Button>
@@ -122,10 +132,18 @@ export function ClaimCertificateClient() {
   return (
     <div className="mx-auto max-w-lg px-4 py-16 text-center font-serif">
       <Heading level={4} className="text-wine mb-2">
-        Claim your certificate
+        Accept your certificate{claimedCount > 1 ? 's' : ''}
       </Heading>
-      <p className="text-ink/80 mb-6">
-        Sign in with the email address this invitation was sent to, then we will complete your certificate.
+      <p className="text-ink/80 mb-2">
+        Sign in with the email address this invitation was sent to and we will
+        automatically link{' '}
+        {claimedCount > 1
+          ? 'all your Certificates of Authenticity'
+          : 'your Certificate of Authenticity'}{' '}
+        to your account.
+      </p>
+      <p className="text-ink/50 text-sm mb-6">
+        Make sure to use the same email address the invitation was sent to.
       </p>
       <Button asChild className="bg-wine text-parchment hover:bg-wine/90 font-serif">
         <Link href={signInHref}>Continue to sign in</Link>

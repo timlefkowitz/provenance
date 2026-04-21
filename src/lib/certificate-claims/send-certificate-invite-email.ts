@@ -72,3 +72,42 @@ export async function sendArtistCoaInviteEmail(params: {
     },
   );
 }
+
+/**
+ * Send a single consolidated email inviting an artist to accept Certificates of
+ * Authenticity for multiple works in one click. The token belongs to the first
+ * invite; consumeCertificateClaim auto-claims all related artworks for the artist
+ * under that owner in one go, so no additional emails are needed.
+ */
+export async function sendBatchArtistCoaInviteEmail(params: {
+  to: string;
+  recipientName: string;
+  artworkTitles: string[];
+  token: string;
+  senderName?: string;
+}): Promise<void> {
+  const { to, recipientName, artworkTitles, token, senderName } = params;
+  const claimUrl = getCertificateClaimUrl(token);
+  const fromLine = senderName ? ` from ${senderName}` : '';
+  const count = artworkTitles.length;
+  console.log('[Certificates] sendBatchArtistCoaInviteEmail', { to, count, senderName });
+
+  const isSingle = count === 1;
+  const subject = isSingle
+    ? `Complete your Certificate of Authenticity — ${artworkTitles[0]}`
+    : `Complete your ${count} Certificates of Authenticity`;
+
+  const worksList = artworkTitles.map((t) => `- "${t}"`).join('\n');
+  const body = isSingle
+    ? `You have been invited${fromLine} to complete your Certificate of Authenticity for "${artworkTitles[0]}". Sign in with this email address to complete your certificate — it will be automatically linked to the existing provenance record.`
+    : `You have been invited${fromLine} to complete Certificates of Authenticity for ${count} works:\n\n${worksList}\n\nClick the button below to sign in and accept all ${count} certificates at once — they will each be automatically linked to the existing provenance records.`;
+
+  await sendNotificationEmail(to, recipientName, subject, {
+    title: isSingle
+      ? 'Complete your Certificate of Authenticity'
+      : `Complete your ${count} Certificates of Authenticity`,
+    body,
+    ctaUrl: claimUrl,
+    ctaLabel: isSingle ? 'Complete certificate' : `Accept all ${count} certificates`,
+  });
+}

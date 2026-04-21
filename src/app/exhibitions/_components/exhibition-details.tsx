@@ -102,9 +102,10 @@ export function ExhibitionDetails({
           {exhibition.artworks.map((artwork) => (
             <div
               key={artwork.id}
-              className="group relative break-inside-avoid mb-4 md:mb-5 overflow-hidden rounded-lg bg-parchment/60"
+              className="group relative break-inside-avoid mb-4 md:mb-5 rounded-lg bg-parchment/60 overflow-hidden"
             >
-              <Link href={`/artworks/${artwork.id}/certificate`} className="block">
+              {/* Image */}
+              <Link href={`/artworks/${artwork.id}/certificate`} className="block relative overflow-hidden">
                 {artwork.image_url ? (
                   <div className="relative w-full overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -121,14 +122,28 @@ export function ExhibitionDetails({
                   </div>
                 )}
 
-                {/* Title reveal overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-1 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-                  <p className="text-white font-serif text-sm font-medium leading-snug line-clamp-2 drop-shadow">
-                    {artwork.title}
-                  </p>
-                </div>
+                {/* Subtle hover sheen over image */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </Link>
+
+              {/* Below-image: title + optional description */}
+              {(artwork.title || artwork.description) && (
+                <Link
+                  href={`/artworks/${artwork.id}/certificate`}
+                  className="block px-4 pt-3 pb-4 border-t border-wine/10 hover:bg-wine/[0.03] transition-colors"
+                >
+                  {artwork.title && (
+                    <p className="font-serif text-sm font-semibold text-ink leading-snug line-clamp-2 group-hover:text-wine transition-colors">
+                      {artwork.title}
+                    </p>
+                  )}
+                  {artwork.description && (
+                    <p className="font-serif text-xs text-ink/50 leading-relaxed line-clamp-3 mt-1">
+                      {artwork.description}
+                    </p>
+                  )}
+                </Link>
+              )}
 
               {/* Owner remove button */}
               {isOwner && (

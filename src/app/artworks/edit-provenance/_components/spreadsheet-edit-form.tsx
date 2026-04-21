@@ -535,6 +535,10 @@ export function SpreadsheetEditForm({
   );
   /** Per-artwork confirmation that a "Received" stamp was applied this session. */
   const [receivedStamped, setReceivedStamped] = useState<Set<string>>(() => new Set());
+  /** Per-artwork optional note appended to the received stamp (e.g. condition, location). */
+  const [receivedNotes, setReceivedNotes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, ''])),
+  );
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -1423,7 +1427,7 @@ export function SpreadsheetEditForm({
                               </div>
                             ) : null}
                             {field === 'received' ? (
-                              <div className="rounded-md border border-wine/20 bg-wine/[0.03] p-3 space-y-3">
+                              <div className="rounded-md border border-wine/20 bg-wine/[0.03] p-3 space-y-2.5">
                                 <div>
                                   <p className="text-xs font-serif font-medium text-ink/80">
                                     {OPTIONAL_PRIMARY_LABELS.received}
@@ -1432,40 +1436,58 @@ export function SpreadsheetEditForm({
                                     Stamps &ldquo;Received by {receiverName}&rdquo; into Former owners on Save.
                                   </p>
                                 </div>
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                  <Input
-                                    type="date"
-                                    value={receivedDates[artwork.id] ?? todayIso}
-                                    onChange={(e) =>
-                                      setReceivedDates((prev) => ({
-                                        ...prev,
-                                        [artwork.id]: e.target.value,
-                                      }))
-                                    }
-                                    className="font-serif text-sm h-9 border-wine/20 w-full sm:w-auto"
-                                    aria-label="Date received"
-                                  />
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => {
-                                      const dateStr = receivedDates[artwork.id] ?? todayIso;
-                                      const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                      });
-                                      const entry = `Received by ${receiverName}, ${formattedDate}`;
-                                      const existing = data.former_owners.trim();
-                                      const updated = existing ? `${existing}\n${entry}` : entry;
-                                      updateField(artwork.id, 'former_owners', updated);
-                                      setReceivedStamped((prev) => new Set(prev).add(artwork.id));
-                                    }}
-                                    className="font-serif text-xs h-9 sm:h-8 bg-wine text-parchment hover:bg-wine/90 whitespace-nowrap touch-manipulation"
-                                  >
-                                    Mark as Received
-                                  </Button>
-                                </div>
+                                {/* Date */}
+                                <Input
+                                  type="date"
+                                  value={receivedDates[artwork.id] ?? todayIso}
+                                  onChange={(e) =>
+                                    setReceivedDates((prev) => ({
+                                      ...prev,
+                                      [artwork.id]: e.target.value,
+                                    }))
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20 w-full"
+                                  aria-label="Date received"
+                                />
+                                {/* Note (optional) */}
+                                <Input
+                                  type="text"
+                                  placeholder="Note (optional) — condition, location…"
+                                  value={receivedNotes[artwork.id] ?? ''}
+                                  onChange={(e) =>
+                                    setReceivedNotes((prev) => ({
+                                      ...prev,
+                                      [artwork.id]: e.target.value,
+                                    }))
+                                  }
+                                  className="font-serif text-xs h-8 border-wine/20 w-full placeholder:text-ink/30"
+                                  aria-label="Received note"
+                                />
+                                {/* Button */}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => {
+                                    const dateStr = receivedDates[artwork.id] ?? todayIso;
+                                    const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                    });
+                                    const note = (receivedNotes[artwork.id] ?? '').trim();
+                                    const entry = note
+                                      ? `Received by ${receiverName}, ${formattedDate} — ${note}`
+                                      : `Received by ${receiverName}, ${formattedDate}`;
+                                    const existing = data.former_owners.trim();
+                                    const updated = existing ? `${existing}\n${entry}` : entry;
+                                    updateField(artwork.id, 'former_owners', updated);
+                                    setReceivedStamped((prev) => new Set(prev).add(artwork.id));
+                                    setReceivedNotes((prev) => ({ ...prev, [artwork.id]: '' }));
+                                  }}
+                                  className="font-serif text-xs h-8 w-full bg-wine text-parchment hover:bg-wine/90 whitespace-nowrap touch-manipulation"
+                                >
+                                  Mark as Received
+                                </Button>
                                 {receivedStamped.has(artwork.id) ? (
                                   <p className="text-[10px] text-green-700 font-serif">
                                     ✓ Stamped — hit Save changes to persist.

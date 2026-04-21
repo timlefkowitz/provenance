@@ -25,6 +25,7 @@ export type ExhibitionWithDetails = Exhibition & {
   artworks: Array<{
     id: string;
     title: string;
+    description: string | null;
     image_url: string | null;
   }>;
 };
@@ -91,6 +92,7 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
       artworks!exhibition_artworks_artwork_id_fkey (
         id,
         title,
+        description,
         image_url,
         status,
         is_public
@@ -117,6 +119,7 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
     .map((ea: any) => ({
       id: ea.artworks.id,
       title: ea.artworks.title,
+      description: ea.artworks.description ?? null,
       image_url: ea.artworks.image_url,
     }));
 
