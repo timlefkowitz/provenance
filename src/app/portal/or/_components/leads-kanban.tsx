@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -56,8 +56,15 @@ import {
   Mail,
   Phone,
   Calendar,
+  Clock,
   DollarSign,
   ExternalLink,
+  Users,
+  UserPlus,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
 } from 'lucide-react';
 import {
   createLead,
@@ -66,6 +73,14 @@ import {
   deleteLead,
   getLeadsForArtist,
 } from '../_actions/leads';
+import {
+  getCrmMembers,
+  inviteCrmMemberByEmail,
+  removeCrmMember,
+  updateCrmColumnLabel,
+  type CrmMember,
+  type ColumnLabels,
+} from '../_actions/crm-members';
 import {
   LEAD_STAGES,
   LEAD_SOURCES,
@@ -123,6 +138,40 @@ function SourceBadge({ source }: { source: string | null }) {
   return (
     <span className="inline-flex items-center text-[10px] bg-parchment border border-wine/15 rounded px-1.5 py-0.5 font-serif text-ink/60">
       {found?.label ?? source}
+    </span>
+  );
+}
+
+// ─── Staleness timer ─────────────────────────────────────────────────────────
+
+type StalenessLevel = 'quiet' | 'aging' | 'stale' | 'cold';
+
+function stalenessInfo(updatedAt: string): { label: string; level: StalenessLevel } | null {
+  const diffDays = Math.floor((Date.now() - new Date(updatedAt).getTime()) / 86_400_000);
+  if (diffDays < 3) return null;
+  if (diffDays < 7)  return { label: `${diffDays}d`,                       level: 'quiet' };
+  if (diffDays < 14) return { label: `${Math.floor(diffDays / 7)}w`,        level: 'aging' };
+  if (diffDays < 60) return { label: `${Math.floor(diffDays / 7)}w`,        level: 'stale' };
+  return               { label: `${Math.floor(diffDays / 30)}mo`,           level: 'cold'  };
+}
+
+const STALENESS_CLS: Record<StalenessLevel, string> = {
+  quiet: 'text-slate-400 bg-slate-50  border-slate-200',
+  aging: 'text-amber-600 bg-amber-50  border-amber-200',
+  stale: 'text-orange-600 bg-orange-50 border-orange-200',
+  cold:  'text-red-600   bg-red-50    border-red-200',
+};
+
+function StalenessTimer({ updatedAt }: { updatedAt: string }) {
+  const info = stalenessInfo(updatedAt);
+  if (!info) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] border rounded px-1.5 py-0.5 font-serif ${STALENESS_CLS[info.level]}`}
+      title={`Last updated ${new Date(updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+    >
+      <Clock className="h-2.5 w-2.5" />
+      {info.label}
     </span>
   );
 }
@@ -254,6 +303,7 @@ function LeadCard({
         <div className="flex flex-wrap gap-1.5 mb-2">
           <SourceBadge source={lead.source} />
           <FollowUpBadge date={lead.follow_up_date} />
+          <StalenessTimer updatedAt={lead.updated_at} />
         </div>
 
         {lead.contact_email && (
@@ -353,28 +403,72 @@ function SortableLeadCard({ lead, onMove, onDelete, onOpenEdit }: {
 
 // ─── Droppable column ────────────────────────────────────────────────────────
 
-function DroppableColumn({ stage, leads, onMove, onDelete, onOpenEdit }: {
+function DroppableColumn({ stage, leads, onMove, onDelete, onOpenEdit, columnLabel, onRename, isOwner }: {
   stage: LeadStage; leads: ArtistLead[];
   onMove: (leadId: string, stage: LeadStage) => void;
   onDelete: (leadId: string) => void;
   onOpenEdit: (lead: ArtistLead) => void;
+  columnLabel: string;
+  onRename: (label: string) => void;
+  isOwner: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   const styles = STAGE_STYLES[stage];
   const totalValue = leads.reduce((s, l) => s + (l.estimated_value ?? 0), 0);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(columnLabel);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setEditValue(columnLabel); }, [columnLabel]);
+  useEffect(() => { if (isEditing) inputRef.current?.select(); }, [isEditing]);
+
+  const commitRename = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== columnLabel) onRename(trimmed);
+    else setEditValue(columnLabel);
+    setIsEditing(false);
+  };
+
   return (
-    <div className="flex flex-col min-w-[260px] w-[260px] flex-shrink-0">
+    <div className="flex flex-col min-w-[260px] w-[260px] flex-shrink-0 group/col">
       <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${styles.dot}`} />
-          <h3 className="font-display font-semibold text-ink text-sm">{STAGE_LABELS[stage]}</h3>
-          <span className={`text-[10px] font-serif px-1.5 py-0.5 rounded-full font-medium ${styles.badge}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${styles.dot}`} />
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                if (e.key === 'Escape') { setEditValue(columnLabel); setIsEditing(false); }
+              }}
+              className="font-display font-semibold text-ink text-sm bg-transparent border-b border-wine/40 outline-none w-32 leading-tight"
+              maxLength={32}
+            />
+          ) : (
+            <>
+              <h3 className="font-display font-semibold text-ink text-sm truncate">{columnLabel}</h3>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="opacity-0 group-hover/col:opacity-100 transition-opacity p-0.5 text-ink/25 hover:text-wine rounded shrink-0"
+                  aria-label={`Rename ${columnLabel} column`}
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </button>
+              )}
+            </>
+          )}
+          <span className={`text-[10px] font-serif px-1.5 py-0.5 rounded-full font-medium shrink-0 ${styles.badge}`}>
             {leads.length}
           </span>
         </div>
         {totalValue > 0 && (
-          <span className="text-[10px] font-serif text-emerald-700 font-semibold">{fmt(totalValue)}</span>
+          <span className="text-[10px] font-serif text-emerald-700 font-semibold shrink-0">{fmt(totalValue)}</span>
         )}
       </div>
       <div
@@ -403,11 +497,12 @@ function DroppableColumn({ stage, leads, onMove, onDelete, onOpenEdit }: {
 
 // ─── List view ───────────────────────────────────────────────────────────────
 
-function ListView({ leads, onMove, onDelete, onOpenEdit }: {
+function ListView({ leads, onMove, onDelete, onOpenEdit, stageLabels }: {
   leads: ArtistLead[];
   onMove: (leadId: string, stage: LeadStage) => void;
   onDelete: (leadId: string) => void;
   onOpenEdit: (lead: ArtistLead) => void;
+  stageLabels: Record<LeadStage, string>;
 }) {
   if (leads.length === 0) {
     return (
@@ -447,11 +542,14 @@ function ListView({ leads, onMove, onDelete, onOpenEdit }: {
                     {lead.contact_email && (
                       <p className="text-xs text-ink/50 mt-0.5">{lead.contact_email}</p>
                     )}
+                    <div className="mt-1">
+                      <StalenessTimer updatedAt={lead.updated_at} />
+                    </div>
                   </button>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${styles.badge}`}>
-                    {STAGE_LABELS[lead.stage]}
+                    {stageLabels[lead.stage]}
                   </span>
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell">
@@ -502,9 +600,15 @@ const BLANK_FORM = {
 export function LeadsKanban({
   initialLeads,
   artistArtworks,
+  isOwner,
+  initialCrmMembers,
+  initialColumnLabels,
 }: {
   initialLeads: ArtistLead[];
   artistArtworks: { id: string; title: string; image_url: string | null }[];
+  isOwner: boolean;
+  initialCrmMembers: CrmMember[];
+  initialColumnLabels: ColumnLabels;
 }) {
   const [leads, setLeads] = useState<ArtistLead[]>(initialLeads);
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
@@ -516,6 +620,20 @@ export function LeadsKanban({
   const [editValues, setEditValues] = useState(BLANK_FORM);
   const [pending, startTransition] = useTransition();
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Column labels (owner can customise; members see the same)
+  const [columnLabels, setColumnLabels] = useState<ColumnLabels>(initialColumnLabels);
+  const resolvedLabels = useMemo(
+    () => LEAD_STAGES.reduce((acc, s) => ({ ...acc, [s]: columnLabels[s] || STAGE_LABELS[s] }), {} as Record<LeadStage, string>),
+    [columnLabels],
+  );
+
+  // Team panel state (owner only)
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [crmMembers, setCrmMembers] = useState<CrmMember[]>(initialCrmMembers);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePending, setInvitePending] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -548,7 +666,7 @@ export function LeadsKanban({
       const result = await updateLeadStage(leadId, newStage);
       if (result.success) {
         setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, stage: newStage } : l));
-        toast.success(`Moved to ${STAGE_LABELS[newStage]}`);
+        toast.success(`Moved to ${resolvedLabels[newStage]}`);
       } else {
         toast.error(result.error);
       }
@@ -648,6 +766,47 @@ export function LeadsKanban({
 
   const activeLead = activeId ? leads.find((l) => l.id === activeId) : null;
 
+  // ── column rename handler ──
+
+  const handleRenameColumn = async (stage: LeadStage, label: string) => {
+    // Optimistic update
+    setColumnLabels((prev) => ({ ...prev, [stage]: label || undefined }));
+    const result = await updateCrmColumnLabel(stage, label);
+    if (!result.success) {
+      // Revert on error
+      setColumnLabels((prev) => ({ ...prev, [stage]: initialColumnLabels[stage] }));
+      toast.error(result.error ?? 'Could not save column name');
+    }
+  };
+
+  // ── team handlers (owner only) ──
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInvitePending(true);
+    setInviteError(null);
+    const result = await inviteCrmMemberByEmail(inviteEmail);
+    if (result.success) {
+      setInviteEmail('');
+      const fresh = await getCrmMembers();
+      setCrmMembers(fresh);
+      toast.success('Team member added');
+    } else {
+      setInviteError(result.error ?? 'Something went wrong.');
+    }
+    setInvitePending(false);
+  };
+
+  const handleRemoveMember = async (memberUserId: string) => {
+    const result = await removeCrmMember(memberUserId);
+    if (result.success) {
+      setCrmMembers((prev) => prev.filter((m) => m.member_user_id !== memberUserId));
+      toast.success('Team member removed');
+    } else {
+      toast.error(result.error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Pipeline stats ── */}
@@ -660,7 +819,7 @@ export function LeadsKanban({
             <div key={stage} className={`rounded-xl border p-4 ${styles.col}`}>
               <div className="flex items-center gap-2 mb-1">
                 <span className={`w-2 h-2 rounded-full ${styles.dot}`} />
-                <p className="text-[10px] uppercase tracking-wider font-serif font-semibold text-ink/50">{STAGE_LABELS[stage]}</p>
+                <p className="text-[10px] uppercase tracking-wider font-serif font-semibold text-ink/50">{resolvedLabels[stage]}</p>
               </div>
               <p className="text-2xl font-display font-bold text-ink">{count}</p>
               {val > 0 && <p className="text-xs text-emerald-700 font-serif font-semibold mt-0.5">{fmt(val)}</p>}
@@ -734,6 +893,9 @@ export function LeadsKanban({
                 onMove={handleMove}
                 onDelete={(id) => setDeleteTarget(leads.find((l) => l.id === id) ?? null)}
                 onOpenEdit={openEditLead}
+                columnLabel={resolvedLabels[stage]}
+                onRename={(label) => handleRenameColumn(stage, label)}
+                isOwner={isOwner}
               />
             ))}
           </div>
@@ -751,6 +913,7 @@ export function LeadsKanban({
           onMove={handleMove}
           onDelete={(id) => setDeleteTarget(leads.find((l) => l.id === id) ?? null)}
           onOpenEdit={openEditLead}
+          stageLabels={resolvedLabels}
         />
       )}
 
@@ -821,6 +984,101 @@ export function LeadsKanban({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Team panel (owners) / member notice (non-owners) ── */}
+      {!isOwner && (
+        <div className="flex items-center gap-2 text-[11px] font-serif text-ink/45 border border-wine/10 rounded-lg px-4 py-2.5 bg-parchment/40">
+          <Users className="h-3.5 w-3.5 shrink-0" />
+          You&apos;re viewing this CRM as a team member.
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="border border-wine/15 rounded-xl overflow-hidden">
+          {/* Header / toggle */}
+          <button
+            type="button"
+            onClick={() => setTeamOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-parchment/60 hover:bg-parchment/80 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <Users className="h-3.5 w-3.5 text-wine/60" />
+              <span className="font-serif text-sm font-semibold text-ink">Team Access</span>
+              {crmMembers.length > 0 && (
+                <span className="text-[10px] bg-wine/10 text-wine/70 rounded-full px-2 py-0.5 font-serif">
+                  {crmMembers.length}
+                </span>
+              )}
+            </div>
+            {teamOpen
+              ? <ChevronUp className="h-3.5 w-3.5 text-ink/40" />
+              : <ChevronDown className="h-3.5 w-3.5 text-ink/40" />
+            }
+          </button>
+
+          {teamOpen && (
+            <div className="px-5 py-4 space-y-4 bg-white">
+              {/* Invite form */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-serif text-ink/50">
+                  Invite a team member by their Provenance account email. They will be able to view and edit contacts on your CRM.
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/30" />
+                    <Input
+                      type="email"
+                      placeholder="colleague@studio.com"
+                      value={inviteEmail}
+                      onChange={(e) => { setInviteEmail(e.target.value); setInviteError(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleInvite(); } }}
+                      className="pl-8 font-serif text-sm h-9 border-wine/20"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleInvite}
+                    disabled={invitePending || !inviteEmail.trim()}
+                    className="bg-wine text-parchment hover:bg-wine/90 font-serif h-9 shrink-0"
+                  >
+                    <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                    {invitePending ? 'Adding…' : 'Add'}
+                  </Button>
+                </div>
+                {inviteError && (
+                  <p className="text-xs text-red-600 font-serif">{inviteError}</p>
+                )}
+              </div>
+
+              {/* Member list */}
+              {crmMembers.length === 0 ? (
+                <p className="text-xs font-serif text-ink/35 py-2">No team members yet.</p>
+              ) : (
+                <ul className="divide-y divide-wine/8">
+                  {crmMembers.map((m) => (
+                    <li key={m.member_user_id} className="flex items-center justify-between py-2.5">
+                      <div className="min-w-0">
+                        {m.name && (
+                          <p className="text-sm font-semibold text-ink font-serif truncate">{m.name}</p>
+                        )}
+                        <p className="text-xs text-ink/50 font-serif truncate">{m.email ?? m.member_user_id}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(m.member_user_id)}
+                        className="ml-3 shrink-0 p-1 rounded text-ink/30 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        aria-label="Remove team member"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,32 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { type ArtistLead, type LeadStage } from './leads-constants';
 
+/**
+ * Resolves the artist_user_id to use for CRM operations:
+ * - If the current user has their own artist profile, returns their own id.
+ * - If they are a crm_member for another artist, returns that artist's id.
+ * - Falls back to the caller's own id (RLS will enforce access).
+ */
+async function resolveArtistUserId(client: ReturnType<typeof getSupabaseServerClient>, userId: string): Promise<string> {
+  const { data: artistProfile } = await (client as any)
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('role', 'artist')
+    .maybeSingle();
+
+  if (artistProfile) return userId;
+
+  const { data: membership } = await (client as any)
+    .from('crm_members')
+    .select('artist_user_id')
+    .eq('member_user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  return membership?.artist_user_id ?? userId;
+}
+
 const SELECT_FIELDS = `
   id,
   artist_user_id,
@@ -38,10 +64,12 @@ export async function getLeadsForArtist(): Promise<ArtistLead[]> {
     return [];
   }
 
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
   const { data, error } = await (client as any)
     .from('artist_leads')
     .select(SELECT_FIELDS)
-    .eq('artist_user_id', user.id)
+    .eq('artist_user_id', artistUserId)
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -73,8 +101,10 @@ export async function createLead(input: {
     return { success: false, error: 'You must be logged in to add leads.' };
   }
 
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
   const { error } = await (client as any).from('artist_leads').insert({
-    artist_user_id: user.id,
+    artist_user_id: artistUserId,
     contact_name:    input.contact_name    || null,
     contact_email:   input.contact_email   || null,
     contact_phone:   input.contact_phone   || null,
@@ -106,11 +136,13 @@ export async function updateLeadStage(leadId: string, stage: LeadStage) {
     return { success: false, error: 'You must be logged in.' };
   }
 
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
   const { error } = await (client as any)
     .from('artist_leads')
     .update({ stage, updated_at: new Date().toISOString() })
     .eq('id', leadId)
-    .eq('artist_user_id', user.id);
+    .eq('artist_user_id', artistUserId);
 
   if (error) {
     console.error('[Leads] updateLeadStage failed', error);
@@ -144,6 +176,8 @@ export async function updateLead(
     return { success: false, error: 'You must be logged in.' };
   }
 
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
   const { error } = await (client as any)
     .from('artist_leads')
     .update({
@@ -158,7 +192,7 @@ export async function updateLead(
       updated_at: new Date().toISOString(),
     })
     .eq('id', leadId)
-    .eq('artist_user_id', user.id);
+    .eq('artist_user_id', artistUserId);
 
   if (error) {
     console.error('[Leads] updateLead failed', error);
@@ -180,11 +214,13 @@ export async function deleteLead(leadId: string) {
     return { success: false, error: 'You must be logged in.' };
   }
 
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
   const { error } = await (client as any)
     .from('artist_leads')
     .delete()
     .eq('id', leadId)
-    .eq('artist_user_id', user.id);
+    .eq('artist_user_id', artistUserId);
 
   if (error) {
     console.error('[Leads] deleteLead failed', error);
