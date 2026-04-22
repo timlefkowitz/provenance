@@ -123,6 +123,77 @@ export type InvoiceRow = {
   invoice_line_items: InvoiceLineRow[];
 };
 
+export type ShipmentRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  courier_name: string;
+  courier_contact_email: string | null;
+  courier_user_id: string | null;
+  origin_location: string | null;
+  destination_location: string | null;
+  ship_date: string | null;
+  estimated_arrival: string | null;
+  actual_arrival: string | null;
+  tracking_number: string | null;
+  transit_insurance_policy: string | null;
+  transit_insurance_value_cents: number | null;
+  crating_notes: string | null;
+  status: string;
+  document_storage_path: string | null;
+  alert_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+  artwork: { id: string; title: string } | null;
+};
+
+export type InsuranceValuationRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  policy_number: string | null;
+  insurer_name: string;
+  insurer_contact_email: string | null;
+  insurer_user_id: string | null;
+  coverage_amount_cents: number | null;
+  currency: string;
+  appraiser_name: string | null;
+  appraiser_email: string | null;
+  appraiser_user_id: string | null;
+  appraisal_date: string | null;
+  policy_start_date: string | null;
+  policy_end_date: string | null;
+  valuation_notes: string | null;
+  status: string;
+  document_storage_path: string | null;
+  alert_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+  artwork: { id: string; title: string } | null;
+};
+
+export type AcquisitionRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  acquisition_type: string;
+  seller_name: string;
+  seller_email: string | null;
+  seller_user_id: string | null;
+  acquisition_price_cents: number | null;
+  currency: string;
+  acquisition_date: string | null;
+  provenance_notes: string | null;
+  accession_number: string | null;
+  legal_status: string;
+  fund_source: string | null;
+  status: string;
+  document_storage_path: string | null;
+  created_at: string;
+  updated_at: string;
+  artwork: { id: string; title: string } | null;
+};
+
 export default async function OperationsPage() {
   const client = getSupabaseServerClient();
   const {
@@ -138,7 +209,16 @@ export default async function OperationsPage() {
     redirect('/subscription?upgrade=1');
   }
 
-  const [loansRes, invoicesRes, artworksRes, consignmentsRes, conditionRes] = await Promise.all([
+  const [
+    loansRes,
+    invoicesRes,
+    artworksRes,
+    consignmentsRes,
+    conditionRes,
+    shipmentsRes,
+    insuranceRes,
+    acquisitionsRes,
+  ] = await Promise.all([
     (client as any)
       .from('artwork_loan_agreements')
       .select(
@@ -259,6 +339,92 @@ export default async function OperationsPage() {
       .eq('account_id', user.id)
       .order('created_at', { ascending: false })
       .limit(200),
+    (client as any)
+      .from('artwork_shipments')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        courier_name,
+        courier_contact_email,
+        courier_user_id,
+        origin_location,
+        destination_location,
+        ship_date,
+        estimated_arrival,
+        actual_arrival,
+        tracking_number,
+        transit_insurance_policy,
+        transit_insurance_value_cents,
+        crating_notes,
+        status,
+        document_storage_path,
+        alert_sent_at,
+        created_at,
+        updated_at,
+        artwork:artworks(id, title)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
+    (client as any)
+      .from('insurance_valuations')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        policy_number,
+        insurer_name,
+        insurer_contact_email,
+        insurer_user_id,
+        coverage_amount_cents,
+        currency,
+        appraiser_name,
+        appraiser_email,
+        appraiser_user_id,
+        appraisal_date,
+        policy_start_date,
+        policy_end_date,
+        valuation_notes,
+        status,
+        document_storage_path,
+        alert_sent_at,
+        created_at,
+        updated_at,
+        artwork:artworks(id, title)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
+    (client as any)
+      .from('acquisitions')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        acquisition_type,
+        seller_name,
+        seller_email,
+        seller_user_id,
+        acquisition_price_cents,
+        currency,
+        acquisition_date,
+        provenance_notes,
+        accession_number,
+        legal_status,
+        fund_source,
+        status,
+        document_storage_path,
+        created_at,
+        updated_at,
+        artwork:artworks(id, title)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
   ]);
 
   if (loansRes.error) {
@@ -275,6 +441,15 @@ export default async function OperationsPage() {
   }
   if (conditionRes.error) {
     console.error('[Operations] page: condition reports query failed', conditionRes.error);
+  }
+  if (shipmentsRes.error) {
+    console.error('[Operations] page: shipments query failed', shipmentsRes.error);
+  }
+  if (insuranceRes.error) {
+    console.error('[Operations] page: insurance query failed', insuranceRes.error);
+  }
+  if (acquisitionsRes.error) {
+    console.error('[Operations] page: acquisitions query failed', acquisitionsRes.error);
   }
 
   const rawLoans = (loansRes.data ?? []) as Record<string, unknown>[];
@@ -297,6 +472,20 @@ export default async function OperationsPage() {
     const artwork = Array.isArray(art) ? art[0] ?? null : art ?? null;
     return { ...(row as unknown as ConditionReportRow), artwork };
   });
+
+  const mapArtwork = (row: Record<string, unknown>) => {
+    const art = row.artwork as { id: string; title: string } | { id: string; title: string }[] | null;
+    return Array.isArray(art) ? art[0] ?? null : art ?? null;
+  };
+  const shipments: ShipmentRow[] = ((shipmentsRes.data ?? []) as Record<string, unknown>[]).map(
+    (row) => ({ ...(row as unknown as ShipmentRow), artwork: mapArtwork(row) }),
+  );
+  const insuranceValuations: InsuranceValuationRow[] = (
+    (insuranceRes.data ?? []) as Record<string, unknown>[]
+  ).map((row) => ({ ...(row as unknown as InsuranceValuationRow), artwork: mapArtwork(row) }));
+  const acquisitions: AcquisitionRow[] = ((acquisitionsRes.data ?? []) as Record<string, unknown>[]).map(
+    (row) => ({ ...(row as unknown as AcquisitionRow), artwork: mapArtwork(row) }),
+  );
 
   const rawInvoices = (invoicesRes.data ?? []) as Record<string, unknown>[];
   const invoices: InvoiceRow[] = rawInvoices.map((inv) => {
@@ -367,6 +556,9 @@ export default async function OperationsPage() {
     artworks: artworks.length,
     consignments: consignments.length,
     conditionReports: conditionReports.length,
+    shipments: shipments.length,
+    insurance: insuranceValuations.length,
+    acquisitions: acquisitions.length,
   });
 
   return (
@@ -384,6 +576,9 @@ export default async function OperationsPage() {
         initialInvoices={invoices}
         initialConsignments={consignments}
         initialConditionReports={conditionReports}
+        initialShipments={shipments}
+        initialInsuranceValuations={insuranceValuations}
+        initialAcquisitions={acquisitions}
         recentProvenance={recentProvenance}
         artworks={artworks}
       />

@@ -16,7 +16,12 @@ export type ProvenanceEventType =
   | 'coa_issued'
   | 'coo_issued'
   | 'cos_issued'
-  | 'authentication';
+  | 'authentication'
+  | 'artwork_shipped'
+  | 'artwork_received'
+  | 'insurance_active'
+  | 'insurance_expired'
+  | 'artwork_accessioned';
 
 export async function insertProvenanceEventForOperations(input: {
   artworkId: string;

@@ -34,12 +34,15 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import type {
+  AcquisitionRow,
   ConsignmentRow,
   ConditionReportRow,
+  InsuranceValuationRow,
   InvoiceRow,
   LoanAgreementRow,
   OperationsArtworkOption,
   ProvenanceEventSummary,
+  ShipmentRow,
 } from '../page';
 import {
   createLoanAgreement,
@@ -53,6 +56,9 @@ import { OperationsSummaryDashboard } from './operations-summary-dashboard';
 import { ProvenanceTimeline } from './provenance-timeline';
 import { ConsignmentsTab } from './consignments-tab';
 import { ConditionReportsTab } from './condition-reports-tab';
+import { ShippingTab } from './shipping-tab';
+import { InsuranceTab } from './insurance-tab';
+import { AcquisitionsTab } from './acquisitions-tab';
 import {
   createInvoice,
   duplicateInvoice,
@@ -68,6 +74,9 @@ type Props = {
   initialInvoices: InvoiceRow[];
   initialConsignments: ConsignmentRow[];
   initialConditionReports: ConditionReportRow[];
+  initialShipments: ShipmentRow[];
+  initialInsuranceValuations: InsuranceValuationRow[];
+  initialAcquisitions: AcquisitionRow[];
   recentProvenance: ProvenanceEventSummary[];
   artworks: OperationsArtworkOption[];
 };
@@ -156,6 +165,9 @@ export function OperationsPageContent({
   initialInvoices,
   initialConsignments,
   initialConditionReports,
+  initialShipments,
+  initialInsuranceValuations,
+  initialAcquisitions,
   recentProvenance,
   artworks,
 }: Props) {
@@ -819,16 +831,18 @@ export function OperationsPageContent({
           )}
         </TabsContent>
 
-        <TabsContent value="shipping">
-          <ComingSoonTab
-            title="Shipping & Logistics Tracking"
-            description="Track artwork shipments, couriers, crating, and transit insurance in one place."
+        <TabsContent value="shipping" className="space-y-4">
+          <ShippingTab
+            shipments={initialShipments}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
           />
         </TabsContent>
-        <TabsContent value="insurance">
-          <ComingSoonTab
-            title="Insurance & Valuation Management"
-            description="Schedule appraisals, manage policies, and link valuations to objects in your collection."
+        <TabsContent value="insurance" className="space-y-4">
+          <InsuranceTab
+            rows={initialInsuranceValuations}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
           />
         </TabsContent>
         <TabsContent value="condition" className="space-y-4">
@@ -840,10 +854,11 @@ export function OperationsPageContent({
             artworkTitleById={artworkTitleById}
           />
         </TabsContent>
-        <TabsContent value="acquisition">
-          <ComingSoonTab
-            title="Acquisition & Accession Workflows"
-            description="Document accession numbers, provenance checks, and intake workflows from offer to catalog."
+        <TabsContent value="acquisition" className="space-y-4">
+          <AcquisitionsTab
+            acquisitions={initialAcquisitions}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
           />
         </TabsContent>
         <TabsContent value="exhibitions">

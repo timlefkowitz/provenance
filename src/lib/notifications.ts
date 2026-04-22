@@ -29,7 +29,13 @@ export type NotificationType =
   | 'consignment_counterparty_linked'
   | 'consignment_status_update'
   | 'loan_expiry_reminder'
-  | 'consignment_expiry_reminder';
+  | 'consignment_expiry_reminder'
+  | 'shipment_counterparty_linked'
+  | 'shipment_status_update'
+  | 'insurance_counterparty_linked'
+  | 'insurance_status_update'
+  | 'acquisition_counterparty_linked'
+  | 'acquisition_status_update';
 
 export interface CreateNotificationParams {
   userId: string;

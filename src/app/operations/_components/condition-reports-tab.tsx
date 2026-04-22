@@ -37,8 +37,10 @@ import {
   createConditionReport,
   deleteConditionReport,
   updateConditionReport,
+  uploadConditionReportFiles,
 } from '../_actions/condition-reports';
 import { LoanArtworkPicker } from './loan-artwork-picker';
+import { Upload, X } from 'lucide-react';
 
 const reportTypes = ['initial', 'return', 'periodic'] as const;
 const grades = ['excellent', 'good', 'fair', 'poor'] as const;
@@ -72,6 +74,7 @@ export function ConditionReportsTab({
   const [inspDate, setInspDate] = useState('');
   const [pickerSeed, setPickerSeed] = useState(0);
   const [paths, setPaths] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const loanById = useMemo(() => new Map(loans.map((l) => [l.id, l])), [loans]);
   const conById = useMemo(() => new Map(consignments.map((c) => [c.id, c])), [consignments]);
@@ -93,6 +96,7 @@ export function ConditionReportsTab({
     setInspector('');
     setInspDate('');
     setPaths('');
+    setPendingFiles([]);
     setPickerSeed((n) => n + 1);
     setOpen(true);
   }
@@ -108,6 +112,7 @@ export function ConditionReportsTab({
     setInspector(r.inspector_name ?? '');
     setInspDate(r.inspection_date ?? '');
     setPaths((r.attachments_storage_paths ?? []).join('\n'));
+    setPendingFiles([]);
     setPickerSeed((n) => n + 1);
     setOpen(true);
   }
@@ -119,10 +124,24 @@ export function ConditionReportsTab({
         toast.error('Select an artwork.');
         return;
       }
-      const pathList = paths
+      let pathList = paths
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean);
+      if (pendingFiles.length > 0) {
+        const fd = new FormData();
+        for (const f of pendingFiles) {
+          fd.append('files', f);
+        }
+        const up = await uploadConditionReportFiles(fd);
+        if (!up.success) {
+          toast.error(up.error);
+          return;
+        }
+        pathList = [...pathList, ...up.paths];
+        setPendingFiles([]);
+      }
+      pathList = [...new Set(pathList)];
       if (editing) {
         const res = await updateConditionReport({
           id: editing.id,
@@ -176,7 +195,7 @@ export function ConditionReportsTab({
     <>
       <p className="text-ink/70 font-serif text-sm max-w-3xl">
         Record condition at intake, on return, or on a schedule. Link to a loan or consignment when applicable.
-        Storage paths are optional (upload flows can be added later).
+        Attach PDFs, Office documents, or images (up to 12 files, 25MB each).
       </p>
       <Button
         type="button"
@@ -197,6 +216,7 @@ export function ConditionReportsTab({
                 <TableHead className="font-display text-wine">Type</TableHead>
                 <TableHead className="font-display text-wine">Grade</TableHead>
                 <TableHead className="font-display text-wine">Date</TableHead>
+                <TableHead className="font-display text-wine">Files</TableHead>
                 <TableHead className="text-right font-display text-wine">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -226,6 +246,11 @@ export function ConditionReportsTab({
                   <TableCell className="font-serif capitalize text-sm">{r.condition_grade ?? '—'}</TableCell>
                   <TableCell className="font-serif text-sm">
                     {r.inspection_date ? r.inspection_date : '—'}
+                  </TableCell>
+                  <TableCell className="font-serif text-sm text-ink/70">
+                    {r.attachments_storage_paths?.length
+                      ? `${r.attachments_storage_paths.length} attached`
+                      : '—'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -267,7 +292,9 @@ export function ConditionReportsTab({
             <DialogTitle className="font-display text-wine">
               {editing ? 'Edit condition report' : 'New condition report'}
             </DialogTitle>
-            <DialogDescription>Inspection and condition text; optional storage paths (one per line).</DialogDescription>
+            <DialogDescription>
+              Inspection and condition text. Upload attachments or paste existing storage paths (one per line).
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <LoanArtworkPicker
@@ -363,12 +390,61 @@ export function ConditionReportsTab({
               <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label>Attachment storage paths (one per line)</Label>
+              <Label>Attachments</Label>
+              <div className="flex flex-col gap-2 rounded-md border border-dashed border-wine/25 bg-parchment/60 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="file"
+                    className="cursor-pointer font-sans text-sm file:mr-2 file:rounded file:border-0 file:bg-wine/10 file:px-2 file:py-1"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*,application/pdf"
+                    multiple
+                    disabled={saving}
+                    onChange={(e) => {
+                      const list = e.target.files;
+                      if (!list?.length) {
+                        return;
+                      }
+                      setPendingFiles((prev) => [...prev, ...Array.from(list)]);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+                <p className="text-ink/55 text-xs">
+                  PDF, Word, Excel, CSV, text, or images. Files upload when you save.
+                </p>
+                {pendingFiles.length > 0 ? (
+                  <ul className="space-y-1 text-sm">
+                    {pendingFiles.map((f, i) => (
+                      <li
+                        key={`${f.name}-${i}`}
+                        className="text-ink/80 flex items-center justify-between gap-2 rounded border border-wine/10 bg-parchment px-2 py-1"
+                      >
+                        <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
+                          <Upload className="text-wine h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{f.name}</span>
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => setPendingFiles((p) => p.filter((_, j) => j !== i))}
+                          disabled={saving}
+                          aria-label="Remove file"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              <Label className="text-ink/70 text-xs">Additional storage paths (optional, one per line)</Label>
               <Textarea
                 rows={2}
                 value={paths}
                 onChange={(e) => setPaths(e.target.value)}
-                placeholder="e.g. artworks/…/file.pdf"
+                placeholder="e.g. condition-reports/…/file.pdf (for paths already in storage)"
               />
             </div>
           </div>

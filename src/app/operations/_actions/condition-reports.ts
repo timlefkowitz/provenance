@@ -4,6 +4,127 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+
+const CONDITION_REPORTS_BUCKET = 'condition-reports';
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25MB
+const MAX_FILES_PER_UPLOAD = 12;
+
+const ALLOWED_MIME = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
+]);
+
+const ALLOWED_EXT = new Set([
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'txt',
+  'csv',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+  'heic',
+]);
+
+function safeObjectFileName(name: string): string {
+  const base = name.split(/[/\\]/).pop() || 'file';
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]+/g, '_');
+  return cleaned.length ? cleaned.slice(0, 120) : 'file';
+}
+
+function isFileAllowed(file: File): boolean {
+  if (file.size <= 0 || file.size > MAX_ATTACHMENT_BYTES) {
+    return false;
+  }
+  if (file.type && (ALLOWED_MIME.has(file.type) || file.type.startsWith('image/'))) {
+    return true;
+  }
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  return ext != null && ALLOWED_EXT.has(ext);
+}
+
+/**
+ * Upload PDFs, images, Office docs, and text files; returns storage object paths for `attachments_storage_paths`.
+ */
+export async function uploadConditionReportFiles(
+  formData: FormData,
+): Promise<{ success: true; paths: string[] } | { success: false; error: string }> {
+  console.log('[Operations/condition-reports] uploadConditionReportFiles started');
+  const client = getSupabaseServerClient() as any;
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) {
+    console.error('[Operations/condition-reports] upload: not authenticated');
+    return { success: false, error: 'You must be logged in.' };
+  }
+
+  const files = formData.getAll('files') as File[];
+  if (files.length === 0) {
+    return { success: false, error: 'No files were selected.' };
+  }
+  if (files.length > MAX_FILES_PER_UPLOAD) {
+    return { success: false, error: `At most ${MAX_FILES_PER_UPLOAD} files per save.` };
+  }
+  for (const f of files) {
+    if (!isFileAllowed(f)) {
+      return {
+        success: false,
+        error: `This file is not allowed or is too large (max 25MB): ${f.name}`,
+      };
+    }
+  }
+
+  try {
+    const admin = getSupabaseServerAdminClient() as any;
+    const { data: buckets } = await admin.storage.listBuckets();
+    if (!buckets?.some((b: { id: string }) => b.id === CONDITION_REPORTS_BUCKET)) {
+      const { error: cErr } = await admin.storage.createBucket(CONDITION_REPORTS_BUCKET, {
+        public: false,
+      });
+      if (cErr) {
+        console.log('[Operations/condition-reports] createBucket note', cErr);
+      }
+    }
+  } catch (e) {
+    console.error('[Operations/condition-reports] bucket ensure failed', e);
+  }
+
+  const bucket = client.storage.from(CONDITION_REPORTS_BUCKET);
+  const paths: string[] = [];
+  for (const file of files) {
+    const bytes = await file.arrayBuffer();
+    const safe = safeObjectFileName(file.name);
+    const objectPath = `${user.id}/condition-reports/${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${safe}`;
+    const { error: upErr } = await bucket.upload(objectPath, bytes, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    });
+    if (upErr) {
+      console.error('[Operations/condition-reports] storage upload', upErr);
+      return { success: false, error: upErr.message || 'Upload failed' };
+    }
+    paths.push(objectPath);
+  }
+
+  console.log('[Operations/condition-reports] uploadConditionReportFiles done', paths.length);
+  return { success: true, paths };
+}
 
 const createSchema = z.object({
   artwork_id: z.string().uuid(),
