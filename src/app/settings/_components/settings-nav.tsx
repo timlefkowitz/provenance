@@ -85,7 +85,10 @@ export function SettingsNav({ hasGalleryProfiles }: { hasGalleryProfiles: boolea
       </nav>
 
       {/* Mobile horizontal tabs */}
-      <nav className="lg:hidden sticky top-[65px] z-30 -mx-4 bg-parchment/95 backdrop-blur-sm border-b border-wine/10 px-4 overflow-x-auto">
+      <nav
+        className="lg:hidden sticky top-[65px] z-30 -mx-4 bg-parchment/95 backdrop-blur-sm border-b border-wine/10 px-4 overflow-x-auto overscroll-x-contain"
+        style={{ touchAction: 'pan-x' }}
+      >
         <div className="flex gap-1 py-2">
           {visibleSections.map((s) => (
             <button

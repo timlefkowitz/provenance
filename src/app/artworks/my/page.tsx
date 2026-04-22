@@ -60,10 +60,11 @@ export default async function MyArtworksPage({
        medium, dimensions, former_owners, auction_history, exhibition_history,
        historic_context, celebrity_notes, is_public, value, value_is_public,
        edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
-       image_url, created_at`,
+       image_url, created_at, is_sold, display_order`,
     )
     .eq('account_id', user.id)
     .eq('status', 'verified')
+    .order('display_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false });
 
   if (!artworks || artworks.length === 0) {

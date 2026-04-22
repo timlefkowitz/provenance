@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Check, ChevronsUpDown, Eye, Sparkles, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Eye, Sparkles, Tag, X } from 'lucide-react';
 import { PrintMenu } from './print-menu';
 import { SendMenu } from './send-menu';
 import { Button } from '@kit/ui/button';
@@ -69,6 +69,8 @@ type Artwork = {
   sold_by: string | null;
   sold_by_is_public: boolean | null;
   image_url: string | null;
+  is_sold: boolean | null;
+  display_order: number | null;
 };
 
 type ArtworkFormData = {
@@ -93,10 +95,14 @@ type ArtworkFormData = {
   owned_by_is_public: boolean | null;
   sold_by: string;
   sold_by_is_public: boolean | null;
+  is_sold: boolean;
+  display_order: string;
 };
 
 /** Optional blocks stacked in the primary “image & title” column (hidden until toggled). */
 const OPTIONAL_PRIMARY_FIELDS = [
+  'sold',
+  'order',
   'creation_date',
   'medium',
   'dimensions',
@@ -117,6 +123,8 @@ const OPTIONAL_PRIMARY_FIELDS = [
 type OptionalPrimaryField = (typeof OPTIONAL_PRIMARY_FIELDS)[number];
 
 const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
+  sold: 'Mark as Sold',
+  order: 'Display order',
   creation_date: 'Creation date',
   medium: 'Medium',
   dimensions: 'Dimensions',
@@ -539,6 +547,14 @@ export function SpreadsheetEditForm({
   const [receivedNotes, setReceivedNotes] = useState<Record<string, string>>(() =>
     Object.fromEntries(artworks.map((a) => [a.id, ''])),
   );
+  /** Per-artwork date for the "Sold" stamp (defaults to today). */
+  const [soldDates, setSoldDates] = useState<Record<string, string>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, todayIso])),
+  );
+  /** Per-artwork optional note appended to the sold stamp. */
+  const [soldNotes, setSoldNotes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, ''])),
+  );
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -564,6 +580,8 @@ export function SpreadsheetEditForm({
         owned_by_is_public: artwork.owned_by_is_public,
         sold_by: artwork.sold_by || '',
         sold_by_is_public: artwork.sold_by_is_public,
+        is_sold: artwork.is_sold ?? false,
+        display_order: artwork.display_order != null ? String(artwork.display_order) : '',
       };
     });
     return initial;
@@ -635,6 +653,17 @@ export function SpreadsheetEditForm({
   // silently inflating the batch (e.g. selecting all 93, then filtering to 3
   // shows "3 selected of 3 in view" but the Set still held 93).
   const visibleArtworkIds = new Set(visibleArtworks.map((a) => a.id));
+
+  // Mobile prev/next: navigate when exactly 1 artwork is in the detail panel
+  const singleVisibleArtwork = visibleArtworks.length === 1 ? visibleArtworks[0] : null;
+  const currentFilteredIdx = singleVisibleArtwork
+    ? filteredArtworks.findIndex((a) => a.id === singleVisibleArtwork.id)
+    : -1;
+
+  const navigateToArtwork = (idx: number) => {
+    if (idx < 0 || idx >= filteredArtworks.length) return;
+    setSelectedArtworkIds(new Set([filteredArtworks[idx].id]));
+  };
 
   const toggleArtworkSelection = (artworkId: string) => {
     setSelectedArtworkIds((prev) => {
@@ -766,6 +795,14 @@ export function SpreadsheetEditForm({
           }
           if (data.sold_by_is_public !== artwork.sold_by_is_public) {
             update.soldByIsPublic = data.sold_by_is_public;
+          }
+          if (data.is_sold !== (artwork.is_sold ?? false)) {
+            update.isSold = data.is_sold;
+          }
+          const parsedOrder = data.display_order !== '' ? parseInt(data.display_order, 10) : null;
+          const originalOrder = artwork.display_order ?? null;
+          if (parsedOrder !== originalOrder) {
+            update.displayOrder = isNaN(parsedOrder as number) ? null : parsedOrder;
           }
 
           if (Object.keys(update).length > 0) {
@@ -1011,6 +1048,16 @@ export function SpreadsheetEditForm({
                           <Check className="w-3.5 h-3.5" />
                         </div>
                       ) : null}
+                      {(artworkData[artwork.id]?.is_sold || artwork.is_sold) ? (
+                        <div className="absolute bottom-1 left-1 rounded px-1.5 py-0.5 bg-ink/80 text-parchment text-[9px] font-display font-bold tracking-wider uppercase">
+                          Sold
+                        </div>
+                      ) : null}
+                      {artwork.display_order != null ? (
+                        <div className="absolute top-1 left-1 rounded px-1.5 py-0.5 bg-wine/80 text-parchment text-[9px] font-display font-bold">
+                          #{artwork.display_order}
+                        </div>
+                      ) : null}
                     </div>
                     <p className="mt-2 text-xs font-serif text-ink line-clamp-2 min-h-[2.25rem] text-left leading-snug">
                       {artwork.title || 'Untitled'}
@@ -1087,6 +1134,42 @@ export function SpreadsheetEditForm({
           })}
         </div>
       </div>
+
+      {/* Mobile prev/next navigation — shown when exactly 1 artwork is in the detail panel */}
+      {singleVisibleArtwork && currentFilteredIdx >= 0 && (
+        <div className="flex items-center justify-between gap-3 lg:hidden">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigateToArtwork(currentFilteredIdx - 1)}
+            disabled={currentFilteredIdx === 0}
+            className="font-serif h-10 px-3 border-wine/25 touch-manipulation flex items-center gap-1.5 disabled:opacity-40"
+            aria-label="Previous artwork"
+          >
+            <ChevronLeft className="h-4 w-4 shrink-0" />
+            <span className="hidden xs:inline">Prev</span>
+          </Button>
+          <p className="text-xs font-serif text-ink/60 text-center min-w-0 truncate px-2">
+            <span className="font-semibold text-ink/80">{singleVisibleArtwork.title || 'Untitled'}</span>
+            <span className="text-ink/40 ml-1.5">
+              {currentFilteredIdx + 1} / {filteredArtworks.length}
+            </span>
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigateToArtwork(currentFilteredIdx + 1)}
+            disabled={currentFilteredIdx === filteredArtworks.length - 1}
+            className="font-serif h-10 px-3 border-wine/25 touch-manipulation flex items-center gap-1.5 disabled:opacity-40"
+            aria-label="Next artwork"
+          >
+            <span className="hidden xs:inline">Next</span>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          </Button>
+        </div>
+      )}
 
       {/* Spreadsheet: one column per artwork — core fields + toggled extras */}
       <div className="max-w-full overflow-x-auto border border-wine/15 rounded-2xl bg-parchment/70 shadow-sm">
@@ -1500,6 +1583,102 @@ export function SpreadsheetEditForm({
                                   </p>
                                 ) : null}
                               </div>
+                            ) : null}
+                            {field === 'sold' ? (
+                              <div className="rounded-md border border-wine/20 bg-wine/[0.03] p-3 space-y-2.5">
+                                {data.is_sold ? (
+                                  <div className="flex items-center gap-2 justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Tag className="h-3.5 w-3.5 text-ink/60 shrink-0" />
+                                      <p className="text-xs font-serif font-medium text-ink/80">
+                                        Marked as sold
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateField(artwork.id, 'is_sold', false)}
+                                      className="text-[10px] font-serif text-ink/40 underline underline-offset-2 hover:text-ink/70 transition-colors touch-manipulation"
+                                    >
+                                      Undo
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <p className="text-xs font-serif font-medium text-ink/80">
+                                        {OPTIONAL_PRIMARY_LABELS.sold}
+                                      </p>
+                                      <p className="text-[10px] text-ink/50 font-serif mt-0.5 leading-snug">
+                                        Records the sale date in auction history and logs a provenance event.
+                                      </p>
+                                    </div>
+                                    <Input
+                                      type="date"
+                                      value={soldDates[artwork.id] ?? todayIso}
+                                      onChange={(e) =>
+                                        setSoldDates((prev) => ({ ...prev, [artwork.id]: e.target.value }))
+                                      }
+                                      className="font-serif text-sm h-9 border-wine/20 w-full"
+                                      aria-label="Date sold"
+                                    />
+                                    <Input
+                                      type="text"
+                                      placeholder="Note (optional) — buyer, price, venue…"
+                                      value={soldNotes[artwork.id] ?? ''}
+                                      onChange={(e) =>
+                                        setSoldNotes((prev) => ({ ...prev, [artwork.id]: e.target.value }))
+                                      }
+                                      className="font-serif text-xs h-8 border-wine/20 w-full placeholder:text-ink/30"
+                                      aria-label="Sold note"
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => {
+                                        const dateStr = soldDates[artwork.id] ?? todayIso;
+                                        const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric',
+                                        });
+                                        const note = (soldNotes[artwork.id] ?? '').trim();
+                                        const entry = note
+                                          ? `Sold, ${formattedDate} — ${note}`
+                                          : `Sold, ${formattedDate}`;
+                                        const existing = data.auction_history.trim();
+                                        const updated = existing ? `${existing}\n${entry}` : entry;
+                                        updateField(artwork.id, 'auction_history', updated);
+                                        updateField(artwork.id, 'is_sold', true);
+                                        setSoldNotes((prev) => ({ ...prev, [artwork.id]: '' }));
+                                      }}
+                                      className="font-serif text-xs h-8 w-full bg-ink text-parchment hover:bg-ink/90 whitespace-nowrap touch-manipulation"
+                                    >
+                                      Mark as Sold
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            ) : null}
+                            {field === 'order' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.order}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={data.display_order}
+                                  onChange={(e) =>
+                                    updateField(artwork.id, 'display_order', e.target.value)
+                                  }
+                                  className="font-serif text-sm h-9 border-wine/20 w-24"
+                                  placeholder="e.g., 1"
+                                  aria-label="Display order"
+                                />
+                                <p className="text-[10px] text-ink/50 font-serif leading-snug">
+                                  Sets the exhibition / collection display order. Lower numbers appear first.
+                                </p>
+                              </>
                             ) : null}
                           </div>
                         ))}

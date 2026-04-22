@@ -76,7 +76,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <div className="flex gap-10">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
         <SettingsNav hasGalleryProfiles={galleryProfiles.length > 0} />
 
         <div className="flex-1 min-w-0 space-y-16">

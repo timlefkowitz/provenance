@@ -30,6 +30,8 @@ export async function batchUpdateProvenance(
     soldBy?: string;
     soldByIsPublic?: boolean;
     exhibitionId?: string | null;
+    isSold?: boolean;
+    displayOrder?: number | null;
   }
 ): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
   try {

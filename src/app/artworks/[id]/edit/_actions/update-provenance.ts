@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import {
@@ -33,6 +34,8 @@ export async function updateProvenance(
     soldBy?: string;
     soldByIsPublic?: boolean;
     exhibitionId?: string | null;
+    isSold?: boolean;
+    displayOrder?: number | null;
   },
   options?: {
     skipOwnershipCheck?: boolean;
@@ -141,6 +144,12 @@ export async function updateProvenance(
     if (provenance.soldByIsPublic !== undefined) {
       updateData.sold_by_is_public = provenance.soldByIsPublic;
     }
+    if (provenance.isSold !== undefined) {
+      updateData.is_sold = provenance.isSold;
+    }
+    if (provenance.displayOrder !== undefined) {
+      updateData.display_order = provenance.displayOrder ?? null;
+    }
 
     const { error } = await (client as any)
       .from('artworks')
@@ -229,6 +238,30 @@ export async function updateProvenance(
           exhibitionId: provenance.exhibitionId ?? null,
           error: exhibitionError,
         });
+      }
+    }
+
+    // Insert a structured provenance_event when artwork is newly marked as sold
+    if (provenance.isSold === true) {
+      try {
+        const admin = getSupabaseServerAdminClient();
+        const { error: eventError } = await (admin as any).from('provenance_events').insert({
+          artwork_id: artworkId,
+          event_type: 'sale',
+          actor_account_id: user.id,
+          event_date: new Date().toISOString(),
+          metadata: {
+            source: 'collection_ui',
+            sold_by: provenance.soldBy ?? null,
+          },
+        });
+        if (eventError) {
+          logger.error('update_provenance_sale_event_failed', { artworkId, error: eventError });
+        } else {
+          console.log('[UpdateProvenance] sale provenance_event inserted', { artworkId });
+        }
+      } catch (eventErr) {
+        logger.error('update_provenance_sale_event_exception', { artworkId, error: eventErr });
       }
     }
 
