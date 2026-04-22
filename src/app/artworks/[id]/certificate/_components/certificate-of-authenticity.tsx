@@ -310,16 +310,18 @@ export function CertificateOfAuthenticity({
     } else {
       // Geolocation API not available — still record the scan with server-side data
       console.log('[CertificateScan] Geolocation not supported by this browser');
-      try {
-        const result = await recordScanLocation(artwork.id, null);
-        if (result?.scan) {
-          setScanLocations(prev => [...prev, result.scan as ScanLocation]);
+      void (async () => {
+        try {
+          const result = await recordScanLocation(artwork.id, null);
+          if (result?.scan) {
+            setScanLocations((prev) => [...prev, result.scan as ScanLocation]);
+          }
+        } catch (err) {
+          console.error('[CertificateScan] Error recording scan (no geo API):', err);
         }
-      } catch (err) {
-        console.error('[CertificateScan] Error recording scan (no geo API):', err);
-      }
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      })();
     }
   }, [artwork.id]);
 
