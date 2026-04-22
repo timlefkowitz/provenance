@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
+import { useState, useTransition, useMemo, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { KeyboardEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -598,19 +598,24 @@ const BLANK_FORM = {
 };
 
 export function LeadsKanban({
-  initialLeads,
+  leads,
+  setLeads,
+  pendingOpenLeadId,
+  onConsumedPendingOpen,
   artistArtworks,
   isOwner,
   initialCrmMembers,
   initialColumnLabels,
 }: {
-  initialLeads: ArtistLead[];
+  leads: ArtistLead[];
+  setLeads: Dispatch<SetStateAction<ArtistLead[]>>;
+  pendingOpenLeadId: string | null;
+  onConsumedPendingOpen: () => void;
   artistArtworks: { id: string; title: string; image_url: string | null }[];
   isOwner: boolean;
   initialCrmMembers: CrmMember[];
   initialColumnLabels: ColumnLabels;
 }) {
-  const [leads, setLeads] = useState<ArtistLead[]>(initialLeads);
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -739,6 +744,25 @@ export function LeadsKanban({
       source:          lead.source          ?? '',
     });
   };
+
+  // Open edit dialog when user picks a contact from the Contacts tab
+  useEffect(() => {
+    if (!pendingOpenLeadId) return;
+    const lead = leads.find((l) => l.id === pendingOpenLeadId);
+    onConsumedPendingOpen();
+    if (!lead) return;
+    setEditLead(lead);
+    setEditValues({
+      contact_name:    lead.contact_name    ?? '',
+      contact_email:   lead.contact_email   ?? '',
+      contact_phone:   lead.contact_phone   ?? '',
+      notes:           lead.notes           ?? '',
+      artwork_id:      lead.artwork_id      ?? '',
+      estimated_value: lead.estimated_value != null ? String(lead.estimated_value) : '',
+      follow_up_date:  lead.follow_up_date  ?? '',
+      source:          lead.source          ?? '',
+    });
+  }, [pendingOpenLeadId, leads, onConsumedPendingOpen]);
 
   const handleEditSave = () => {
     if (!editLead) return;

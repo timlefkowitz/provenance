@@ -8,7 +8,7 @@ import { Card, CardContent } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { getLeadsForArtist } from './_actions/leads';
 import { getCrmMembers, getCrmColumnLabels } from './_actions/crm-members';
-import { LeadsKanban } from './_components/leads-kanban';
+import { CrmWorkspace } from './_components/crm-workspace';
 
 export const metadata = {
   title: 'Opportunities & Relationships | Provenance',
@@ -110,15 +110,13 @@ export default async function OpportunitiesPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 max-w-7xl py-8 pb-20">
-        <LeadsKanban
-          initialLeads={leads}
-          artistArtworks={artistArtworks}
-          isOwner={isOwner}
-          initialCrmMembers={initialCrmMembers}
-          initialColumnLabels={initialColumnLabels}
-        />
-      </div>
+      <CrmWorkspace
+        initialLeads={leads}
+        artistArtworks={artistArtworks}
+        isOwner={isOwner}
+        initialCrmMembers={initialCrmMembers}
+        initialColumnLabels={initialColumnLabels}
+      />
     </div>
   );
 }
