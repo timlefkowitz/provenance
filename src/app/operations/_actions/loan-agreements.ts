@@ -4,8 +4,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { insertProvenanceEventForOperations } from '~/lib/operations/operations-provenance';
 
-const loanStatus = z.enum(['draft', 'sent', 'signed', 'active', 'closed']);
+const loanStatus = z.enum(['draft', 'sent', 'signed', 'active', 'closed', 'expired']);
 
 const createLoanSchema = z.object({
   artwork_id: z.string().uuid(),
@@ -126,6 +127,19 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
     }
   }
 
+  const { data: prior, error: priorErr } = await (client as any)
+    .from('artwork_loan_agreements')
+    .select('id, status, artwork_id, borrower_name, end_date')
+    .eq('id', id)
+    .eq('account_id', user.id)
+    .maybeSingle();
+  if (priorErr) {
+    console.error('[Operations/loans] updateLoanAgreement load prior failed', priorErr);
+  }
+  if (!prior) {
+    return { success: false as const, error: 'Loan agreement not found.' };
+  }
+
   const patch: Record<string, unknown> = {};
   if (rest.artwork_id !== undefined) patch.artwork_id = rest.artwork_id;
   if (rest.borrower_name !== undefined) patch.borrower_name = rest.borrower_name;
@@ -151,6 +165,41 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
   if (error) {
     console.error('[Operations/loans] updateLoanAgreement failed', error);
     return { success: false as const, error: 'Could not update loan agreement.' };
+  }
+
+  const newStatus =
+    rest.status !== undefined ? rest.status : (prior?.status as string | undefined);
+  const oldStatus = prior?.status as string | undefined;
+  const artId = (rest.artwork_id as string | undefined) ?? (prior?.artwork_id as string);
+  if (artId && newStatus === 'active' && oldStatus && oldStatus !== 'active') {
+    await insertProvenanceEventForOperations({
+      artworkId: artId,
+      eventType: 'loan_out',
+      actorAccountId: user.id,
+      metadata: {
+        loan_agreement_id: id,
+        borrower_name: rest.borrower_name ?? (prior as { borrower_name?: string })?.borrower_name,
+        end_date: (rest.end_date as string | null | undefined) ?? (prior as { end_date?: string | null })?.end_date,
+      },
+    });
+  }
+  if (
+    artId &&
+    (newStatus === 'closed' || newStatus === 'expired') &&
+    oldStatus &&
+    oldStatus !== 'closed' &&
+    oldStatus !== 'expired'
+  ) {
+    await insertProvenanceEventForOperations({
+      artworkId: artId,
+      eventType: 'loan_return',
+      actorAccountId: user.id,
+      metadata: {
+        loan_agreement_id: id,
+        prior_status: oldStatus,
+        resolved_as: newStatus,
+      },
+    });
   }
 
   console.log('[Operations/loans] updateLoanAgreement success', id);
@@ -196,6 +245,9 @@ export async function duplicateLoanAgreement(id: string) {
     signature_completed_at: null,
     signature_notes: null,
     document_storage_path: null,
+    original_loan_id: null,
+    renewal_count: 0,
+    alert_sent_at: null,
   };
 
   const { data: created, error: insErr } = await (client as any)
@@ -246,4 +298,64 @@ export async function markLoanAgreementSigned(id: string, signatureNotes?: strin
 
   revalidatePath('/operations');
   return { success: true as const };
+}
+
+export async function renewLoanAgreement(id: string) {
+  console.log('[Operations/loans] renewLoanAgreement started', id);
+  const client = getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) {
+    return { success: false as const, error: 'You must be logged in.' };
+  }
+
+  const { data: row, error } = await (client as any)
+    .from('artwork_loan_agreements')
+    .select('*')
+    .eq('id', id)
+    .eq('account_id', user.id)
+    .maybeSingle();
+
+  if (error || !row) {
+    console.error('[Operations/loans] renewLoanAgreement load failed', error);
+    return { success: false as const, error: 'Agreement not found.' };
+  }
+
+  const parentRenewal = (row.renewal_count as number) ?? 0;
+  const insert = {
+    account_id: user.id,
+    artwork_id: row.artwork_id,
+    borrower_name: row.borrower_name,
+    borrower_email: row.borrower_email,
+    lender_name: row.lender_name,
+    lender_email: row.lender_email,
+    start_date: null,
+    end_date: null,
+    terms_text: row.terms_text,
+    conditions_text: row.conditions_text,
+    insurance_requirements_text: row.insurance_requirements_text,
+    status: 'draft' as const,
+    signature_completed_at: null,
+    signature_notes: null,
+    document_storage_path: null,
+    original_loan_id: (row.original_loan_id as string | null) ?? id,
+    renewal_count: parentRenewal + 1,
+    alert_sent_at: null,
+  };
+
+  const { data: created, error: insErr } = await (client as any)
+    .from('artwork_loan_agreements')
+    .insert(insert)
+    .select('id')
+    .single();
+
+  if (insErr) {
+    console.error('[Operations/loans] renewLoanAgreement insert failed', insErr);
+    return { success: false as const, error: 'Could not create renewal.' };
+  }
+
+  console.log('[Operations/loans] renewLoanAgreement success', created.id);
+  revalidatePath('/operations');
+  return { success: true as const, id: created.id as string };
 }

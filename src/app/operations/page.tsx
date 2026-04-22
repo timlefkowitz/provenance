@@ -40,6 +40,56 @@ export type LoanAgreementRow = {
   signature_notes: string | null;
   created_at: string;
   updated_at: string;
+  renewal_count: number | null;
+  original_loan_id: string | null;
+  alert_sent_at: string | null;
+  artwork: { id: string; title: string } | null;
+};
+
+export type ConsignmentRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  consignee_name: string;
+  consignee_email: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  commission_rate_bps: number | null;
+  reserve_price_cents: number | null;
+  status: string;
+  terms_text: string | null;
+  notes: string | null;
+  document_storage_path: string | null;
+  sold_at: string | null;
+  sale_price_cents: number | null;
+  alert_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+  artwork: { id: string; title: string } | null;
+};
+
+export type ConditionReportRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  loan_agreement_id: string | null;
+  consignment_id: string | null;
+  report_type: string;
+  condition_grade: string | null;
+  description: string | null;
+  inspector_name: string | null;
+  inspection_date: string | null;
+  attachments_storage_paths: string[] | null;
+  created_at: string;
+  artwork: { id: string; title: string } | null;
+};
+
+export type ProvenanceEventSummary = {
+  id: string;
+  artwork_id: string;
+  event_type: string;
+  event_date: string;
+  metadata: Record<string, unknown> | null;
   artwork: { id: string; title: string } | null;
 };
 
@@ -85,7 +135,7 @@ export default async function OperationsPage() {
     redirect('/subscription?upgrade=1');
   }
 
-  const [loansRes, invoicesRes, artworksRes] = await Promise.all([
+  const [loansRes, invoicesRes, artworksRes, consignmentsRes, conditionRes] = await Promise.all([
     (client as any)
       .from('artwork_loan_agreements')
       .select(
@@ -107,6 +157,9 @@ export default async function OperationsPage() {
         signature_notes,
         created_at,
         updated_at,
+        renewal_count,
+        original_loan_id,
+        alert_sent_at,
         artwork:artworks(id, title)
       `,
       )
@@ -151,6 +204,55 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('title'),
+    (client as any)
+      .from('consignments')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        consignee_name,
+        consignee_email,
+        start_date,
+        end_date,
+        commission_rate_bps,
+        reserve_price_cents,
+        status,
+        terms_text,
+        notes,
+        document_storage_path,
+        sold_at,
+        sale_price_cents,
+        alert_sent_at,
+        created_at,
+        updated_at,
+        artwork:artworks(id, title)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
+    (client as any)
+      .from('condition_reports')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        loan_agreement_id,
+        consignment_id,
+        report_type,
+        condition_grade,
+        description,
+        inspector_name,
+        inspection_date,
+        attachments_storage_paths,
+        created_at,
+        artwork:artworks(id, title)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(200),
   ]);
 
   if (loansRes.error) {
@@ -162,12 +264,32 @@ export default async function OperationsPage() {
   if (artworksRes.error) {
     console.error('[Operations] page: artworks query failed', artworksRes.error);
   }
+  if (consignmentsRes.error) {
+    console.error('[Operations] page: consignments query failed', consignmentsRes.error);
+  }
+  if (conditionRes.error) {
+    console.error('[Operations] page: condition reports query failed', conditionRes.error);
+  }
 
   const rawLoans = (loansRes.data ?? []) as Record<string, unknown>[];
   const loans: LoanAgreementRow[] = rawLoans.map((row) => {
     const art = row.artwork as { id: string; title: string } | { id: string; title: string }[] | null;
     const artwork = Array.isArray(art) ? art[0] ?? null : art ?? null;
     return { ...(row as unknown as LoanAgreementRow), artwork };
+  });
+
+  const rawCons = (consignmentsRes.data ?? []) as Record<string, unknown>[];
+  const consignments: ConsignmentRow[] = rawCons.map((row) => {
+    const art = row.artwork as { id: string; title: string } | { id: string; title: string }[] | null;
+    const artwork = Array.isArray(art) ? art[0] ?? null : art ?? null;
+    return { ...(row as unknown as ConsignmentRow), artwork };
+  });
+
+  const rawCond = (conditionRes.data ?? []) as Record<string, unknown>[];
+  const conditionReports: ConditionReportRow[] = rawCond.map((row) => {
+    const art = row.artwork as { id: string; title: string } | { id: string; title: string }[] | null;
+    const artwork = Array.isArray(art) ? art[0] ?? null : art ?? null;
+    return { ...(row as unknown as ConditionReportRow), artwork };
   });
 
   const rawInvoices = (invoicesRes.data ?? []) as Record<string, unknown>[];
@@ -177,8 +299,37 @@ export default async function OperationsPage() {
     return { ...(inv as unknown as InvoiceRow), invoice_line_items: sorted };
   });
 
-  const rawArtworks = (artworksRes.data ?? []) as Record<string, unknown>[];
-  const artworks: OperationsArtworkOption[] = rawArtworks.map((row) => {
+  const rawArtworks = (artworksRes.data ?? []) as { id: string }[];
+  const artworkIdList = rawArtworks.map((a) => a.id);
+  let provRes: { data: unknown; error: unknown } = { data: null, error: null };
+  if (artworkIdList.length) {
+    provRes = await (client as any)
+      .from('provenance_events')
+      .select(`id, artwork_id, event_type, event_date, metadata, artwork:artworks(id, title)`)
+      .in('artwork_id', artworkIdList)
+      .order('event_date', { ascending: false })
+      .limit(25);
+    if (provRes.error) {
+      console.error('[Operations] page: provenance events query failed', provRes.error);
+    }
+  }
+
+  const rawProv = (provRes.data ?? []) as Record<string, unknown>[];
+  const recentProvenance: ProvenanceEventSummary[] = rawProv.map((row) => {
+    const art = row.artwork as { id: string; title: string } | { id: string; title: string }[] | null;
+    const artwork = Array.isArray(art) ? art[0] ?? null : art ?? null;
+    return {
+      id: row.id as string,
+      artwork_id: row.artwork_id as string,
+      event_type: row.event_type as string,
+      event_date: row.event_date as string,
+      metadata: (row.metadata as Record<string, unknown>) ?? null,
+      artwork,
+    };
+  });
+
+  const rawArtworksFull = (artworksRes.data ?? []) as Record<string, unknown>[];
+  const artworks: OperationsArtworkOption[] = rawArtworksFull.map((row) => {
     const links = (row.exhibition_artworks as Record<string, unknown>[] | null) ?? [];
     const exById = new Map<string, OperationsExhibitionRef>();
     for (const link of links) {
@@ -208,6 +359,8 @@ export default async function OperationsPage() {
     loans: loans.length,
     invoices: invoices.length,
     artworks: artworks.length,
+    consignments: consignments.length,
+    conditionReports: conditionReports.length,
   });
 
   return (
@@ -215,11 +368,19 @@ export default async function OperationsPage() {
       <div className="mb-8">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">Operations</h1>
         <p className="text-ink/70 font-serif max-w-3xl">
-          Manage artwork loan agreements and professional invoices alongside your collection records.
+          Manage loans, consignments, condition reports, and invoices with alerts and a provenance trail
+          for your collection.
         </p>
       </div>
 
-      <OperationsPageContent initialLoans={loans} initialInvoices={invoices} artworks={artworks} />
+      <OperationsPageContent
+        initialLoans={loans}
+        initialInvoices={invoices}
+        initialConsignments={consignments}
+        initialConditionReports={conditionReports}
+        recentProvenance={recentProvenance}
+        artworks={artworks}
+      />
     </div>
   );
 }

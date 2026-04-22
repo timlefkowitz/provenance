@@ -34,17 +34,25 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import type {
+  ConsignmentRow,
+  ConditionReportRow,
   InvoiceRow,
   LoanAgreementRow,
   OperationsArtworkOption,
+  ProvenanceEventSummary,
 } from '../page';
 import {
   createLoanAgreement,
   duplicateLoanAgreement,
   markLoanAgreementSent,
   markLoanAgreementSigned,
+  renewLoanAgreement,
   updateLoanAgreement,
 } from '../_actions/loan-agreements';
+import { OperationsSummaryDashboard } from './operations-summary-dashboard';
+import { ProvenanceTimeline } from './provenance-timeline';
+import { ConsignmentsTab } from './consignments-tab';
+import { ConditionReportsTab } from './condition-reports-tab';
 import {
   createInvoice,
   duplicateInvoice,
@@ -58,8 +66,41 @@ import { Clock } from 'lucide-react';
 type Props = {
   initialLoans: LoanAgreementRow[];
   initialInvoices: InvoiceRow[];
+  initialConsignments: ConsignmentRow[];
+  initialConditionReports: ConditionReportRow[];
+  recentProvenance: ProvenanceEventSummary[];
   artworks: OperationsArtworkOption[];
 };
+
+function daysUntilEnd(iso: string | null): number | null {
+  if (!iso) {
+    return null;
+  }
+  const end = new Date(iso + 'T12:00:00');
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diff = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  return Math.ceil(diff);
+}
+
+function expiryHint(days: number | null) {
+  if (days == null) {
+    return null;
+  }
+  if (days < 0) {
+    return { label: `Ended ${-days}d ago`, className: 'bg-red-100 text-red-900 border-red-200' };
+  }
+  if (days === 0) {
+    return { label: 'Ends today', className: 'bg-amber-100 text-amber-900 border-amber-200' };
+  }
+  if (days <= 14) {
+    return { label: `${days}d left`, className: 'bg-red-100 text-red-900 border-red-200' };
+  }
+  if (days <= 30) {
+    return { label: `${days}d left`, className: 'bg-amber-100 text-amber-900 border-amber-200' };
+  }
+  return { label: `${days}d left`, className: 'bg-parchment text-ink/80 border-wine/15' };
+}
 
 function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat('en-US', {
@@ -107,10 +148,17 @@ function ComingSoonTab({ title, description }: { title: string; description: str
   );
 }
 
-const loanStatuses = ['draft', 'sent', 'signed', 'active', 'closed'] as const;
+const loanStatuses = ['draft', 'sent', 'signed', 'active', 'closed', 'expired'] as const;
 const invoiceStatuses = ['draft', 'sent', 'partial', 'paid', 'overdue'] as const;
 
-export function OperationsPageContent({ initialLoans, initialInvoices, artworks }: Props) {
+export function OperationsPageContent({
+  initialLoans,
+  initialInvoices,
+  initialConsignments,
+  initialConditionReports,
+  recentProvenance,
+  artworks,
+}: Props) {
   const router = useRouter();
   const [savingLoan, setSavingLoan] = useState(false);
   const [savingInvoice, setSavingInvoice] = useState(false);
@@ -373,22 +421,28 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
 
   return (
     <>
+      <OperationsSummaryDashboard loans={initialLoans} consignments={initialConsignments} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
       <Tabs defaultValue="loans" className="w-full">
         <TabsList className="mb-6 flex h-auto min-h-10 w-full flex-wrap items-center justify-start gap-1 bg-parchment border border-wine/20">
-          <TabsTrigger value="loans" className="font-serif data-[state=active]:bg-wine/10">
+          <TabsTrigger value="loans" className="font-serif data-[state=active]:bg-wine/10" id="loans">
             Loan Management
+          </TabsTrigger>
+          <TabsTrigger value="consignments" className="font-serif data-[state=active]:bg-wine/10">
+            Consignments
           </TabsTrigger>
           <TabsTrigger value="invoices" className="font-serif data-[state=active]:bg-wine/10">
             Financial Tracking & Budgeting
+          </TabsTrigger>
+          <TabsTrigger value="condition" className="font-serif data-[state=active]:bg-wine/10">
+            Condition & Conservation
           </TabsTrigger>
           <TabsTrigger value="shipping" className="font-serif data-[state=active]:bg-wine/10">
             Shipping & Logistics Tracking
           </TabsTrigger>
           <TabsTrigger value="insurance" className="font-serif data-[state=active]:bg-wine/10">
             Insurance & Valuation Management
-          </TabsTrigger>
-          <TabsTrigger value="condition" className="font-serif data-[state=active]:bg-wine/10">
-            Condition & Conservation Reports
           </TabsTrigger>
           <TabsTrigger value="acquisition" className="font-serif data-[state=active]:bg-wine/10">
             Acquisition & Accession Workflows
@@ -435,6 +489,7 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                     <TableHead className="font-display text-wine">Artwork</TableHead>
                     <TableHead className="font-display text-wine">Borrower</TableHead>
                     <TableHead className="font-display text-wine">Period</TableHead>
+                    <TableHead className="font-display text-wine">End</TableHead>
                     <TableHead className="font-display text-wine">Status</TableHead>
                     <TableHead className="font-display text-wine">Insurance</TableHead>
                     <TableHead className="font-display text-wine">Updated</TableHead>
@@ -442,7 +497,12 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {initialLoans.map((row) => (
+                  {initialLoans.map((row) => {
+                    const dLeft = daysUntilEnd(row.end_date);
+                    const hint = (row.status === 'active' || row.status === 'signed') && row.end_date
+                      ? expiryHint(dLeft)
+                      : null;
+                    return (
                     <TableRow key={row.id}>
                       <TableCell className="font-serif max-w-[10rem]">
                         {row.artwork ? (
@@ -452,6 +512,9 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                         ) : (
                           artworkTitleById.get(row.artwork_id) ?? '—'
                         )}
+                        {row.renewal_count && row.renewal_count > 0 ? (
+                          <div className="text-[11px] text-ink/50">Renewal #{row.renewal_count}</div>
+                        ) : null}
                       </TableCell>
                       <TableCell className="font-serif">
                         <div className="font-medium">{row.borrower_name}</div>
@@ -461,6 +524,17 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                       </TableCell>
                       <TableCell className="font-serif text-sm whitespace-nowrap">
                         {formatShortDate(row.start_date)} → {formatShortDate(row.end_date)}
+                      </TableCell>
+                      <TableCell>
+                        {hint ? (
+                          <span
+                            className={`inline-flex rounded border px-2 py-0.5 text-xs font-serif ${hint.className}`}
+                          >
+                            {hint.label}
+                          </span>
+                        ) : (
+                          <span className="text-ink/40 text-sm">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-serif capitalize">
@@ -521,7 +595,7 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                               Mark sent
                             </Button>
                           ) : null}
-                          {row.status !== 'signed' && row.status !== 'closed' ? (
+                          {row.status !== 'signed' && row.status !== 'closed' && row.status !== 'expired' ? (
                             <Button
                               type="button"
                               variant="outline"
@@ -540,6 +614,26 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                               Mark signed
                             </Button>
                           ) : null}
+                          {row.status !== 'draft' ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="font-serif"
+                              disabled={busy}
+                              onClick={async () => {
+                                const res = await renewLoanAgreement(row.id);
+                                if (!res.success) {
+                                  toast.error(res.error);
+                                } else {
+                                  toast.success('Renewal draft created — set new dates and activate.');
+                                  refresh();
+                                }
+                              }}
+                            >
+                              Renew
+                            </Button>
+                          ) : null}
                           <Button type="button" variant="ghost" size="sm" className="font-serif" asChild>
                             <a href={`/api/operations/loans/${row.id}/pdf`} target="_blank" rel="noreferrer">
                               PDF
@@ -548,11 +642,20 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="consignments" className="space-y-4">
+          <ConsignmentsTab
+            consignments={initialConsignments}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
+          />
         </TabsContent>
 
         <TabsContent value="invoices" className="space-y-4">
@@ -711,10 +814,13 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
             description="Schedule appraisals, manage policies, and link valuations to objects in your collection."
           />
         </TabsContent>
-        <TabsContent value="condition">
-          <ComingSoonTab
-            title="Condition & Conservation Reports"
-            description="Store condition reports, conservation treatments, and inspection notes over time."
+        <TabsContent value="condition" className="space-y-4">
+          <ConditionReportsTab
+            reports={initialConditionReports}
+            loans={initialLoans}
+            consignments={initialConsignments}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
           />
         </TabsContent>
         <TabsContent value="acquisition">
@@ -742,6 +848,11 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
           />
         </TabsContent>
       </Tabs>
+        </div>
+        <aside className="lg:col-span-1">
+          <ProvenanceTimeline events={recentProvenance} />
+        </aside>
+      </div>
 
       <Dialog open={loanOpen} onOpenChange={setLoanOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl font-serif border-wine/20">
@@ -807,6 +918,13 @@ export function OperationsPageContent({ initialLoans, initialInvoices, artworks 
             {editingLoan ? (
               <div className="grid gap-2">
                 <Label>Status</Label>
+                {editingLoan.original_loan_id || (editingLoan.renewal_count && editingLoan.renewal_count > 0) ? (
+                  <p className="text-xs text-ink/60">
+                    {editingLoan.original_loan_id
+                      ? 'This record is a renewal. Set new dates, then set status to active when the work is on loan again.'
+                      : 'Renewal sequence — set dates and activate as needed.'}
+                  </p>
+                ) : null}
                 <Select value={loanStatus} onValueChange={setLoanStatus}>
                   <SelectTrigger>
                     <SelectValue />

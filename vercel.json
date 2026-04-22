@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm build",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/operations-alerts",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
