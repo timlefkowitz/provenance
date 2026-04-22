@@ -43,6 +43,8 @@ export type LoanAgreementRow = {
   renewal_count: number | null;
   original_loan_id: string | null;
   alert_sent_at: string | null;
+  borrower_user_id: string | null;
+  lender_user_id: string | null;
   artwork: { id: string; title: string } | null;
 };
 
@@ -63,6 +65,7 @@ export type ConsignmentRow = {
   sold_at: string | null;
   sale_price_cents: number | null;
   alert_sent_at: string | null;
+  consignee_user_id: string | null;
   created_at: string;
   updated_at: string;
   artwork: { id: string; title: string } | null;
@@ -160,6 +163,8 @@ export default async function OperationsPage() {
         renewal_count,
         original_loan_id,
         alert_sent_at,
+        borrower_user_id,
+        lender_user_id,
         artwork:artworks(id, title)
       `,
       )
@@ -224,6 +229,7 @@ export default async function OperationsPage() {
         sold_at,
         sale_price_cents,
         alert_sent_at,
+        consignee_user_id,
         created_at,
         updated_at,
         artwork:artworks(id, title)

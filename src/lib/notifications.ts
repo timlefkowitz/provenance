@@ -23,7 +23,13 @@ export type NotificationType =
   | 'artwork_favorited'
   | 'provenance_service_request'
   | 'provenance_updated'
-  | 'message';
+  | 'message'
+  | 'loan_counterparty_linked'
+  | 'loan_status_update'
+  | 'consignment_counterparty_linked'
+  | 'consignment_status_update'
+  | 'loan_expiry_reminder'
+  | 'consignment_expiry_reminder';
 
 export interface CreateNotificationParams {
   userId: string;

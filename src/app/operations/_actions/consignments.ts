@@ -5,6 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { insertProvenanceEventForOperations } from '~/lib/operations/operations-provenance';
+import {
+  notifyCounterpartyStatusActive,
+  resolveCounterparty,
+} from '~/lib/operations/resolve-counterparty';
 
 const consignmentStatus = z.enum(['draft', 'active', 'expired', 'returned', 'sold']);
 
@@ -47,6 +51,48 @@ async function assertArtworkOwned(
   return Boolean(data);
 }
 
+async function applyConsignmentCounterpartyLinks(
+  client: any,
+  ownerId: string,
+  consignmentId: string,
+  artworkId: string,
+  currentConsigneeEmail: string | null,
+  prior: { consignee_email: string | null; consignee_user_id: string | null } | null,
+) {
+  console.log('[Operations/consignments] applyConsignmentCounterpartyLinks', consignmentId);
+  const p = prior ?? { consignee_email: null, consignee_user_id: null };
+  const { data: art, error: artErr } = await client
+    .from('artworks')
+    .select('title')
+    .eq('id', artworkId)
+    .maybeSingle();
+  if (artErr) {
+    console.error('[Operations/consignments] load artwork for counterparty', artErr);
+  }
+  const title = (art as { title?: string } | null)?.title?.trim() || 'Artwork';
+
+  const c = await resolveCounterparty({
+    email: currentConsigneeEmail,
+    role: 'consignee',
+    recordKind: 'consignment',
+    recordId: consignmentId,
+    ownerAccountId: ownerId,
+    artworkId,
+    artworkTitle: title,
+    priorEmail: p.consignee_email,
+    priorLinkedUserId: p.consignee_user_id,
+  });
+  const { error: uErr } = await client
+    .from('consignments')
+    .update({ consignee_user_id: c.userId })
+    .eq('id', consignmentId)
+    .eq('account_id', ownerId);
+  if (uErr) {
+    console.error('[Operations/consignments] update consignee_user_id', uErr);
+  }
+  return { consigneeUserId: c.userId, artworkTitle: title, artworkId };
+}
+
 export async function createConsignment(raw: z.infer<typeof createSchema>) {
   console.log('[Operations/consignments] createConsignment started');
   const parsed = createSchema.safeParse(raw);
@@ -87,6 +133,14 @@ export async function createConsignment(raw: z.infer<typeof createSchema>) {
     console.error('[Operations/consignments] insert failed', error);
     return { success: false as const, error: 'Could not save consignment.' };
   }
+  await applyConsignmentCounterpartyLinks(
+    client,
+    user.id,
+    data.id as string,
+    parsed.data.artwork_id,
+    row.consignee_email,
+    null,
+  );
   console.log('[Operations/consignments] create success', data?.id);
   revalidatePath('/operations');
   return { success: true as const, id: data.id as string };
@@ -116,12 +170,15 @@ export async function updateConsignment(raw: z.infer<typeof updateSchema>) {
 
   const { data: prior, error: priorErr } = await (client as any)
     .from('consignments')
-    .select('id, status, artwork_id, consignee_name, end_date')
+    .select('id, status, artwork_id, consignee_name, end_date, consignee_email, consignee_user_id')
     .eq('id', id)
     .eq('account_id', user.id)
     .maybeSingle();
   if (priorErr) {
     console.error('[Operations/consignments] load prior failed', priorErr);
+  }
+  if (!prior) {
+    return { success: false as const, error: 'Consignment not found.' };
   }
 
   const patch: Record<string, unknown> = {};
@@ -154,21 +211,58 @@ export async function updateConsignment(raw: z.infer<typeof updateSchema>) {
     return { success: false as const, error: 'Could not update consignment.' };
   }
 
-  const newStatus = rest.status !== undefined ? rest.status : (prior?.status as string);
-  const oldStatus = prior?.status as string | undefined;
-  const artId = (rest.artwork_id as string | undefined) ?? (prior?.artwork_id as string);
-  if (artId && newStatus === 'active' && oldStatus && oldStatus !== 'active') {
-    await insertProvenanceEventForOperations({
-      artworkId: artId,
-      eventType: 'consignment_active',
-      actorAccountId: user.id,
-      metadata: {
-        consignment_id: id,
-        consignee_name: rest.consignee_name ?? prior?.consignee_name,
-        end_date: (rest as { end_date?: string | null }).end_date ?? prior?.end_date,
-      },
-    });
+  const p0 = prior as {
+    status?: string;
+    artwork_id?: string;
+    consignee_name?: string;
+    end_date?: string | null;
+    consignee_email?: string | null;
+    consignee_user_id?: string | null;
+  } | null;
+  const newConsigneeEmail =
+    rest.consignee_email !== undefined
+      ? (rest.consignee_email || null)
+      : (p0?.consignee_email ?? null);
+  const artId = (rest.artwork_id as string | undefined) ?? p0?.artwork_id;
+  const newStatus = rest.status !== undefined ? rest.status : (p0?.status as string);
+  const oldStatus = p0?.status as string | undefined;
+
+  if (artId) {
+    const cInfo = await applyConsignmentCounterpartyLinks(
+      client,
+      user.id,
+      id,
+      artId,
+      newConsigneeEmail,
+      p0
+        ? {
+            consignee_email: p0.consignee_email ?? null,
+            consignee_user_id: p0.consignee_user_id ?? null,
+          }
+        : null,
+    );
+    if (newStatus === 'active' && oldStatus && oldStatus !== 'active') {
+      await notifyCounterpartyStatusActive({
+        kind: 'consignment',
+        counterpartyUserId: cInfo.consigneeUserId,
+        ownerAccountId: user.id,
+        recordId: id,
+        artworkId: artId,
+        artworkTitle: cInfo.artworkTitle,
+      });
+      await insertProvenanceEventForOperations({
+        artworkId: artId,
+        eventType: 'consignment_active',
+        actorAccountId: user.id,
+        metadata: {
+          consignment_id: id,
+          consignee_name: rest.consignee_name ?? p0?.consignee_name,
+          end_date: (rest as { end_date?: string | null }).end_date ?? p0?.end_date,
+        },
+      });
+    }
   }
+
   if (artId && newStatus === 'returned' && oldStatus && oldStatus !== 'returned') {
     await insertProvenanceEventForOperations({
       artworkId: artId,
@@ -240,6 +334,14 @@ export async function duplicateConsignment(consignmentId: string) {
     console.error('[Operations/consignments] duplicate insert', ins);
     return { success: false as const, error: 'Could not duplicate.' };
   }
+  await applyConsignmentCounterpartyLinks(
+    client,
+    user.id,
+    created.id as string,
+    row.artwork_id as string,
+    row.consignee_email as string | null,
+    null,
+  );
   revalidatePath('/operations');
   return { success: true as const, id: created.id as string };
 }

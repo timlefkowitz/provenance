@@ -519,7 +519,24 @@ export function OperationsPageContent({
                       <TableCell className="font-serif">
                         <div className="font-medium">{row.borrower_name}</div>
                         {row.borrower_email ? (
-                          <div className="text-xs text-ink/60">{row.borrower_email}</div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs text-ink/60">{row.borrower_email}</span>
+                            {row.borrower_user_id ? (
+                              <Badge
+                                className="border border-emerald-200 bg-emerald-100 text-[10px] text-emerald-900"
+                                variant="secondary"
+                              >
+                                Linked
+                              </Badge>
+                            ) : (
+                              <Badge
+                                className="border border-amber-200 bg-amber-100 text-[10px] text-amber-900"
+                                variant="secondary"
+                              >
+                                No account / invite
+                              </Badge>
+                            )}
+                          </div>
                         ) : null}
                       </TableCell>
                       <TableCell className="font-serif text-sm whitespace-nowrap">

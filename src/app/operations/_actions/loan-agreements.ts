@@ -5,6 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { insertProvenanceEventForOperations } from '~/lib/operations/operations-provenance';
+import {
+  notifyCounterpartyStatusActive,
+  resolveCounterparty,
+} from '~/lib/operations/resolve-counterparty';
 
 const loanStatus = z.enum(['draft', 'sent', 'signed', 'active', 'closed', 'expired']);
 
@@ -46,6 +50,79 @@ async function assertArtworkOwned(
     return false;
   }
   return Boolean(data);
+}
+
+type CounterpartyPriorLoan = {
+  borrower_email: string | null;
+  lender_email: string | null;
+  borrower_user_id: string | null;
+  lender_user_id: string | null;
+};
+
+/**
+ * Resolves counterparty Provenance users by email, links IDs, in-app notification or invite email.
+ */
+async function applyLoanCounterpartyLinks(
+  client: any,
+  ownerId: string,
+  loanId: string,
+  artworkId: string,
+  currentBorrowerEmail: string | null,
+  currentLenderEmail: string | null,
+  prior: CounterpartyPriorLoan | null,
+) {
+  console.log('[Operations/loans] applyLoanCounterpartyLinks', loanId);
+  const p: CounterpartyPriorLoan =
+    prior ?? {
+      borrower_email: null,
+      lender_email: null,
+      borrower_user_id: null,
+      lender_user_id: null,
+    };
+  const { data: art, error: artErr } = await client
+    .from('artworks')
+    .select('title')
+    .eq('id', artworkId)
+    .maybeSingle();
+  if (artErr) {
+    console.error('[Operations/loans] load artwork for counterparty', artErr);
+  }
+  const title = (art as { title?: string } | null)?.title?.trim() || 'Artwork';
+
+  const b = await resolveCounterparty({
+    email: currentBorrowerEmail,
+    role: 'borrower',
+    recordKind: 'loan',
+    recordId: loanId,
+    ownerAccountId: ownerId,
+    artworkId,
+    artworkTitle: title,
+    priorEmail: p.borrower_email,
+    priorLinkedUserId: p.borrower_user_id,
+  });
+  const l = await resolveCounterparty({
+    email: currentLenderEmail,
+    role: 'lender',
+    recordKind: 'loan',
+    recordId: loanId,
+    ownerAccountId: ownerId,
+    artworkId,
+    artworkTitle: title,
+    priorEmail: p.lender_email,
+    priorLinkedUserId: p.lender_user_id,
+  });
+  const { error: uErr } = await client
+    .from('artwork_loan_agreements')
+    .update({
+      borrower_user_id: b.userId,
+      lender_user_id: l.userId,
+    })
+    .eq('id', loanId)
+    .eq('account_id', ownerId);
+  if (uErr) {
+    console.error('[Operations/loans] update counterparty user ids', uErr);
+  }
+  return { borrowerUserId: b.userId, lenderUserId: l.userId, artworkTitle: title, artworkId };
 }
 
 export async function createLoanAgreement(raw: z.infer<typeof createLoanSchema>) {
@@ -97,6 +174,15 @@ export async function createLoanAgreement(raw: z.infer<typeof createLoanSchema>)
     return { success: false as const, error: 'Could not save loan agreement.' };
   }
 
+  await applyLoanCounterpartyLinks(
+    client,
+    user.id,
+    data.id as string,
+    parsed.data.artwork_id,
+    row.borrower_email,
+    row.lender_email,
+    null,
+  );
   console.log('[Operations/loans] createLoanAgreement success', data?.id);
   revalidatePath('/operations');
   return { success: true as const, id: data.id as string };
@@ -129,7 +215,9 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
 
   const { data: prior, error: priorErr } = await (client as any)
     .from('artwork_loan_agreements')
-    .select('id, status, artwork_id, borrower_name, end_date')
+    .select(
+      'id, status, artwork_id, borrower_name, end_date, borrower_email, lender_email, borrower_user_id, lender_user_id',
+    )
     .eq('id', id)
     .eq('account_id', user.id)
     .maybeSingle();
@@ -167,21 +255,59 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
     return { success: false as const, error: 'Could not update loan agreement.' };
   }
 
-  const newStatus =
-    rest.status !== undefined ? rest.status : (prior?.status as string | undefined);
-  const oldStatus = prior?.status as string | undefined;
-  const artId = (rest.artwork_id as string | undefined) ?? (prior?.artwork_id as string);
-  if (artId && newStatus === 'active' && oldStatus && oldStatus !== 'active') {
-    await insertProvenanceEventForOperations({
-      artworkId: artId,
-      eventType: 'loan_out',
-      actorAccountId: user.id,
-      metadata: {
-        loan_agreement_id: id,
-        borrower_name: rest.borrower_name ?? (prior as { borrower_name?: string })?.borrower_name,
-        end_date: (rest.end_date as string | null | undefined) ?? (prior as { end_date?: string | null })?.end_date,
+  const pRow = prior as {
+    status?: string;
+    artwork_id?: string;
+    borrower_name?: string;
+    end_date?: string | null;
+    borrower_email?: string | null;
+    lender_email?: string | null;
+    borrower_user_id?: string | null;
+    lender_user_id?: string | null;
+  };
+  const newBorrowerEmail =
+    rest.borrower_email !== undefined ? (rest.borrower_email || null) : (pRow.borrower_email ?? null);
+  const newLenderEmail =
+    rest.lender_email !== undefined ? (rest.lender_email || null) : (pRow.lender_email ?? null);
+  const artId = (rest.artwork_id as string | undefined) ?? pRow.artwork_id;
+  const newStatus = rest.status !== undefined ? rest.status : (pRow.status as string | undefined);
+  const oldStatus = pRow.status as string | undefined;
+
+  if (artId) {
+    const counterInfo = await applyLoanCounterpartyLinks(
+      client,
+      user.id,
+      id,
+      artId,
+      newBorrowerEmail,
+      newLenderEmail,
+      {
+        borrower_email: pRow.borrower_email ?? null,
+        lender_email: pRow.lender_email ?? null,
+        borrower_user_id: pRow.borrower_user_id ?? null,
+        lender_user_id: pRow.lender_user_id ?? null,
       },
-    });
+    );
+    if (newStatus === 'active' && oldStatus && oldStatus !== 'active') {
+      await notifyCounterpartyStatusActive({
+        kind: 'loan',
+        counterpartyUserId: counterInfo.borrowerUserId,
+        ownerAccountId: user.id,
+        recordId: id,
+        artworkId: artId,
+        artworkTitle: counterInfo.artworkTitle,
+      });
+      await insertProvenanceEventForOperations({
+        artworkId: artId,
+        eventType: 'loan_out',
+        actorAccountId: user.id,
+        metadata: {
+          loan_agreement_id: id,
+          borrower_name: rest.borrower_name ?? pRow?.borrower_name,
+          end_date: (rest.end_date as string | null | undefined) ?? pRow?.end_date,
+        },
+      });
+    }
   }
   if (
     artId &&
@@ -261,6 +387,15 @@ export async function duplicateLoanAgreement(id: string) {
     return { success: false as const, error: 'Could not duplicate agreement.' };
   }
 
+  await applyLoanCounterpartyLinks(
+    client,
+    user.id,
+    created.id as string,
+    row.artwork_id as string,
+    row.borrower_email as string | null,
+    row.lender_email as string | null,
+    null,
+  );
   console.log('[Operations/loans] duplicateLoanAgreement success', created.id);
   revalidatePath('/operations');
   return { success: true as const, id: created.id as string };
@@ -294,6 +429,33 @@ export async function markLoanAgreementSigned(id: string, signatureNotes?: strin
   if (error) {
     console.error('[Operations/loans] markLoanAgreementSigned failed', error);
     return { success: false as const, error: 'Could not update status.' };
+  }
+
+  const { data: row2, error: load2 } = await (client as any)
+    .from('artwork_loan_agreements')
+    .select(
+      'artwork_id, borrower_email, lender_email, borrower_user_id, lender_user_id',
+    )
+    .eq('id', id)
+    .eq('account_id', user.id)
+    .maybeSingle();
+  if (load2) {
+    console.error('[Operations/loans] markLoanAgreementSigned reload for counterparty', load2);
+  } else if (row2?.artwork_id) {
+    await applyLoanCounterpartyLinks(
+      client,
+      user.id,
+      id,
+      row2.artwork_id,
+      row2.borrower_email ?? null,
+      row2.lender_email ?? null,
+      {
+        borrower_email: row2.borrower_email ?? null,
+        lender_email: row2.lender_email ?? null,
+        borrower_user_id: row2.borrower_user_id ?? null,
+        lender_user_id: row2.lender_user_id ?? null,
+      },
+    );
   }
 
   revalidatePath('/operations');
@@ -355,6 +517,15 @@ export async function renewLoanAgreement(id: string) {
     return { success: false as const, error: 'Could not create renewal.' };
   }
 
+  await applyLoanCounterpartyLinks(
+    client,
+    user.id,
+    created.id as string,
+    row.artwork_id as string,
+    row.borrower_email as string | null,
+    row.lender_email as string | null,
+    null,
+  );
   console.log('[Operations/loans] renewLoanAgreement success', created.id);
   revalidatePath('/operations');
   return { success: true as const, id: created.id as string };
