@@ -745,7 +745,7 @@ export function LeadsKanban({
     });
   };
 
-  // Open edit dialog when user picks a contact from the Contacts tab
+  // Open edit dialog when a contact is clicked from the Contacts tab
   useEffect(() => {
     if (!pendingOpenLeadId) return;
     const lead = leads.find((l) => l.id === pendingOpenLeadId);

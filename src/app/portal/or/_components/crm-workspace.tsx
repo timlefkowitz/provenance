@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { LayoutGrid, BarChart3, BookUser } from 'lucide-react';
 import { LeadsKanban } from './leads-kanban';
 import { CrmAnalytics } from './crm-analytics';
 import { CrmContactsList } from './crm-contacts-list';
-import type { ArtistLead } from '../_actions/leads-constants';
+import { LEAD_STAGES, STAGE_LABELS, type ArtistLead, type LeadStage } from '../_actions/leads-constants';
 import type { CrmMember, ColumnLabels } from '../_actions/crm-members';
 
 type CrmTab = 'crm' | 'analytics' | 'contacts';
+
+const TABS: { id: CrmTab; label: string; short: string; icon: React.ElementType }[] = [
+  { id: 'crm',       label: 'CRM',       short: 'Board & pipeline', icon: LayoutGrid },
+  { id: 'analytics', label: 'Analytics', short: 'Funnel & totals',  icon: BarChart3 },
+  { id: 'contacts',  label: 'Contacts',  short: 'All people',       icon: BookUser },
+];
 
 export function CrmWorkspace({
   initialLeads,
@@ -27,27 +33,30 @@ export function CrmWorkspace({
   const [tab, setTab] = useState<CrmTab>('crm');
   const [pendingOpenLeadId, setPendingOpenLeadId] = useState<string | null>(null);
 
-  const onConsumedPendingOpen = useCallback(() => {
-    setPendingOpenLeadId(null);
-  }, []);
+  // Resolved stage labels (custom overrides merged with defaults) — shared across tabs
+  const stageLabels = useMemo(
+    () =>
+      LEAD_STAGES.reduce(
+        (acc, s) => ({ ...acc, [s]: (initialColumnLabels[s] as string | undefined) || STAGE_LABELS[s] }),
+        {} as Record<LeadStage, string>,
+      ),
+    [initialColumnLabels],
+  );
 
-  const handleEditFromContacts = (lead: ArtistLead) => {
+  const onConsumedPendingOpen = useCallback(() => setPendingOpenLeadId(null), []);
+
+  const handleEditFromContacts = useCallback((lead: ArtistLead) => {
     setTab('crm');
     setPendingOpenLeadId(lead.id);
-  };
-
-  const tabs = [
-    { id: 'crm' as const, label: 'CRM', short: 'Board & pipeline', icon: LayoutGrid },
-    { id: 'analytics' as const, label: 'Analytics', short: 'Funnel & totals', icon: BarChart3 },
-    { id: 'contacts' as const, label: 'Contacts', short: 'All people', icon: BookUser },
-  ];
+  }, []);
 
   return (
     <>
-      <div className="border-b border-wine/12 bg-gradient-to-b from-parchment/50 to-parchment/20">
+      {/* ── Tab nav ── */}
+      <div className="border-b border-wine/12">
         <div className="container mx-auto px-4 max-w-7xl">
-          <nav className="flex flex-wrap gap-1 py-2" role="tablist" aria-label="CRM sections">
-            {tabs.map((t) => {
+          <nav className="flex gap-1 py-1.5" role="tablist" aria-label="CRM sections">
+            {TABS.map((t) => {
               const Icon = t.icon;
               const isActive = tab === t.id;
               return (
@@ -58,26 +67,28 @@ export function CrmWorkspace({
                   aria-selected={isActive}
                   onClick={() => setTab(t.id)}
                   className={[
-                    'group flex items-center gap-2.5 rounded-2xl px-4 sm:px-5 py-2.5 text-left transition-all',
+                    'group relative flex items-center gap-2.5 rounded-xl px-4 py-2.5 transition-all text-left',
                     isActive
-                      ? 'bg-wine text-parchment shadow-md ring-1 ring-wine/30'
-                      : 'text-ink/55 hover:text-ink hover:bg-white/60 border border-transparent hover:border-wine/10',
+                      ? 'bg-wine text-parchment shadow-sm'
+                      : 'text-ink/55 hover:text-ink hover:bg-wine/6',
                   ].join(' ')}
                 >
                   <span
                     className={[
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors',
-                      isActive ? 'bg-white/15' : 'bg-wine/5 text-wine/50 group-hover:bg-wine/10 group-hover:text-wine',
+                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                      isActive
+                        ? 'bg-white/15 text-parchment'
+                        : 'bg-wine/6 text-wine/50 group-hover:bg-wine/10 group-hover:text-wine',
                     ].join(' ')}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3.5 w-3.5" />
                   </span>
                   <span className="min-w-0">
                     <span className="block font-serif font-semibold text-sm leading-tight">{t.label}</span>
                     <span
                       className={[
-                        'block text-[10px] leading-tight font-serif',
-                        isActive ? 'text-parchment/70' : 'text-ink/35',
+                        'block text-[10px] leading-tight font-serif hidden sm:block',
+                        isActive ? 'text-parchment/65' : 'text-ink/35',
                       ].join(' ')}
                     >
                       {t.short}
@@ -90,7 +101,8 @@ export function CrmWorkspace({
         </div>
       </div>
 
-      <div className="container mx-auto px-4 max-w-7xl py-8 pb-20">
+      {/* ── Tab content ── */}
+      <div className="container mx-auto px-4 max-w-7xl py-8 pb-24">
         {tab === 'crm' && (
           <LeadsKanban
             leads={leads}
@@ -103,8 +115,16 @@ export function CrmWorkspace({
             initialColumnLabels={initialColumnLabels}
           />
         )}
-        {tab === 'analytics' && <CrmAnalytics leads={leads} />}
-        {tab === 'contacts' && <CrmContactsList leads={leads} onEditContact={handleEditFromContacts} />}
+        {tab === 'analytics' && (
+          <CrmAnalytics leads={leads} stageLabels={stageLabels} />
+        )}
+        {tab === 'contacts' && (
+          <CrmContactsList
+            leads={leads}
+            stageLabels={stageLabels}
+            onEditContact={handleEditFromContacts}
+          />
+        )}
       </div>
     </>
   );
