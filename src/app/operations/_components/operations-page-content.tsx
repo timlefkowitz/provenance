@@ -35,14 +35,18 @@ import {
 } from '@kit/ui/select';
 import type {
   AcquisitionRow,
+  ArtworkLocationRow,
   ConsignmentRow,
   ConditionReportRow,
+  ExhibitionPlanRow,
   InsuranceValuationRow,
   InvoiceRow,
   LoanAgreementRow,
   OperationsArtworkOption,
   ProvenanceEventSummary,
   ShipmentRow,
+  UserExhibitionOption,
+  VendorRow,
 } from '../page';
 import {
   createLoanAgreement,
@@ -59,6 +63,9 @@ import { ConditionReportsTab } from './condition-reports-tab';
 import { ShippingTab } from './shipping-tab';
 import { InsuranceTab } from './insurance-tab';
 import { AcquisitionsTab } from './acquisitions-tab';
+import { ExhibitionPlanningTab } from './exhibition-planning-tab';
+import { InventoryTab } from './inventory-tab';
+import { VendorsTab } from './vendors-tab';
 import {
   createInvoice,
   duplicateInvoice,
@@ -77,6 +84,10 @@ type Props = {
   initialShipments: ShipmentRow[];
   initialInsuranceValuations: InsuranceValuationRow[];
   initialAcquisitions: AcquisitionRow[];
+  initialExhibitionPlans: ExhibitionPlanRow[];
+  initialArtworkLocations: ArtworkLocationRow[];
+  initialVendors: VendorRow[];
+  userExhibitions: UserExhibitionOption[];
   recentProvenance: ProvenanceEventSummary[];
   artworks: OperationsArtworkOption[];
 };
@@ -168,6 +179,10 @@ export function OperationsPageContent({
   initialShipments,
   initialInsuranceValuations,
   initialAcquisitions,
+  initialExhibitionPlans,
+  initialArtworkLocations,
+  initialVendors,
+  userExhibitions,
   recentProvenance,
   artworks,
 }: Props) {
@@ -861,23 +876,23 @@ export function OperationsPageContent({
             artworkTitleById={artworkTitleById}
           />
         </TabsContent>
-        <TabsContent value="exhibitions">
-          <ComingSoonTab
-            title="Exhibition Planning & Object Scheduling"
-            description="Plan venues, loan requests, object availability, and install schedules across shows."
+        <TabsContent value="exhibitions" className="space-y-4">
+          <ExhibitionPlanningTab
+            plans={initialExhibitionPlans}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
+            userExhibitions={userExhibitions}
           />
         </TabsContent>
-        <TabsContent value="inventory">
-          <ComingSoonTab
-            title="Inventory & Location Tracking"
-            description="See current storage locations, moves, and counts tied to artworks and crates."
+        <TabsContent value="inventory" className="space-y-4">
+          <InventoryTab
+            locations={initialArtworkLocations}
+            artworks={artworks}
+            artworkTitleById={artworkTitleById}
           />
         </TabsContent>
-        <TabsContent value="vendors">
-          <ComingSoonTab
-            title="Vendor & Partner Management"
-            description="Maintain framers, shippers, conservators, and other partners in one directory."
-          />
+        <TabsContent value="vendors" className="space-y-4">
+          <VendorsTab vendors={initialVendors} />
         </TabsContent>
       </Tabs>
         </div>

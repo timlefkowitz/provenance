@@ -21,7 +21,10 @@ export type ProvenanceEventType =
   | 'artwork_received'
   | 'insurance_active'
   | 'insurance_expired'
-  | 'artwork_accessioned';
+  | 'artwork_accessioned'
+  | 'exhibition_object_confirmed'
+  | 'exhibition_object_installed'
+  | 'artwork_location_updated';
 
 export async function insertProvenanceEventForOperations(input: {
   artworkId: string;

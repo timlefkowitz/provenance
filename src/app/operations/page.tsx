@@ -194,6 +194,78 @@ export type AcquisitionRow = {
   artwork: { id: string; title: string } | null;
 };
 
+export type ExhibitionPlanRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  exhibition_id: string | null;
+  exhibition_title: string | null;
+  venue_name: string | null;
+  venue_location: string | null;
+  install_date: string | null;
+  deinstall_date: string | null;
+  object_label: string | null;
+  lender_name: string | null;
+  lender_email: string | null;
+  lender_user_id: string | null;
+  curator_name: string | null;
+  curator_email: string | null;
+  curator_user_id: string | null;
+  status: string;
+  notes: string | null;
+  document_storage_path: string | null;
+  alert_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+  artwork: { id: string; title: string } | null;
+  exhibition: { id: string; title: string; start_date: string | null; end_date: string | null } | null;
+};
+
+export type ArtworkLocationRow = {
+  id: string;
+  account_id: string;
+  artwork_id: string;
+  location_type: string;
+  location_name: string | null;
+  room: string | null;
+  shelf: string | null;
+  crate_label: string | null;
+  custodian_name: string | null;
+  custodian_email: string | null;
+  custodian_user_id: string | null;
+  moved_at: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  artwork: { id: string; title: string } | null;
+};
+
+export type VendorRow = {
+  id: string;
+  account_id: string;
+  name: string;
+  service_type: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_user_id: string | null;
+  phone: string | null;
+  website: string | null;
+  address: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserExhibitionOption = {
+  id: string;
+  title: string;
+  start_date: string | null;
+  end_date: string | null;
+  location: string | null;
+};
+
 export default async function OperationsPage() {
   const client = getSupabaseServerClient();
   const {
@@ -218,6 +290,10 @@ export default async function OperationsPage() {
     shipmentsRes,
     insuranceRes,
     acquisitionsRes,
+    exhibitionPlansRes,
+    artworkLocationsRes,
+    vendorsRes,
+    userExhibitionsRes,
   ] = await Promise.all([
     (client as any)
       .from('artwork_loan_agreements')
@@ -425,6 +501,91 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
+    (client as any)
+      .from('exhibition_object_plans')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        exhibition_id,
+        exhibition_title,
+        venue_name,
+        venue_location,
+        install_date,
+        deinstall_date,
+        object_label,
+        lender_name,
+        lender_email,
+        lender_user_id,
+        curator_name,
+        curator_email,
+        curator_user_id,
+        status,
+        notes,
+        document_storage_path,
+        alert_sent_at,
+        created_at,
+        updated_at,
+        artwork:artworks(id, title),
+        exhibition:exhibitions(id, title, start_date, end_date)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
+    (client as any)
+      .from('artwork_locations')
+      .select(
+        `
+        id,
+        account_id,
+        artwork_id,
+        location_type,
+        location_name,
+        room,
+        shelf,
+        crate_label,
+        custodian_name,
+        custodian_email,
+        custodian_user_id,
+        moved_at,
+        status,
+        notes,
+        created_at,
+        updated_at,
+        artwork:artworks(id, title)
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
+    (client as any)
+      .from('vendors')
+      .select(
+        `
+        id,
+        account_id,
+        name,
+        service_type,
+        contact_name,
+        contact_email,
+        contact_user_id,
+        phone,
+        website,
+        address,
+        notes,
+        status,
+        created_at,
+        updated_at
+      `,
+      )
+      .eq('account_id', user.id)
+      .order('created_at', { ascending: false }),
+    (client as any)
+      .from('exhibitions')
+      .select('id, title, start_date, end_date, location')
+      .eq('gallery_id', user.id)
+      .order('start_date', { ascending: false })
+      .limit(200),
   ]);
 
   if (loansRes.error) {
@@ -450,6 +611,18 @@ export default async function OperationsPage() {
   }
   if (acquisitionsRes.error) {
     console.error('[Operations] page: acquisitions query failed', acquisitionsRes.error);
+  }
+  if (exhibitionPlansRes.error) {
+    console.error('[Operations] page: exhibition plans query failed', exhibitionPlansRes.error);
+  }
+  if (artworkLocationsRes.error) {
+    console.error('[Operations] page: artwork locations query failed', artworkLocationsRes.error);
+  }
+  if (vendorsRes.error) {
+    console.error('[Operations] page: vendors query failed', vendorsRes.error);
+  }
+  if (userExhibitionsRes.error) {
+    console.error('[Operations] page: user exhibitions query failed', userExhibitionsRes.error);
   }
 
   const rawLoans = (loansRes.data ?? []) as Record<string, unknown>[];
@@ -486,6 +659,27 @@ export default async function OperationsPage() {
   const acquisitions: AcquisitionRow[] = ((acquisitionsRes.data ?? []) as Record<string, unknown>[]).map(
     (row) => ({ ...(row as unknown as AcquisitionRow), artwork: mapArtwork(row) }),
   );
+
+  const mapExhibition = (row: Record<string, unknown>) => {
+    const ex = row.exhibition as
+      | { id: string; title: string; start_date: string | null; end_date: string | null }
+      | { id: string; title: string; start_date: string | null; end_date: string | null }[]
+      | null
+      | undefined;
+    return Array.isArray(ex) ? ex[0] ?? null : ex ?? null;
+  };
+  const exhibitionPlans: ExhibitionPlanRow[] = (
+    (exhibitionPlansRes.data ?? []) as Record<string, unknown>[]
+  ).map((row) => ({
+    ...(row as unknown as ExhibitionPlanRow),
+    artwork: mapArtwork(row),
+    exhibition: mapExhibition(row),
+  }));
+  const artworkLocations: ArtworkLocationRow[] = ((artworkLocationsRes.data ?? []) as Record<string, unknown>[]).map(
+    (row) => ({ ...(row as unknown as ArtworkLocationRow), artwork: mapArtwork(row) }),
+  );
+  const vendors: VendorRow[] = (vendorsRes.data ?? []) as VendorRow[];
+  const userExhibitions: UserExhibitionOption[] = (userExhibitionsRes.data ?? []) as UserExhibitionOption[];
 
   const rawInvoices = (invoicesRes.data ?? []) as Record<string, unknown>[];
   const invoices: InvoiceRow[] = rawInvoices.map((inv) => {
@@ -559,6 +753,10 @@ export default async function OperationsPage() {
     shipments: shipments.length,
     insurance: insuranceValuations.length,
     acquisitions: acquisitions.length,
+    exhibitionPlans: exhibitionPlans.length,
+    artworkLocations: artworkLocations.length,
+    vendors: vendors.length,
+    userExhibitions: userExhibitions.length,
   });
 
   return (
@@ -579,6 +777,10 @@ export default async function OperationsPage() {
         initialShipments={shipments}
         initialInsuranceValuations={insuranceValuations}
         initialAcquisitions={acquisitions}
+        initialExhibitionPlans={exhibitionPlans}
+        initialArtworkLocations={artworkLocations}
+        initialVendors={vendors}
+        userExhibitions={userExhibitions}
         recentProvenance={recentProvenance}
         artworks={artworks}
       />

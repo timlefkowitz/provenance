@@ -41,7 +41,7 @@ function ok(f: File) {
   return e != null && EXTS.has(e);
 }
 
-export type OperationsDocFolder = 'shipments' | 'insurance' | 'acquisitions';
+export type OperationsDocFolder = 'shipments' | 'insurance' | 'acquisitions' | 'exhibition_plans';
 
 /**
  * One document for `document_storage_path` on shipment/insurance/acquisition rows.

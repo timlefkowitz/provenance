@@ -35,7 +35,11 @@ export type NotificationType =
   | 'insurance_counterparty_linked'
   | 'insurance_status_update'
   | 'acquisition_counterparty_linked'
-  | 'acquisition_status_update';
+  | 'acquisition_status_update'
+  | 'exhibition_plan_counterparty_linked'
+  | 'exhibition_plan_status_update'
+  | 'inventory_location_counterparty_linked'
+  | 'vendor_counterparty_linked';
 
 export interface CreateNotificationParams {
   userId: string;
