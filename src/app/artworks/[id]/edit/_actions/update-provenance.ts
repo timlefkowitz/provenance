@@ -1,7 +1,6 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import {
@@ -241,29 +240,8 @@ export async function updateProvenance(
       }
     }
 
-    // Insert a structured provenance_event when artwork is newly marked as sold
-    if (provenance.isSold === true) {
-      try {
-        const admin = getSupabaseServerAdminClient();
-        const { error: eventError } = await (admin as any).from('provenance_events').insert({
-          artwork_id: artworkId,
-          event_type: 'sale',
-          actor_account_id: user.id,
-          event_date: new Date().toISOString(),
-          metadata: {
-            source: 'collection_ui',
-            sold_by: provenance.soldBy ?? null,
-          },
-        });
-        if (eventError) {
-          logger.error('update_provenance_sale_event_failed', { artworkId, error: eventError });
-        } else {
-          console.log('[UpdateProvenance] sale provenance_event inserted', { artworkId });
-        }
-      } catch (eventErr) {
-        logger.error('update_provenance_sale_event_exception', { artworkId, error: eventErr });
-      }
-    }
+    // Note: structured sale recording (sales_ledger + sale provenance_event) is
+    // handled by markArtworkSold in src/app/artworks/[id]/_actions/mark-artwork-sold.ts.
 
     // Create notification for artwork owner about the update (unless skipped)
     if (!options?.skipNotification) {

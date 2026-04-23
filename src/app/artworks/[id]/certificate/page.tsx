@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
@@ -7,6 +8,7 @@ import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
+import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 
 export const dynamic = 'force-dynamic';
 
@@ -313,6 +315,31 @@ export default async function CertificatePage({
 
   const certificateType = artwork.certificate_type || 'authenticity';
 
+  // Latest provenance valuation (public for non-owners, latest for owners).
+  let latestValuation: ProvenanceValuation | null = null;
+  try {
+    const admin = getSupabaseServerAdminClient();
+    let query = (admin as any)
+      .from('artwork_valuations')
+      .select(
+        'id, artwork_id, generated_at, engine_version, llm_model, estimated_value_cents, confidence_low_cents, confidence_high_cents, cultural_importance_score, liquidity_score, forgery_risk_score, rarity_index, former_owners_count, notable_collectors_count, museum_count, exhibition_count, scholarly_citations_count, artist_market_cap_cents, auction_history_summary, market_signals, narrative, is_public',
+      )
+      .eq('artwork_id', artwork.id)
+      .order('generated_at', { ascending: false })
+      .limit(1);
+    if (!isOwner && !canEditCertificate) {
+      query = query.eq('is_public', true);
+    }
+    const { data: valuationRows, error: valuationError } = await query;
+    if (valuationError) {
+      console.error('[Certificate] artwork_valuations fetch failed', valuationError);
+    } else if (Array.isArray(valuationRows) && valuationRows.length > 0) {
+      latestValuation = valuationRows[0] as ProvenanceValuation;
+    }
+  } catch (err) {
+    console.error('[Certificate] artwork_valuations fetch exception', err);
+  }
+
   return (
     <CertificateOfAuthenticity 
       artwork={artwork} 
@@ -326,6 +353,7 @@ export default async function CertificatePage({
       certificateStatus={artwork.certificate_status ?? null}
       certificateType={certificateType}
       attachments={attachments}
+      valuation={latestValuation}
     />
   );
 }

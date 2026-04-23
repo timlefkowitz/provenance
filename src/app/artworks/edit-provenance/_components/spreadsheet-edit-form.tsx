@@ -36,6 +36,9 @@ import {
 } from '@kit/ui/sheet';
 import { cn } from '@kit/ui/utils';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
+import { markArtworkSold } from '~/app/artworks/[id]/_actions/mark-artwork-sold';
+import { SoldToPicker, type SoldToValue } from './sold-to-picker';
+import { RequestValuationRow } from './request-valuation-row';
 import type { UserRole } from '~/lib/user-roles';
 
 type LinkableExhibition = {
@@ -102,6 +105,7 @@ type ArtworkFormData = {
 /** Optional blocks stacked in the primary “image & title” column (hidden until toggled). */
 const OPTIONAL_PRIMARY_FIELDS = [
   'sold',
+  'valuation',
   'order',
   'creation_date',
   'medium',
@@ -124,6 +128,7 @@ type OptionalPrimaryField = (typeof OPTIONAL_PRIMARY_FIELDS)[number];
 
 const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
   sold: 'Mark as Sold',
+  valuation: 'Provenance Valuation',
   order: 'Display order',
   creation_date: 'Creation date',
   medium: 'Medium',
@@ -555,6 +560,22 @@ export function SpreadsheetEditForm({
   const [soldNotes, setSoldNotes] = useState<Record<string, string>>(() =>
     Object.fromEntries(artworks.map((a) => [a.id, ''])),
   );
+  /** Per-artwork optional price (display string in major units). */
+  const [soldPrices, setSoldPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, ''])),
+  );
+  /** Per-artwork currency (defaults to USD). */
+  const [soldCurrencies, setSoldCurrencies] = useState<Record<string, string>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, 'USD'])),
+  );
+  /** Per-artwork buyer selection (account, email, or off-platform name). */
+  const [soldToSelections, setSoldToSelections] = useState<Record<string, SoldToValue | null>>(
+    () => Object.fromEntries(artworks.map((a) => [a.id, null as SoldToValue | null])),
+  );
+  /** Per-artwork pending flag for the mark-as-sold server action. */
+  const [sellingIds, setSellingIds] = useState<Set<string>>(() => new Set());
+  /** Per-artwork inline error from the mark-as-sold server action. */
+  const [sellErrors, setSellErrors] = useState<Record<string, string | null>>({});
   const [artworkData, setArtworkData] = useState<Record<string, ArtworkFormData>>(() => {
     const initial: Record<string, ArtworkFormData> = {};
     artworks.forEach((artwork) => {
@@ -695,6 +716,110 @@ export function SpreadsheetEditForm({
       }
       return next;
     });
+  };
+
+  const handleMarkSold = async (artworkId: string) => {
+    const data = artworkData[artworkId];
+    if (!data) return;
+    const dateStr = soldDates[artworkId] ?? todayIso;
+    const note = (soldNotes[artworkId] ?? '').trim();
+    const priceStr = (soldPrices[artworkId] ?? '').trim();
+    const currency = (soldCurrencies[artworkId] ?? 'USD').trim().toUpperCase() || 'USD';
+    const selection = soldToSelections[artworkId] ?? null;
+
+    let priceCents: number | null = null;
+    if (priceStr) {
+      const parsed = Number(priceStr.replace(/,/g, ''));
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        priceCents = Math.round(parsed * 100);
+      } else {
+        setSellErrors((prev) => ({
+          ...prev,
+          [artworkId]: 'Enter a valid price (numbers only, e.g. 1200 or 1200.50)',
+        }));
+        return;
+      }
+    }
+
+    setSellErrors((prev) => ({ ...prev, [artworkId]: null }));
+    setSellingIds((prev) => {
+      const next = new Set(prev);
+      next.add(artworkId);
+      return next;
+    });
+
+    console.log('[Collection] handleMarkSold started', {
+      artworkId,
+      hasBuyerAccount: !!selection?.accountId,
+      hasEmail: !!selection?.email,
+      priceCents,
+    });
+
+    try {
+      const result = await markArtworkSold({
+        artworkId,
+        soldTo: selection
+          ? {
+              accountId: selection.accountId ?? null,
+              email: selection.email ?? null,
+              name: selection.name ?? null,
+            }
+          : undefined,
+        priceCents,
+        currency,
+        soldAt: new Date(dateStr + 'T12:00:00').toISOString(),
+        notes: note || null,
+        soldByDisplay: data.sold_by || null,
+        metadata: { source: 'collection_editor' },
+      });
+
+      if (!result.success) {
+        setSellErrors((prev) => ({
+          ...prev,
+          [artworkId]: result.error || 'Failed to mark as sold',
+        }));
+        return;
+      }
+
+      const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      const buyerLabel = selection?.name
+        ? ` to ${selection.name}`
+        : selection?.email
+        ? ` to ${selection.email}`
+        : '';
+      const priceLabel = priceCents
+        ? ` for ${currency} ${(priceCents / 100).toLocaleString()}`
+        : '';
+      const entry = note
+        ? `Sold${buyerLabel}${priceLabel}, ${formattedDate} — ${note}`
+        : `Sold${buyerLabel}${priceLabel}, ${formattedDate}`;
+      const existing = (data.auction_history || '').trim();
+      const updated = existing ? `${existing}\n${entry}` : entry;
+
+      updateField(artworkId, 'auction_history', updated);
+      updateField(artworkId, 'is_sold', true);
+      setSoldNotes((prev) => ({ ...prev, [artworkId]: '' }));
+      setSoldPrices((prev) => ({ ...prev, [artworkId]: '' }));
+      setSoldToSelections((prev) => ({ ...prev, [artworkId]: null }));
+
+      console.log('[Collection] handleMarkSold completed', { artworkId });
+    } catch (err) {
+      console.error('[Collection] handleMarkSold failed', err);
+      setSellErrors((prev) => ({
+        ...prev,
+        [artworkId]: (err as Error).message || 'Failed to mark as sold',
+      }));
+    } finally {
+      setSellingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(artworkId);
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1609,21 +1734,76 @@ export function SpreadsheetEditForm({
                                         {OPTIONAL_PRIMARY_LABELS.sold}
                                       </p>
                                       <p className="text-[10px] text-ink/50 font-serif mt-0.5 leading-snug">
-                                        Records the sale date in auction history and logs a provenance event.
+                                        Records a structured sale. If the buyer is on the platform or has an email, we send an ownership-transfer invite.
                                       </p>
                                     </div>
-                                    <Input
-                                      type="date"
-                                      value={soldDates[artwork.id] ?? todayIso}
-                                      onChange={(e) =>
-                                        setSoldDates((prev) => ({ ...prev, [artwork.id]: e.target.value }))
-                                      }
-                                      className="font-serif text-sm h-9 border-wine/20 w-full"
-                                      aria-label="Date sold"
-                                    />
+                                    <div className="space-y-1.5">
+                                      <Label className="text-[10px] font-serif uppercase tracking-wide text-ink/50">
+                                        Buyer
+                                      </Label>
+                                      <SoldToPicker
+                                        value={soldToSelections[artwork.id] ?? null}
+                                        onChange={(next) =>
+                                          setSoldToSelections((prev) => ({ ...prev, [artwork.id]: next }))
+                                        }
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div className="col-span-2 space-y-1.5">
+                                        <Label className="text-[10px] font-serif uppercase tracking-wide text-ink/50">
+                                          Price (optional)
+                                        </Label>
+                                        <Input
+                                          type="text"
+                                          inputMode="decimal"
+                                          placeholder="e.g. 2500"
+                                          value={soldPrices[artwork.id] ?? ''}
+                                          onChange={(e) =>
+                                            setSoldPrices((prev) => ({
+                                              ...prev,
+                                              [artwork.id]: e.target.value,
+                                            }))
+                                          }
+                                          className="font-serif text-sm h-9 border-wine/20 w-full"
+                                          aria-label="Sale price"
+                                        />
+                                      </div>
+                                      <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-serif uppercase tracking-wide text-ink/50">
+                                          Currency
+                                        </Label>
+                                        <Input
+                                          type="text"
+                                          maxLength={3}
+                                          value={soldCurrencies[artwork.id] ?? 'USD'}
+                                          onChange={(e) =>
+                                            setSoldCurrencies((prev) => ({
+                                              ...prev,
+                                              [artwork.id]: e.target.value.toUpperCase(),
+                                            }))
+                                          }
+                                          className="font-serif text-sm h-9 border-wine/20 w-full uppercase"
+                                          aria-label="Sale currency"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      <Label className="text-[10px] font-serif uppercase tracking-wide text-ink/50">
+                                        Sale date
+                                      </Label>
+                                      <Input
+                                        type="date"
+                                        value={soldDates[artwork.id] ?? todayIso}
+                                        onChange={(e) =>
+                                          setSoldDates((prev) => ({ ...prev, [artwork.id]: e.target.value }))
+                                        }
+                                        className="font-serif text-sm h-9 border-wine/20 w-full"
+                                        aria-label="Date sold"
+                                      />
+                                    </div>
                                     <Input
                                       type="text"
-                                      placeholder="Note (optional) — buyer, price, venue…"
+                                      placeholder="Note (optional) — venue, condition, terms…"
                                       value={soldNotes[artwork.id] ?? ''}
                                       onChange={(e) =>
                                         setSoldNotes((prev) => ({ ...prev, [artwork.id]: e.target.value }))
@@ -1631,33 +1811,26 @@ export function SpreadsheetEditForm({
                                       className="font-serif text-xs h-8 border-wine/20 w-full placeholder:text-ink/30"
                                       aria-label="Sold note"
                                     />
+                                    {sellErrors[artwork.id] ? (
+                                      <p className="text-[11px] text-red-700 font-serif">
+                                        {sellErrors[artwork.id]}
+                                      </p>
+                                    ) : null}
                                     <Button
                                       type="button"
                                       size="sm"
-                                      onClick={() => {
-                                        const dateStr = soldDates[artwork.id] ?? todayIso;
-                                        const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-                                          year: 'numeric',
-                                          month: 'long',
-                                          day: 'numeric',
-                                        });
-                                        const note = (soldNotes[artwork.id] ?? '').trim();
-                                        const entry = note
-                                          ? `Sold, ${formattedDate} — ${note}`
-                                          : `Sold, ${formattedDate}`;
-                                        const existing = data.auction_history.trim();
-                                        const updated = existing ? `${existing}\n${entry}` : entry;
-                                        updateField(artwork.id, 'auction_history', updated);
-                                        updateField(artwork.id, 'is_sold', true);
-                                        setSoldNotes((prev) => ({ ...prev, [artwork.id]: '' }));
-                                      }}
-                                      className="font-serif text-xs h-8 w-full bg-ink text-parchment hover:bg-ink/90 whitespace-nowrap touch-manipulation"
+                                      disabled={sellingIds.has(artwork.id)}
+                                      onClick={() => handleMarkSold(artwork.id)}
+                                      className="font-serif text-xs h-8 w-full bg-ink text-parchment hover:bg-ink/90 whitespace-nowrap touch-manipulation disabled:opacity-60"
                                     >
-                                      Mark as Sold
+                                      {sellingIds.has(artwork.id) ? 'Recording sale…' : 'Mark as Sold'}
                                     </Button>
                                   </>
                                 )}
                               </div>
+                            ) : null}
+                            {field === 'valuation' ? (
+                              <RequestValuationRow artworkId={artwork.id} />
                             ) : null}
                             {field === 'order' ? (
                               <>

@@ -42,6 +42,10 @@ import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
+import {
+  ProvenanceValuationBlock,
+  type ProvenanceValuation,
+} from './provenance-valuation-block';
 
 const ScanLocationsMap = dynamic(
   () => import('./scan-locations-map').then((mod) => mod.ScanLocationsMap),
@@ -109,6 +113,7 @@ export function CertificateOfAuthenticity({
   artwork, 
   isOwner = false,
   canEditCertificate = false,
+  canRequestProvenance = false,
   isAdmin = false,
   creatorInfo = null,
   exhibition = null,
@@ -116,11 +121,13 @@ export function CertificateOfAuthenticity({
   certificateStatus = null,
   certificateType = 'authenticity',
   attachments = [],
+  valuation = null,
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
   /** Owner or gallery team member who can edit artwork / uploads */
   canEditCertificate?: boolean;
+  canRequestProvenance?: boolean;
   isAdmin?: boolean;
   creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
   exhibition?: { 
@@ -135,6 +142,7 @@ export function CertificateOfAuthenticity({
   certificateStatus?: string | null;
   certificateType?: CertificateType | string;
   attachments?: ArtworkAttachmentRow[];
+  valuation?: ProvenanceValuation | null;
 }) {
   const router = useRouter();
   const user = useCurrentUser();
@@ -1032,6 +1040,20 @@ export function CertificateOfAuthenticity({
                   </p>
                 </div>
               )}
+
+              {/* Provenance Valuation — gated on public || owner. Show CTA for owners even without an existing row. */}
+              {(valuation && (valuation.is_public || isOwner || canEditCertificate)) ||
+              (!valuation && (isOwner || canRequestProvenance)) ? (
+                <div className="pb-2">
+                  <ProvenanceValuationBlock
+                    artworkId={artwork.id}
+                    valuation={valuation}
+                    isOwner={isOwner || canEditCertificate}
+                    canRequest={isOwner || canRequestProvenance}
+                    variant="certificate"
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
 
