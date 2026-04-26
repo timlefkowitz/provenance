@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Info.plist Additions for Provenance iOS App
+  
+  After running setup-ios.sh, merge these entries into ios/App/App/Info.plist
+-->
+<dict>
+  <!-- Camera Usage Description (Required for App Store) -->
+  <key>NSCameraUsageDescription</key>
+  <string>Provenance needs access to your camera to photograph artworks and add them to your collection.</string>
+  
+  <!-- Photo Library Usage Description -->
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>Provenance needs access to your photo library to select artwork images for your collection.</string>
+  
+  <!-- Photo Library Add Usage Description -->
+  <key>NSPhotoLibraryAddUsageDescription</key>
+  <string>Provenance needs permission to save artwork photos to your library.</string>
+  
+  <!-- Push Notifications -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+    <string>remote-notification</string>
+  </array>
+  
+  <!-- Face ID Usage (if you add biometric auth later) -->
+  <key>NSFaceIDUsageDescription</key>
+  <string>Provenance uses Face ID to securely access your collection.</string>
+  
+  <!-- App Transport Security -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+    <key>NSExceptionDomains</key>
+    <dict>
+      <!-- Add your Supabase domain here -->
+    </dict>
+  </dict>
+  
+  <!-- Launch Screen -->
+  <key>UILaunchStoryboardName</key>
+  <string>LaunchScreen</string>
+  
+  <!-- Supported Interface Orientations -->
+  <key>UISupportedInterfaceOrientations</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+  </array>
+  
+  <key>UISupportedInterfaceOrientations~ipad</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+  
+  <!-- Status Bar -->
+  <key>UIStatusBarStyle</key>
+  <string>UIStatusBarStyleDarkContent</string>
+  
+  <key>UIViewControllerBasedStatusBarAppearance</key>
+  <true/>
+</dict>

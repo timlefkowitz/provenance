@@ -15,7 +15,13 @@
     "format": "prettier --check \"**/*.{js,cjs,mjs,ts,tsx,md,json}\"",
     "typecheck": "tsc --noEmit",
     "build:planets": "pnpm --filter @provenance/collectibles --filter @provenance/realestate --filter @provenance/vehicles --filter @provenance/api build",
-    "with-env": "dotenv -e ./.env.local --"
+    "with-env": "dotenv -e ./.env.local --",
+    "ios:build": "pnpm with-env next build --config next.config.ios.ts",
+    "ios:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:run": "npx cap run ios",
+    "ios:prepare": "pnpm ios:build && pnpm ios:sync",
+    "ios:dev": "pnpm ios:prepare && pnpm ios:open"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
