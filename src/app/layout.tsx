@@ -13,6 +13,7 @@ import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { ClientAnalytics } from "~/components/client-analytics";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
+import { PWAProvider } from "~/components/pwa/pwa-provider";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { cn } from "@kit/ui/utils";
 
@@ -43,7 +44,42 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
+    apple: [
+      { url: "/icons/icon-192x192.jpg", sizes: "192x192", type: "image/jpeg" },
+      { url: "/icons/icon-512x512.jpg", sizes: "512x512", type: "image/jpeg" },
+    ],
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Provenance",
+    startupImage: [
+      {
+        url: "/splash/apple-splash-1170x2532.jpg",
+        media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)",
+      },
+    ],
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-touch-fullscreen": "yes",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F1E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a1a" },
+  ],
 };
 
 // Ensure this layout is always rendered dynamically since we access headers/cookies
@@ -100,13 +136,15 @@ export default async function RootLayout({
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased overflow-x-hidden`}
       >
         <RootProviders lang={currentLang} theme={currentTheme}>
-          <OnboardingGuard>
-            <Navigation initialUser={initialUser} />
-            <StreakActivityTracker />
-            <GalleryProfileNotification />
-            {children}
-            <RoleSelectionModal />
-          </OnboardingGuard>
+          <PWAProvider>
+            <OnboardingGuard>
+              <Navigation initialUser={initialUser} />
+              <StreakActivityTracker />
+              <GalleryProfileNotification />
+              {children}
+              <RoleSelectionModal />
+            </OnboardingGuard>
+          </PWAProvider>
         </RootProviders>
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
         <Toaster richColors position="bottom-center" />
