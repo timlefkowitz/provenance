@@ -414,3 +414,317 @@ export async function buildGalleryCoSInviteRows(
 
   return { rows, titles, errors };
 }
+
+// ============================================================================
+// NEW: COO-first flows (Collector creates root, invites artist and gallery)
+// ============================================================================
+
+/**
+ * Build artist invite rows from a collector's COO that is the root certificate.
+ * Used when collector owns artwork and wants artist to create COA.
+ */
+export async function buildArtistInviteFromCooRows(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  userId: string,
+  artworkIds: string[],
+  inviteeEmail: string,
+): Promise<{
+  rows: InviteRowInput[];
+  titles: string[];
+  errors: string[];
+}> {
+  const rows: InviteRowInput[] = [];
+  const titles: string[] = [];
+  const errors: string[] = [];
+  const normalizedEmail = normalizeInviteEmail(inviteeEmail);
+
+  for (const artworkId of artworkIds) {
+    const { data: artwork, error: artError } = await (client as any)
+      .from('artworks')
+      .select('id, account_id, title, artist_name, certificate_type, source_artwork_id')
+      .eq('id', artworkId)
+      .single();
+
+    if (artError || !artwork) {
+      errors.push(`Artwork ${artworkId}: not found`);
+      continue;
+    }
+
+    if (artwork.account_id !== userId) {
+      errors.push(`"${artwork.title}": not owned by you`);
+      continue;
+    }
+
+    if (artwork.certificate_type !== CERTIFICATE_TYPES.OWNERSHIP) {
+      errors.push(
+        `"${artwork.title}": must be a Certificate of Ownership to invite artist for COA`,
+      );
+      continue;
+    }
+
+    // Check if this COO is a root (no source_artwork_id)
+    if (artwork.source_artwork_id) {
+      errors.push(
+        `"${artwork.title}": this COO is already linked to another certificate. Use the standard artist invite flow.`,
+      );
+      continue;
+    }
+
+    if (!artwork.artist_name?.trim()) {
+      errors.push(`"${artwork.title}": add artist name before sending invite`);
+      continue;
+    }
+
+    // Check for existing open invites
+    const { data: existingOpen } = await (adminClient as any)
+      .from('certificate_claim_invites')
+      .select('id')
+      .eq('source_artwork_id', artworkId)
+      .eq('invitee_email', normalizedEmail)
+      .eq('claim_kind', 'artist_coa_from_coo_root')
+      .in('status', ['pending', 'pending_owner_approval', 'sent'])
+      .maybeSingle();
+
+    if (existingOpen) {
+      errors.push(`"${artwork.title}": an open invite already exists for this email`);
+      continue;
+    }
+
+    rows.push({
+      source_artwork_id: artworkId,
+      claim_kind: 'artist_coa_from_coo_root',
+      provenance_update_request_id: null,
+    });
+    titles.push((artwork.title as string) || 'Untitled');
+  }
+
+  return { rows, titles, errors };
+}
+
+/**
+ * Build gallery COS invite rows from a collector's COO.
+ * Used when collector wants gallery to create Certificate of Show for their artwork.
+ */
+export async function buildGalleryInviteFromCooRows(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  userId: string,
+  artworkIds: string[],
+  inviteeEmail: string,
+): Promise<{
+  rows: InviteRowInput[];
+  titles: string[];
+  errors: string[];
+}> {
+  const rows: InviteRowInput[] = [];
+  const titles: string[] = [];
+  const errors: string[] = [];
+  const normalizedEmail = normalizeInviteEmail(inviteeEmail);
+
+  for (const artworkId of artworkIds) {
+    const { data: artwork, error: artError } = await (client as any)
+      .from('artworks')
+      .select('id, account_id, title, certificate_type')
+      .eq('id', artworkId)
+      .single();
+
+    if (artError || !artwork) {
+      errors.push(`Artwork ${artworkId}: not found`);
+      continue;
+    }
+
+    if (artwork.account_id !== userId) {
+      errors.push(`"${artwork.title}": not owned by you`);
+      continue;
+    }
+
+    if (artwork.certificate_type !== CERTIFICATE_TYPES.OWNERSHIP) {
+      errors.push(
+        `"${artwork.title}": must be a Certificate of Ownership to invite gallery for COS`,
+      );
+      continue;
+    }
+
+    // Check for existing open invites
+    const { data: existingOpen } = await (adminClient as any)
+      .from('certificate_claim_invites')
+      .select('id')
+      .eq('source_artwork_id', artworkId)
+      .eq('invitee_email', normalizedEmail)
+      .eq('claim_kind', 'gallery_cos_from_coo')
+      .in('status', ['pending', 'pending_owner_approval', 'sent'])
+      .maybeSingle();
+
+    if (existingOpen) {
+      errors.push(`"${artwork.title}": an open invite already exists for this email`);
+      continue;
+    }
+
+    rows.push({
+      source_artwork_id: artworkId,
+      claim_kind: 'gallery_cos_from_coo',
+      provenance_update_request_id: null,
+    });
+    titles.push((artwork.title as string) || 'Untitled');
+  }
+
+  return { rows, titles, errors };
+}
+
+// ============================================================================
+// NEW: COS-first flows (Gallery creates root, invites artist and collector)
+// ============================================================================
+
+/**
+ * Build artist invite rows from a gallery's COS that is the root certificate.
+ * Used when gallery has artwork in exhibition and wants artist to create COA.
+ */
+export async function buildArtistInviteFromCosRows(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  userId: string,
+  artworkIds: string[],
+  inviteeEmail: string,
+): Promise<{
+  rows: InviteRowInput[];
+  titles: string[];
+  errors: string[];
+}> {
+  const rows: InviteRowInput[] = [];
+  const titles: string[] = [];
+  const errors: string[] = [];
+  const normalizedEmail = normalizeInviteEmail(inviteeEmail);
+
+  for (const artworkId of artworkIds) {
+    const { data: artwork, error: artError } = await (client as any)
+      .from('artworks')
+      .select('id, account_id, title, artist_name, certificate_type, source_artwork_id')
+      .eq('id', artworkId)
+      .single();
+
+    if (artError || !artwork) {
+      errors.push(`Artwork ${artworkId}: not found`);
+      continue;
+    }
+
+    if (artwork.account_id !== userId) {
+      errors.push(`"${artwork.title}": not owned by you`);
+      continue;
+    }
+
+    if (artwork.certificate_type !== CERTIFICATE_TYPES.SHOW) {
+      errors.push(
+        `"${artwork.title}": must be a Certificate of Show to invite artist for COA`,
+      );
+      continue;
+    }
+
+    // Check if this COS is a root (no source_artwork_id)
+    if (artwork.source_artwork_id) {
+      errors.push(
+        `"${artwork.title}": this COS is already linked to another certificate. Use the standard artist invite flow.`,
+      );
+      continue;
+    }
+
+    if (!artwork.artist_name?.trim()) {
+      errors.push(`"${artwork.title}": add artist name before sending invite`);
+      continue;
+    }
+
+    // Check for existing open invites
+    const { data: existingOpen } = await (adminClient as any)
+      .from('certificate_claim_invites')
+      .select('id')
+      .eq('source_artwork_id', artworkId)
+      .eq('invitee_email', normalizedEmail)
+      .eq('claim_kind', 'artist_coa_from_cos_root')
+      .in('status', ['pending', 'pending_owner_approval', 'sent'])
+      .maybeSingle();
+
+    if (existingOpen) {
+      errors.push(`"${artwork.title}": an open invite already exists for this email`);
+      continue;
+    }
+
+    rows.push({
+      source_artwork_id: artworkId,
+      claim_kind: 'artist_coa_from_cos_root',
+      provenance_update_request_id: null,
+    });
+    titles.push((artwork.title as string) || 'Untitled');
+  }
+
+  return { rows, titles, errors };
+}
+
+/**
+ * Build collector COO invite rows from a gallery's COS.
+ * Used when gallery has artwork in exhibition and collector purchases it.
+ */
+export async function buildOwnerInviteFromCosRows(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  userId: string,
+  artworkIds: string[],
+  inviteeEmail: string,
+): Promise<{
+  rows: InviteRowInput[];
+  titles: string[];
+  errors: string[];
+}> {
+  const rows: InviteRowInput[] = [];
+  const titles: string[] = [];
+  const errors: string[] = [];
+  const normalizedEmail = normalizeInviteEmail(inviteeEmail);
+
+  for (const artworkId of artworkIds) {
+    const { data: artwork, error: artError } = await (client as any)
+      .from('artworks')
+      .select('id, account_id, title, certificate_type')
+      .eq('id', artworkId)
+      .single();
+
+    if (artError || !artwork) {
+      errors.push(`Artwork ${artworkId}: not found`);
+      continue;
+    }
+
+    if (artwork.account_id !== userId) {
+      errors.push(`"${artwork.title}": not owned by you`);
+      continue;
+    }
+
+    if (artwork.certificate_type !== CERTIFICATE_TYPES.SHOW) {
+      errors.push(
+        `"${artwork.title}": must be a Certificate of Show to invite collector for COO`,
+      );
+      continue;
+    }
+
+    // Check for existing open invites
+    const { data: existingOpen } = await (adminClient as any)
+      .from('certificate_claim_invites')
+      .select('id')
+      .eq('source_artwork_id', artworkId)
+      .eq('invitee_email', normalizedEmail)
+      .eq('claim_kind', 'owner_coo_from_cos')
+      .in('status', ['pending', 'pending_owner_approval', 'sent'])
+      .maybeSingle();
+
+    if (existingOpen) {
+      errors.push(`"${artwork.title}": an open invite already exists for this email`);
+      continue;
+    }
+
+    rows.push({
+      source_artwork_id: artworkId,
+      claim_kind: 'owner_coo_from_cos',
+      provenance_update_request_id: null,
+    });
+    titles.push((artwork.title as string) || 'Untitled');
+  }
+
+  return { rows, titles, errors };
+}

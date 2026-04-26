@@ -5,12 +5,41 @@ import { generateCertificateNumber } from './insert-linked-certificate';
 import {
   getAccountDisplayName,
   propagateProvenanceAfterLinkedCertificate,
+  createCertificateLinks,
 } from '~/lib/certificate-claims/propagate-provenance';
 
 /**
  * Creates a Gallery/Institution Certificate of Show linked to an artist's CoA.
  * source_artwork_id → artist CoA establishes the provenance chain.
  */
+/**
+ * Determine the chain_root_id for a new linked certificate.
+ */
+async function getChainRootId(
+  adminClient: SupabaseClient,
+  sourceArtworkId: string,
+): Promise<string> {
+  const { data } = await (adminClient as any)
+    .from('artworks')
+    .select('id, chain_root_id, source_artwork_id')
+    .eq('id', sourceArtworkId)
+    .maybeSingle();
+
+  if (!data) {
+    return sourceArtworkId;
+  }
+
+  if (data.chain_root_id) {
+    return data.chain_root_id as string;
+  }
+
+  if (!data.source_artwork_id) {
+    return data.id as string;
+  }
+
+  return sourceArtworkId;
+}
+
 export async function insertLinkedCoSFromArtistCoa(
   adminClient: SupabaseClient,
   sourceCoA: Record<string, unknown>,
@@ -22,6 +51,9 @@ export async function insertLinkedCoSFromArtistCoa(
 ): Promise<{ id: string }> {
   const certNumber = await generateCertificateNumber(adminClient);
   const sourceId = sourceCoA.id as string;
+
+  // Determine the chain root
+  const chainRootId = await getChainRootId(adminClient, sourceId);
 
   const { data, error } = await (adminClient as any)
     .from('artworks')
@@ -51,6 +83,7 @@ export async function insertLinkedCoSFromArtistCoa(
       certificate_number: certNumber,
       certificate_type: CERTIFICATE_TYPES.SHOW,
       source_artwork_id: sourceId,
+      chain_root_id: chainRootId,
       artist_account_id: sourceCoA.account_id ?? null,
       gallery_profile_id: params.galleryProfileId ?? null,
       status: 'verified',
@@ -67,6 +100,19 @@ export async function insertLinkedCoSFromArtistCoa(
   }
 
   const newId = data.id as string;
+
+  // Create bidirectional certificate links
+  try {
+    await createCertificateLinks(adminClient, {
+      newArtworkId: newId,
+      sourceArtworkId: sourceId,
+      rootId: chainRootId,
+    });
+  } catch (linkErr) {
+    logger.error('insert_linked_cos_create_links_failed', { newId, error: linkErr });
+  }
+
+  // Propagate provenance
   try {
     const actorName = await getAccountDisplayName(adminClient, params.galleryAccountId);
     await propagateProvenanceAfterLinkedCertificate(adminClient, {

@@ -10,6 +10,10 @@ import { hashClaimToken, emailsMatch, normalizeInviteEmail } from '~/lib/certifi
 import {
   insertLinkedCertificateOfOwnershipFromCoa,
   insertArtistCoaFromSourceCertificate,
+  insertArtistCoaFromCooRoot,
+  insertLinkedCosFromCoo,
+  insertArtistCoaFromCosRoot,
+  insertLinkedCooFromCos,
 } from '~/lib/certificate-claims/insert-linked-certificate';
 import { insertLinkedCoSFromArtistCoa } from '~/lib/certificate-claims/insert-linked-cos-from-artist-coa';
 
@@ -112,6 +116,24 @@ async function processInvitesAfterAuth(
 
   if (kind === 'artist_coa_from_show' || kind === 'artist_coa_from_coo') {
     return processArtistBatch(client, adminClient, user, sorted);
+  }
+
+  // NEW: COO-first flows (Collector creates root)
+  if (kind === 'artist_coa_from_coo_root') {
+    return processArtistFromCooRootBatch(client, adminClient, user, sorted);
+  }
+
+  if (kind === 'gallery_cos_from_coo') {
+    return processGalleryFromCooBatch(client, adminClient, user, sorted);
+  }
+
+  // NEW: COS-first flows (Gallery creates root)
+  if (kind === 'artist_coa_from_cos_root') {
+    return processArtistFromCosRootBatch(client, adminClient, user, sorted);
+  }
+
+  if (kind === 'owner_coo_from_cos') {
+    return processOwnerFromCosBatch(client, adminClient, user, sorted);
   }
 
   return { success: false, error: 'Unsupported claim type' };
@@ -534,6 +556,351 @@ async function processArtistBatch(
   revalidatePath('/portal');
   revalidatePath(`/artworks/${primaryCoaId}/certificate`);
   return { success: true, artworkId: primaryCoaId };
+}
+
+// ============================================================================
+// NEW: COO-first flow processors (Collector creates root)
+// ============================================================================
+
+/**
+ * Artist creates COA linked to collector's COO that is the root certificate.
+ */
+async function processArtistFromCooRootBatch(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  user: { id: string },
+  invites: InviteRow[],
+): Promise<ConsumeCertificateClaimResult> {
+  // Validate artist role
+  const { data: account } = await (client as any)
+    .from('accounts')
+    .select('public_data')
+    .eq('id', user.id)
+    .single();
+
+  if (!account) {
+    return { success: false, error: 'Account not found' };
+  }
+
+  const role = getUserRole(account.public_data as Record<string, unknown>);
+  if (role !== USER_ROLES.ARTIST) {
+    return { success: false, error: 'Only artist accounts can claim this certificate' };
+  }
+
+  const now = new Date().toISOString();
+  let firstNewId: string | null = null;
+
+  for (const invite of invites) {
+    const { data: sourceCoo, error: sourceError } = await (adminClient as any)
+      .from('artworks')
+      .select('*')
+      .eq('id', invite.source_artwork_id as string)
+      .single();
+
+    if (sourceError || !sourceCoo) {
+      logger.error('consume_artist_from_coo_root_source_failed', { error: sourceError });
+      return { success: false, error: 'Could not load source certificate' };
+    }
+
+    if (sourceCoo.certificate_type !== CERTIFICATE_TYPES.OWNERSHIP) {
+      return { success: false, error: 'Invalid source certificate for this claim' };
+    }
+
+    const { id: newId } = await insertArtistCoaFromCooRoot(adminClient, sourceCoo, {
+      artistAccountId: user.id,
+      createdByUserId: user.id,
+    });
+
+    if (!firstNewId) {
+      firstNewId = newId;
+    }
+
+    await (adminClient as any)
+      .from('certificate_claim_invites')
+      .update({
+        status: 'consumed',
+        consumed_at: now,
+        consumed_by: user.id,
+        result_artwork_id: newId,
+      })
+      .eq('id', invite.id);
+
+    try {
+      await createNotification({
+        userId: sourceCoo.account_id as string,
+        type: 'certificate_claimed',
+        title: `Certificate of Authenticity created: ${sourceCoo.title}`,
+        message: `The artist has created a Certificate of Authenticity for "${sourceCoo.title}" linked to your Certificate of Ownership.`,
+        artworkId: newId,
+        relatedUserId: user.id,
+      });
+    } catch (e) {
+      logger.error('consume_artist_from_coo_root_notify_failed', { error: e });
+    }
+
+    revalidatePath(`/artworks/${newId}/certificate`);
+  }
+
+  revalidatePath('/portal');
+  return { success: true, artworkId: firstNewId! };
+}
+
+/**
+ * Gallery creates COS linked to collector's COO.
+ */
+async function processGalleryFromCooBatch(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  user: { id: string },
+  invites: InviteRow[],
+): Promise<ConsumeCertificateClaimResult> {
+  const { data: account } = await (client as any)
+    .from('accounts')
+    .select('public_data')
+    .eq('id', user.id)
+    .single();
+
+  if (!account) {
+    return { success: false, error: 'Account not found' };
+  }
+
+  const role = getUserRole(account.public_data as Record<string, unknown>);
+  if (role !== USER_ROLES.GALLERY && role !== USER_ROLES.INSTITUTION) {
+    return { success: false, error: 'Only gallery or institution accounts can claim this certificate' };
+  }
+
+  const { data: galleryProfile } = await (client as any)
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('role', role)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  let firstNewId: string | null = null;
+
+  for (const invite of invites) {
+    const { data: sourceCoo, error: sourceError } = await (adminClient as any)
+      .from('artworks')
+      .select('*')
+      .eq('id', invite.source_artwork_id as string)
+      .single();
+
+    if (sourceError || !sourceCoo) {
+      return { success: false, error: 'Could not load source certificate' };
+    }
+
+    if (sourceCoo.certificate_type !== CERTIFICATE_TYPES.OWNERSHIP) {
+      return { success: false, error: 'Invalid source certificate for this claim' };
+    }
+
+    const { id: newId } = await insertLinkedCosFromCoo(adminClient, sourceCoo, {
+      galleryAccountId: user.id,
+      createdByUserId: user.id,
+      galleryProfileId: galleryProfile?.id ?? null,
+    });
+
+    if (!firstNewId) {
+      firstNewId = newId;
+    }
+
+    await (adminClient as any)
+      .from('certificate_claim_invites')
+      .update({
+        status: 'consumed',
+        consumed_at: now,
+        consumed_by: user.id,
+        result_artwork_id: newId,
+      })
+      .eq('id', invite.id);
+
+    try {
+      await createNotification({
+        userId: sourceCoo.account_id as string,
+        type: 'certificate_claimed',
+        title: `Certificate of Show created: ${sourceCoo.title}`,
+        message: `A ${role} has created a Certificate of Show for "${sourceCoo.title}" linked to your Certificate of Ownership.`,
+        artworkId: newId,
+        relatedUserId: user.id,
+      });
+    } catch (e) {
+      logger.error('consume_gallery_from_coo_notify_failed', { error: e });
+    }
+
+    revalidatePath(`/artworks/${newId}/certificate`);
+  }
+
+  revalidatePath('/portal');
+  return { success: true, artworkId: firstNewId! };
+}
+
+// ============================================================================
+// NEW: COS-first flow processors (Gallery creates root)
+// ============================================================================
+
+/**
+ * Artist creates COA linked to gallery's COS that is the root certificate.
+ */
+async function processArtistFromCosRootBatch(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  user: { id: string },
+  invites: InviteRow[],
+): Promise<ConsumeCertificateClaimResult> {
+  // Validate artist role
+  const { data: account } = await (client as any)
+    .from('accounts')
+    .select('public_data')
+    .eq('id', user.id)
+    .single();
+
+  if (!account) {
+    return { success: false, error: 'Account not found' };
+  }
+
+  const role = getUserRole(account.public_data as Record<string, unknown>);
+  if (role !== USER_ROLES.ARTIST) {
+    return { success: false, error: 'Only artist accounts can claim this certificate' };
+  }
+
+  const now = new Date().toISOString();
+  let firstNewId: string | null = null;
+
+  for (const invite of invites) {
+    const { data: sourceCos, error: sourceError } = await (adminClient as any)
+      .from('artworks')
+      .select('*')
+      .eq('id', invite.source_artwork_id as string)
+      .single();
+
+    if (sourceError || !sourceCos) {
+      logger.error('consume_artist_from_cos_root_source_failed', { error: sourceError });
+      return { success: false, error: 'Could not load source certificate' };
+    }
+
+    if (sourceCos.certificate_type !== CERTIFICATE_TYPES.SHOW) {
+      return { success: false, error: 'Invalid source certificate for this claim' };
+    }
+
+    const { id: newId } = await insertArtistCoaFromCosRoot(adminClient, sourceCos, {
+      artistAccountId: user.id,
+      createdByUserId: user.id,
+    });
+
+    if (!firstNewId) {
+      firstNewId = newId;
+    }
+
+    await (adminClient as any)
+      .from('certificate_claim_invites')
+      .update({
+        status: 'consumed',
+        consumed_at: now,
+        consumed_by: user.id,
+        result_artwork_id: newId,
+      })
+      .eq('id', invite.id);
+
+    try {
+      await createNotification({
+        userId: sourceCos.account_id as string,
+        type: 'certificate_claimed',
+        title: `Certificate of Authenticity created: ${sourceCos.title}`,
+        message: `The artist has created a Certificate of Authenticity for "${sourceCos.title}" linked to your Certificate of Show.`,
+        artworkId: newId,
+        relatedUserId: user.id,
+      });
+    } catch (e) {
+      logger.error('consume_artist_from_cos_root_notify_failed', { error: e });
+    }
+
+    revalidatePath(`/artworks/${newId}/certificate`);
+  }
+
+  revalidatePath('/portal');
+  return { success: true, artworkId: firstNewId! };
+}
+
+/**
+ * Collector creates COO linked to gallery's COS.
+ */
+async function processOwnerFromCosBatch(
+  client: ReturnType<typeof getSupabaseServerClient>,
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  user: { id: string },
+  invites: InviteRow[],
+): Promise<ConsumeCertificateClaimResult> {
+  const { data: account } = await (client as any)
+    .from('accounts')
+    .select('public_data')
+    .eq('id', user.id)
+    .single();
+
+  if (!account) {
+    return { success: false, error: 'Account not found' };
+  }
+
+  const role = getUserRole(account.public_data as Record<string, unknown>);
+  if (role !== USER_ROLES.COLLECTOR) {
+    return { success: false, error: 'Only collector accounts can claim this certificate' };
+  }
+
+  const now = new Date().toISOString();
+  let firstNewId: string | null = null;
+
+  for (const invite of invites) {
+    const { data: sourceCos, error: sourceError } = await (adminClient as any)
+      .from('artworks')
+      .select('*')
+      .eq('id', invite.source_artwork_id as string)
+      .single();
+
+    if (sourceError || !sourceCos) {
+      return { success: false, error: 'Could not load source certificate' };
+    }
+
+    if (sourceCos.certificate_type !== CERTIFICATE_TYPES.SHOW) {
+      return { success: false, error: 'Invalid source certificate for this claim' };
+    }
+
+    const { id: newId } = await insertLinkedCooFromCos(adminClient, sourceCos, {
+      ownerAccountId: user.id,
+      createdByUserId: user.id,
+    });
+
+    if (!firstNewId) {
+      firstNewId = newId;
+    }
+
+    await (adminClient as any)
+      .from('certificate_claim_invites')
+      .update({
+        status: 'consumed',
+        consumed_at: now,
+        consumed_by: user.id,
+        result_artwork_id: newId,
+      })
+      .eq('id', invite.id);
+
+    try {
+      await createNotification({
+        userId: sourceCos.account_id as string,
+        type: 'certificate_claimed',
+        title: `Certificate of Ownership claimed: ${sourceCos.title}`,
+        message: `A collector has claimed their Certificate of Ownership for "${sourceCos.title}" linked to your Certificate of Show.`,
+        artworkId: newId,
+        relatedUserId: user.id,
+      });
+    } catch (e) {
+      logger.error('consume_owner_from_cos_notify_failed', { error: e });
+    }
+
+    revalidatePath(`/artworks/${newId}/certificate`);
+  }
+
+  revalidatePath('/portal');
+  return { success: true, artworkId: firstNewId! };
 }
 
 export async function consumeCertificateClaim(
