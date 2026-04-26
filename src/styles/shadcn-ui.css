@@ -47,6 +47,12 @@
         --chart-4: var(--color-yellow-200);
         --chart-5: var(--color-orange-200);
 
+        /* Notification colors - refined tones */
+        --success: #0D9488;              /* Teal-600 - sophisticated success */
+        --success-foreground: #FFFFFF;
+        --error: #DC2626;                /* Red-600 - refined error */
+        --error-foreground: #FFFFFF;
+
         --sidebar-background: var(--color-neutral-50);
         --sidebar-foreground: oklch(37.05% 0.012 285.8);
         --sidebar-primary: var(--color-neutral-950);
@@ -91,6 +97,12 @@
         --chart-3: var(--color-green-800);
         --chart-4: var(--color-yellow-200);
         --chart-5: var(--color-orange-200);
+
+        /* Notification colors - refined tones */
+        --success: #0D9488;              /* Teal-600 - sophisticated success */
+        --success-foreground: #FFFFFF;
+        --error: #DC2626;                /* Red-600 - refined error */
+        --error-foreground: #FFFFFF;
 
         --sidebar-background: #EDE8DB;
         --sidebar-foreground: #3D2A1F;
@@ -141,6 +153,12 @@
         --chart-3: #a3a3a3;
         --chart-4: #d4d4d4;
         --chart-5: #171717;
+
+        /* Notification colors - refined tones */
+        --success: #0D9488;              /* Teal-600 - sophisticated success */
+        --success-foreground: #FFFFFF;
+        --error: #DC2626;                /* Red-600 - refined error */
+        --error-foreground: #FFFFFF;
 
         --sidebar-background: #f0ebe0;
         --sidebar-foreground: #111111;
@@ -232,6 +250,12 @@
         --chart-3:             #E0AF68;   /* Tokyo Night yellow/orange             */
         --chart-4:             #BB9AF7;   /* Tokyo Night purple                    */
         --chart-5:             #F7768E;   /* Tokyo Night red                       */
+
+        /* Notification colors - Tokyo Night inspired */
+        --success:             #2DD4BF;   /* Teal-400 - bright for dark bg         */
+        --success-foreground:  #1A1B26;
+        --error:               #F87171;   /* Red-400 - softer for dark bg          */
+        --error-foreground:    #1A1B26;
 
         --sidebar-background:  #1A1B26;
         --sidebar-foreground:  #C0CAF5;
