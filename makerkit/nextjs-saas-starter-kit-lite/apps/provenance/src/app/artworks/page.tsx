@@ -19,7 +19,7 @@ export default async function ArtworksPage() {
     // Not signed in - show all verified artworks as a public feed
     const result = await client
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_sold')
       .eq('status', 'verified')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -45,7 +45,7 @@ export default async function ArtworksPage() {
     // Fetch artworks from these accounts
     const result = await client
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, is_sold')
       .eq('status', 'verified')
       .in('account_id', accountIdsToShow)
       .order('created_at', { ascending: false })

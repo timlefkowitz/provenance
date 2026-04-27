@@ -551,8 +551,20 @@ export function SpreadsheetEditForm({
   function getActiveScopeKey(): string | null {
     if (senderRole === 'artist') return 'artist';
     if (senderRole === 'gallery') {
+      // Try localStorage first (set when the user has multiple galleries and
+      // has explicitly chosen one via ProfileSwitcher).
       const profileId = getSelectedProfileId();
-      return profileId ?? null;
+      if (profileId) return profileId;
+
+      // Fall back to the first gallery profile key supplied by the server.
+      // This covers the common case where a user has exactly one gallery —
+      // ProfileSwitcher never renders (and never writes to localStorage) for
+      // single-profile users, so getSelectedProfileId() returns null even
+      // though there IS a valid profile.
+      const galleryKeys = Object.keys(registryArtworkIdByScope).filter(
+        (k) => k !== 'artist',
+      );
+      return galleryKeys[0] ?? null;
     }
     return null;
   }

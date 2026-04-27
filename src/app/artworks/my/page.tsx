@@ -139,6 +139,15 @@ export default async function MyArtworksPage({
   }, null);
   const receiverName = bestProfile?.name ?? user.email ?? 'Unknown';
 
+  // When the user is in gallery or institution mode, use the active profile's
+  // name for the catalog cover instead of the raw account name (username).
+  const activeProfileForMode =
+    activeRole === 'gallery' || activeRole === 'institution'
+      ? (userProfiles.find((p) => p.role === activeRole && p.is_active) ?? null)
+      : null;
+  const catalogGalleryName =
+    activeProfileForMode?.name ?? accountRow?.name ?? undefined;
+
   let linkableExhibitions = await getUserExhibitions(user.id, {
     forCollectionManagement: true,
     ownerRole: ownerRole ?? undefined,
@@ -239,7 +248,7 @@ export default async function MyArtworksPage({
           receiverName={receiverName}
           assignExhibitionId={assignExhibitionId}
           assignExhibitionTitle={assignExhibitionTitle}
-          galleryName={accountRow?.name ?? undefined}
+          galleryName={catalogGalleryName}
           senderRole={activeRole}
           registryArtworkIdByScope={registryArtworkIdByScope}
         />

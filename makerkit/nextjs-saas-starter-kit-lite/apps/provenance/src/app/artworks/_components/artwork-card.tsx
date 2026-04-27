@@ -11,6 +11,7 @@ type Artwork = {
   created_at: string;
   certificate_number: string;
   account_id: string;
+  is_sold?: boolean;
 };
 
 export function ArtworkCard({ 
@@ -36,6 +37,15 @@ export function ArtworkCard({
           ) : (
             <div className="w-full h-full flex items-center justify-center text-ink/30 font-serif">
               No Image
+            </div>
+          )}
+          {artwork.is_sold && (
+            <div className="absolute top-2.5 right-2.5">
+              <span
+                className="block w-2.5 h-2.5 rounded-full bg-[#b84040] ring-2 ring-white/70"
+                aria-label="Sold"
+                title="Sold"
+              />
             </div>
           )}
         </div>

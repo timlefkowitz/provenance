@@ -49,10 +49,36 @@ export async function updateProvenance(
       return { error: 'You must be signed in to update provenance' };
     }
 
-    // Verify the user owns this artwork or is a gallery member
+    // Fetch current artwork state — includes all provenance fields + existing history
     const { data: artwork, error: fetchError } = await (client as any)
       .from('artworks')
-      .select('account_id, title, gallery_profile_id')
+      .select(`
+        account_id,
+        title,
+        gallery_profile_id,
+        description,
+        artist_name,
+        medium,
+        creation_date,
+        dimensions,
+        former_owners,
+        auction_history,
+        exhibition_history,
+        historic_context,
+        celebrity_notes,
+        is_public,
+        value,
+        value_is_public,
+        edition,
+        production_location,
+        owned_by,
+        owned_by_is_public,
+        sold_by,
+        sold_by_is_public,
+        is_sold,
+        display_order,
+        provenance_history
+      `)
       .eq('id', artworkId)
       .single();
 
@@ -73,9 +99,67 @@ export async function updateProvenance(
     // Store original title to check if it changed
     const originalTitle = artwork.title;
 
+    // --- Provenance history snapshot ---
+    // Map incoming provenance keys to their corresponding DB column names so we
+    // can detect which fields actually changed and record the *previous* values.
+    const fieldMap: Record<string, string> = {
+      title: 'title',
+      description: 'description',
+      artist_name: 'artist_name',
+      medium: 'medium',
+      creationDate: 'creation_date',
+      dimensions: 'dimensions',
+      formerOwners: 'former_owners',
+      auctionHistory: 'auction_history',
+      exhibitionHistory: 'exhibition_history',
+      historicContext: 'historic_context',
+      celebrityNotes: 'celebrity_notes',
+      isPublic: 'is_public',
+      value: 'value',
+      valueIsPublic: 'value_is_public',
+      edition: 'edition',
+      productionLocation: 'production_location',
+      ownedBy: 'owned_by',
+      ownedByIsPublic: 'owned_by_is_public',
+      soldBy: 'sold_by',
+      soldByIsPublic: 'sold_by_is_public',
+      isSold: 'is_sold',
+      displayOrder: 'display_order',
+    };
+
+    // Collect the previous values only for fields that are being updated
+    const previousValues: Record<string, unknown> = {};
+    for (const [incomingKey, dbColumn] of Object.entries(fieldMap)) {
+      const incomingValue = provenance[incomingKey as keyof typeof provenance];
+      if (incomingValue !== undefined) {
+        const currentValue = artwork[dbColumn as keyof typeof artwork];
+        // Only record if the value has actually changed
+        if (String(currentValue ?? '') !== String(incomingValue ?? '')) {
+          previousValues[incomingKey] = currentValue ?? null;
+        }
+      }
+    }
+
+    // Only append a snapshot entry when at least one field changed
+    let updatedHistory: unknown[] = Array.isArray(artwork.provenance_history)
+      ? artwork.provenance_history
+      : [];
+
+    if (Object.keys(previousValues).length > 0) {
+      const snapshot = {
+        editedAt: new Date().toISOString(),
+        editedBy: user.id,
+        previousValues,
+      };
+      // Append and cap at 200 entries (oldest dropped first)
+      updatedHistory = [...updatedHistory, snapshot].slice(-200);
+    }
+    // --- End provenance history snapshot ---
+
     // Update title, provenance fields and privacy
     const updateData: any = {
       updated_by: user.id,
+      provenance_history: updatedHistory,
     };
 
     // Only update fields that are provided
