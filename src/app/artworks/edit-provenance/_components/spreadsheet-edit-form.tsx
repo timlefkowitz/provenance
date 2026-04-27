@@ -615,6 +615,10 @@ export function SpreadsheetEditForm({
   const [soldToSelections, setSoldToSelections] = useState<Record<string, SoldToValue | null>>(
     () => Object.fromEntries(artworks.map((a) => [a.id, null as SoldToValue | null])),
   );
+  /** Per-artwork whether to show the sale price publicly (default: false = private). */
+  const [soldPriceIsPublic, setSoldPriceIsPublic] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(artworks.map((a) => [a.id, false])),
+  );
   /** Per-artwork pending flag for the mark-as-sold server action. */
   const [sellingIds, setSellingIds] = useState<Set<string>>(() => new Set());
   /** Per-artwork inline error from the mark-as-sold server action. */
@@ -810,6 +814,7 @@ export function SpreadsheetEditForm({
           : undefined,
         priceCents,
         currency,
+        priceIsPublic: soldPriceIsPublic[artworkId] ?? false,
         soldAt: new Date(dateStr + 'T12:00:00').toISOString(),
         notes: note || null,
         soldByDisplay: data.sold_by || null,
@@ -1812,7 +1817,7 @@ export function SpreadsheetEditForm({
                                         {OPTIONAL_PRIMARY_LABELS.sold}
                                       </p>
                                       <p className="text-[10px] text-ink/50 font-serif mt-0.5 leading-snug">
-                                        Records a structured sale. If the buyer is on the platform or has an email, we send an ownership-transfer invite.
+                                        Records the sale on the provenance chain. The buyer receives a <strong>Certificate of Ownership</strong> invite — your certificate stays in your account.
                                       </p>
                                     </div>
                                     <div className="space-y-1.5">
@@ -1889,6 +1894,26 @@ export function SpreadsheetEditForm({
                                       className="font-serif text-xs h-8 border-wine/20 w-full placeholder:text-ink/30"
                                       aria-label="Sold note"
                                     />
+                                    {/* Price privacy toggle — only shown when a price is entered */}
+                                    {(soldPrices[artwork.id] ?? '').trim() && (
+                                      <div className="flex items-center justify-between rounded-md border border-wine/10 bg-wine/[0.02] px-3 py-2">
+                                        <div className="flex flex-col">
+                                          <span className="text-[10px] font-serif font-medium text-ink/70">
+                                            Show price publicly
+                                          </span>
+                                          <span className="text-[9px] font-serif text-ink/40 leading-snug">
+                                            Off — only you and the buyer see it
+                                          </span>
+                                        </div>
+                                        <Switch
+                                          checked={soldPriceIsPublic[artwork.id] ?? false}
+                                          onCheckedChange={(checked) =>
+                                            setSoldPriceIsPublic((prev) => ({ ...prev, [artwork.id]: checked }))
+                                          }
+                                          aria-label="Show sale price publicly"
+                                        />
+                                      </div>
+                                    )}
                                     {sellErrors[artwork.id] ? (
                                       <p className="text-[11px] text-red-700 font-serif">
                                         {sellErrors[artwork.id]}

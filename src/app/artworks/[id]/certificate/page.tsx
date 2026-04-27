@@ -10,6 +10,19 @@ import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 
+export type SaleRecord = {
+  id: string;
+  sold_at: string;
+  sold_to_name: string | null;
+  sold_to_email: string | null;
+  sold_by_name: string | null;
+  price_cents: number | null;
+  price_is_public: boolean;
+  currency: string;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+};
+
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
@@ -77,43 +90,54 @@ export default async function CertificatePage({
   let artwork;
   let error;
 
+  const ARTWORK_SELECT = `
+    id,
+    account_id,
+    title,
+    description,
+    artist_name,
+    artist_account_id,
+    artist_profile_id,
+    creation_date,
+    medium,
+    dimensions,
+    image_url,
+    certificate_number,
+    created_at,
+    former_owners,
+    auction_history,
+    exhibition_history,
+    historic_context,
+    celebrity_notes,
+    value,
+    value_is_public,
+    edition,
+    production_location,
+    owned_by,
+    owned_by_is_public,
+    sold_by,
+    sold_by_is_public,
+    is_sold,
+    sold_at,
+    sold_to_name,
+    sold_to_email,
+    sold_to_account_id,
+    sold_by_account_id,
+    sold_price_cents,
+    sold_currency,
+    sold_price_is_public,
+    metadata,
+    status,
+    certificate_status,
+    certificate_type,
+    gallery_profile_id
+  `;
+
   if (user) {
     // Authenticated users can see their own artworks or verified artworks
     const { data, error: err } = await (client as any)
       .from('artworks')
-      .select(`
-        id,
-        account_id,
-        title,
-        description,
-        artist_name,
-        artist_account_id,
-        artist_profile_id,
-        creation_date,
-        medium,
-        dimensions,
-        image_url,
-        certificate_number,
-        created_at,
-        former_owners,
-        auction_history,
-        exhibition_history,
-        historic_context,
-        celebrity_notes,
-        value,
-        value_is_public,
-        edition,
-        production_location,
-        owned_by,
-        owned_by_is_public,
-        sold_by,
-        sold_by_is_public,
-        metadata,
-        status,
-        certificate_status,
-        certificate_type,
-        gallery_profile_id
-      `)
+      .select(ARTWORK_SELECT)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
       .single();
@@ -124,39 +148,7 @@ export default async function CertificatePage({
     // Anonymous users can only see verified artworks
     const { data, error: err } = await (client as any)
       .from('artworks')
-      .select(`
-        id,
-        account_id,
-        title,
-        description,
-        artist_name,
-        artist_account_id,
-        artist_profile_id,
-        creation_date,
-        medium,
-        dimensions,
-        image_url,
-        certificate_number,
-        created_at,
-        former_owners,
-        auction_history,
-        exhibition_history,
-        historic_context,
-        celebrity_notes,
-        value,
-        value_is_public,
-        edition,
-        production_location,
-        owned_by,
-        owned_by_is_public,
-        sold_by,
-        sold_by_is_public,
-        metadata,
-        status,
-        certificate_status,
-        certificate_type,
-        gallery_profile_id
-      `)
+      .select(ARTWORK_SELECT)
       .eq('id', id)
       .eq('status', 'verified')
       .single();
@@ -313,6 +305,59 @@ export default async function CertificatePage({
   // Fetch exhibition for this artwork
   const exhibition = await getArtworkExhibition(artwork.id);
 
+  // Fetch structured sales records from sales_ledger with buyer account name
+  let salesHistory: SaleRecord[] = [];
+  try {
+    const adminForSales = getSupabaseServerAdminClient();
+    const { data: saleRows, error: saleErr } = await (adminForSales as any)
+      .from('sales_ledger')
+      .select('id, sold_at, sold_to_name, sold_to_email, sold_to_account_id, sold_by_account_id, price_cents, price_is_public, currency, notes, metadata')
+      .eq('artwork_id', artwork.id)
+      .order('sold_at', { ascending: false });
+
+    if (saleErr) {
+      console.error('[Certificate] sales_ledger fetch failed', saleErr);
+    } else if (Array.isArray(saleRows) && saleRows.length > 0) {
+      // Resolve buyer account names for any known account IDs
+      const buyerAccountIds = (saleRows as any[])
+        .map((r) => r.sold_to_account_id)
+        .filter(Boolean) as string[];
+      const sellerAccountIds = (saleRows as any[])
+        .map((r) => r.sold_by_account_id)
+        .filter(Boolean) as string[];
+      const allAccountIds = [...new Set([...buyerAccountIds, ...sellerAccountIds])];
+
+      const accountNameMap: Record<string, string> = {};
+      if (allAccountIds.length > 0) {
+        const { data: acctRows } = await (adminForSales as any)
+          .from('accounts')
+          .select('id, name')
+          .in('id', allAccountIds);
+        for (const a of acctRows ?? []) {
+          accountNameMap[a.id as string] = a.name as string;
+        }
+      }
+
+      salesHistory = (saleRows as any[]).map((r) => ({
+        id: r.id as string,
+        sold_at: r.sold_at as string,
+        sold_to_name: (r.sold_to_account_id && accountNameMap[r.sold_to_account_id])
+          || (r.sold_to_name as string | null)
+          || (r.sold_to_email as string | null)
+          || null,
+        sold_to_email: r.sold_to_email as string | null,
+        sold_by_name: (r.sold_by_account_id && accountNameMap[r.sold_by_account_id]) || null,
+        price_cents: r.price_cents as number | null,
+        price_is_public: r.price_is_public as boolean,
+        currency: (r.currency as string) || 'USD',
+        notes: r.notes as string | null,
+        metadata: r.metadata as Record<string, unknown>,
+      }));
+    }
+  } catch (salesErr) {
+    console.error('[Certificate] sales_ledger fetch exception', salesErr);
+  }
+
   const certificateType = artwork.certificate_type || 'authenticity';
 
   // Latest provenance valuation (public for non-owners, latest for owners).
@@ -354,6 +399,7 @@ export default async function CertificatePage({
       certificateType={certificateType}
       attachments={attachments}
       valuation={latestValuation}
+      salesHistory={salesHistory}
     />
   );
 }

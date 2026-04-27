@@ -19,6 +19,8 @@ export interface MarkArtworkSoldInput {
   };
   priceCents?: number | null;
   currency?: string | null;
+  /** Whether to show the sale price publicly on the certificate. Defaults to false (private). */
+  priceIsPublic?: boolean;
   soldAt?: string | null;
   notes?: string | null;
   soldByDisplay?: string | null;
@@ -53,7 +55,7 @@ export async function markArtworkSold(
 
     const { data: artwork, error: fetchError } = await (client as any)
       .from('artworks')
-      .select('id, account_id, gallery_profile_id, title')
+      .select('id, account_id, gallery_profile_id, title, sold_by')
       .eq('id', input.artworkId)
       .single();
 
@@ -79,8 +81,26 @@ export async function markArtworkSold(
     const buyerAccountId = input.soldTo?.accountId?.trim() || null;
     const buyerEmail = input.soldTo?.email?.trim().toLowerCase() || null;
     const buyerName = input.soldTo?.name?.trim() || null;
+    const priceIsPublic = input.priceIsPublic ?? false;
 
     const admin = getSupabaseServerAdminClient();
+
+    // Auto-stamp sold_by from the gallery profile name when it isn't already set
+    let soldByDisplay = input.soldByDisplay?.trim() || null;
+    if (!soldByDisplay && !artwork.sold_by && artwork.gallery_profile_id) {
+      try {
+        const { data: galleryProfile } = await (admin as any)
+          .from('user_profiles')
+          .select('name')
+          .eq('id', artwork.gallery_profile_id)
+          .maybeSingle();
+        if (galleryProfile?.name) {
+          soldByDisplay = galleryProfile.name as string;
+        }
+      } catch (gpErr) {
+        console.error('[Sales] markArtworkSold gallery profile lookup failed', gpErr);
+      }
+    }
 
     const { error: updateError } = await (admin as any)
       .from('artworks')
@@ -92,7 +112,9 @@ export async function markArtworkSold(
         sold_to_name: buyerName,
         sold_price_cents: priceCents,
         sold_currency: currency,
+        sold_price_is_public: priceIsPublic,
         sold_at: soldAt,
+        ...(soldByDisplay ? { sold_by: soldByDisplay } : {}),
         updated_by: user.id,
       })
       .eq('id', input.artworkId);
@@ -117,6 +139,7 @@ export async function markArtworkSold(
           sold_to_email: buyerEmail,
           sold_to_name: buyerName,
           price_cents: priceCents,
+          price_is_public: priceIsPublic,
           currency,
           sold_at: soldAt,
           recorded_by: user.id,
@@ -153,7 +176,7 @@ export async function markArtworkSold(
           event_date: soldAt,
           metadata: {
             source: 'mark_artwork_sold',
-            sold_by_display: input.soldByDisplay ?? null,
+            sold_by_display: soldByDisplay ?? null,
             sold_by_account_id: artwork.account_id,
             sold_to_account_id: buyerAccountId,
             sold_to_email: buyerEmail,

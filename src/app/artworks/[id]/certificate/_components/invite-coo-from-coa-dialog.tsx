@@ -40,10 +40,11 @@ export function InviteCooFromCoaDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md font-serif">
         <DialogHeader>
-          <DialogTitle className="font-display text-wine">Invite Certificate of Ownership</DialogTitle>
+          <DialogTitle className="font-display text-wine">Send Certificate of Ownership</DialogTitle>
           <DialogDescription>
-            Send an email to a collector so they can claim a linked Certificate of Ownership for
-            &quot;{artworkTitle}&quot;. Your Certificate of Authenticity stays in your account.
+            The collector receives an email to claim a{' '}
+            <span className="font-semibold">Certificate of Ownership</span> for &quot;{artworkTitle}
+            &quot;. Your Certificate of Authenticity stays in your account — it is not transferred.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
