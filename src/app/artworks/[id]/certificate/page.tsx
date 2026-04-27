@@ -112,7 +112,8 @@ export default async function CertificatePage({
         status,
         certificate_status,
         certificate_type,
-        gallery_profile_id
+        gallery_profile_id,
+        provenance_history
       `)
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
@@ -155,7 +156,8 @@ export default async function CertificatePage({
         status,
         certificate_status,
         certificate_type,
-        gallery_profile_id
+        gallery_profile_id,
+        provenance_history
       `)
       .eq('id', id)
       .eq('status', 'verified')

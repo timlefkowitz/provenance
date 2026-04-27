@@ -22,9 +22,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           cancelButton:
             'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
           error:
-            'group-[.toaster]:bg-[#fdf2f2] group-[.toaster]:text-[#7a2828] group-[.toaster]:border-[#e8b4b4] dark:group-[.toaster]:bg-[#2d1515] dark:group-[.toaster]:text-[#f4a8a8] dark:group-[.toaster]:border-[#5c2a2a]',
+            'group-[.toaster]:bg-[#f6ede8] group-[.toaster]:text-[#8b3725] group-[.toaster]:border-[#d4917a] dark:group-[.toaster]:bg-[#2a1208] dark:group-[.toaster]:text-[#e8a48a] dark:group-[.toaster]:border-[#7a3820]',
           success:
-            'group-[.toaster]:bg-[#f2f7f3] group-[.toaster]:text-[#2a5c38] group-[.toaster]:border-[#a8cdb4] dark:group-[.toaster]:bg-[#152d1e] dark:group-[.toaster]:text-[#a8d4b4] dark:group-[.toaster]:border-[#2a5c38]',
+            'group-[.toaster]:bg-[#edf0e8] group-[.toaster]:text-[#3a5428] group-[.toaster]:border-[#8ab478] dark:group-[.toaster]:bg-[#1a2a12] dark:group-[.toaster]:text-[#a2c880] dark:group-[.toaster]:border-[#3a5428]',
         },
       }}
       {...props}

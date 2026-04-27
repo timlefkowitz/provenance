@@ -46,6 +46,11 @@ import {
   ProvenanceValuationBlock,
   type ProvenanceValuation,
 } from './provenance-valuation-block';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@kit/ui/popover';
 
 const ScanLocationsMap = dynamic(
   () => import('./scan-locations-map').then((mod) => mod.ScanLocationsMap),
@@ -107,7 +112,106 @@ export type Artwork = {
       formatted?: string;
     };
   } | null;
+  provenance_history?: Array<{
+    editedAt: string;
+    editedBy: string;
+    previousValues: Record<string, unknown>;
+  }> | null;
 };
+
+type ProvenanceHistoryEntry = {
+  editedAt: string;
+  editedBy: string;
+  previousValues: Record<string, unknown>;
+};
+
+/**
+ * Maps the DB column name used on the Artwork object to the key stored in
+ * provenance_history[].previousValues (which mirrors the action's input names).
+ */
+const FIELD_HISTORY_KEY: Record<string, string> = {
+  title: 'title',
+  artist_name: 'artist_name',
+  description: 'description',
+  medium: 'medium',
+  creation_date: 'creationDate',
+  dimensions: 'dimensions',
+  former_owners: 'formerOwners',
+  auction_history: 'auctionHistory',
+  exhibition_history: 'exhibitionHistory',
+  historic_context: 'historicContext',
+  celebrity_notes: 'celebrityNotes',
+  value: 'value',
+  edition: 'edition',
+  production_location: 'productionLocation',
+  owned_by: 'ownedBy',
+  sold_by: 'soldBy',
+};
+
+function FieldWithHistory({
+  dbField,
+  currentValue,
+  history,
+  renderValue,
+}: {
+  dbField: string;
+  currentValue: string | null | undefined;
+  history: ProvenanceHistoryEntry[] | null | undefined;
+  renderValue: (v: string) => React.ReactNode;
+}) {
+  const historyKey = FIELD_HISTORY_KEY[dbField] ?? dbField;
+
+  const edits = (history ?? [])
+    .filter((e) => e.previousValues[historyKey] != null && e.previousValues[historyKey] !== '')
+    .sort((a, b) => new Date(a.editedAt).getTime() - new Date(b.editedAt).getTime());
+
+  if (!currentValue) return null;
+
+  return (
+    <div className="flex items-start gap-2 flex-wrap">
+      <span className="flex-1">{renderValue(currentValue)}</span>
+      {edits.length > 0 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="print:hidden shrink-0 text-xs font-serif italic text-ink/40 hover:text-ink/70 transition-colors cursor-pointer underline underline-offset-2 decoration-dotted mt-0.5"
+            >
+              edited
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="start"
+            className="w-72 p-3 font-serif text-xs text-ink print:hidden"
+          >
+            <p className="font-semibold text-wine mb-2 text-sm">Edit history</p>
+            <ol className="space-y-2">
+              {edits.map((entry, idx) => (
+                <li key={idx} className="border-l-2 border-wine/20 pl-2">
+                  <p className="text-ink/50 mb-0.5">
+                    {new Date(entry.editedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                  <p className="text-ink/70 italic">
+                    &ldquo;{String(entry.previousValues[historyKey])}&rdquo;
+                  </p>
+                </li>
+              ))}
+              <li className="border-l-2 border-wine/60 pl-2">
+                <p className="text-ink/50 mb-0.5">Current</p>
+                <p className="text-ink font-medium">&ldquo;{currentValue}&rdquo;</p>
+              </li>
+            </ol>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
+}
 
 export function CertificateOfAuthenticity({ 
   artwork, 
@@ -841,9 +945,14 @@ export function CertificateOfAuthenticity({
           <div className="space-y-4 mb-6 sm:mb-8">
             <div className="border-b border-wine/20 pb-2">
               <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Title</p>
-              <p className="text-xl sm:text-2xl font-display font-bold text-wine break-words">
-                {artwork.title || 'Untitled Artwork'}
-              </p>
+              <FieldWithHistory
+                dbField="title"
+                currentValue={artwork.title || 'Untitled Artwork'}
+                history={artwork.provenance_history}
+                renderValue={(v) => (
+                  <p className="text-xl sm:text-2xl font-display font-bold text-wine break-words">{v}</p>
+                )}
+              />
             </div>
 
             {artwork.artist_name && (
@@ -851,27 +960,37 @@ export function CertificateOfAuthenticity({
                 <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
                   Artist
                 </p>
-                {artistPublicHref ? (
-                  <Link
-                    href={artistPublicHref}
-                    className="text-lg sm:text-xl font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
-                  >
-                    {artwork.artist_name}
-                  </Link>
-                ) : (
-                  <p className="text-lg sm:text-xl font-serif text-wine break-words">
-                    {artwork.artist_name}
-                  </p>
-                )}
+                <FieldWithHistory
+                  dbField="artist_name"
+                  currentValue={artwork.artist_name}
+                  history={artwork.provenance_history}
+                  renderValue={(v) =>
+                    artistPublicHref ? (
+                      <Link
+                        href={artistPublicHref}
+                        className="text-lg sm:text-xl font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                      >
+                        {v}
+                      </Link>
+                    ) : (
+                      <p className="text-lg sm:text-xl font-serif text-wine break-words">{v}</p>
+                    )
+                  }
+                />
               </div>
             )}
 
             {artwork.description && (
               <div className="border-b border-wine/20 pb-2">
                 <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Description</p>
-                <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
-                  {artwork.description}
-                </p>
+                <FieldWithHistory
+                  dbField="description"
+                  currentValue={artwork.description}
+                  history={artwork.provenance_history}
+                  renderValue={(v) => (
+                    <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
+                  )}
+                />
               </div>
             )}
 
@@ -879,31 +998,48 @@ export function CertificateOfAuthenticity({
               {artwork.creation_date && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Creation Date</p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {new Date(artwork.creation_date).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
+                  <FieldWithHistory
+                    dbField="creation_date"
+                    currentValue={artwork.creation_date}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">
+                        {new Date(v).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    )}
+                  />
                 </div>
               )}
 
               {artwork.medium && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Medium</p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.medium}
-                  </p>
+                  <FieldWithHistory
+                    dbField="medium"
+                    currentValue={artwork.medium}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
               {artwork.dimensions && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Dimensions</p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.dimensions}
-                  </p>
+                  <FieldWithHistory
+                    dbField="dimensions"
+                    currentValue={artwork.dimensions}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -982,18 +1118,28 @@ export function CertificateOfAuthenticity({
               {artwork.edition && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Edition</p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.edition}
-                  </p>
+                  <FieldWithHistory
+                    dbField="edition"
+                    currentValue={artwork.edition}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
               {artwork.production_location && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Production Location</p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.production_location}
-                  </p>
+                  <FieldWithHistory
+                    dbField="production_location"
+                    currentValue={artwork.production_location}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1006,9 +1152,14 @@ export function CertificateOfAuthenticity({
                       <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
                     )}
                   </p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.value}
-                  </p>
+                  <FieldWithHistory
+                    dbField="value"
+                    currentValue={artwork.value}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1021,9 +1172,14 @@ export function CertificateOfAuthenticity({
                       <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
                     )}
                   </p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.owned_by}
-                  </p>
+                  <FieldWithHistory
+                    dbField="owned_by"
+                    currentValue={artwork.owned_by}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
               {/* Sold By - show if public OR if owner */}
@@ -1035,9 +1191,14 @@ export function CertificateOfAuthenticity({
                       <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
                     )}
                   </p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.sold_by}
-                  </p>
+                  <FieldWithHistory
+                    dbField="sold_by"
+                    currentValue={artwork.sold_by}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1071,9 +1232,14 @@ export function CertificateOfAuthenticity({
               {artwork.former_owners && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Former Owners</p>
-                  <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
-                    {artwork.former_owners}
-                  </p>
+                  <FieldWithHistory
+                    dbField="former_owners"
+                    currentValue={artwork.former_owners}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1086,9 +1252,14 @@ export function CertificateOfAuthenticity({
                       <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
                     )}
                   </p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.value}
-                  </p>
+                  <FieldWithHistory
+                    dbField="value"
+                    currentValue={artwork.value}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1101,9 +1272,14 @@ export function CertificateOfAuthenticity({
                       <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
                     )}
                   </p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.owned_by}
-                  </p>
+                  <FieldWithHistory
+                    dbField="owned_by"
+                    currentValue={artwork.owned_by}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1116,9 +1292,14 @@ export function CertificateOfAuthenticity({
                       <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
                     )}
                   </p>
-                  <p className="text-sm sm:text-base font-serif text-ink break-words">
-                    {artwork.sold_by}
-                  </p>
+                  <FieldWithHistory
+                    dbField="sold_by"
+                    currentValue={artwork.sold_by}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1126,9 +1307,14 @@ export function CertificateOfAuthenticity({
               {artwork.auction_history && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Auction History</p>
-                  <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
-                    {artwork.auction_history}
-                  </p>
+                  <FieldWithHistory
+                    dbField="auction_history"
+                    currentValue={artwork.auction_history}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1136,9 +1322,14 @@ export function CertificateOfAuthenticity({
               {artwork.exhibition_history && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Exhibition History / Literature References</p>
-                  <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
-                    {artwork.exhibition_history}
-                  </p>
+                  <FieldWithHistory
+                    dbField="exhibition_history"
+                    currentValue={artwork.exhibition_history}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1146,9 +1337,14 @@ export function CertificateOfAuthenticity({
               {artwork.historic_context && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Historic Context / Origin Information</p>
-                  <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
-                    {artwork.historic_context}
-                  </p>
+                  <FieldWithHistory
+                    dbField="historic_context"
+                    currentValue={artwork.historic_context}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1156,9 +1352,14 @@ export function CertificateOfAuthenticity({
               {artwork.celebrity_notes && (
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Special Notes on Celebrity or Notable Ownership</p>
-                  <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">
-                    {artwork.celebrity_notes}
-                  </p>
+                  <FieldWithHistory
+                    dbField="celebrity_notes"
+                    currentValue={artwork.celebrity_notes}
+                    history={artwork.provenance_history}
+                    renderValue={(v) => (
+                      <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
+                    )}
+                  />
                 </div>
               )}
 
