@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Eye, Sparkles, Tag, X } from 'lucide-react';
 import { PrintMenu } from './print-menu';
 import { SendMenu } from './send-menu';
+import { RegistryPhotoToggle } from '~/app/artworks/my/_components/registry-photo-toggle';
+import { getSelectedProfileId } from '~/components/profile-switcher';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -74,6 +76,7 @@ type Artwork = {
   image_url: string | null;
   is_sold: boolean | null;
   display_order: number | null;
+  certificate_type?: string | null;
 };
 
 type ArtworkFormData = {
@@ -509,6 +512,7 @@ export function SpreadsheetEditForm({
   galleryName,
   senderRole,
   galleryProfiles = [],
+  registryArtworkIdByScope = {},
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
@@ -519,6 +523,11 @@ export function SpreadsheetEditForm({
   galleryName?: string;
   senderRole?: UserRole | null;
   galleryProfiles?: { id: string; name: string; role: string }[];
+  /**
+   * Map of scope key → currently-selected registry artwork ID.
+   * Key is 'artist' for artist mode, or the gallery profile ID for gallery mode.
+   */
+  registryArtworkIdByScope?: Record<string, string | null>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -526,6 +535,40 @@ export function SpreadsheetEditForm({
   const [success, setSuccess] = useState(false);
   const [previewArtworkId, setPreviewArtworkId] = useState<string | null>(null);
   const isAssignFlow = Boolean(assignExhibitionId);
+
+  // ── Registry photo state ──────────────────────────────────────────
+  // Mirrors registryArtworkIdByScope but is updated optimistically when the
+  // user toggles the star so the UI reflects the change without a round-trip.
+  const [registrySelections, setRegistrySelections] = useState<Record<string, string | null>>(
+    registryArtworkIdByScope,
+  );
+
+  /** Whether the current mode supports setting a registry photo. */
+  const canSetRegistryPhoto =
+    senderRole === 'artist' || senderRole === 'gallery';
+
+  /** Scope key for the currently active mode: 'artist' or the gallery profile id. */
+  function getActiveScopeKey(): string | null {
+    if (senderRole === 'artist') return 'artist';
+    if (senderRole === 'gallery') {
+      const profileId = getSelectedProfileId();
+      return profileId ?? null;
+    }
+    return null;
+  }
+
+  /** The artwork currently pinned as the registry photo for the active scope. */
+  function getActiveRegistryArtworkId(): string | null {
+    const key = getActiveScopeKey();
+    if (!key) return null;
+    return registrySelections[key] ?? null;
+  }
+
+  const handleRegistryToggled = (artworkId: string | null) => {
+    const key = getActiveScopeKey();
+    if (!key) return;
+    setRegistrySelections((prev) => ({ ...prev, [key]: artworkId }));
+  };
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState(
     isAssignFlow ? '__unassigned__' : '__all__',
   );
@@ -1140,54 +1183,68 @@ export function SpreadsheetEditForm({
             <div className="flex gap-3 py-1">
               {filteredArtworks.map((artwork) => {
                 const isSelected = selectedArtworkIds.has(artwork.id);
+                const isCoa = artwork.certificate_type === 'authenticity';
+                const scopeKey = getActiveScopeKey();
+                const isRegistryPhoto = isCoa && !!scopeKey && getActiveRegistryArtworkId() === artwork.id;
                 return (
-                  <button
-                    key={artwork.id}
-                    type="button"
-                    onClick={() => toggleArtworkSelection(artwork.id)}
-                    className={cn(
-                      'snap-start shrink-0 w-[min(9.25rem,calc(50vw-1.75rem))] sm:w-[132px] p-2 rounded-xl border text-left transition-all touch-manipulation',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
-                      isSelected
-                        ? 'border-wine bg-wine/10 shadow-sm ring-1 ring-wine/20'
-                        : 'border-wine/20 bg-parchment/80 opacity-80 hover:opacity-100 active:scale-[0.99]',
-                    )}
-                    aria-pressed={isSelected}
-                  >
-                    <div className="relative w-full aspect-[4/3] min-h-[5.5rem] rounded-lg overflow-hidden border border-wine/20 bg-ink/5">
-                      {artwork.image_url ? (
-                        <Image
-                          src={artwork.image_url}
-                          alt={artwork.title || 'Artwork'}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width:640px) 45vw, 132px"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-ink/40 text-xs font-serif">No Image</span>
-                        </div>
+                  <div key={artwork.id} className="group snap-start shrink-0 w-[min(9.25rem,calc(50vw-1.75rem))] sm:w-[132px]">
+                    <button
+                      type="button"
+                      onClick={() => toggleArtworkSelection(artwork.id)}
+                      className={cn(
+                        'w-full p-2 rounded-xl border text-left transition-all touch-manipulation',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/40 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
+                        isSelected
+                          ? 'border-wine bg-wine/10 shadow-sm ring-1 ring-wine/20'
+                          : 'border-wine/20 bg-parchment/80 opacity-80 hover:opacity-100 active:scale-[0.99]',
+                        isRegistryPhoto && 'ring-2 ring-wine/40',
                       )}
-                      {isSelected ? (
-                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-wine text-parchment flex items-center justify-center">
-                          <Check className="w-3.5 h-3.5" />
-                        </div>
-                      ) : null}
-                      {(artworkData[artwork.id]?.is_sold || artwork.is_sold) ? (
-                        <div className="absolute bottom-1 left-1 rounded px-1.5 py-0.5 bg-ink/80 text-parchment text-[9px] font-display font-bold tracking-wider uppercase">
-                          Sold
-                        </div>
-                      ) : null}
-                      {artwork.display_order != null ? (
-                        <div className="absolute top-1 left-1 rounded px-1.5 py-0.5 bg-wine/80 text-parchment text-[9px] font-display font-bold">
-                          #{artwork.display_order}
-                        </div>
-                      ) : null}
-                    </div>
-                    <p className="mt-2 text-xs font-serif text-ink line-clamp-2 min-h-[2.25rem] text-left leading-snug">
-                      {artwork.title || 'Untitled'}
-                    </p>
-                  </button>
+                      aria-pressed={isSelected}
+                    >
+                      <div className="relative w-full aspect-[4/3] min-h-[5.5rem] rounded-lg overflow-hidden border border-wine/20 bg-ink/5">
+                        {artwork.image_url ? (
+                          <Image
+                            src={artwork.image_url}
+                            alt={artwork.title || 'Artwork'}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width:640px) 45vw, 132px"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-ink/40 text-xs font-serif">No Image</span>
+                          </div>
+                        )}
+                        {isSelected ? (
+                          <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-wine text-parchment flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                        ) : null}
+                        {(artworkData[artwork.id]?.is_sold || artwork.is_sold) ? (
+                          <div className="absolute bottom-1 left-1 rounded px-1.5 py-0.5 bg-ink/80 text-parchment text-[9px] font-display font-bold tracking-wider uppercase">
+                            Sold
+                          </div>
+                        ) : null}
+                        {artwork.display_order != null ? (
+                          <div className="absolute top-1 left-1 rounded px-1.5 py-0.5 bg-wine/80 text-parchment text-[9px] font-display font-bold">
+                            #{artwork.display_order}
+                          </div>
+                        ) : null}
+                        {canSetRegistryPhoto && isCoa && scopeKey && (
+                          <RegistryPhotoToggle
+                            artworkId={artwork.id}
+                            mode={senderRole as 'artist' | 'gallery'}
+                            galleryProfileId={senderRole === 'gallery' ? (scopeKey !== 'artist' ? scopeKey : undefined) : undefined}
+                            isSelected={isRegistryPhoto}
+                            onToggled={handleRegistryToggled}
+                          />
+                        )}
+                      </div>
+                      <p className="mt-2 text-xs font-serif text-ink line-clamp-2 min-h-[2.25rem] text-left leading-snug">
+                        {artwork.title || 'Untitled'}
+                      </p>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -1345,21 +1402,42 @@ export function SpreadsheetEditForm({
                         </div>
 
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                          {artwork.image_url ? (
-                            <div className="relative mx-auto w-full max-w-[11rem] aspect-square sm:mx-0 sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg overflow-hidden border border-wine/20 shadow-sm">
-                              <Image
-                                src={artwork.image_url}
-                                alt={data.title || artwork.title}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width:640px) 90vw, 80px"
-                              />
-                            </div>
-                          ) : (
-                            <div className="mx-auto w-full max-w-[11rem] aspect-square sm:mx-0 sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg border border-wine/20 bg-ink/5 flex items-center justify-center">
-                              <span className="text-ink/30 text-xs font-serif">No image</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const isCoa = artwork.certificate_type === 'authenticity';
+                            const scopeKey = getActiveScopeKey();
+                            const isPanelRegistryPhoto = isCoa && !!scopeKey && getActiveRegistryArtworkId() === artwork.id;
+                            return (
+                              <div className="group mx-auto sm:mx-0 flex-shrink-0">
+                                {artwork.image_url ? (
+                                  <div className={cn(
+                                    'relative w-full max-w-[11rem] aspect-square sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto rounded-xl sm:rounded-lg overflow-hidden border border-wine/20 shadow-sm',
+                                    isPanelRegistryPhoto && 'ring-2 ring-wine/40',
+                                  )}>
+                                    <Image
+                                      src={artwork.image_url}
+                                      alt={data.title || artwork.title}
+                                      fill
+                                      className="object-cover"
+                                      sizes="(max-width:640px) 90vw, 80px"
+                                    />
+                                    {canSetRegistryPhoto && isCoa && scopeKey && (
+                                      <RegistryPhotoToggle
+                                        artworkId={artwork.id}
+                                        mode={senderRole as 'artist' | 'gallery'}
+                                        galleryProfileId={senderRole === 'gallery' ? (scopeKey !== 'artist' ? scopeKey : undefined) : undefined}
+                                        isSelected={isPanelRegistryPhoto}
+                                        onToggled={handleRegistryToggled}
+                                      />
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="w-full max-w-[11rem] aspect-square sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg border border-wine/20 bg-ink/5 flex items-center justify-center">
+                                    <span className="text-ink/30 text-xs font-serif">No image</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div className="min-w-0 flex-1 space-y-2 w-full">
                             <div className="space-y-1">
                               <Label className="text-xs font-serif text-ink/60">Title</Label>

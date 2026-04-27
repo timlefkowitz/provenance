@@ -60,7 +60,7 @@ export default async function MyArtworksPage({
        medium, dimensions, former_owners, auction_history, exhibition_history,
        historic_context, celebrity_notes, is_public, value, value_is_public,
        edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
-       image_url, created_at, is_sold, display_order`,
+       image_url, created_at, is_sold, display_order, certificate_type`,
     )
     .eq('account_id', user.id)
     .eq('status', 'verified')
@@ -180,6 +180,22 @@ export default async function MyArtworksPage({
   const assignExhibitionId = assignExhibition?.id ?? null;
   const assignExhibitionTitle = assignExhibition?.title ?? null;
 
+  // Fetch user_profiles to know which artwork is pinned as the registry photo.
+  // We need both the artist profile and all gallery profiles so the UI can
+  // show the current selection per-mode.
+  const { data: profilesWithPick } = await (client as any)
+    .from('user_profiles')
+    .select('id, role, registry_artwork_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true);
+
+  // Build a lookup: 'artist' → artworkId, galleryProfileId → artworkId
+  const registryArtworkIdByScope: Record<string, string | null> = {};
+  for (const prof of profilesWithPick || []) {
+    const key = prof.role === 'artist' ? 'artist' : (prof.id as string);
+    registryArtworkIdByScope[key] = (prof.registry_artwork_id as string | null) ?? null;
+  }
+
   const count = artworks.length;
 
   return (
@@ -225,6 +241,7 @@ export default async function MyArtworksPage({
           assignExhibitionTitle={assignExhibitionTitle}
           galleryName={accountRow?.name ?? undefined}
           senderRole={activeRole}
+          registryArtworkIdByScope={registryArtworkIdByScope}
         />
       </div>
     </div>

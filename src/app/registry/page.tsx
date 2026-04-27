@@ -49,9 +49,10 @@ export default async function RegistryPage() {
 
   const accountsList = accounts || [];
 
-  const { data: galleryProfiles, error: profilesError } = await client
+  // Fetch gallery profiles — include registry_artwork_id so we can honor explicit picks
+  const { data: galleryProfiles, error: profilesError } = await (client as any)
     .from('user_profiles')
-    .select('id, user_id, name, picture_url, role, created_at, slug')
+    .select('id, user_id, name, picture_url, role, created_at, slug, registry_artwork_id')
     .eq('role', USER_ROLES.GALLERY)
     .eq('is_active', true)
     .order('name', { ascending: true })
@@ -62,12 +63,12 @@ export default async function RegistryPage() {
   }
 
   const listedGalleryProfiles =
-    galleryProfiles?.filter((p) =>
+    (galleryProfiles as any[] ?? []).filter((p: any) =>
       isPublicDirectoryGallery({
         name: p.name,
-        slug: (p as { slug?: string | null }).slug,
+        slug: p.slug,
       }),
-    ) ?? [];
+    );
 
   console.log('[Registry] Public directory galleries', {
     listed: listedGalleryProfiles.length,
@@ -76,7 +77,7 @@ export default async function RegistryPage() {
 
   const combinedList: AccountRow[] = [];
 
-  listedGalleryProfiles.forEach((profile) => {
+  listedGalleryProfiles.forEach((profile: any) => {
     combinedList.push({
       id: profile.user_id,
       name: profile.name,
@@ -85,13 +86,13 @@ export default async function RegistryPage() {
       created_at: profile.created_at,
       role: USER_ROLES.GALLERY,
       profileId: profile.id,
-      profileSlug: (profile as { slug?: string | null }).slug ?? null,
+      profileSlug: profile.slug ?? null,
     });
   });
 
   accountsList.forEach((account) => {
-    const hasAnyGalleryProfile = galleryProfiles?.some((p) => p.user_id === account.id) ?? false;
-    const hasListedGalleryProfile = listedGalleryProfiles.some((p) => p.user_id === account.id);
+    const hasAnyGalleryProfile = (galleryProfiles as any[] ?? []).some((p: any) => p.user_id === account.id);
+    const hasListedGalleryProfile = listedGalleryProfiles.some((p: any) => p.user_id === account.id);
     const accountRole = getUserRole(account.public_data as Record<string, unknown> | null);
 
     if (!hasAnyGalleryProfile) {
@@ -157,6 +158,7 @@ export default async function RegistryPage() {
   });
 
   try {
+    // ── Gallery previews: COAs only, most-recent fallback ──────────────
     if (galleryProfileIds.length > 0) {
       const { data: galleryArtRows, error: gErr } = await (client as any)
         .from('artworks')
@@ -164,6 +166,7 @@ export default async function RegistryPage() {
         .in('gallery_profile_id', galleryProfileIds)
         .eq('status', 'verified')
         .eq('is_public', true)
+        .eq('certificate_type', 'authenticity')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(2000);
@@ -186,8 +189,37 @@ export default async function RegistryPage() {
           artworkPreviewKeys.add(key);
         }
       }
+
+      // Override with user-selected registry artwork where set
+      const galleryRegistryPicks = listedGalleryProfiles.filter(
+        (p: any) => p.registry_artwork_id,
+      );
+      if (galleryRegistryPicks.length > 0) {
+        const pickArtworkIds = galleryRegistryPicks.map((p: any) => p.registry_artwork_id as string);
+        const { data: pickedRows } = await (client as any)
+          .from('artworks')
+          .select('id, gallery_profile_id, image_url')
+          .in('id', pickArtworkIds)
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .eq('certificate_type', 'authenticity')
+          .not('image_url', 'is', null);
+
+        for (const picked of pickedRows || []) {
+          const gid = picked.gallery_profile_id as string | null;
+          if (!gid) continue;
+          const profile = combinedList.find((a) => a.profileId === gid);
+          if (!profile) continue;
+          const key = registryRowKey(profile);
+          if (picked.image_url) {
+            previewByKey[key] = picked.image_url as string;
+            artworkPreviewKeys.add(key);
+          }
+        }
+      }
     }
 
+    // ── Artist previews: COAs only, most-recent fallback ──────────────
     if (nonGalleryAccountIds.length > 0) {
       const candidates: PreviewCandidate[] = [];
 
@@ -198,6 +230,7 @@ export default async function RegistryPage() {
         .is('gallery_profile_id', null)
         .eq('status', 'verified')
         .eq('is_public', true)
+        .eq('certificate_type', 'authenticity')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(2000);
@@ -221,6 +254,7 @@ export default async function RegistryPage() {
         .in('artist_account_id', nonGalleryAccountIds)
         .eq('status', 'verified')
         .eq('is_public', true)
+        .eq('certificate_type', 'authenticity')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(2000);
@@ -248,6 +282,45 @@ export default async function RegistryPage() {
         assigned.add(c.rowKey);
         previewByKey[c.rowKey] = c.image_url;
         artworkPreviewKeys.add(c.rowKey);
+      }
+
+      // Override with user-selected registry artwork where set
+      const { data: artistProfilesWithPick } = await (client as any)
+        .from('user_profiles')
+        .select('user_id, registry_artwork_id')
+        .in('user_id', nonGalleryAccountIds)
+        .eq('role', 'artist')
+        .eq('is_active', true)
+        .not('registry_artwork_id', 'is', null);
+
+      if (artistProfilesWithPick && artistProfilesWithPick.length > 0) {
+        const pickIds = artistProfilesWithPick.map((p: any) => p.registry_artwork_id as string);
+        const { data: pickedArtworks } = await (client as any)
+          .from('artworks')
+          .select('id, account_id, artist_account_id, image_url')
+          .in('id', pickIds)
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .eq('certificate_type', 'authenticity')
+          .not('image_url', 'is', null);
+
+        const artworkById: Record<string, any> = {};
+        for (const a of pickedArtworks || []) {
+          artworkById[a.id] = a;
+        }
+
+        for (const prof of artistProfilesWithPick) {
+          const artwork = artworkById[prof.registry_artwork_id];
+          if (!artwork) continue;
+          // The artwork must be related to this user
+          const userId = prof.user_id as string;
+          if (artwork.account_id !== userId && artwork.artist_account_id !== userId) continue;
+          if (!nonGalleryAccountIds.includes(userId)) continue;
+          if (artwork.image_url) {
+            previewByKey[userId] = artwork.image_url as string;
+            artworkPreviewKeys.add(userId);
+          }
+        }
       }
     }
   } catch (previewErr) {
