@@ -39,7 +39,9 @@ export type NotificationType =
   | 'exhibition_plan_counterparty_linked'
   | 'exhibition_plan_status_update'
   | 'inventory_location_counterparty_linked'
-  | 'vendor_counterparty_linked';
+  | 'vendor_counterparty_linked'
+  | 'trial_expiring'
+  | 'subscription_payment_failed';
 
 export interface CreateNotificationParams {
   userId: string;

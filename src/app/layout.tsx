@@ -13,6 +13,7 @@ import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { ClientAnalytics } from "~/components/client-analytics";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
+import { TrialBanner } from "~/components/trial-banner";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { cn } from "@kit/ui/utils";
 
@@ -102,6 +103,7 @@ export default async function RootLayout({
         <RootProviders lang={currentLang} theme={currentTheme}>
           <OnboardingGuard>
             <Navigation initialUser={initialUser} />
+            <TrialBanner />
             <StreakActivityTracker />
             <GalleryProfileNotification />
             {children}
