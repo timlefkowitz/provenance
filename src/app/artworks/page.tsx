@@ -9,12 +9,17 @@ export const metadata = {
   title: 'Artworks | Provenance',
 };
 
-// Enable dynamic rendering for real-time data
 export const dynamic = 'force-dynamic';
-// Revalidate every 60 seconds for fresh data
 export const revalidate = 60;
 
 const ARTWORKS_PER_PAGE = 12;
+const GROUPS_PER_PAGE = 8; // for the "By Artist" grouped view
+
+type ViewMode = 'artist' | 'top' | 'trending';
+
+function isViewMode(v: string | undefined): v is ViewMode {
+  return v === 'artist' || v === 'top' || v === 'trending';
+}
 
 /** Escape for use in ilike: % and _ are wildcards in PostgreSQL */
 function escapeIlike(s: string): string {
@@ -35,37 +40,55 @@ function applyTextAndMediumFilter<T>(qb: T, q: string, medium: string): T {
   return chain as T;
 }
 
+type ArtworkRow = {
+  id: string;
+  title: string;
+  artist_name: string | null;
+  image_url: string | null;
+  created_at: string;
+  certificate_number: string;
+  account_id: string;
+  medium: string | null;
+  is_public: boolean | null;
+  favorites_count?: number | null;
+};
+
+type ArtistGroup = {
+  artist_name: string | null;
+  account_id: string;
+  latestAt: string;
+  artworks: ArtworkRow[];
+};
+
 export default async function ArtworksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; q?: string; medium?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string; medium?: string; view?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const page = parseInt(resolvedSearchParams?.page || '1', 10);
   const q = (resolvedSearchParams?.q ?? '').trim();
   const medium = (resolvedSearchParams?.medium ?? '').trim();
+  const rawView = resolvedSearchParams?.view;
+  const view: ViewMode = isViewMode(rawView) ? rawView : 'artist';
   const offset = (page - 1) * ARTWORKS_PER_PAGE;
+  const groupOffset = (page - 1) * GROUPS_PER_PAGE;
 
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
-  let artworks: any[] | null = null;
-  let error: Error | null = null;
-  let totalCount = 0;
-
-  // Prefer admin client for artwork reads so RLS/grants don't block. We enforce the same
-  // visibility rules in code. If service role key is missing, fall back to regular client.
   let admin: ReturnType<typeof getSupabaseServerAdminClient> | null = null;
   try {
     admin = getSupabaseServerAdminClient();
   } catch (e) {
-    // SUPABASE_SERVICE_ROLE_KEY not set or invalid; will use client (RLS applies)
     console.error('[Artworks] Admin client unavailable, using RLS client:', (e as Error).message);
   }
 
   const db = admin ?? (client as any);
 
-  // Fetch distinct mediums for filter dropdown (verified + visible to this user)
+  // -------------------------------------------------------
+  // Fetch distinct mediums for filter dropdown
+  // -------------------------------------------------------
   let mediums: string[] = [];
   try {
     const baseMediumQuery = !user
@@ -85,78 +108,148 @@ export default async function ArtworksPage({
     console.error('[Artworks] Failed to fetch mediums', e);
   }
 
-  if (!user) {
-    const baseCount = db
-      .from('artworks')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'verified')
-      .eq('is_public', true);
-    const baseData = db
-      .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public')
-      .eq('status', 'verified')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + ARTWORKS_PER_PAGE - 1);
-    const [countResult, artworksResult] = await Promise.all([
-      applyTextAndMediumFilter(baseCount, q, medium),
-      applyTextAndMediumFilter(baseData, q, medium),
-    ]);
-    totalCount = countResult.count ?? 0;
-    artworks = artworksResult.data ?? [];
-    if (artworksResult.error) error = artworksResult.error as unknown as Error;
-  } else {
-    const ownBaseCount = db
-      .from('artworks')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'verified')
-      .eq('account_id', user.id);
-    const publicBaseCount = db
-      .from('artworks')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'verified')
-      .eq('is_public', true)
-      .neq('account_id', user.id);
-    const ownBaseData = db
-      .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public')
-      .eq('status', 'verified')
-      .eq('account_id', user.id)
-      .order('created_at', { ascending: false });
-    const publicBaseData = db
-      .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public')
-      .eq('status', 'verified')
-      .eq('is_public', true)
-      .neq('account_id', user.id)
-      .order('created_at', { ascending: false });
-    const [ownCountRes, publicCountRes, ownArtworksResult, publicArtworksResult] = await Promise.all([
-      applyTextAndMediumFilter(ownBaseCount, q, medium),
-      applyTextAndMediumFilter(publicBaseCount, q, medium),
-      applyTextAndMediumFilter(ownBaseData, q, medium),
-      applyTextAndMediumFilter(publicBaseData, q, medium),
-    ]);
-    totalCount = (ownCountRes.count ?? 0) + (publicCountRes.count ?? 0);
-    const allArtworks = [
-      ...(ownArtworksResult.data ?? []),
-      ...(publicArtworksResult.data ?? []),
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    artworks = allArtworks.slice(offset, offset + ARTWORKS_PER_PAGE);
-    error =
-      ownArtworksResult.error || publicArtworksResult.error
-        ? (ownArtworksResult.error || publicArtworksResult.error) as unknown as Error
-        : null;
+  // -------------------------------------------------------
+  // VIEW: TOP FAVORITED or TRENDING — flat grids via the view
+  // -------------------------------------------------------
+  let artworks: ArtworkRow[] = [];
+  let totalCount = 0;
+  let artistGroups: ArtistGroup[] = [];
+  let totalGroups = 0;
+
+  if (view === 'top' || view === 'trending') {
+    const countCol = view === 'top' ? 'favorites_count' : 'trending_count';
+    const selectCols = `id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public, ${countCol}`;
+
+    // Visibility filter: logged-in users see own + public; guests see public only.
+    const buildQuery = (forCount: boolean) => {
+      const base = db
+        .from('artworks_with_favorites')
+        .select(forCount ? '*' : selectCols, forCount ? { count: 'exact', head: true } : undefined);
+      const visible = !user
+        ? base.eq('status', 'verified').eq('is_public', true)
+        : base.eq('status', 'verified').or(`is_public.eq.true,account_id.eq.${user.id}`);
+      // For trending, only include artworks that have at least one recent favorite.
+      const filtered = view === 'trending' ? visible.gt('trending_count', 0) : visible;
+      return filtered;
+    };
+
+    const dataQuery = applyTextAndMediumFilter(
+      buildQuery(false).order(countCol, { ascending: false }).range(offset, offset + ARTWORKS_PER_PAGE - 1),
+      q,
+      medium,
+    );
+    const countQuery = applyTextAndMediumFilter(buildQuery(true), q, medium);
+
+    const [dataRes, countRes] = await Promise.all([dataQuery, countQuery]);
+
+    if (dataRes.error) console.error('[Artworks] view fetch failed', dataRes.error);
+    if (countRes.error) console.error('[Artworks] view count failed', countRes.error);
+
+    artworks = (dataRes.data ?? []).map((r: any) => ({
+      ...r,
+      favorites_count: r[countCol] !== undefined ? Number(r[countCol]) : null,
+    }));
+    totalCount = countRes.count ?? 0;
   }
 
-  if (error) {
-    console.error('[Artworks] Supabase error:', error);
+  // -------------------------------------------------------
+  // VIEW: BY ARTIST (default) — grouped view
+  // -------------------------------------------------------
+  if (view === 'artist') {
+    const COLS = 'id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public';
+
+    if (!user) {
+      const { data: rows, error } = await applyTextAndMediumFilter(
+        db
+          .from('artworks')
+          .select(COLS)
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .order('created_at', { ascending: false }),
+        q,
+        medium,
+      );
+      if (error) console.error('[Artworks] artist-view fetch failed', error);
+      artworks = rows ?? [];
+    } else {
+      const ownData = db
+        .from('artworks')
+        .select(COLS)
+        .eq('status', 'verified')
+        .eq('account_id', user.id)
+        .order('created_at', { ascending: false });
+      const publicData = db
+        .from('artworks')
+        .select(COLS)
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .neq('account_id', user.id)
+        .order('created_at', { ascending: false });
+
+      const [ownRes, publicRes] = await Promise.all([
+        applyTextAndMediumFilter(ownData, q, medium),
+        applyTextAndMediumFilter(publicData, q, medium),
+      ]);
+      if (ownRes.error) console.error('[Artworks] artist-view own fetch failed', ownRes.error);
+      if (publicRes.error) console.error('[Artworks] artist-view public fetch failed', publicRes.error);
+
+      artworks = [
+        ...(ownRes.data ?? []),
+        ...(publicRes.data ?? []),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
+    // Group by account_id in JS, take 3 newest per group, sort groups by latest artwork.
+    const groupMap = new Map<string, ArtistGroup>();
+    for (const artwork of artworks) {
+      const key = artwork.account_id;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          artist_name: artwork.artist_name,
+          account_id: key,
+          latestAt: artwork.created_at,
+          artworks: [],
+        });
+      }
+      const group = groupMap.get(key)!;
+      if (group.artworks.length < 3) {
+        group.artworks.push(artwork);
+      }
+    }
+
+    const allGroups = Array.from(groupMap.values()).sort(
+      (a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime(),
+    );
+
+    totalGroups = allGroups.length;
+    artistGroups = allGroups.slice(groupOffset, groupOffset + GROUPS_PER_PAGE);
   }
 
-  const queryString = [q && `q=${encodeURIComponent(q)}`, medium && `medium=${encodeURIComponent(medium)}`].filter(Boolean).join('&');
+  // -------------------------------------------------------
+  // Pagination helpers
+  // -------------------------------------------------------
+  const viewParam = view !== 'artist' ? `view=${view}&` : '';
+  const queryString = [
+    view !== 'artist' && `view=${view}`,
+    q && `q=${encodeURIComponent(q)}`,
+    medium && `medium=${encodeURIComponent(medium)}`,
+  ]
+    .filter(Boolean)
+    .join('&');
   const paginationBase = queryString ? `/artworks?${queryString}&` : '/artworks?';
+  const isGroupedView = view === 'artist';
+  const totalPages = isGroupedView
+    ? Math.ceil(totalGroups / GROUPS_PER_PAGE)
+    : Math.ceil(totalCount / ARTWORKS_PER_PAGE);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
+
+  // Flat list for the non-grouped views.
+  const hasArtworks = isGroupedView ? artistGroups.length > 0 : artworks.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex-1">
           <h1 className="text-3xl sm:text-4xl font-display font-bold text-wine mb-2">
@@ -188,48 +281,73 @@ export default async function ArtworksPage({
         </div>
       )}
 
+      {/* Search + view toggle */}
       <div className="mb-6">
-        <ArtworksSearchBar mediums={mediums} />
+        <ArtworksSearchBar mediums={mediums} currentView={view} />
       </div>
 
-      {artworks && artworks.length > 0 ? (
+      {/* Content */}
+      {hasArtworks ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {artworks.map((artwork) => (
-              <ArtworkCard 
-                key={artwork.id} 
-                artwork={artwork}
-                currentUserId={user?.id}
-              />
-            ))}
-          </div>
-          
+          {/* GROUPED: By Artist */}
+          {isGroupedView && (
+            <div className="space-y-10">
+              {artistGroups.map((group) => (
+                <section key={group.account_id}>
+                  <h2 className="font-display text-lg font-semibold text-wine mb-3 border-b border-wine/15 pb-1">
+                    {group.artist_name ?? 'Unknown Artist'}
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {group.artworks.map((artwork) => (
+                      <ArtworkCard
+                        key={artwork.id}
+                        artwork={artwork}
+                        currentUserId={user?.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+
+          {/* FLAT: Top Favorited / Trending */}
+          {!isGroupedView && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              {artworks.map((artwork) => (
+                <ArtworkCard
+                  key={artwork.id}
+                  artwork={artwork}
+                  currentUserId={user?.id}
+                  favoritesCount={artwork.favorites_count ?? undefined}
+                  favoritesLabel={view === 'trending' ? 'this week' : undefined}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Pagination */}
-          {totalCount > ARTWORKS_PER_PAGE && (
+          {totalPages > 1 && (
             <div className="mt-8 flex items-center justify-center gap-4">
-              {page > 1 && (
+              {hasPrevPage && (
                 <Button
                   asChild
                   variant="outline"
                   className="font-serif border-wine/30 hover:bg-wine/10"
                 >
-                  <Link href={`${paginationBase}page=${page - 1}`}>
-                    Previous
-                  </Link>
+                  <Link href={`${paginationBase}page=${page - 1}`}>Previous</Link>
                 </Button>
               )}
               <span className="text-ink/70 font-serif text-sm">
-                Page {page} of {Math.ceil(totalCount / ARTWORKS_PER_PAGE)}
+                Page {page} of {totalPages}
               </span>
-              {page < Math.ceil(totalCount / ARTWORKS_PER_PAGE) && (
+              {hasNextPage && (
                 <Button
                   asChild
                   variant="outline"
                   className="font-serif border-wine/30 hover:bg-wine/10"
                 >
-                  <Link href={`${paginationBase}page=${page + 1}`}>
-                    Next
-                  </Link>
+                  <Link href={`${paginationBase}page=${page + 1}`}>Next</Link>
                 </Button>
               )}
             </div>
@@ -238,11 +356,15 @@ export default async function ArtworksPage({
       ) : (
         <div className="text-center py-12 sm:py-16">
           <p className="text-ink/70 font-serif text-base sm:text-lg mb-4 px-4">
-            {user 
-              ? 'No artworks yet. Add an artwork or follow artists to see their work here.' 
-              : 'No artworks yet'}
+            {view === 'trending'
+              ? 'No trending artworks this week.'
+              : view === 'top'
+                ? 'No favorited artworks yet.'
+                : user
+                  ? 'No artworks yet. Add an artwork or follow artists to see their work here.'
+                  : 'No artworks yet'}
           </p>
-          {user && (
+          {user && view === 'artist' && (
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <Button
                 asChild

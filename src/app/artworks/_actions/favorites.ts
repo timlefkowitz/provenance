@@ -4,6 +4,41 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
+import { trackUserStreakActivity } from '~/lib/streak-service';
+
+const FAVORITE_MILESTONES = [10, 50, 100, 250, 500] as const;
+
+function milestoneLabel(count: number): string | null {
+  if (count === 10) return '10 Favorites — Explorer';
+  if (count === 50) return '50 Favorites — Enthusiast';
+  if (count === 100) return '100 Favorites — Patron';
+  if (count === 250) return '250 Favorites — Connoisseur';
+  if (count === 500) return '500 Favorites — Luminary';
+  return null;
+}
+
+async function checkAndNotifyMilestone(client: ReturnType<typeof getSupabaseServerClient>, userId: string) {
+  try {
+    const { count } = await client
+      .from('artwork_favorites')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    const total = count ?? 0;
+    const label = FAVORITE_MILESTONES.includes(total as any) ? milestoneLabel(total) : null;
+    if (!label) return;
+
+    await (client as any).from('notifications').insert({
+      user_id: userId,
+      type: 'artwork_favorited',
+      title: `You reached ${label}!`,
+      message: `You've favorited ${total} artworks — keep exploring.`,
+      metadata: { milestone: total },
+    });
+  } catch (err) {
+    logger.error('favorite_milestone_notification_failed', { userId, err });
+  }
+}
 
 /**
  * Add an artwork to user's favorites
@@ -80,6 +115,17 @@ export async function addFavorite(artworkId: string) {
       });
     }
   }
+
+  // Bump streak + check daily bonus for the favoriter (fire-and-forget).
+  void trackUserStreakActivity(client, {
+    userId: user.id,
+    activityType: 'artwork_favorited',
+  }).catch((err) =>
+    logger.error('favorite_streak_track_failed', { userId: user.id, err }),
+  );
+
+  // Check if the favoriter hit a milestone total (fire-and-forget).
+  void checkAndNotifyMilestone(client, user.id);
 
   revalidatePath('/portal');
   revalidatePath('/artworks');

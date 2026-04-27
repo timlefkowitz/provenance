@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { logger } from './logger';
 
 export type StarTier = 'bronze' | 'silver' | 'gold';
-export type StreakActivityType = 'daily_activity' | 'artwork_uploaded';
+export type StreakActivityType = 'daily_activity' | 'artwork_uploaded' | 'artwork_favorited';
 
 export type UserStreakRecord = {
   user_id: string;
@@ -13,6 +13,9 @@ export type UserStreakRecord = {
   daily_upload_date: string | null;
   has_daily_upload_bonus: boolean;
   star_tier: StarTier;
+  daily_favorite_count: number;
+  daily_favorite_date: string | null;
+  has_daily_favorite_bonus: boolean;
 };
 
 export type TrackStreakInput = {
@@ -82,6 +85,26 @@ export function calculateNextStreakState(
     }
   }
 
+  // Favorite bonus: track daily favorites; 5 in a day = one-time +1 streak boost.
+  let dailyFavoriteDate = current.daily_favorite_date;
+  let dailyFavoriteCount = current.daily_favorite_count ?? 0;
+  let hasDailyFavoriteBonus = current.has_daily_favorite_bonus ?? false;
+
+  if (dailyFavoriteDate !== today) {
+    dailyFavoriteDate = today;
+    dailyFavoriteCount = 0;
+    hasDailyFavoriteBonus = false;
+  }
+
+  if (activityType === 'artwork_favorited') {
+    dailyFavoriteCount += 1;
+
+    if (!hasDailyFavoriteBonus && dailyFavoriteCount >= 5) {
+      currentStreakDays += 1;
+      hasDailyFavoriteBonus = true;
+    }
+  }
+
   longestStreakDays = Math.max(longestStreakDays, currentStreakDays);
 
   return {
@@ -91,6 +114,9 @@ export function calculateNextStreakState(
     daily_upload_count: dailyUploadCount,
     daily_upload_date: dailyUploadDate,
     has_daily_upload_bonus: hasDailyUploadBonus,
+    daily_favorite_count: dailyFavoriteCount,
+    daily_favorite_date: dailyFavoriteDate,
+    has_daily_favorite_bonus: hasDailyFavoriteBonus,
     star_tier: getStarTier(currentStreakDays),
   };
 }
@@ -102,7 +128,7 @@ async function getOrCreateUserStreak(
   const { data, error } = await client
     .from('user_streaks')
     .select(
-      'user_id, current_streak_days, longest_streak_days, last_active_date, daily_upload_count, daily_upload_date, has_daily_upload_bonus, star_tier',
+      'user_id, current_streak_days, longest_streak_days, last_active_date, daily_upload_count, daily_upload_date, has_daily_upload_bonus, star_tier, daily_favorite_count, daily_favorite_date, has_daily_favorite_bonus',
     )
     .eq('user_id', userId)
     .maybeSingle();
@@ -124,13 +150,16 @@ async function getOrCreateUserStreak(
     daily_upload_date: null,
     has_daily_upload_bonus: false,
     star_tier: 'bronze',
+    daily_favorite_count: 0,
+    daily_favorite_date: null,
+    has_daily_favorite_bonus: false,
   };
 
   const { data: created, error: insertError } = await client
     .from('user_streaks')
     .insert(initial)
     .select(
-      'user_id, current_streak_days, longest_streak_days, last_active_date, daily_upload_count, daily_upload_date, has_daily_upload_bonus, star_tier',
+      'user_id, current_streak_days, longest_streak_days, last_active_date, daily_upload_count, daily_upload_date, has_daily_upload_bonus, star_tier, daily_favorite_count, daily_favorite_date, has_daily_favorite_bonus',
     )
     .single();
 
@@ -169,7 +198,7 @@ export async function trackUserStreakActivity(
       .update(nextState)
       .eq('user_id', input.userId)
       .select(
-        'user_id, current_streak_days, longest_streak_days, last_active_date, daily_upload_count, daily_upload_date, has_daily_upload_bonus, star_tier',
+        'user_id, current_streak_days, longest_streak_days, last_active_date, daily_upload_count, daily_upload_date, has_daily_upload_bonus, star_tier, daily_favorite_count, daily_favorite_date, has_daily_favorite_bonus',
       )
       .single();
 

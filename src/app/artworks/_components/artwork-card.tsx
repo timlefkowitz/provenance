@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trash2, MoreVertical, Globe, EyeOff } from 'lucide-react';
+import { Trash2, MoreVertical, Globe, EyeOff, Heart } from 'lucide-react';
 import { Card, CardFooter, CardHeader } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import {
@@ -53,11 +53,15 @@ export function ArtworkCard({
   currentUserId,
   initialFavorited,
   initialFollowingArtist,
+  favoritesCount,
+  favoritesLabel,
 }: {
   artwork: Artwork;
   currentUserId?: string;
   initialFavorited?: boolean;
   initialFollowingArtist?: boolean;
+  favoritesCount?: number;
+  favoritesLabel?: string;
 }) {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
@@ -192,6 +196,16 @@ export function ArtworkCard({
           prefetch={false}
         >
           <div className="relative aspect-square bg-parchment overflow-hidden">
+          {/* Favorites count badge — shown only in Top/Trending view */}
+          {favoritesCount !== undefined && favoritesCount > 0 && (
+            <div className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-full bg-white/90 border border-wine/20 px-2 py-0.5 text-xs font-serif text-wine shadow-sm">
+              <Heart className="h-3 w-3 fill-wine" aria-hidden />
+              {favoritesCount}
+              {favoritesLabel && (
+                <span className="text-ink/50 ml-0.5">{favoritesLabel}</span>
+              )}
+            </div>
+          )}
           {artwork.image_url && !imageError ? (
             <Image
               src={artwork.image_url}
