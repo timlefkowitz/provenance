@@ -30,7 +30,6 @@ import { FollowButton } from './follow-button';
 import { FavoriteButton } from './favorite-button';
 import { deleteArtwork } from '../[id]/_actions/delete-artwork';
 import { toggleArtworkVisibility } from '../_actions/toggle-artwork-visibility';
-import { SignInInvitationDialog } from '~/components/sign-in-invitation-dialog';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 
 export type ArtworkCardArtwork = {
@@ -71,9 +70,7 @@ export function ArtworkCard({
   const [optimisticIsPublic, setOptimisticIsPublic] = useState<boolean | null>(
     artwork.is_public ?? null,
   );
-  const [showSignInDialog, setShowSignInDialog] = useState(false);
   const isOwnArtwork = currentUserId === artwork.account_id;
-  const isAuthenticated = !!currentUserId;
   const resolvedIsPublic = optimisticIsPublic ?? artwork.is_public ?? null;
 
   const handleToggleVisibility = (next: boolean) => {
@@ -99,13 +96,6 @@ export function ArtworkCard({
     });
   };
 
-  const handleArtworkClick = (e: React.MouseEvent) => {
-    if (!isAuthenticated) {
-      e.preventDefault();
-      setShowSignInDialog(true);
-    }
-  };
-
   const handleDelete = () => {
     setDeletePending(true);
     startTransition(async () => {
@@ -122,8 +112,7 @@ export function ArtworkCard({
   };
 
   return (
-    <>
-      <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden h-full flex flex-col relative">
+    <Card className="group hover:shadow-lg transition-all duration-300 border-wine/20 hover:border-wine/40 bg-white overflow-hidden h-full flex flex-col relative">
         {/* Action Buttons - Top Right */}
         <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
           {/* Favorite Button - Show for all authenticated users */}
@@ -192,7 +181,6 @@ export function ArtworkCard({
         <Link
           href={`/artworks/${artwork.id}/certificate`}
           className="cursor-pointer"
-          onClick={handleArtworkClick}
           prefetch={false}
         >
           <div className="relative aspect-square bg-parchment overflow-hidden">
@@ -228,7 +216,6 @@ export function ArtworkCard({
           <Link
             href={`/artworks/${artwork.id}/certificate`}
             className="cursor-pointer"
-            onClick={handleArtworkClick}
             prefetch={false}
           >
           <h3 className="font-display font-bold text-wine text-lg mb-1 line-clamp-2 group-hover:text-wine/80 transition-colors">
@@ -329,12 +316,6 @@ export function ArtworkCard({
         )}
       </CardFooter>
     </Card>
-    <SignInInvitationDialog
-      open={showSignInDialog}
-      onOpenChange={setShowSignInDialog}
-      artworkTitle={artwork.title}
-    />
-    </>
   );
 }
 
