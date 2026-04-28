@@ -1,0 +1,17 @@
+# Cursor
+
+This file points to the canonical AI playbook for this repo.
+
+Read AGENTS.md at the repo root before writing or editing code. It documents:
+
+- the workspace layout and path aliases (`~/*`, `@kit/*`, `@provenance/*`)
+- the Supabase client selection rules (server / admin / browser)
+- the auth + roles + perspective model and `requireAdmin()` pattern
+- the UI design system (parchment / ink / wine, Gotham, @kit/ui)
+- the AI SDK 6 conventions (Vercel AI Gateway, `Output.object`, no edge runtime)
+- the migrations + RLS + DATA-SAFE rule
+- the Server Action / Route Handler / rate-limit / notifications conventions
+- a cheat-sheet of recipes for the most common task types
+
+The .mdc files in .cursor/rules/ remain authoritative for the rules they cover
+(logging, data-safe migrations).
