@@ -11,6 +11,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getFeaturedArtworksList } from '../_actions/get-featured-entry';
 import { removeFeaturedArtwork, sendFeaturedNotificationsToAll } from '../_actions/manage-featured-artworks';
+import { adminMonoLabel, adminPanel } from './admin-dash-tokens';
 
 type Artwork = {
   id: string;
@@ -27,7 +28,6 @@ export function FeaturedArtworksManager() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Load current featured artworks
   useEffect(() => {
     async function loadFeaturedArtworks() {
       try {
@@ -69,17 +69,16 @@ export function FeaturedArtworksManager() {
     startTransition(async () => {
       try {
         const result = await removeFeaturedArtwork(artworkId);
-        
+
         if (result.error) {
           toast.error(result.error);
         } else {
-          // Remove from local state
-          setArtworks(artworks.filter(a => a.id !== artworkId));
+          setArtworks(artworks.filter((a) => a.id !== artworkId));
           toast.success('Artwork removed from featured list');
           router.refresh();
         }
       } catch (e) {
-        console.error('[FeaturedArtworksManager] Error removing featured artwork', e);
+        console.error('Error removing featured artwork:', e);
         toast.error('Something went wrong. Please try again.');
       }
     });
@@ -87,103 +86,107 @@ export function FeaturedArtworksManager() {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={adminPanel}>
         <CardContent className="p-6">
-          <p className="text-ink/70 font-serif">Loading...</p>
+          <p className="font-mono text-sm text-slate-500">Loading…</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Featured Artworks</CardTitle>
-        <CardDescription>
-          Manage up to 10 featured artworks. The homepage will randomly display one of these artworks each time it loads.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+    <section>
+      <p className={`${adminMonoLabel} mb-3`}>featured</p>
+      <Card className={adminPanel}>
+        <CardHeader className="border-b border-[#1793d1]/15">
+          <CardTitle className="font-mono text-lg text-[#67d4ff]">featured_artworks</CardTitle>
+          <CardDescription className="font-mono text-xs text-slate-500">
+            Up to 10 — homepage rotates one at random per load.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {error && (
+            <Alert
+              variant="destructive"
+              className="mb-4 border-red-500/40 bg-red-950/40 text-red-100"
+            >
+              <AlertTitle className="font-mono text-sm">Error</AlertTitle>
+              <AlertDescription className="font-mono text-xs">{error}</AlertDescription>
+            </Alert>
+          )}
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-ink/70 font-serif">
-              {artworks.length} of 10 artworks featured
-            </p>
-            {artworks.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNotifyAll}
-                disabled={notifying}
-                className="gap-2 text-wine border-wine/30 hover:bg-wine/5"
-              >
-                <Mail className="h-4 w-4" />
-                {notifying ? 'Sending…' : 'Notify all artists'}
-              </Button>
+          <div className="space-y-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-mono text-sm text-slate-500">
+                {artworks.length} of 10 in rotation
+              </p>
+              {artworks.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNotifyAll}
+                  disabled={notifying}
+                  className="gap-2 rounded-sm border-[#1793d1]/35 font-mono text-xs text-[#67d4ff] hover:bg-[#1793d1]/10"
+                >
+                  <Mail className="h-4 w-4" />
+                  {notifying ? 'Sending…' : 'Notify all artists'}
+                </Button>
+              )}
+            </div>
+
+            {artworks.length === 0 ? (
+              <div className="rounded-sm border border-[#1793d1]/20 bg-[#0f1318] py-8 text-center">
+                <p className="font-mono text-sm text-slate-500">
+                  No featured artworks — use &quot;Feature on Homepage&quot; on an artwork page.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {artworks.map((artwork) => (
+                  <div
+                    key={artwork.id}
+                    className="relative rounded-sm border border-[#1793d1]/25 bg-[#0f1318] p-4 transition-colors hover:border-[#1793d1]/40"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(artwork.id)}
+                      disabled={pending}
+                      className="absolute right-2 top-2 z-10 rounded-sm bg-red-600/90 p-1 text-white hover:bg-red-500"
+                      aria-label="Remove from featured"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+
+                    <Link href={`/artworks/${artwork.id}/certificate`} className="block">
+                      <div className="relative mb-3 aspect-square overflow-hidden rounded-sm bg-[#12151c]">
+                        {artwork.image_url ? (
+                          <Image
+                            src={artwork.image_url}
+                            alt={artwork.title}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center font-mono text-sm text-slate-600">
+                            No image
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="mb-1 line-clamp-2 font-mono text-sm font-medium text-[#67d4ff]">
+                        {artwork.title}
+                      </h3>
+                      {artwork.artist_name && (
+                        <p className="font-mono text-xs text-slate-500">{artwork.artist_name}</p>
+                      )}
+                    </Link>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-
-          {artworks.length === 0 ? (
-            <div className="text-center py-8 border border-wine/20 rounded-lg bg-parchment/50">
-              <p className="text-ink/70 font-serif">
-                No featured artworks yet. Use the "Feature on Homepage" button on any artwork page to add it.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {artworks.map((artwork) => (
-                <div
-                  key={artwork.id}
-                  className="relative border border-wine/20 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
-                >
-                  <button
-                    onClick={() => handleRemove(artwork.id)}
-                    disabled={pending}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
-                    aria-label="Remove from featured"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  
-                  <Link href={`/artworks/${artwork.id}/certificate`} className="block">
-                    <div className="relative aspect-square bg-parchment rounded-lg overflow-hidden mb-3">
-                      {artwork.image_url ? (
-                        <Image
-                          src={artwork.image_url}
-                          alt={artwork.title}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-ink/30 font-serif text-sm">
-                          No Image
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="font-display font-bold text-wine text-sm mb-1 line-clamp-2">
-                      {artwork.title}
-                    </h3>
-                    {artwork.artist_name && (
-                      <p className="text-xs text-ink/60 font-serif">
-                        {artwork.artist_name}
-                      </p>
-                    )}
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
-

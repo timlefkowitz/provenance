@@ -5,6 +5,7 @@ import {
   LogIn,
   MousePointerClick,
   Upload,
+  UserPlus,
 } from 'lucide-react';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import {
@@ -15,6 +16,7 @@ import {
   CardTitle,
 } from '@kit/ui/card';
 import { cn } from '@kit/ui/utils';
+import { adminMonoLabel, adminPanel, adminPanelInner } from './admin-dash-tokens';
 
 const ONLINE_WINDOW_MINUTES = 5;
 const RECENT_SIGN_IN_LIMIT = 12;
@@ -22,6 +24,7 @@ const TOP_TIME_LIMIT = 12;
 const RECENT_LAST_SEEN_LIMIT = 20;
 const STREAK_LEADERS_LIMIT = 8;
 const TOP_UPLOADERS_LIMIT = 8;
+const NEWEST_ACCOUNTS_LIMIT = 12;
 
 type AccountRow = {
   id: string;
@@ -41,6 +44,13 @@ function formatRelative(iso: string | null | undefined): string {
   if (diffHr < 48) return `${diffHr}h ago`;
   const diffDay = Math.round(diffHr / 24);
   return `${diffDay}d ago`;
+}
+
+function formatAccountCreated(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatHoursMinutes(totalMinutes: number): string {
@@ -113,7 +123,6 @@ async function loadOnlineNow() {
   const admin = getSupabaseServerAdminClient();
   const cutoff = new Date(Date.now() - ONLINE_WINDOW_MINUTES * 60_000).toISOString();
 
-  // user_presence + admin_top_artwork_uploaders: see makerkit migrations 20260512*
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error, count } = await (admin as any)
     .from('user_presence')
@@ -205,6 +214,27 @@ async function loadTopByActiveTime() {
   });
 }
 
+async function loadNewestAccounts() {
+  const admin = getSupabaseServerAdminClient();
+  const { data, error } = await admin
+    .from('accounts')
+    .select('id, email, name, created_at')
+    .order('created_at', { ascending: false })
+    .limit(NEWEST_ACCOUNTS_LIMIT);
+
+  if (error) {
+    console.error('[AdminUserAnalytics] newest accounts query failed', error);
+    return [];
+  }
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    email: r.email as string | null,
+    name: r.name as string | null,
+    createdAt: r.created_at as string | null,
+  }));
+}
+
 async function loadStreakLeaders() {
   const admin = getSupabaseServerAdminClient();
   const { data, error } = await admin
@@ -267,7 +297,7 @@ function Avatar({ label }: { label: string }) {
   const initial = label.trim().charAt(0).toUpperCase() || '?';
   return (
     <span
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-wine/15 font-display text-sm font-semibold text-wine"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[#1793d1]/30 bg-[#1793d1]/10 font-mono text-xs font-semibold text-[#67d4ff]"
       aria-hidden
     >
       {initial}
@@ -276,11 +306,12 @@ function Avatar({ label }: { label: string }) {
 }
 
 export async function AdminUserAnalytics() {
-  const [recentSignIns, online, topByTime, lastSeen, streakLeaders, topUploaders] =
+  const [recentSignIns, online, topByTime, newestAccounts, lastSeen, streakLeaders, topUploaders] =
     await Promise.all([
       loadRecentSignIns(),
       loadOnlineNow(),
       loadTopByActiveTime(),
+      loadNewestAccounts(),
       loadRecentByLastSeen(),
       loadStreakLeaders(),
       loadTopUploaders(),
@@ -290,290 +321,329 @@ export async function AdminUserAnalytics() {
     recentSignIns: recentSignIns.length,
     onlineTotal: online.total,
     topByTime: topByTime.length,
+    newestAccounts: newestAccounts.length,
     lastSeen: lastSeen.length,
     streakLeaders: streakLeaders.length,
     topUploaders: topUploaders.length,
   });
 
   return (
-    <Card className="border-wine/25">
-      <CardHeader>
-        <CardTitle className="font-display text-2xl text-wine">
-          User activity
-        </CardTitle>
-        <CardDescription className="font-serif">
-          Sign-ins, real-time presence, time on site (heartbeat), streaks, and uploads.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {/* Online now */}
-          <Card className="border-wine/15 bg-parchment/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 font-display text-base text-wine">
-                <Activity className="h-4 w-4" aria-hidden />
-                Online now
-              </CardTitle>
-              <CardDescription className="font-serif text-xs">
-                Active in the last {ONLINE_WINDOW_MINUTES} minutes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="font-display text-3xl font-bold tabular-nums text-ink">
-                {online.total.toLocaleString()}
-              </p>
-              {online.rows.length > 0 && (
-                <ul className="mt-3 space-y-2">
-                  {online.rows.map((u) => (
-                    <li key={u.id} className="flex items-center gap-2">
-                      <span
-                        className="relative flex h-2.5 w-2.5 shrink-0"
-                        aria-hidden
+    <section>
+      <p className={`${adminMonoLabel} mb-3`}>user_activity</p>
+      <Card className={adminPanel}>
+        <CardHeader className="border-b border-[#1793d1]/15 pb-4">
+          <CardTitle className="font-mono text-lg text-[#67d4ff]">
+            presence & engagement
+          </CardTitle>
+          <CardDescription className="font-mono text-xs leading-relaxed text-slate-500">
+            <strong className="text-slate-400">Top row:</strong> online users (heartbeat), most time on
+            app, newest accounts by registration, recent sign-ins. Heartbeat requires{' '}
+            <code className="text-[#67d4ff]/80">user_presence</code> migration.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {/* Online now */}
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <Activity className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  online_now
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  last {ONLINE_WINDOW_MINUTES}m — visible tab + heartbeat
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="font-mono text-3xl font-semibold tabular-nums text-slate-100">
+                  {online.total.toLocaleString()}
+                </p>
+                {online.rows.length > 0 && (
+                  <ul className="mt-3 space-y-2">
+                    {online.rows.map((u) => (
+                      <li key={u.id} className="flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+                          <span className="absolute inset-0 animate-ping rounded-full bg-[#1793d1]/50" />
+                          <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-[#1793d1]" />
+                        </span>
+                        <span className="truncate font-mono text-[13px] text-slate-300">
+                          {bestLabel(u)}
+                        </span>
+                        <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
+                          {formatRelative(u.lastSeenAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Most time on app */}
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <Clock className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  most_time_on_app
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  top {TOP_TIME_LIMIT} by total_active_minutes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topByTime.length === 0 ? (
+                  <p className="font-mono text-[13px] text-slate-500">
+                    no presence rows — run migration & browse signed-in.
+                  </p>
+                ) : (
+                  <ol className="space-y-2">
+                    {topByTime.map((u, idx) => (
+                      <li
+                        key={u.id}
+                        className={cn(
+                          'flex items-center gap-2 rounded-sm px-1.5 py-1',
+                          idx === 0 && 'bg-[#1793d1]/10',
+                        )}
                       >
-                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60" />
-                        <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                      </span>
-                      <span className="truncate font-serif text-sm text-ink">
-                        {bestLabel(u)}
-                      </span>
-                      <span className="ml-auto shrink-0 font-mono text-xs text-ink/60">
-                        {formatRelative(u.lastSeenAt)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent sign-ins */}
-          <Card className="border-wine/15 bg-parchment/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 font-display text-base text-wine">
-                <LogIn className="h-4 w-4" aria-hidden />
-                Recent sign-ins
-              </CardTitle>
-              <CardDescription className="font-serif text-xs">
-                Last {RECENT_SIGN_IN_LIMIT} accounts to authenticate
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentSignIns.length === 0 ? (
-                <p className="font-serif text-sm text-ink/60">No data yet.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {recentSignIns.map((u) => (
-                    <li key={u.id} className="flex items-center gap-3">
-                      <Avatar label={bestLabel(u)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-serif text-sm text-ink">
-                          {u.name || u.email || u.id.slice(0, 8)}
-                        </p>
-                        {u.name && u.email && (
-                          <p className="truncate font-mono text-xs text-ink/55">
-                            {u.email}
+                        <span className="w-4 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-500">
+                          {idx + 1}
+                        </span>
+                        <Avatar label={bestLabel(u)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[13px] text-slate-200">
+                            {bestLabel(u)}
                           </p>
-                        )}
-                      </div>
-                      <span className="shrink-0 font-mono text-xs text-ink/60">
-                        {formatRelative(u.lastSignInAt)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+                        </div>
+                        <span className="shrink-0 font-mono text-[13px] tabular-nums text-[#67d4ff]">
+                          {formatHoursMinutes(u.totalActiveMinutes)}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Top by active time */}
-          <Card className="border-wine/15 bg-parchment/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 font-display text-base text-wine">
-                <Clock className="h-4 w-4" aria-hidden />
-                Most time invested
-              </CardTitle>
-              <CardDescription className="font-serif text-xs">
-                Top {TOP_TIME_LIMIT} by active minutes (heartbeat-derived)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {topByTime.length === 0 ? (
-                <p className="font-serif text-sm text-ink/60">
-                  No presence data yet — heartbeats accrue as users browse.
-                </p>
-              ) : (
-                <ol className="space-y-2">
-                  {topByTime.map((u, idx) => (
-                    <li
-                      key={u.id}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md px-2 py-1.5',
-                        idx === 0 && 'bg-wine/5',
-                      )}
-                    >
-                      <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-ink/55">
-                        {idx + 1}
-                      </span>
-                      <Avatar label={bestLabel(u)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-serif text-sm text-ink">
-                          {bestLabel(u)}
-                        </p>
-                        <p className="truncate font-mono text-xs text-ink/55">
-                          last seen {formatRelative(u.lastSeenAt)}
-                        </p>
-                      </div>
-                      <span className="shrink-0 font-display text-sm tabular-nums text-wine">
-                        {formatHoursMinutes(u.totalActiveMinutes)}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Last active (heartbeat) */}
-          <Card className="border-wine/15 bg-parchment/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 font-display text-base text-wine">
-                <MousePointerClick className="h-4 w-4" aria-hidden />
-                Last active in app
-              </CardTitle>
-              <CardDescription className="font-serif text-xs">
-                By most recent heartbeat — up to {RECENT_LAST_SEEN_LIMIT} users
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {lastSeen.length === 0 ? (
-                <p className="font-serif text-sm text-ink/60">
-                  No presence rows yet — run DB migration for user_presence if missing.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {lastSeen.map((u) => (
-                    <li key={u.id} className="flex items-center gap-3">
-                      <Avatar label={bestLabel(u)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-serif text-sm text-ink">
-                          {bestLabel(u)}
-                        </p>
-                        {u.email && u.name && (
-                          <p className="truncate font-mono text-xs text-ink/55">
-                            {u.email}
+            {/* Newest accounts */}
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <UserPlus className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  newest_accounts
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  by accounts.created_at — {NEWEST_ACCOUNTS_LIMIT} latest
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {newestAccounts.length === 0 ? (
+                  <p className="font-mono text-[13px] text-slate-500">no accounts.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {newestAccounts.map((u) => (
+                      <li key={u.id} className="flex items-center gap-2">
+                        <Avatar label={bestLabel(u)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[13px] text-slate-200">
+                            {bestLabel(u)}
                           </p>
-                        )}
-                      </div>
-                      <span className="shrink-0 font-mono text-xs text-ink/60">
-                        {formatRelative(u.lastSeenAt)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-wine/15 bg-parchment/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 font-display text-base text-wine">
-                <Flame className="h-4 w-4" aria-hidden />
-                Longest streaks
-              </CardTitle>
-              <CardDescription className="font-serif text-xs">
-                Top {STREAK_LEADERS_LIMIT} by longest streak (tie-break: current)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {streakLeaders.length === 0 ? (
-                <p className="font-serif text-sm text-ink/60">No streak data yet.</p>
-              ) : (
-                <ol className="space-y-2">
-                  {streakLeaders.map((u, idx) => (
-                    <li
-                      key={u.id}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md px-2 py-1.5',
-                        idx === 0 && 'bg-wine/5',
-                      )}
-                    >
-                      <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-ink/55">
-                        {idx + 1}
-                      </span>
-                      <Avatar label={bestLabel(u)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-serif text-sm text-ink">
-                          {bestLabel(u)}
-                        </p>
-                        <p className="truncate font-mono text-xs text-ink/55">
-                          current {u.currentStreakDays}d
-                        </p>
-                      </div>
-                      <span className="shrink-0 font-display text-sm tabular-nums text-wine">
-                        {u.longestStreakDays}d best
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-wine/15 bg-parchment/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 font-display text-base text-wine">
-                <Upload className="h-4 w-4" aria-hidden />
-                Most artwork posts
-              </CardTitle>
-              <CardDescription className="font-serif text-xs">
-                Top {TOP_UPLOADERS_LIMIT} by count of artworks with{' '}
-                <code className="text-[10px]">created_by</code> (posters)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {topUploaders.length === 0 ? (
-                <p className="font-serif text-sm text-ink/60">
-                  No data — apply migration{' '}
-                  <code className="text-[10px]">20260512000001_admin_top_artwork_uploaders</code>{' '}
-                  or add artworks with created_by set.
-                </p>
-              ) : (
-                <ol className="space-y-2">
-                  {topUploaders.map((u, idx) => (
-                    <li
-                      key={u.id}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md px-2 py-1.5',
-                        idx === 0 && 'bg-wine/5',
-                      )}
-                    >
-                      <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-ink/55">
-                        {idx + 1}
-                      </span>
-                      <Avatar label={bestLabel(u)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-serif text-sm text-ink">
-                          {bestLabel(u)}
-                        </p>
-                        {u.email && u.name && (
-                          <p className="truncate font-mono text-xs text-ink/55">
-                            {u.email}
+                          {u.email && u.name && (
+                            <p className="truncate font-mono text-[11px] text-slate-500">{u.email}</p>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-mono text-[11px] tabular-nums text-slate-400">
+                            {formatAccountCreated(u.createdAt)}
                           </p>
+                          <p className="font-mono text-[10px] text-slate-600">
+                            {formatRelative(u.createdAt)}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent sign-ins */}
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <LogIn className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  recent_sign_ins
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  auth last_sign_in_at — {RECENT_SIGN_IN_LIMIT} from first page
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentSignIns.length === 0 ? (
+                  <p className="font-mono text-[13px] text-slate-500">no data.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {recentSignIns.map((u) => (
+                      <li key={u.id} className="flex items-center gap-2">
+                        <Avatar label={bestLabel(u)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[13px] text-slate-200">
+                            {u.name || u.email || u.id.slice(0, 8)}
+                          </p>
+                          {u.name && u.email && (
+                            <p className="truncate font-mono text-[11px] text-slate-500">
+                              {u.email}
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 font-mono text-[11px] text-slate-500">
+                          {formatRelative(u.lastSignInAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <MousePointerClick className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  last_active_heartbeat
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  up to {RECENT_LAST_SEEN_LIMIT} — any last_seen_at
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {lastSeen.length === 0 ? (
+                  <p className="font-mono text-[13px] text-slate-500">
+                    no rows — migrate user_presence.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {lastSeen.map((u) => (
+                      <li key={u.id} className="flex items-center gap-2">
+                        <Avatar label={bestLabel(u)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[13px] text-slate-200">
+                            {bestLabel(u)}
+                          </p>
+                          {u.email && u.name && (
+                            <p className="truncate font-mono text-[11px] text-slate-500">
+                              {u.email}
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 font-mono text-[11px] text-slate-500">
+                          {formatRelative(u.lastSeenAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <Flame className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  longest_streaks
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  top {STREAK_LEADERS_LIMIT} — tie-break current
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {streakLeaders.length === 0 ? (
+                  <p className="font-mono text-[13px] text-slate-500">no streak rows.</p>
+                ) : (
+                  <ol className="space-y-2">
+                    {streakLeaders.map((u, idx) => (
+                      <li
+                        key={u.id}
+                        className={cn(
+                          'flex items-center gap-2 rounded-sm px-1.5 py-1',
+                          idx === 0 && 'bg-[#1793d1]/10',
                         )}
-                      </div>
-                      <span className="shrink-0 font-display text-sm tabular-nums text-wine">
-                        {u.uploadCount.toLocaleString()}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </CardContent>
-    </Card>
+                      >
+                        <span className="w-4 shrink-0 text-right font-mono text-[11px] text-slate-500">
+                          {idx + 1}
+                        </span>
+                        <Avatar label={bestLabel(u)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[13px] text-slate-200">
+                            {bestLabel(u)}
+                          </p>
+                          <p className="truncate font-mono text-[11px] text-slate-500">
+                            current {u.currentStreakDays}d
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-mono text-[13px] text-[#67d4ff]">
+                          {u.longestStreakDays}d best
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className={adminPanelInner}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 font-mono text-sm font-medium text-[#67d4ff]">
+                  <Upload className="h-4 w-4 text-[#1793d1]" aria-hidden />
+                  most_artwork_posts
+                </CardTitle>
+                <CardDescription className="font-mono text-[11px] text-slate-500">
+                  by <code className="text-[#67d4ff]/70">created_by</code> — rpc top {TOP_UPLOADERS_LIMIT}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topUploaders.length === 0 ? (
+                  <p className="font-mono text-[12px] leading-relaxed text-slate-500">
+                    no rpc data — run{' '}
+                    <code className="text-[#67d4ff]/80">20260512000001_admin_top_artwork_uploaders</code>
+                  </p>
+                ) : (
+                  <ol className="space-y-2">
+                    {topUploaders.map((u, idx) => (
+                      <li
+                        key={u.id}
+                        className={cn(
+                          'flex items-center gap-2 rounded-sm px-1.5 py-1',
+                          idx === 0 && 'bg-[#1793d1]/10',
+                        )}
+                      >
+                        <span className="w-4 shrink-0 text-right font-mono text-[11px] text-slate-500">
+                          {idx + 1}
+                        </span>
+                        <Avatar label={bestLabel(u)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[13px] text-slate-200">
+                            {bestLabel(u)}
+                          </p>
+                          {u.email && u.name && (
+                            <p className="truncate font-mono text-[11px] text-slate-500">
+                              {u.email}
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 font-mono text-[13px] tabular-nums text-[#67d4ff]">
+                          {u.uploadCount.toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }

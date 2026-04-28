@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
+import { adminPanel, adminMonoLabel } from './admin-dash-tokens';
 
 async function fetchCount(
   label: string,
@@ -34,13 +35,15 @@ function StatCard({
   description: string;
 }) {
   return (
-    <Card className="border-wine/15 bg-parchment/40">
+    <Card className={adminPanel}>
       <CardHeader className="pb-2">
-        <CardTitle className="font-display text-lg text-wine">{title}</CardTitle>
-        <CardDescription className="font-serif text-xs">{description}</CardDescription>
+        <CardTitle className="font-mono text-sm font-medium text-[#67d4ff]">{title}</CardTitle>
+        <CardDescription className="font-mono text-[11px] leading-snug text-slate-500">
+          {description}
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="font-display text-3xl font-bold tabular-nums text-ink">
+        <p className="font-mono text-3xl font-semibold tabular-nums text-slate-100">
           {value === null ? '—' : value.toLocaleString()}
         </p>
       </CardContent>
@@ -111,47 +114,50 @@ export async function AdminAnalytics() {
   console.log('[AdminAnalytics] loaded snapshot');
 
   return (
-    <Card className="border-wine/25">
-      <CardHeader>
-        <CardTitle className="font-display text-2xl text-wine">Analytics</CardTitle>
-        <CardDescription className="font-serif">
-          Snapshot of users, artworks, and subscriptions across the platform.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard
-            title="Total users"
-            value={totalUsers}
-            description="Accounts in the database"
-          />
-          <StatCard
-            title="Total artworks"
-            value={totalArtworks}
-            description="All certificate records"
-          />
-          <StatCard
-            title="Verified artworks"
-            value={verifiedArtworks}
-            description="Published / verified status"
-          />
-          <StatCard
-            title="Artist & gallery profiles"
-            value={artistGalleryProfiles}
-            description="Role profiles (excludes collector)"
-          />
-          <StatCard
-            title="Active + trial subscribers"
-            value={activeSubscriptions}
-            description="Subscriptions in active or trialing with a current period that has not ended"
-          />
-          <StatCard
-            title="New users this month"
-            value={newUsersThisMonth}
-            description="Accounts created since month start (UTC)"
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <section>
+      <p className={`${adminMonoLabel} mb-3`}>platform_metrics</p>
+      <Card className={adminPanel}>
+        <CardHeader className="border-b border-[#1793d1]/15 pb-4">
+          <CardTitle className="font-mono text-lg text-[#67d4ff]">aggregate counts</CardTitle>
+          <CardDescription className="font-mono text-xs text-slate-500">
+            Snapshot of users, artworks, and subscriptions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              title="total_users"
+              value={totalUsers}
+              description="accounts table"
+            />
+            <StatCard
+              title="total_artworks"
+              value={totalArtworks}
+              description="all certificate rows"
+            />
+            <StatCard
+              title="verified_artworks"
+              value={verifiedArtworks}
+              description="status = verified"
+            />
+            <StatCard
+              title="artist_gallery_profiles"
+              value={artistGalleryProfiles}
+              description="role profiles"
+            />
+            <StatCard
+              title="active_trial_subs"
+              value={activeSubscriptions}
+              description="subscriptions active or trialing"
+            />
+            <StatCard
+              title="new_users_month_utc"
+              value={newUsersThisMonth}
+              description="accounts since month start"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
