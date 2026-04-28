@@ -9,6 +9,9 @@ export const metadata = {
   title: 'Admin | Provenance',
 };
 
+/** Avoid serving a stale shell without RSC children (analytics are admin/session-specific). */
+export const dynamic = 'force-dynamic';
+
 const TOOLS: {
   href: string;
   title: string;
@@ -75,9 +78,9 @@ export default async function AdminPage() {
       </header>
 
       <div className="flex flex-col gap-6">
-        <AdminAnalytics />
-
         <AdminUserAnalytics />
+
+        <AdminAnalytics />
 
         <section>
           <p className={adminMonoLabel + ' mb-3'}>modules</p>

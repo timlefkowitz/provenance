@@ -306,8 +306,16 @@ function Avatar({ label }: { label: string }) {
 }
 
 export async function AdminUserAnalytics() {
-  const [recentSignIns, online, topByTime, newestAccounts, lastSeen, streakLeaders, topUploaders] =
-    await Promise.all([
+  try {
+    const [
+      recentSignIns,
+      online,
+      topByTime,
+      newestAccounts,
+      lastSeen,
+      streakLeaders,
+      topUploaders,
+    ] = await Promise.all([
       loadRecentSignIns(),
       loadOnlineNow(),
       loadTopByActiveTime(),
@@ -317,20 +325,30 @@ export async function AdminUserAnalytics() {
       loadTopUploaders(),
     ]);
 
-  console.log('[AdminUserAnalytics] loaded user activity panels', {
-    recentSignIns: recentSignIns.length,
-    onlineTotal: online.total,
-    topByTime: topByTime.length,
-    newestAccounts: newestAccounts.length,
-    lastSeen: lastSeen.length,
-    streakLeaders: streakLeaders.length,
-    topUploaders: topUploaders.length,
-  });
+    console.log('[AdminUserAnalytics] loaded user activity panels', {
+      recentSignIns: recentSignIns.length,
+      onlineTotal: online.total,
+      topByTime: topByTime.length,
+      newestAccounts: newestAccounts.length,
+      lastSeen: lastSeen.length,
+      streakLeaders: streakLeaders.length,
+      topUploaders: topUploaders.length,
+    });
 
-  return (
-    <section>
-      <p className={`${adminMonoLabel} mb-3`}>user_activity</p>
-      <Card className={adminPanel}>
+    return (
+      <section aria-labelledby="admin-user-activity-heading">
+        <div className="mb-3 space-y-1">
+          <h2
+            id="admin-user-activity-heading"
+            className="text-lg font-semibold tracking-tight text-slate-100 sm:text-xl"
+          >
+            User activity & presence
+          </h2>
+          <p className={`${adminMonoLabel} !normal-case !tracking-normal text-slate-500`}>
+            online_now · most_time_on_app · newest_accounts · sign-ins · heartbeats
+          </p>
+        </div>
+        <Card className={adminPanel}>
         <CardHeader className="border-b border-[#1793d1]/15 pb-4">
           <CardTitle className="font-mono text-lg text-[#67d4ff]">
             presence & engagement
@@ -645,5 +663,23 @@ export async function AdminUserAnalytics() {
         </CardContent>
       </Card>
     </section>
-  );
+    );
+  } catch (err) {
+    console.error('[AdminUserAnalytics] failed to render user activity section', err);
+    return (
+      <section
+        aria-labelledby="admin-user-activity-error"
+        className="rounded-sm border border-red-500/40 bg-red-950/30 p-4"
+      >
+        <h2 id="admin-user-activity-error" className="font-mono text-sm font-medium text-red-300">
+          User activity failed to load
+        </h2>
+        <p className="mt-2 font-mono text-xs text-red-200/80">
+          Check server logs for <span className="text-red-100">[AdminUserAnalytics]</span>. Common
+          causes: missing <code className="rounded bg-black/30 px-1">SUPABASE_SERVICE_ROLE_KEY</code>, Auth
+          API errors on listUsers, or an unexpected throw in a loader.
+        </p>
+      </section>
+    );
+  }
 }
