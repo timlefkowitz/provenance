@@ -55,11 +55,10 @@ export function NewExhibitionDialog({
   const effectiveDisabled = disabled || !ownerRole;
   const modeLabel = ownerRole ? getRoleLabel(ownerRole) : '';
   const ModeIcon = ownerRole ? (MODE_ICONS[ownerRole] ?? GalleryHorizontal) : GalleryHorizontal;
-  const displayLabel = ownerRole
-    ? entityName
-      ? `${modeLabel} (${entityName})`
-      : modeLabel
-    : '';
+  const resolvedEntity =
+    typeof entityName === 'string' && entityName.trim().length > 0
+      ? entityName.trim()
+      : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +74,10 @@ export function NewExhibitionDialog({
       return;
     }
 
-    console.log('[Collection] NewExhibitionDialog submit', { ownerRole, entityName });
+    console.log('[Collection] NewExhibitionDialog submit', {
+      ownerRole,
+      entityName: resolvedEntity,
+    });
 
     startTransition(async () => {
       try {
@@ -152,13 +154,21 @@ export function NewExhibitionDialog({
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-parchment/15">
               <ModeIcon className="h-3.5 w-3.5 text-parchment" aria-hidden />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-landing font-light tracking-[0.25em] uppercase text-parchment/60">
                 Creating as
               </p>
-              <p className="font-serif text-sm font-semibold text-parchment leading-tight truncate">
-                {displayLabel}
+              <p className="font-serif text-sm font-semibold text-parchment leading-snug break-words">
+                {modeLabel}
+                {resolvedEntity ? (
+                  <span className="font-semibold text-parchment/90"> ({resolvedEntity})</span>
+                ) : null}
               </p>
+              {!resolvedEntity ? (
+                <p className="font-serif text-xs text-parchment/55 mt-1 leading-snug">
+                  Add a profile name under Profiles so your venue shows here.
+                </p>
+              ) : null}
             </div>
           </div>
         ) : (

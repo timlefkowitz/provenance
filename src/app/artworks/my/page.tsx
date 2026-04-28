@@ -5,6 +5,7 @@ import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibit
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { getUserRole, type UserRole } from '~/lib/user-roles';
 import { readPerspective, perspectiveToOwnerRole } from '~/lib/read-perspective';
+import { buildModeEntityDisplayNames } from '~/lib/mode-entity-display-names';
 import { SpreadsheetEditForm } from '../edit-provenance/_components/spreadsheet-edit-form';
 import { CollectionHeaderActions } from './_components/collection-header-actions';
 
@@ -72,14 +73,12 @@ export default async function MyArtworksPage({
   ]);
   const artworks = artworksResult.data;
 
-  // Build a per-role display name map used in the New Exhibition "Creating as" badge.
-  const accountName = accountRow?.name ?? null;
-  const modeEntityNames: Record<string, string | null> = {
-    artist: userProfiles.find((p) => p.role === 'artist' && p.is_active)?.name ?? accountName,
-    collector: userProfiles.find((p) => p.role === 'collector' && p.is_active)?.name ?? accountName,
-    gallery: userProfiles.find((p) => p.role === 'gallery' && p.is_active)?.name ?? accountName,
-    institution: userProfiles.find((p) => p.role === 'institution' && p.is_active)?.name ?? accountName,
-  };
+  // Per-role display names for New Exhibition "Creating as" (profile → account → email).
+  const modeEntityNames = buildModeEntityDisplayNames(
+    userProfiles,
+    accountRow?.name ?? null,
+    user.email ?? null,
+  );
 
   if (!artworks || artworks.length === 0) {
     return (
