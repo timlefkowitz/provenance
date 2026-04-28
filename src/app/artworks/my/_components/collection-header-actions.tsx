@@ -8,8 +8,6 @@ import { Button } from '@kit/ui/button';
 import { cn } from '@kit/ui/utils';
 import { NewExhibitionDialog } from './new-exhibition-dialog';
 
-type OwnerMode = typeof USER_ROLES.GALLERY | typeof USER_ROLES.INSTITUTION;
-
 const PERSPECTIVE_KEY = 'user_perspective';
 const PERSPECTIVE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -20,12 +18,6 @@ const ALL_ROLES: UserRole[] = [
   USER_ROLES.INSTITUTION,
 ];
 
-function perspectiveToOwner(role: UserRole | null): OwnerMode | null {
-  if (role === USER_ROLES.GALLERY) return USER_ROLES.GALLERY;
-  if (role === USER_ROLES.INSTITUTION) return USER_ROLES.INSTITUTION;
-  return null;
-}
-
 function writePerspectiveCookie(value: UserRole) {
   if (typeof document === 'undefined') return;
   document.cookie = `${PERSPECTIVE_KEY}=${encodeURIComponent(value)}; path=/; max-age=${PERSPECTIVE_COOKIE_MAX_AGE}; samesite=lax`;
@@ -34,14 +26,16 @@ function writePerspectiveCookie(value: UserRole) {
 /**
  * Client island for the Collection page header. Shows the active mode and
  * lets the user switch between Artist, Collector, Gallery, and Institution
- * directly in the header — no need to open the nav sidebar. Switching updates
- * the same localStorage key and cookie that the global PerspectiveSwitcher
- * uses so the rest of the app stays in sync.
+ * directly in the header. Switching updates the same localStorage key and
+ * cookie that the global PerspectiveSwitcher uses so the rest of the app
+ * stays in sync.
  */
 export function CollectionHeaderActions({
   accountRole,
+  modeEntityNames,
 }: {
   accountRole: UserRole | null;
+  modeEntityNames: Record<string, string | null>;
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -76,12 +70,9 @@ export function CollectionHeaderActions({
 
   // Server renders using account role; once mounted we trust localStorage.
   const activeRole: UserRole | null = mounted ? perspective : accountRole;
-  const ownerMode = perspectiveToOwner(activeRole);
 
-  const disabledReason =
-    ownerMode === null
-      ? 'Switch to Gallery or Institution mode to create an exhibition.'
-      : undefined;
+  // Entity name for the active mode (e.g. "Fl!ght" for gallery, "Timothy Lefkowitz" for artist).
+  const activeEntityName = activeRole ? (modeEntityNames[activeRole] ?? null) : null;
 
   return (
     <div className="flex flex-col items-end gap-3">
@@ -115,11 +106,12 @@ export function CollectionHeaderActions({
         </div>
       </div>
 
-      {/* New Exhibition — only meaningful in gallery/institution mode */}
+      {/* New Exhibition — enabled for all four modes */}
       <NewExhibitionDialog
-        ownerRole={ownerMode}
-        disabled={ownerMode === null}
-        disabledReason={disabledReason}
+        ownerRole={activeRole}
+        entityName={activeEntityName}
+        disabled={!activeRole}
+        disabledReason={!activeRole ? 'Select a mode to create an exhibition.' : undefined}
       />
     </div>
   );

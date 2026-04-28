@@ -33,13 +33,21 @@ export default async function EditExhibitionPage({
   }
 
   const userRole = getUserRole(account.public_data as Record<string, any>);
-  if (userRole !== USER_ROLES.GALLERY) {
+  const allowedRoles = new Set([
+    USER_ROLES.GALLERY,
+    USER_ROLES.INSTITUTION,
+    USER_ROLES.ARTIST,
+    USER_ROLES.COLLECTOR,
+  ]);
+  if (!userRole || !allowedRoles.has(userRole)) {
     redirect('/registry');
   }
 
   // Get exhibition with details
   const exhibition = await getExhibitionWithDetails(id);
 
+  // Any authenticated user who owns the exhibition (gallery_id = user.id) can edit it,
+  // regardless of which role mode they used when creating it.
   if (!exhibition || exhibition.gallery_id !== user.id) {
     redirect('/exhibitions');
   }

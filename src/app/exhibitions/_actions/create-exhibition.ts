@@ -25,9 +25,14 @@ export async function createExhibition(formData: FormData) {
   }
 
   const userRole = getUserRole(account.public_data as Record<string, any>);
-  const allowedRoles = new Set<UserRole>([USER_ROLES.GALLERY, USER_ROLES.INSTITUTION]);
+  const allowedRoles = new Set<UserRole>([
+    USER_ROLES.GALLERY,
+    USER_ROLES.INSTITUTION,
+    USER_ROLES.ARTIST,
+    USER_ROLES.COLLECTOR,
+  ]);
   if (!userRole || !allowedRoles.has(userRole)) {
-    throw new Error('Only galleries and institutions can create exhibitions');
+    throw new Error('You must have an active role to create an exhibition');
   }
 
   const title = formData.get('title') as string;
@@ -50,8 +55,12 @@ export async function createExhibition(formData: FormData) {
     });
     throw new Error('Cannot create exhibition for a mode that does not match your account role');
   }
-  const ownerRole: 'gallery' | 'institution' =
-    ownerRoleInput === USER_ROLES.INSTITUTION ? 'institution' : 'gallery';
+  const ownerRole: 'artist' | 'collector' | 'gallery' | 'institution' =
+    (['artist', 'collector', 'gallery', 'institution'] as const).includes(
+      ownerRoleInput as any,
+    )
+      ? (ownerRoleInput as 'artist' | 'collector' | 'gallery' | 'institution')
+      : 'gallery';
 
   if (!title || !startDate) {
     throw new Error('Title and start date are required');

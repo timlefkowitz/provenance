@@ -52,20 +52,34 @@ export default async function MyArtworksPage({
     isAssignFlow,
   });
 
-  // Fetch artworks user owns (explicit filter so we never show other users' artworks)
-  const { data: artworks } = await client
-    .from('artworks')
-    .select(
-      `id, title, artist_name, description, creation_date, certificate_number, account_id,
+  // Fetch artworks + user profiles in parallel so the early-return path also
+  // has entity names available for the New Exhibition dialog.
+  const [artworksResult, userProfiles] = await Promise.all([
+    client
+      .from('artworks')
+      .select(
+        `id, title, artist_name, description, creation_date, certificate_number, account_id,
        medium, dimensions, former_owners, auction_history, exhibition_history,
        historic_context, celebrity_notes, is_public, value, value_is_public,
        edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
        image_url, created_at, is_sold, display_order, certificate_type`,
-    )
-    .eq('account_id', user.id)
-    .eq('status', 'verified')
-    .order('display_order', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: false });
+      )
+      .eq('account_id', user.id)
+      .eq('status', 'verified')
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false }),
+    getUserProfiles(user.id),
+  ]);
+  const artworks = artworksResult.data;
+
+  // Build a per-role display name map used in the New Exhibition "Creating as" badge.
+  const accountName = accountRow?.name ?? null;
+  const modeEntityNames: Record<string, string | null> = {
+    artist: userProfiles.find((p) => p.role === 'artist' && p.is_active)?.name ?? accountName,
+    collector: userProfiles.find((p) => p.role === 'collector' && p.is_active)?.name ?? accountName,
+    gallery: userProfiles.find((p) => p.role === 'gallery' && p.is_active)?.name ?? accountName,
+    institution: userProfiles.find((p) => p.role === 'institution' && p.is_active)?.name ?? accountName,
+  };
 
   if (!artworks || artworks.length === 0) {
     return (
@@ -89,7 +103,7 @@ export default async function MyArtworksPage({
                 </p>
               </div>
               <div className="shrink-0">
-                <CollectionHeaderActions accountRole={accountRole} />
+                <CollectionHeaderActions accountRole={accountRole} modeEntityNames={modeEntityNames} />
               </div>
             </div>
           </div>
@@ -131,7 +145,6 @@ export default async function MyArtworksPage({
   }
 
   // Resolve the best display name for the "Received by" stamp
-  const userProfiles = await getUserProfiles(user.id);
   const ROLE_PRIORITY = ['gallery', 'institution', 'artist', 'collector'];
   const bestProfile = ROLE_PRIORITY.reduce<(typeof userProfiles)[number] | null>((best, role) => {
     if (best) return best;
@@ -234,7 +247,7 @@ export default async function MyArtworksPage({
               </p>
             </div>
             <div className="shrink-0">
-              <CollectionHeaderActions accountRole={accountRole} />
+              <CollectionHeaderActions accountRole={accountRole} modeEntityNames={modeEntityNames} />
             </div>
           </div>
         </div>

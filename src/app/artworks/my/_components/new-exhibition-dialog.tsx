@@ -16,18 +16,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@kit/ui/dialog';
-import { Building2, GalleryHorizontal, Plus } from 'lucide-react';
+import { Building2, GalleryHorizontal, Palette, User, Plus } from 'lucide-react';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { createExhibition } from '~/app/exhibitions/_actions/create-exhibition';
 
-type OwnerMode = typeof USER_ROLES.GALLERY | typeof USER_ROLES.INSTITUTION;
+const MODE_ICONS: Record<string, React.ElementType> = {
+  [USER_ROLES.ARTIST]: Palette,
+  [USER_ROLES.COLLECTOR]: User,
+  [USER_ROLES.GALLERY]: GalleryHorizontal,
+  [USER_ROLES.INSTITUTION]: Building2,
+};
 
 export function NewExhibitionDialog({
   ownerRole,
+  entityName,
   disabled,
   disabledReason,
 }: {
-  ownerRole: OwnerMode | null;
+  ownerRole: UserRole | null;
+  entityName?: string | null;
   disabled?: boolean;
   disabledReason?: string;
 }) {
@@ -46,16 +53,20 @@ export function NewExhibitionDialog({
   });
 
   const effectiveDisabled = disabled || !ownerRole;
-
-  const modeLabel = ownerRole ? getRoleLabel(ownerRole as UserRole) : '';
-  const ModeIcon = ownerRole === USER_ROLES.INSTITUTION ? Building2 : GalleryHorizontal;
+  const modeLabel = ownerRole ? getRoleLabel(ownerRole) : '';
+  const ModeIcon = ownerRole ? (MODE_ICONS[ownerRole] ?? GalleryHorizontal) : GalleryHorizontal;
+  const displayLabel = ownerRole
+    ? entityName
+      ? `${modeLabel} (${entityName})`
+      : modeLabel
+    : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (!ownerRole) {
-      setError('Switch to Gallery or Institution mode to create an exhibition.');
+      setError('Select a mode to create an exhibition.');
       return;
     }
 
@@ -64,7 +75,7 @@ export function NewExhibitionDialog({
       return;
     }
 
-    console.log('[Collection] NewExhibitionDialog submit', { ownerRole });
+    console.log('[Collection] NewExhibitionDialog submit', { ownerRole, entityName });
 
     startTransition(async () => {
       try {
@@ -85,7 +96,7 @@ export function NewExhibitionDialog({
           throw new Error('Failed to create exhibition');
         }
 
-        toast.success('Exhibition created. Select artworks to add.');
+        toast.success('Exhibition created. Add details and artworks.');
         setFormData({
           title: '',
           description: '',
@@ -97,11 +108,10 @@ export function NewExhibitionDialog({
         });
         setOpen(false);
 
-        const query = new URLSearchParams({
-          exhibition: result.exhibitionId,
-          assign: '1',
-        });
-        router.push(`/artworks/my?${query.toString()}`);
+        // Redirect to the edit page so the user can fill in details
+        // (description, dates, location, image, curator, theme) before
+        // artworks or certificates are ready.
+        router.push(`/exhibitions/${result.exhibitionId}/edit`);
         router.refresh();
       } catch (e: any) {
         console.error('[Collection] NewExhibitionDialog failed', e);
@@ -132,7 +142,7 @@ export function NewExhibitionDialog({
             New Exhibition
           </DialogTitle>
           <DialogDescription className="font-serif">
-            Create the exhibition, then select artworks from your collection to add.
+            Create the exhibition, then add details and artworks.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,15 +156,15 @@ export function NewExhibitionDialog({
               <p className="text-[10px] font-landing font-light tracking-[0.25em] uppercase text-parchment/60">
                 Creating as
               </p>
-              <p className="font-serif text-sm font-semibold text-parchment leading-tight">
-                {modeLabel}
+              <p className="font-serif text-sm font-semibold text-parchment leading-tight truncate">
+                {displayLabel}
               </p>
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-2.5 rounded-xl border border-wine/20 bg-wine/5 px-3.5 py-2.5">
             <p className="font-serif text-sm text-wine/80">
-              Switch to Gallery or Institution mode to create an exhibition.
+              Select a mode to create an exhibition.
             </p>
           </div>
         )}
@@ -268,7 +278,7 @@ export function NewExhibitionDialog({
               disabled={pending || effectiveDisabled}
               className="bg-ink text-parchment hover:bg-ink/90 font-serif"
             >
-              {pending ? 'Creating…' : 'Create and add artworks'}
+              {pending ? 'Creating…' : 'Create exhibition'}
             </Button>
             <Button
               type="button"

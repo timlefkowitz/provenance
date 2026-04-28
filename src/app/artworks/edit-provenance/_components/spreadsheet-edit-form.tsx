@@ -1233,9 +1233,11 @@ export function SpreadsheetEditForm({
                           </div>
                         ) : null}
                         {(artworkData[artwork.id]?.is_sold || artwork.is_sold) ? (
-                          <div className="absolute bottom-1 left-1 rounded px-1.5 py-0.5 bg-ink/80 text-parchment text-[9px] font-display font-bold tracking-wider uppercase">
-                            Sold
-                          </div>
+                          <span
+                            className="absolute bottom-1 left-1 block h-2.5 w-2.5 rounded-full bg-[#b84040] ring-2 ring-white/70"
+                            aria-label="Sold"
+                            title="Sold"
+                          />
                         ) : null}
                         {artwork.display_order != null ? (
                           <div className="absolute top-1 left-1 rounded px-1.5 py-0.5 bg-wine/80 text-parchment text-[9px] font-display font-bold">
