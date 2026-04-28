@@ -51,6 +51,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@kit/ui/popover';
+import type { SaleRecord } from '../page';
 
 const ScanLocationsMap = dynamic(
   () => import('./scan-locations-map').then((mod) => mod.ScanLocationsMap),
@@ -102,6 +103,14 @@ export type Artwork = {
   owned_by_is_public: boolean | null;
   sold_by: string | null;
   sold_by_is_public: boolean | null;
+  is_sold?: boolean | null;
+  sold_at?: string | null;
+  sold_to_name?: string | null;
+  sold_to_email?: string | null;
+  sold_to_account_id?: string | null;
+  sold_price_cents?: number | null;
+  sold_currency?: string | null;
+  sold_price_is_public?: boolean | null;
   metadata?: {
     certificate_location?: {
       latitude?: number;
@@ -226,6 +235,7 @@ export function CertificateOfAuthenticity({
   certificateType = 'authenticity',
   attachments = [],
   valuation = null,
+  salesHistory = [],
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -247,6 +257,7 @@ export function CertificateOfAuthenticity({
   certificateType?: CertificateType | string;
   attachments?: ArtworkAttachmentRow[];
   valuation?: ProvenanceValuation | null;
+  salesHistory?: SaleRecord[];
 }) {
   const router = useRouter();
   const user = useCurrentUser();
@@ -1202,6 +1213,28 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
+              {/* Sold To — show if is_sold and (owner or public) */}
+              {artwork.is_sold && (artwork.sold_to_name || artwork.sold_to_email) && (isOwner || canEditCertificate) && (
+                <div className="border-b border-wine/20 pb-2">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                    Sold To
+                    <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                  </p>
+                  <p className="text-sm sm:text-base font-serif text-ink break-words">
+                    {artwork.sold_to_name || artwork.sold_to_email}
+                  </p>
+                  {artwork.sold_at && (
+                    <p className="text-xs text-ink/50 font-serif mt-0.5">
+                      {new Date(artwork.sold_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Provenance Valuation — gated on public || owner. Show CTA for owners even without an existing row. */}
               {(valuation && (valuation.is_public || isOwner || canEditCertificate)) ||
               (!valuation && (isOwner || canRequestProvenance)) ? (
@@ -1222,6 +1255,7 @@ export function CertificateOfAuthenticity({
           {(artwork.former_owners || artwork.auction_history || artwork.exhibition_history || 
             artwork.historic_context || artwork.celebrity_notes ||
             artwork.value || artwork.owned_by || artwork.sold_by ||
+            (salesHistory && salesHistory.length > 0) ||
             (scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
@@ -1300,6 +1334,68 @@ export function CertificateOfAuthenticity({
                       <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
                     )}
                   />
+                </div>
+              )}
+
+              {/* Structured Sale History — rendered when sales_ledger rows exist */}
+              {salesHistory && salesHistory.length > 0 && (
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-2 font-semibold">
+                    Sale History
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {salesHistory.map((sale) => {
+                      const dateLabel = sale.sold_at
+                        ? new Date(sale.sold_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                        : null;
+                      const buyerLabel = sale.sold_to_name || sale.sold_to_email || null;
+                      const venueLabel = sale.sold_by_name || null;
+
+                      const showPrice =
+                        sale.price_cents != null &&
+                        (sale.price_is_public || isOwner || canEditCertificate);
+                      const pricePrivate = sale.price_cents != null && !sale.price_is_public && (isOwner || canEditCertificate);
+
+                      const priceLabel = showPrice
+                        ? new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: sale.currency || 'USD',
+                            maximumFractionDigits: 0,
+                          }).format((sale.price_cents ?? 0) / 100)
+                        : null;
+
+                      const parts: string[] = [];
+                      if (buyerLabel) parts.push(`Sold to ${buyerLabel}`);
+                      if (venueLabel) parts.push(`at ${venueLabel}`);
+                      if (dateLabel) parts.push(dateLabel);
+
+                      return (
+                        <div
+                          key={sale.id}
+                          className="rounded-lg border border-wine/10 bg-wine/[0.02] px-3 py-2 text-sm font-serif text-ink"
+                        >
+                          <p className="leading-snug">
+                            {parts.length > 0 ? parts.join(' — ') : 'Sale recorded'}
+                          </p>
+                          {(priceLabel || pricePrivate) && (
+                            <p className="mt-0.5 text-xs text-ink/60">
+                              {priceLabel}
+                              {pricePrivate && (
+                                <span className="ml-1.5 italic text-ink/40">(Price private)</span>
+                              )}
+                            </p>
+                          )}
+                          {sale.notes && (
+                            <p className="mt-0.5 text-xs text-ink/50 italic">{sale.notes}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

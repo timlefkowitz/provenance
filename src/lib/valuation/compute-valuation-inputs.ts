@@ -60,7 +60,13 @@ function countLines(text: string | null | undefined): number {
     .filter(Boolean).length;
 }
 
-export async function computeValuationInputs(artworkId: string): Promise<ValuationInputs | null> {
+export type ValuationInputsResult =
+  | { ok: true; inputs: ValuationInputs }
+  | { ok: false; reason: string };
+
+export async function computeValuationInputs(
+  artworkId: string,
+): Promise<ValuationInputsResult> {
   console.log('[Valuation] computeValuationInputs started', { artworkId });
 
   const admin = getSupabaseServerAdminClient();
@@ -75,8 +81,11 @@ export async function computeValuationInputs(artworkId: string): Promise<Valuati
       .maybeSingle();
 
     if (artworkError || !artwork) {
-      console.error('[Valuation] artwork fetch failed', artworkError);
-      return null;
+      const reason = artworkError
+        ? `Artwork query failed: ${artworkError.message}`
+        : `Artwork ${artworkId} not found`;
+      console.error('[Valuation] artwork fetch failed', reason, artworkError);
+      return { ok: false, reason };
     }
 
     const artistId = (artwork.artist_account_id as string | null) ?? null;
@@ -269,10 +278,11 @@ export async function computeValuationInputs(artworkId: string): Promise<Valuati
       estimatedValue,
     });
 
-    return inputs;
+    return { ok: true, inputs };
   } catch (err) {
-    console.error('[Valuation] computeValuationInputs failed', err);
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error('[Valuation] computeValuationInputs failed', reason, err);
     logger.error('compute_valuation_inputs_failed', { artworkId, error: err });
-    return null;
+    return { ok: false, reason: `Valuation engine error: ${reason}` };
   }
 }

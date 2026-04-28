@@ -66,11 +66,12 @@ export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md font-serif">
         <DialogHeader>
-          <DialogTitle className="font-serif text-wine">Send to Collector</DialogTitle>
+          <DialogTitle className="font-serif text-wine">Send Certificate of Ownership</DialogTitle>
           <DialogDescription className="font-serif text-ink/60">
-            The collector receives <span className="font-semibold">one email</span> listing all{' '}
-            {count} work{count === 1 ? '' : 's'} with a single button to accept every Certificate of
-            Ownership linked to your Certificate{count === 1 ? '' : 's'} of Authenticity.
+            The collector receives <span className="font-semibold">one email</span> to claim their
+            Certificate{count === 1 ? '' : 's'} of Ownership for{' '}
+            {count === 1 ? 'this work' : `all ${count} selected works`}.{' '}
+            Your Certificate{count === 1 ? '' : 's'} of Authenticity remain in your account.
           </DialogDescription>
         </DialogHeader>
 

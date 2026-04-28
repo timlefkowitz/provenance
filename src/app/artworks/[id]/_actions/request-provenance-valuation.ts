@@ -80,10 +80,11 @@ export async function requestProvenanceValuation(
       };
     }
 
-    const inputs = await computeValuationInputs(artworkId);
-    if (!inputs) {
-      return { success: false, error: 'Could not compute valuation inputs' };
+    const valuationResult = await computeValuationInputs(artworkId);
+    if (!valuationResult.ok) {
+      return { success: false, error: valuationResult.reason };
     }
+    const { inputs } = valuationResult;
 
     const llmResult = await runLlmValuationPass(inputs);
 
