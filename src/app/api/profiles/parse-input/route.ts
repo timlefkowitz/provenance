@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { streamText, Output } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { checkRateLimit } from '~/lib/rate-limit';
 import { isValidRole, type UserRole } from '~/lib/user-roles';
@@ -130,7 +129,9 @@ export async function POST(req: NextRequest) {
   // -------- streaming via AI SDK --------
   try {
     const result = streamText({
-      model: openai('gpt-4o-mini'),
+      // AI SDK 6 uses the Vercel AI Gateway by default for zero-config OpenAI
+    // access. No provider package import required.
+    model: 'openai/gpt-4o-mini',
       system: buildTacoSystemPrompt({
         role: role as UserRole,
         currentField,
