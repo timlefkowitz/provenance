@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '~/lib/admin';
 import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
 import { AdminAnalytics } from './_components/admin-analytics';
+import { AdminUserAnalytics } from './_components/admin-user-analytics';
 // import { FixArtistNamesButton } from './_components/fix-artist-names-button';
 // import { FixGalleryNamesButton } from './_components/fix-gallery-names-button';
 // import { LinkArtworksToExhibitionButton } from './_components/link-artworks-to-exhibition-button';
@@ -33,6 +34,26 @@ export default async function AdminPage() {
 
       <div className="flex flex-col space-y-4">
         <AdminAnalytics />
+
+        <AdminUserAnalytics />
+
+        <Card>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-display text-xl text-wine">Feedback tickets</CardTitle>
+              <CardDescription className="font-serif">
+                Triage user-submitted bugs, ideas, and questions from /feedback. Anonymous tickets supported.
+              </CardDescription>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0 w-full sm:w-auto"
+            >
+              <Link href="/admin/feedback">View tickets</Link>
+            </Button>
+          </CardHeader>
+        </Card>
 
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
