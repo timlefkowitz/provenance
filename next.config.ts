@@ -83,6 +83,25 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      /** Public feed can confuse CDNs — ensure HTML isn’t swapped with stale shell when filters ship. */
+      {
+        source: '/artworks',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-store, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/artworks/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-store, max-age=0, must-revalidate',
+          },
+        ],
+      },
     ];
   },
 };

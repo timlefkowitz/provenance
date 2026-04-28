@@ -248,7 +248,10 @@ export default async function ArtworksPage({
   const hasArtworks = isGroupedView ? artistGroups.length > 0 : artworks.length > 0;
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl">
+    <div
+      className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl"
+      data-prov-artworks="db-favorites-views-artist-top-trending"
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex-1">
