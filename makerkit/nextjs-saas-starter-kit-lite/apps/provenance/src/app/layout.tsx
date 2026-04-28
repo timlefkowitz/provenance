@@ -51,7 +51,7 @@ export default function RootLayout({
             <RoleSelectionModal />
           </OnboardingGuard>
         </RootProviders>
-        <Toaster richColors position="top-center" />
+        <Toaster position="top-center" />
       </body>
     </html>
   );

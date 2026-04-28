@@ -113,7 +113,7 @@ export default async function RootLayout({
           </OnboardingGuard>
         </RootProviders>
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
-        <Toaster richColors position="bottom-center" />
+        <Toaster position="bottom-center" />
         <ClientAnalytics />
       </body>
     </html>

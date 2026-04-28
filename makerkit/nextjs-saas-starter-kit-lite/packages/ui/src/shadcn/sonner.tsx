@@ -22,9 +22,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
           cancelButton:
             'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
           error:
-            'group-[.toaster]:bg-[#f6ede8] group-[.toaster]:text-[#8b3725] group-[.toaster]:border-[#d4917a] dark:group-[.toaster]:bg-[#2a1208] dark:group-[.toaster]:text-[#e8a48a] dark:group-[.toaster]:border-[#7a3820]',
+            'group-[.toaster]:border-[var(--toast-error-border)] group-[.toaster]:bg-[var(--toast-error-bg)] group-[.toaster]:text-[var(--toast-error-fg)]',
           success:
-            'group-[.toaster]:bg-[#edf0e8] group-[.toaster]:text-[#3a5428] group-[.toaster]:border-[#8ab478] dark:group-[.toaster]:bg-[#1a2a12] dark:group-[.toaster]:text-[#a2c880] dark:group-[.toaster]:border-[#3a5428]',
+            'group-[.toaster]:border-[var(--toast-success-border)] group-[.toaster]:bg-[var(--toast-success-bg)] group-[.toaster]:text-[var(--toast-success-fg)]',
+          warning:
+            'group-[.toaster]:border-[var(--toast-warning-border)] group-[.toaster]:bg-[var(--toast-warning-bg)] group-[.toaster]:text-[var(--toast-warning-fg)]',
+          info:
+            'group-[.toaster]:border-[var(--toast-info-border)] group-[.toaster]:bg-[var(--toast-info-bg)] group-[.toaster]:text-[var(--toast-info-fg)]',
         },
       }}
       {...props}

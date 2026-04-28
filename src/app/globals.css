@@ -30,6 +30,12 @@
   --color-ink: #111111;
   --color-wine: #4A2F25;
 
+  /* Semantic notify hues — tied to theme vars in shadcn-ui.css (muted sage/rust; dark = Tokyo-aligned) */
+  --color-notify-success: var(--notify-success);
+  --color-notify-error: var(--notify-error);
+  --color-notify-info: var(--notify-info);
+  --color-notify-warning: var(--notify-warning);
+
   /* Use Gotham as primary font across the app, with sensible fallbacks */
   --font-display: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
     sans-serif;

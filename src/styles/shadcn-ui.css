@@ -35,6 +35,24 @@
         --destructive: var(--color-red-500);
         --destructive-foreground: var(--color-white);
 
+        /* Toasts + inline notify accents — muted sage / rust (not default UI red/green) */
+        --toast-success-bg: #e9eee4;
+        --toast-success-fg: #2e4825;
+        --toast-success-border: #94aa84;
+        --toast-error-bg: #f5ebe8;
+        --toast-error-fg: #6f3028;
+        --toast-error-border: #c4a596;
+        --toast-warning-bg: #f6f0e4;
+        --toast-warning-fg: #6b4f1b;
+        --toast-warning-border: #d4bc7a;
+        --toast-info-bg: #e8eef6;
+        --toast-info-fg: #284a6f;
+        --toast-info-border: #94b0cc;
+        --notify-success: #3f5c32;
+        --notify-error: #8b3d32;
+        --notify-info: #295ea5;
+        --notify-warning: #8a5c1f;
+
         --border: var(--color-gray-100);
         --input: var(--color-gray-200);
         --ring: var(--color-neutral-800);
@@ -81,6 +99,23 @@
 
         --destructive: var(--color-red-500);
         --destructive-foreground: var(--color-white);
+
+        --toast-success-bg: #edf0e8;
+        --toast-success-fg: #3a5428;
+        --toast-success-border: #8ab478;
+        --toast-error-bg: #f6ede8;
+        --toast-error-fg: #8b3725;
+        --toast-error-border: #d4917a;
+        --toast-warning-bg: #f6f1e4;
+        --toast-warning-fg: #6b4818;
+        --toast-warning-border: #d4b878;
+        --toast-info-bg: #e8eef5;
+        --toast-info-fg: #2d4f73;
+        --toast-info-border: #96afca;
+        --notify-success: #3f5c30;
+        --notify-error: #8b3725;
+        --notify-info: #2d5588;
+        --notify-warning: #7a5018;
 
         --border: #D6CEBC;
         --input: #CFC6B2;
@@ -131,6 +166,23 @@
 
         --destructive: var(--color-red-500);
         --destructive-foreground: var(--color-white);
+
+        --toast-success-bg: #eaefe5;
+        --toast-success-fg: #2d4424;
+        --toast-success-border: #8fa986;
+        --toast-error-bg: #f4eae7;
+        --toast-error-fg: #752922;
+        --toast-error-border: #c49a8c;
+        --toast-warning-bg: #f5f0e6;
+        --toast-warning-fg: #654018;
+        --toast-warning-border: #cbb896;
+        --toast-info-bg: #e9eef6;
+        --toast-info-fg: #274868;
+        --toast-info-border: #98b3d4;
+        --notify-success: #3d5630;
+        --notify-error: #842f27;
+        --notify-info: #2858a3;
+        --notify-warning: #755018;
 
         --border: #d4cdc0;
         --input: #c9c2b5;
@@ -222,6 +274,23 @@
 
         --destructive:         #F7768E;   /* Tokyo Night red                       */
         --destructive-foreground: #1A1B26;
+
+        --toast-success-bg:    #1a2319;
+        --toast-success-fg:    #9ece6a;
+        --toast-success-border:#3d5238;
+        --toast-error-bg:      #2a1f26;
+        --toast-error-fg:      #fca5b8;
+        --toast-error-border:  #6b4555;
+        --toast-warning-bg:    #2b2618;
+        --toast-warning-fg:    #e0af68;
+        --toast-warning-border:#5c4d28;
+        --toast-info-bg:       #1f2335;
+        --toast-info-fg:       #7aa2f7;
+        --toast-info-border:   #3d4f80;
+        --notify-success:      #9ece6a;
+        --notify-error:        #f7768e;
+        --notify-info:         #7aa2f7;
+        --notify-warning:      #e0af68;
 
         --border:              #292E42;   /* Tokyo Night border                    */
         --input:               #292E42;

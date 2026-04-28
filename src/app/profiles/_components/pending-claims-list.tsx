@@ -113,9 +113,9 @@ export function PendingClaimsList({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        return <CheckCircle2 className="h-5 w-5 text-notify-success" />;
       case 'rejected':
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-notify-error" />;
       default:
         return <Clock className="h-5 w-5 text-wine" />;
     }
@@ -214,7 +214,7 @@ export function PendingClaimsList({
                               setSelectedClaim(claim);
                               setApproveDialogOpen(true);
                             }}
-                            className="border-green-600 text-green-600 hover:bg-green-50"
+                            className="border-notify-success text-notify-success hover:bg-[var(--toast-success-bg)]"
                           >
                             <CheckCircle2 className="h-4 w-4 mr-2" />
                             Approve
@@ -226,7 +226,7 @@ export function PendingClaimsList({
                               setSelectedClaim(claim);
                               setRejectDialogOpen(true);
                             }}
-                            className="border-red-600 text-red-600 hover:bg-red-50"
+                            className="border-notify-error text-notify-error hover:bg-[var(--toast-error-bg)]"
                           >
                             <XCircle className="h-4 w-4 mr-2" />
                             Reject
@@ -346,7 +346,7 @@ export function PendingClaimsList({
             <Button
               onClick={handleApprove}
               disabled={pending}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-notify-success text-white hover:opacity-95 dark:text-[#1A1B26]"
             >
               {pending ? 'Approving...' : 'Approve Claim'}
             </Button>

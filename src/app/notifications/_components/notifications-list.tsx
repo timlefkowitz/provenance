@@ -117,24 +117,24 @@ export function NotificationsList({
       case 'certificate_verified':
       case 'artist_profile_claim_approved':
       case 'artist_claim_approved':
-        return 'text-green-600';
+        return 'text-notify-success';
       case 'certificate_claimed':
-        return 'text-blue-600';
+        return 'text-notify-info';
       case 'certificate_claim_request':
       case 'artist_profile_claim_request':
       case 'artist_claim_request':
         return 'text-wine';
       case 'artist_profile_claim_rejected':
       case 'artist_claim_denied':
-        return 'text-red-600';
+        return 'text-notify-error';
       case 'artist_claim_other_certificates':
         return 'text-ink';
       case 'provenance_service_request':
         return 'text-wine';
       case 'certificate_claim_pending':
-        return 'text-amber-700';
+        return 'text-notify-warning';
       case 'provenance_updated':
-        return 'text-blue-700';
+        return 'text-notify-info';
       default:
         return 'text-ink';
     }
