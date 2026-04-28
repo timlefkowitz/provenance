@@ -241,14 +241,18 @@ export default async function ArtistProfilePage({
       .limit(12);
 
     if (userRole === USER_ROLES.ARTIST) {
-      const orParts = [
-        `account_id.eq.${account.id}`,
-        `artist_account_id.eq.${account.id}`,
-      ];
+      const orParts: string[] = [`artist_account_id.eq.${account.id}`];
       if (roleProfile?.id) {
         orParts.push(`artist_profile_id.eq.${roleProfile.id}`);
       }
+      orParts.push(
+        `and(account_id.eq.${account.id},artist_account_id.is.null,artist_profile_id.is.null)`,
+      );
       artworksQuery = artworksQuery.or(orParts.join(','));
+      console.log('[ArtistProfile] artist works filter applied', {
+        accountId: account.id,
+        hasRoleProfile: Boolean(roleProfile?.id),
+      });
     } else {
       artworksQuery = artworksQuery.eq('account_id', account.id);
     }
