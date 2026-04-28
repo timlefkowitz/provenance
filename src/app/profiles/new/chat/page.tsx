@@ -8,6 +8,25 @@ export const metadata = {
   title: 'Create Profile with Taco | Provenance',
 };
 
+/**
+ * Pull a sensible "display name" out of whatever Supabase has on the
+ * authenticated user — preferring an explicit full_name set by the OAuth
+ * provider, falling back to first_name/last_name fragments.
+ */
+function pickDisplayName(meta: Record<string, unknown> | null | undefined) {
+  if (!meta) return undefined;
+  const candidates = [
+    meta.full_name,
+    meta.name,
+    meta.display_name,
+    [meta.first_name, meta.last_name].filter(Boolean).join(' '),
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c.trim();
+  }
+  return undefined;
+}
+
 export default async function CreateProfileWithTacoPage({
   searchParams,
 }: {
@@ -29,6 +48,9 @@ export default async function CreateProfileWithTacoPage({
     redirect('/profiles');
   }
 
+  const prefillName = pickDisplayName(user.user_metadata);
+  const prefillEmail = user.email ?? undefined;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -37,8 +59,9 @@ export default async function CreateProfileWithTacoPage({
             Set up your {getRoleLabel(role)} profile with Taco
           </h1>
           <p className="text-ink/70 font-serif">
-            A short conversation instead of a long form. You can paste in
-            chunks — Taco will sort the structured data for you.
+            A short conversation instead of a long form. Paste in chunks, drop
+            in a photo, or even talk to Taco — he&apos;ll sort the structured
+            data for you.
           </p>
         </div>
         <Link
@@ -49,7 +72,10 @@ export default async function CreateProfileWithTacoPage({
         </Link>
       </div>
 
-      <TacoProfileChatbot role={role} />
+      <TacoProfileChatbot
+        role={role}
+        prefill={{ name: prefillName, contact_email: prefillEmail }}
+      />
     </div>
   );
 }

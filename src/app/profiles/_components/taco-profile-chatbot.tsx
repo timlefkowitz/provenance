@@ -1,18 +1,38 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useObject } from '@ai-sdk/react';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
-import { ArrowRight, Camera, Code2, Loader2, Send, SkipForward } from 'lucide-react';
+import {
+  ArrowRight,
+  Camera,
+  Code2,
+  Loader2,
+  Mic,
+  MicOff,
+  Send,
+  SkipForward,
+  Upload,
+} from 'lucide-react';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { createProfile } from '../_actions/create-profile';
 import { uploadProfilePicture } from '../_actions/upload-profile-picture';
 import {
-  parseProfileInput,
+  parsedProfileSchema,
+  sanitizeParsedFields,
   type ParsedProfileFields,
+  type ParsedProfilePayload,
 } from '../_actions/parse-profile-input';
 
 /* -------------------------------------------------------------------------- */
@@ -129,6 +149,11 @@ type ProfileDraft = ParsedProfileFields & {
   picture_url?: string;
 };
 
+export type TacoProfileChatbotPrefill = {
+  name?: string;
+  contact_email?: string;
+};
+
 /* -------------------------------------------------------------------------- */
 /*  Component                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -136,122 +161,74 @@ type ProfileDraft = ParsedProfileFields & {
 let __msgId = 1;
 const nextId = () => __msgId++;
 
-export function TacoProfileChatbot({ role }: { role: UserRole }) {
+export function TacoProfileChatbot({
+  role,
+  prefill,
+}: {
+  role: UserRole;
+  prefill?: TacoProfileChatbotPrefill;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const questions = useMemo(() => questionsForRole(role), [role]);
 
   const [stage, setStage] = useState<Stage>('questions');
   const [stepIndex, setStepIndex] = useState(0);
-  const [draft, setDraft] = useState<ProfileDraft>({});
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
+  const [draft, setDraft] = useState<ProfileDraft>(() => {
+    const seed: ProfileDraft = {};
+    if (prefill?.name?.trim()) seed.name = prefill.name.trim();
+    if (prefill?.contact_email?.trim()) {
+      seed.contact_email = prefill.contact_email.trim();
+    }
+    return seed;
+  });
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const intro: ChatMessage = {
       id: nextId(),
       role: 'taco',
       text: `*stretches* Hi. I'm Taco. I'm going to walk you through your ${getRoleLabel(role).toLowerCase()} profile one question at a time. You can paste in chunks — like a name and address together — and I'll sort it out.`,
-    },
-  ]);
+    };
+    const list: ChatMessage[] = [intro];
+    const prefilledBits: string[] = [];
+    if (prefill?.name?.trim()) prefilledBits.push(`name "${prefill.name.trim()}"`);
+    if (prefill?.contact_email?.trim()) {
+      prefilledBits.push(`email "${prefill.contact_email.trim()}"`);
+    }
+    if (prefilledBits.length) {
+      list.push({
+        id: nextId(),
+        role: 'taco',
+        text: `*peeks at your account* I already see your ${prefilledBits.join(' and ')} from sign-in — I'll skip those. You can edit them in the preview if anything's off.`,
+      });
+    }
+    return list;
+  });
   const [input, setInput] = useState('');
-  const [tacoTyping, setTacoTyping] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [streamingReply, setStreamingReply] = useState<string | null>(null);
+  const [pendingUserText, setPendingUserText] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const currentQuestion = questions[stepIndex];
 
-  /* ----- ask the next question whenever the step or draft changes ----- */
-  useEffect(() => {
-    if (stage !== 'questions') return;
-    const q = questions[stepIndex];
-    if (!q) return;
-
-    // If the model already filled this field in a previous turn, skip ahead.
-    if (draft[q.key] !== undefined && draft[q.key] !== '') {
-      setStepIndex((i) => i + 1);
-      return;
-    }
-
-    // Avoid double-asking on re-render.
-    setMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (last?.role === 'taco' && last.text === q.prompt) return prev;
-      return [...prev, { id: nextId(), role: 'taco', text: q.prompt }];
-    });
-    // Focus input shortly after Taco "speaks".
-    const t = setTimeout(() => inputRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, stepIndex, draft]);
-
-  /* ----- end of questions → photo stage ----- */
-  useEffect(() => {
-    if (stage === 'questions' && stepIndex >= questions.length) {
-      setStage('photo');
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nextId(),
-          role: 'taco',
-          text: 'Last thing — want to add a profile photo? Upload one, paste a URL, or skip and we\'re done.',
-        },
-      ]);
-    }
-  }, [stage, stepIndex, questions.length]);
-
-  /* ----- always scroll to bottom on new messages ----- */
-  useEffect(() => {
-    scrollEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, tacoTyping]);
-
-  /* ----- send an answer ----- */
-  const handleSend = useCallback(
-    async (raw: string) => {
-      const text = raw.trim();
-      if (!text || tacoTyping || stage !== 'questions') return;
-      const q = currentQuestion;
-      if (!q) return;
-
-      setMessages((prev) => [...prev, { id: nextId(), role: 'user', text }]);
-      setInput('');
-      setTacoTyping(true);
-
-      try {
-        const res = await parseProfileInput({
-          input: text,
-          role,
-          currentField: q.key,
-          alreadyKnown: draft,
-        });
-
-        // Merge extracted fields into the draft (don't clobber existing ones).
-        setDraft((prev) => {
-          const next: ProfileDraft = { ...prev };
-          for (const [k, v] of Object.entries(res.extracted) as [
-            keyof ParsedProfileFields,
-            ParsedProfileFields[keyof ParsedProfileFields],
-          ][]) {
-            if (v !== undefined && v !== '' && next[k] === undefined) {
-              (next as Record<string, unknown>)[k] = v;
-            }
-          }
-          // If the user clearly meant to fill the current field but the
-          // parser missed it (e.g. just "Acme"), accept the raw input.
-          if (next[q.key] === undefined && q.key !== 'established_year') {
-            (next as Record<string, unknown>)[q.key] = text;
-          }
-          return next;
-        });
-
-        setMessages((prev) => [
-          ...prev,
-          { id: nextId(), role: 'taco', text: res.reply },
-        ]);
-        setStepIndex((i) => i + 1);
-      } catch (err) {
-        console.error('[Profiles] taco chat parse failed', err);
+  /* ----- AI SDK streaming object hook ---------------------------------- */
+  const {
+    object: streamedObject,
+    submit: submitToTaco,
+    isLoading: tacoTyping,
+    error: streamError,
+  } = useObject({
+    api: '/api/profiles/parse-input',
+    schema: parsedProfileSchema,
+    onFinish: ({ object, error }) => {
+      if (error || !object) {
+        console.error('[Profiles] taco stream finish with error', error);
         setMessages((prev) => [
           ...prev,
           {
@@ -260,11 +237,135 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
             text: '*flicks tail* Something went sideways on my end. Try that one again?',
           },
         ]);
-      } finally {
-        setTacoTyping(false);
+        setStreamingReply(null);
+        setPendingUserText(null);
+        return;
       }
+
+      const finalReply =
+        typeof object.taco_reply === 'string' && object.taco_reply.trim()
+          ? object.taco_reply.trim().slice(0, 280)
+          : '*slow blink* Got it.';
+
+      // Promote the streaming preview into a permanent Taco message.
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: 'taco', text: finalReply },
+      ]);
+      setStreamingReply(null);
+
+      // Merge the extracted fields into the draft.
+      const extracted = sanitizeParsedFields(object as Partial<ParsedProfilePayload>);
+      const fallbackKey = currentQuestion?.key;
+      const fallbackText = pendingUserText;
+
+      setDraft((prev) => {
+        const next: ProfileDraft = { ...prev };
+        for (const [k, v] of Object.entries(extracted) as [
+          keyof ParsedProfileFields,
+          ParsedProfileFields[keyof ParsedProfileFields],
+        ][]) {
+          if (v !== undefined && v !== '' && next[k] === undefined) {
+            (next as Record<string, unknown>)[k] = v;
+          }
+        }
+        // If the user clearly meant to fill the current field but the parser
+        // missed it (e.g. just "Acme"), accept the raw input.
+        if (
+          fallbackKey &&
+          fallbackKey !== 'established_year' &&
+          fallbackText &&
+          next[fallbackKey] === undefined
+        ) {
+          (next as Record<string, unknown>)[fallbackKey] = fallbackText;
+        }
+        return next;
+      });
+      setPendingUserText(null);
+      setStepIndex((i) => i + 1);
     },
-    [currentQuestion, draft, role, stage, tacoTyping],
+  });
+
+  /* ----- show streamed taco_reply as it arrives ------------------------ */
+  useEffect(() => {
+    if (!tacoTyping) return;
+    const partial =
+      streamedObject && typeof (streamedObject as { taco_reply?: unknown }).taco_reply === 'string'
+        ? ((streamedObject as { taco_reply?: string }).taco_reply ?? '')
+        : '';
+    setStreamingReply(partial);
+  }, [streamedObject, tacoTyping]);
+
+  /* ----- surface stream errors ----------------------------------------- */
+  useEffect(() => {
+    if (!streamError) return;
+    console.error('[Profiles] taco stream error', streamError);
+    toast.error('Taco couldn\'t hear that. Try again.');
+  }, [streamError]);
+
+  /* ----- ask the next question whenever the step or draft changes ----- */
+  useEffect(() => {
+    if (stage !== 'questions') return;
+    const q = questions[stepIndex];
+    if (!q) return;
+
+    // If the draft already has this field, skip ahead silently.
+    if (draft[q.key] !== undefined && draft[q.key] !== '') {
+      setStepIndex((i) => i + 1);
+      return;
+    }
+
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'taco' && last.text === q.prompt) return prev;
+      return [...prev, { id: nextId(), role: 'taco', text: q.prompt }];
+    });
+    const t = setTimeout(() => inputRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, stepIndex, draft]);
+
+  /* ----- end of questions → photo stage -------------------------------- */
+  useEffect(() => {
+    if (stage === 'questions' && stepIndex >= questions.length) {
+      setStage('photo');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId(),
+          role: 'taco',
+          text: 'Last thing — want to add a profile photo? Drop one onto the chat, click Upload, or skip and we\'re done.',
+        },
+      ]);
+    }
+  }, [stage, stepIndex, questions.length]);
+
+  /* ----- always scroll to bottom on new messages ----------------------- */
+  useEffect(() => {
+    scrollEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, tacoTyping, streamingReply]);
+
+  /* ----- send an answer ------------------------------------------------ */
+  const handleSend = useCallback(
+    (raw: string) => {
+      const text = raw.trim();
+      if (!text || tacoTyping || stage !== 'questions') return;
+      const q = currentQuestion;
+      if (!q) return;
+
+      setMessages((prev) => [...prev, { id: nextId(), role: 'user', text }]);
+      setInput('');
+      setPendingUserText(text);
+      setStreamingReply('');
+
+      submitToTaco({
+        input: text,
+        role,
+        currentField: q.key,
+        alreadyKnown: draft,
+      });
+    },
+    [currentQuestion, draft, role, stage, tacoTyping, submitToTaco],
   );
 
   const handleSkip = useCallback(() => {
@@ -281,60 +382,63 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
     setStepIndex((i) => i + 1);
   }, [currentQuestion, stage]);
 
-  /* ----- photo upload ----- */
-  const handlePhotoSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please choose an image file');
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image must be under 5MB');
-        return;
-      }
+  /* ----- photo upload (shared between click + drop) -------------------- */
+  const uploadFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
 
-      setUploading(true);
+    setUploading(true);
+    setMessages((prev) => [
+      ...prev,
+      { id: nextId(), role: 'user', text: `(uploading ${file.name}…)` },
+    ]);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const result = await uploadProfilePicture(fd);
+      if (result.error || !result.url) {
+        throw new Error(result.error ?? 'Upload failed');
+      }
+      setDraft((prev) => ({ ...prev, picture_url: result.url ?? undefined }));
       setMessages((prev) => [
         ...prev,
-        { id: nextId(), role: 'user', text: `(uploading ${file.name}…)` },
+        {
+          id: nextId(),
+          role: 'taco',
+          text: '*purrs* Lovely. That photo suits you.',
+        },
       ]);
+      setStage('review');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      toast.error(message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId(),
+          role: 'taco',
+          text: `*sniffs* Couldn't upload that one — ${message}. Try another?`,
+        },
+      ]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, []);
 
-      try {
-        const fd = new FormData();
-        fd.append('file', file);
-        const result = await uploadProfilePicture(fd);
-        if (result.error || !result.url) {
-          throw new Error(result.error ?? 'Upload failed');
-        }
-        setDraft((prev) => ({ ...prev, picture_url: result.url ?? undefined }));
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'taco',
-            text: '*purrs* Lovely. That photo suits you.',
-          },
-        ]);
-        setStage('review');
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Upload failed';
-        toast.error(message);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'taco',
-            text: `*sniffs* Couldn't upload that one — ${message}. Try another?`,
-          },
-        ]);
-      } finally {
-        setUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
+  const handlePhotoSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) void uploadFile(file);
     },
-    [],
+    [uploadFile],
   );
 
   const handleSkipPhoto = useCallback(() => {
@@ -350,7 +454,125 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
     setStage('review');
   }, []);
 
-  /* ----- final save ----- */
+  /* ----- drag + drop image anywhere on chat surface -------------------- */
+  const handleDragOver = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      // Only react when files are being dragged.
+      if (!Array.from(e.dataTransfer?.types ?? []).includes('Files')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDragging) setIsDragging(true);
+    },
+    [isDragging],
+  );
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      // Ignore leave events caused by entering child elements.
+      if (
+        dropZoneRef.current &&
+        e.relatedTarget instanceof Node &&
+        dropZoneRef.current.contains(e.relatedTarget)
+      ) {
+        return;
+      }
+      setIsDragging(false);
+    },
+    [],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+      // If the user drops a file before we've reached the photo stage, jump
+      // ahead and accept it — they're clearly done answering questions.
+      if (stage === 'questions') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: 'system',
+            text: 'Skipped to photo step',
+          },
+        ]);
+        setStage('photo');
+      }
+      void uploadFile(file);
+    },
+    [stage, uploadFile],
+  );
+
+  /* ----- voice input via Web Speech API -------------------------------- */
+  const speechSupported = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return Boolean(
+      (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition ||
+        (window as unknown as { webkitSpeechRecognition?: unknown })
+          .webkitSpeechRecognition,
+    );
+  }, []);
+
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const [listening, setListening] = useState(false);
+
+  const stopListening = useCallback(() => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
+    setListening(false);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!speechSupported) {
+      toast.error('Voice input isn\'t supported in this browser');
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    try {
+      const rec = new Ctor();
+      rec.lang = 'en-US';
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.onresult = (event) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i]![0]!.transcript;
+        }
+        setInput(transcript);
+      };
+      rec.onerror = () => setListening(false);
+      rec.onend = () => setListening(false);
+      rec.start();
+      recognitionRef.current = rec;
+      setListening(true);
+    } catch (err) {
+      console.error('[Profiles] speech recognition failed', err);
+      setListening(false);
+    }
+  }, [speechSupported]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
+  /* ----- final save ---------------------------------------------------- */
   const handleSave = useCallback(() => {
     if (!draft.name?.trim()) {
       toast.error('A name is required');
@@ -373,11 +595,7 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
         picture_url: draft.picture_url || undefined,
         bio: draft.bio || undefined,
         medium: draft.medium || undefined,
-        location:
-          draft.location ||
-          // Fall back to address if we never got a separate location
-          draft.address ||
-          undefined,
+        location: draft.location || draft.address || undefined,
         website: draft.website || undefined,
         contact_email: draft.contact_email || undefined,
         phone: draft.phone || undefined,
@@ -413,7 +631,7 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
     });
   }, [draft, role, router]);
 
-  /* ----- JSON preview (shown live, on demand on mobile) ----- */
+  /* ----- JSON preview -------------------------------------------------- */
   const previewJson = useMemo(() => {
     const ordered = {
       role,
@@ -441,7 +659,14 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Chat column */}
-      <Card className="border-wine/20 bg-parchment/60 flex flex-col overflow-hidden">
+      <Card
+        ref={dropZoneRef}
+        className="border-wine/20 bg-parchment/60 relative flex flex-col overflow-hidden"
+        onDragEnter={handleDragOver}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <CardHeader className="pb-3 border-b border-wine/15">
           <div className="flex items-center gap-3">
             <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-wine/30 bg-wine/10">
@@ -486,7 +711,15 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
                 <SystemBubble key={m.id} text={m.text} />
               ),
             )}
-            {tacoTyping && <TypingBubble />}
+
+            {/* Live, streaming Taco bubble */}
+            {tacoTyping && streamingReply !== null && (
+              streamingReply.length > 0 ? (
+                <TacoBubble text={streamingReply} streaming />
+              ) : (
+                <TypingBubble />
+              )
+            )}
             <div ref={scrollEndRef} />
           </div>
 
@@ -496,6 +729,7 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (listening) stopListening();
                   handleSend(input);
                 }}
                 className="flex items-center gap-2"
@@ -505,11 +739,37 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={currentQuestion?.placeholder ?? 'Type your answer…'}
+                  placeholder={
+                    listening
+                      ? 'Listening…'
+                      : currentQuestion?.placeholder ?? 'Type your answer…'
+                  }
                   disabled={tacoTyping}
                   className="flex-1 min-w-0 rounded border border-wine/30 bg-white px-3 py-2 text-sm font-serif text-ink placeholder:text-ink/40 focus:outline-none focus:ring-1 focus:ring-wine/40 disabled:opacity-60"
                   maxLength={500}
                 />
+                {speechSupported && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={listening ? stopListening : startListening}
+                    disabled={tacoTyping}
+                    className={`shrink-0 font-serif border-wine/30 ${
+                      listening
+                        ? 'bg-wine/15 text-wine'
+                        : 'text-wine hover:bg-wine/10'
+                    }`}
+                    aria-label={listening ? 'Stop voice input' : 'Speak your answer'}
+                    aria-pressed={listening}
+                  >
+                    {listening ? (
+                      <MicOff className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 {currentQuestion?.optional && (
                   <Button
                     type="button"
@@ -560,6 +820,9 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
                     </>
                   )}
                 </Button>
+                <span className="text-xs font-serif text-ink/50">
+                  or drop one anywhere on the chat
+                </span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -573,7 +836,7 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
                   variant="outline"
                   onClick={handleSkipPhoto}
                   disabled={uploading}
-                  className="font-serif border-wine/30 text-wine hover:bg-wine/10"
+                  className="font-serif border-wine/30 text-wine hover:bg-wine/10 ml-auto"
                 >
                   <SkipForward className="h-4 w-4 mr-1" />
                   No photo for now
@@ -608,7 +871,6 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
                   variant="outline"
                   onClick={() => {
                     setStage('questions');
-                    // Re-ask whichever first field is still empty (or first question).
                     const firstEmpty = questions.findIndex(
                       (q) => draft[q.key] === undefined || draft[q.key] === '',
                     );
@@ -630,12 +892,26 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
             )}
           </div>
         </CardContent>
+
+        {/* Drag overlay */}
+        {isDragging && (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-wine bg-parchment/85 backdrop-blur-sm"
+            aria-hidden
+          >
+            <div className="flex flex-col items-center gap-2 text-wine">
+              <Upload className="h-8 w-8" />
+              <p className="font-display text-lg">Drop a profile photo</p>
+              <p className="text-xs font-serif text-ink/70">
+                JPEG / PNG up to 5MB
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Live profile preview column */}
-      <div
-        className={`${showJson ? 'block' : 'hidden'} lg:block space-y-4`}
-      >
+      <div className={`${showJson ? 'block' : 'hidden'} lg:block space-y-4`}>
         <PreviewCard draft={draft} role={role} filledCount={filledCount} />
         <JsonCard json={previewJson} />
       </div>
@@ -647,7 +923,7 @@ export function TacoProfileChatbot({ role }: { role: UserRole }) {
 /*  Subcomponents                                                             */
 /* -------------------------------------------------------------------------- */
 
-function TacoBubble({ text }: { text: string }) {
+function TacoBubble({ text, streaming }: { text: string; streaming?: boolean }) {
   return (
     <div className="flex items-end gap-2">
       <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full ring-1 ring-wine/20">
@@ -661,6 +937,9 @@ function TacoBubble({ text }: { text: string }) {
       </div>
       <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-wine/5 px-3 py-2 text-sm font-serif leading-relaxed text-ink/90 whitespace-pre-wrap">
         {text}
+        {streaming && (
+          <span className="ml-0.5 inline-block h-3 w-1 translate-y-0.5 animate-pulse bg-wine/60 align-baseline" />
+        )}
       </div>
     </div>
   );
@@ -836,3 +1115,24 @@ function CopyJsonButton({ json }: { json: string }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Minimal Web Speech API typings                                            */
+/* -------------------------------------------------------------------------- */
+
+type SpeechRecognitionResult = {
+  0: { transcript: string };
+};
+type SpeechRecognitionEvent = {
+  results: { [index: number]: SpeechRecognitionResult; length: number };
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  onend: ((e: unknown) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
