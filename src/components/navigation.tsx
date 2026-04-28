@@ -33,6 +33,12 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     return null;
   }
 
+  // Admin uses a full dark dashboard shell + sidebar; hide global marketing nav so the
+  // redesign is visible (otherwise parchment header dominates the layout).
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <nav className="relative z-[100] flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 shadow-sm">
       <div className="flex items-center gap-8 min-w-0">

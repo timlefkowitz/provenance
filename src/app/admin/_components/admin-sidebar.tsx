@@ -56,6 +56,12 @@ export function AdminSidebar() {
       <p className="mt-8 px-2 font-mono text-[10px] leading-relaxed text-slate-600">
         Simplicity · modern · pragmatic
       </p>
+      <Link
+        href="/"
+        className="mt-4 block px-2 font-mono text-[11px] text-[#1793d1]/70 underline-offset-2 hover:text-[#67d4ff] hover:underline"
+      >
+        ← Back to Provenance
+      </Link>
     </aside>
   );
 }

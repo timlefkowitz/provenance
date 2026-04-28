@@ -15,6 +15,7 @@ import { ClientAnalytics } from "~/components/client-analytics";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
 import { TrialBanner } from "~/components/trial-banner";
+import { ShowUnlessAdmin } from "~/components/show-unless-admin";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { cn } from "@kit/ui/utils";
 
@@ -104,10 +105,12 @@ export default async function RootLayout({
         <RootProviders lang={currentLang} theme={currentTheme}>
           <OnboardingGuard>
             <Navigation initialUser={initialUser} />
-            <TrialBanner />
-            <StreakActivityTracker />
-            <PresenceTracker />
-            <GalleryProfileNotification />
+            <ShowUnlessAdmin>
+              <TrialBanner />
+              <StreakActivityTracker />
+              <PresenceTracker />
+              <GalleryProfileNotification />
+            </ShowUnlessAdmin>
             {children}
             <RoleSelectionModal />
           </OnboardingGuard>
