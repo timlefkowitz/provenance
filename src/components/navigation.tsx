@@ -288,6 +288,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             >
               <Trans i18nKey="common:navigation.about" defaults="About" />
             </Link>
+            <Link
+              href="/feedback"
+              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Feedback
+            </Link>
           </div>
         </div>
       )}
