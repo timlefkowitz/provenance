@@ -75,7 +75,15 @@ export default async function ArtworksPage({
   const groupOffset = (page - 1) * GROUPS_PER_PAGE;
 
   const client = getSupabaseServerClient();
-  const { data: { user } } = await client.auth.getUser();
+  const { data: { user }, error: authError } = await client.auth.getUser();
+
+  console.log('[Artworks] page entry', {
+    view,
+    page,
+    hasUser: !!user,
+    userId: user?.id ?? null,
+    authErrorName: authError?.name ?? null,
+  });
 
   let admin: ReturnType<typeof getSupabaseServerAdminClient> | null = null;
   try {

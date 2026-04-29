@@ -19,5 +19,6 @@ export default async function ArtworkRootPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  console.log('[Artwork] /artworks/[id] permanent-redirect → /certificate', { artworkId: id });
   permanentRedirect(`/artworks/${id}/certificate`);
 }

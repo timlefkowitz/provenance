@@ -82,7 +82,17 @@ export default async function CertificatePage({
   const resolvedSearchParams = await searchParams;
   const showVerifyCta = resolvedSearchParams?.verify === '1';
   const client = getSupabaseServerClient();
-  const { data: { user } } = await client.auth.getUser();
+  const { data: { user }, error: authError } = await client.auth.getUser();
+
+  console.log('[Certificate] page entry', {
+    artworkId: id,
+    hasUser: !!user,
+    userId: user?.id ?? null,
+    // AuthSessionMissingError is normal when the visitor is anonymous; surface
+    // the code so we can distinguish it from real auth failures.
+    authErrorCode: authError ? (authError as any).status ?? 'unknown' : null,
+    authErrorName: authError?.name ?? null,
+  });
 
   // Fetch artwork - allow public access for verified artworks
   // Authenticated users can also see their own artworks
@@ -142,9 +152,18 @@ export default async function CertificatePage({
       .eq('id', id)
       .or(`account_id.eq.${user.id},status.eq.verified`)
       .single();
-    
+
     artwork = data;
     error = err;
+    console.log('[Certificate] artwork fetch (authenticated)', {
+      artworkId: id,
+      userId: user.id,
+      found: !!data,
+      status: data?.status ?? null,
+      ownerMatches: data ? data.account_id === user.id : null,
+      errorCode: err?.code ?? null,
+      errorMessage: err?.message ?? null,
+    });
   } else {
     // Anonymous users can only see verified artworks
     const { data, error: err } = await (client as any)
@@ -153,12 +172,28 @@ export default async function CertificatePage({
       .eq('id', id)
       .eq('status', 'verified')
       .single();
-    
+
     artwork = data;
     error = err;
+    console.log('[Certificate] artwork fetch (anonymous)', {
+      artworkId: id,
+      found: !!data,
+      status: data?.status ?? null,
+      errorCode: err?.code ?? null,
+      errorMessage: err?.message ?? null,
+    });
   }
 
   if (error || !artwork) {
+    console.warn('[Certificate] redirect → /artworks (artwork not accessible)', {
+      artworkId: id,
+      hasUser: !!user,
+      userId: user?.id ?? null,
+      // PostgREST returns code "PGRST116" when .single() finds 0 rows.
+      errorCode: (error as any)?.code ?? null,
+      errorMessage: (error as any)?.message ?? null,
+      reason: error ? 'query_error' : 'no_row_match',
+    });
     redirect('/artworks');
   }
 

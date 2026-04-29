@@ -78,7 +78,22 @@ export default async function RootLayout({
     } = await client.auth.getUser();
 
     if (authError) {
-      console.error('[Provenance] RootLayout auth.getUser failed', authError);
+      // Supabase v2 returns AuthSessionMissingError (status 400, name
+      // "AuthSessionMissingError") whenever a visitor is anonymous. That is
+      // the expected case for any non-logged-in page view, so logging it as
+      // an error was just creating noise in Vercel logs. Only treat *other*
+      // auth errors as real failures.
+      const isAnonymous =
+        (authError as any)?.name === 'AuthSessionMissingError' ||
+        (authError as any)?.__isAuthError === true;
+
+      if (isAnonymous) {
+        if (process.env.NEXT_PUBLIC_DEBUG_APP === '1') {
+          console.debug('[Provenance] RootLayout: anonymous visitor');
+        }
+      } else {
+        console.error('[Provenance] RootLayout auth.getUser failed', authError);
+      }
     } else if (user) {
       initialUser = {
         ...user,
