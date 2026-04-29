@@ -269,7 +269,7 @@ export function AcquisitionsTab({ acquisitions, artworks, artworkTitleById }: Pr
                 <TableRow key={a.id}>
                   <TableCell className="font-serif max-w-[8rem]">
                     {a.artwork ? (
-                      <Link className="text-wine underline" href={`/artworks/${a.artwork.id}`}>
+                      <Link className="text-wine underline" href={`/artworks/${a.artwork.id}/certificate`}>
                         {a.artwork.title}
                       </Link>
                     ) : (

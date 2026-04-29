@@ -260,7 +260,7 @@ export function ExhibitionPlanningTab({ plans, artworks, artworkTitleById, userE
                 <TableRow key={p.id}>
                   <TableCell className="font-serif max-w-[8rem]">
                     {p.artwork ? (
-                      <Link className="text-wine underline" href={`/artworks/${p.artwork.id}`}>
+                      <Link className="text-wine underline" href={`/artworks/${p.artwork.id}/certificate`}>
                         {p.artwork.title}
                       </Link>
                     ) : (

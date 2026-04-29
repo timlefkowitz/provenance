@@ -56,7 +56,7 @@ export function ProvenanceTimeline({ events, title = 'Recent provenance events' 
             {e.artwork ? (
               <Link
                 className="text-wine text-sm font-serif underline mt-1 inline-block"
-                href={`/artworks/${e.artwork.id}`}
+                href={`/artworks/${e.artwork.id}/certificate`}
               >
                 {e.artwork.title}
               </Link>

@@ -206,7 +206,7 @@ export function NotificationsList({
                   {/* Action buttons based on notification type */}
                   <div className="flex gap-2 mt-3">
                     {notification.artwork_id && (
-                      <Link href={`/artworks/${notification.artwork_id}`}>
+                      <Link href={`/artworks/${notification.artwork_id}/certificate`}>
                         <Button
                           variant="outline"
                           size="sm"

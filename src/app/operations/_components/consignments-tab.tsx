@@ -241,7 +241,7 @@ export function ConsignmentsTab({ consignments, artworks, artworkTitleById }: Pr
                 <TableRow key={row.id}>
                   <TableCell className="font-serif max-w-[10rem]">
                     {row.artwork ? (
-                      <Link href={`/artworks/${row.artwork.id}`} className="text-wine underline">
+                      <Link href={`/artworks/${row.artwork.id}/certificate`} className="text-wine underline">
                         {row.artwork.title}
                       </Link>
                     ) : (

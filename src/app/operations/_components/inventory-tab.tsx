@@ -209,7 +209,7 @@ export function InventoryTab({ locations, artworks, artworkTitleById }: Props) {
                 <TableRow key={l.id}>
                   <TableCell className="font-serif max-w-[8rem]">
                     {l.artwork ? (
-                      <Link className="text-wine underline" href={`/artworks/${l.artwork.id}`}>
+                      <Link className="text-wine underline" href={`/artworks/${l.artwork.id}/certificate`}>
                         {l.artwork.title}
                       </Link>
                     ) : (

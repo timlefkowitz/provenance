@@ -533,7 +533,7 @@ export function OperationsPageContent({
                     <TableRow key={row.id}>
                       <TableCell className="font-serif max-w-[10rem]">
                         {row.artwork ? (
-                          <Link href={`/artworks/${row.artwork.id}`} className="text-wine underline">
+                          <Link href={`/artworks/${row.artwork.id}/certificate`} className="text-wine underline">
                             {row.artwork.title}
                           </Link>
                         ) : (
@@ -756,7 +756,7 @@ export function OperationsPageContent({
                         <TableCell className="font-serif text-sm">{formatShortDate(inv.due_date)}</TableCell>
                         <TableCell className="font-serif text-sm max-w-[10rem]">
                           {inv.artwork_id ? (
-                            <Link href={`/artworks/${inv.artwork_id}`} className="text-wine underline truncate block">
+                            <Link href={`/artworks/${inv.artwork_id}/certificate`} className="text-wine underline truncate block">
                               {artworkTitleById.get(inv.artwork_id) ?? 'View'}
                             </Link>
                           ) : (

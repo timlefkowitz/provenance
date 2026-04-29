@@ -225,7 +225,7 @@ export function ConditionReportsTab({
                 <TableRow key={r.id}>
                   <TableCell className="font-serif max-w-[10rem]">
                     {r.artwork ? (
-                      <Link className="text-wine underline" href={`/artworks/${r.artwork.id}`}>
+                      <Link className="text-wine underline" href={`/artworks/${r.artwork.id}/certificate`}>
                         {r.artwork.title}
                       </Link>
                     ) : (

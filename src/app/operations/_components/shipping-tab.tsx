@@ -247,7 +247,7 @@ export function ShippingTab({ shipments, artworks, artworkTitleById }: Props) {
                 <TableRow key={s.id}>
                   <TableCell className="font-serif max-w-[8rem]">
                     {s.artwork ? (
-                      <Link className="text-wine underline" href={`/artworks/${s.artwork.id}`}>
+                      <Link className="text-wine underline" href={`/artworks/${s.artwork.id}/certificate`}>
                         {s.artwork.title}
                       </Link>
                     ) : (

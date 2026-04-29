@@ -254,7 +254,7 @@ export function InsuranceTab({ rows, artworks, artworkTitleById }: Props) {
                   <TableRow key={r.id}>
                     <TableCell className="font-serif max-w-[8rem]">
                       {r.artwork ? (
-                        <Link className="text-wine underline" href={`/artworks/${r.artwork.id}`}>
+                        <Link className="text-wine underline" href={`/artworks/${r.artwork.id}/certificate`}>
                           {r.artwork.title}
                         </Link>
                       ) : (
