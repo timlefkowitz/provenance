@@ -2,7 +2,11 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { type ArtistLead, type LeadStage } from './leads-constants';
+import {
+  intelHasContent,
+  normalizeIntel,
+} from './crm-intel';
+import { type ArtistLead, type CrmLeadIntel, type LeadStage } from './leads-constants';
 
 /**
  * Resolves the artist_user_id to use for CRM operations:
@@ -42,6 +46,7 @@ const SELECT_FIELDS = `
   estimated_value,
   follow_up_date,
   source,
+  intel,
   created_at,
   updated_at,
   artwork:artworks(id, title, image_url)
@@ -51,6 +56,7 @@ function normalizeLeads(rows: any[]): ArtistLead[] {
   return rows.map((row) => ({
     ...row,
     artwork: Array.isArray(row.artwork) ? row.artwork[0] ?? null : row.artwork ?? null,
+    intel: normalizeIntel(row.intel),
   }));
 }
 
@@ -91,6 +97,7 @@ export async function createLead(input: {
   estimated_value?: number | null;
   follow_up_date?: string | null;
   source?: string | null;
+  intel?: CrmLeadIntel | null;
 }) {
   console.log('[Leads] createLead started', input);
   const client = getSupabaseServerClient();
@@ -103,6 +110,9 @@ export async function createLead(input: {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
+  const intel =
+    input.intel && intelHasContent(input.intel) ? input.intel : ({} as Record<string, unknown>);
+
   const { error } = await (client as any).from('artist_leads').insert({
     artist_user_id: artistUserId,
     contact_name:    input.contact_name    || null,
@@ -113,6 +123,7 @@ export async function createLead(input: {
     estimated_value: input.estimated_value ?? null,
     follow_up_date:  input.follow_up_date  || null,
     source:          input.source          || null,
+    intel,
     stage: 'interested',
   });
 
@@ -165,6 +176,7 @@ export async function updateLead(
     estimated_value?: number | null;
     follow_up_date?: string | null;
     source?: string | null;
+    intel?: CrmLeadIntel | null;
   },
 ) {
   console.log('[Leads] updateLead', leadId, input);
@@ -178,6 +190,13 @@ export async function updateLead(
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
+  const intelPayload =
+    input.intel === undefined
+      ? undefined
+      : input.intel && intelHasContent(input.intel)
+        ? input.intel
+        : ({} as Record<string, unknown>);
+
   const { error } = await (client as any)
     .from('artist_leads')
     .update({
@@ -189,6 +208,7 @@ export async function updateLead(
       estimated_value: input.estimated_value ?? undefined,
       follow_up_date:  input.follow_up_date  ?? undefined,
       source:          input.source          ?? undefined,
+      ...(intelPayload !== undefined ? { intel: intelPayload } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', leadId)

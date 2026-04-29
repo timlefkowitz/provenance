@@ -65,6 +65,7 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  FileStack,
 } from 'lucide-react';
 import {
   createLead,
@@ -82,13 +83,22 @@ import {
   type ColumnLabels,
 } from '../_actions/crm-members';
 import {
+  emptyIntel,
+  formStateToIntel,
+  intelHasContent,
+  intelSummaryCounts,
+  intelToFormState,
+} from '../_actions/crm-intel';
+import {
   LEAD_STAGES,
   LEAD_SOURCES,
   STAGE_LABELS,
   STAGE_STYLES,
   type LeadStage,
   type ArtistLead,
+  type CrmLeadIntel,
 } from '../_actions/leads-constants';
+import { CrmDealIntelFields } from './crm-deal-intel-fields';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -176,11 +186,83 @@ function StalenessTimer({ updatedAt }: { updatedAt: string }) {
   );
 }
 
+// ─── Deal “artifact” preview on kanban cards ────────────────────────────────
+
+function DealArtifactStrip({ intel }: { intel: CrmLeadIntel }) {
+  if (!intelHasContent(intel)) return null;
+  const c = intelSummaryCounts(intel);
+  const pills = [
+    c.pains > 0 && `${c.pains} pain${c.pains === 1 ? '' : 's'}`,
+    c.steps > 0 && `${c.steps} step${c.steps === 1 ? '' : 's'}`,
+    c.insights > 0 && `${c.insights} insight${c.insights === 1 ? '' : 's'}`,
+    c.people > 0 && `${c.people} stakeholder${c.people === 1 ? '' : 's'}`,
+    c.plus > 0 && `${c.plus} win${c.plus === 1 ? '' : 's'}`,
+    c.minus > 0 && `${c.minus} risk${c.minus === 1 ? '' : 's'}`,
+  ].filter(Boolean) as string[];
+  const preview =
+    intel.pain_points?.[0] ??
+    intel.key_insights?.[0] ??
+    intel.next_steps?.[0] ??
+    null;
+  return (
+    <div className="mt-2 pt-2 border-t border-wine/10 space-y-1.5">
+      <div className="flex items-start gap-1.5">
+        <span className="mt-0.5 shrink-0 rounded p-0.5 bg-wine/10 text-wine/80" title="Deal brief">
+          <FileStack className="h-3 w-3" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
+          {intel.account_name && (
+            <p className="text-[10px] font-semibold text-wine/90 leading-tight font-serif">
+              {intel.account_name}
+            </p>
+          )}
+          {pills.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {pills.map((p) => (
+                <span
+                  key={p}
+                  className="text-[9px] uppercase tracking-wide font-semibold text-ink/55 bg-parchment border border-wine/10 rounded px-1 py-0.5"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          )}
+          {preview && (
+            <p className="text-[10px] text-ink/50 line-clamp-2 leading-snug font-serif border-l-2 border-wine/20 pl-2">
+              {preview}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function leadIntelSearchBlob(l: ArtistLead): string {
+  const i = l.intel;
+  if (!i) return '';
+  return [
+    i.account_name,
+    i.current_system_notes,
+    ...(i.pain_points ?? []),
+    ...(i.next_steps ?? []),
+    ...(i.key_insights ?? []),
+    ...(i.positives ?? []),
+    ...(i.negatives ?? []),
+    ...(i.stakeholders ?? []).flatMap((s) => [s.name, s.role, s.email]),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
 // ─── Lead form (shared between add + edit) ──────────────────────────────────
 
 function LeadForm({
   values,
   onChange,
+  onIntelChange,
   artistArtworks,
 }: {
   values: {
@@ -192,8 +274,10 @@ function LeadForm({
     estimated_value: string;
     follow_up_date: string;
     source: string;
+    intelForm: ReturnType<typeof intelToFormState>;
   };
   onChange: (key: string, val: string) => void;
+  onIntelChange: (intel: ReturnType<typeof intelToFormState>) => void;
   artistArtworks: { id: string; title: string; image_url: string | null }[];
 }) {
   return (
@@ -251,6 +335,14 @@ function LeadForm({
       <div className="grid gap-1.5">
         <Label htmlFor="lf-notes" className="text-xs font-serif">Notes</Label>
         <Textarea id="lf-notes" placeholder="Met at fair, interested in large works…" value={values.notes} onChange={(e) => onChange('notes', e.target.value)} rows={2} />
+      </div>
+
+      <div className="grid gap-1.5 pt-1">
+        <Label className="text-xs font-serif font-semibold text-ink">Deal brief</Label>
+        <p className="text-[11px] text-ink/45 font-serif -mt-0.5">
+          Capture pain points, next steps, and insights—surfaced as an artifact on the board card.
+        </p>
+        <CrmDealIntelFields value={values.intelForm} onChange={onIntelChange} />
       </div>
     </div>
   );
@@ -330,6 +422,8 @@ function LeadCard({
             {fmt(lead.estimated_value)}
           </p>
         )}
+
+        <DealArtifactStrip intel={lead.intel ?? emptyIntel()} />
 
         {lead.artwork && (
           <Link
@@ -595,6 +689,7 @@ function ListView({ leads, onMove, onDelete, onOpenEdit, stageLabels }: {
 const BLANK_FORM = {
   contact_name: '', contact_email: '', contact_phone: '',
   notes: '', artwork_id: '', estimated_value: '', follow_up_date: '', source: '',
+  intelForm: intelToFormState(emptyIntel()),
 };
 
 export function LeadsKanban({
@@ -655,7 +750,8 @@ export function LeadsKanban({
         l.contact_name?.toLowerCase().includes(q) ||
         l.contact_email?.toLowerCase().includes(q) ||
         l.notes?.toLowerCase().includes(q) ||
-        l.artwork?.title?.toLowerCase().includes(q),
+        l.artwork?.title?.toLowerCase().includes(q) ||
+        leadIntelSearchBlob(l).includes(q),
     );
   }, [leads, search]);
 
@@ -709,6 +805,7 @@ export function LeadsKanban({
 
   const handleAddLead = () => {
     startTransition(async () => {
+      const intel = formStateToIntel(formValues.intelForm);
       const result = await createLead({
         contact_name:    formValues.contact_name.trim() || null,
         contact_email:   formValues.contact_email.trim() || null,
@@ -718,6 +815,7 @@ export function LeadsKanban({
         estimated_value: formValues.estimated_value ? parseFloat(formValues.estimated_value) : null,
         follow_up_date:  formValues.follow_up_date || null,
         source:          formValues.source || null,
+        intel,
       });
       if (result.success) {
         const fresh = await getLeadsForArtist();
@@ -742,6 +840,7 @@ export function LeadsKanban({
       estimated_value: lead.estimated_value != null ? String(lead.estimated_value) : '',
       follow_up_date:  lead.follow_up_date  ?? '',
       source:          lead.source          ?? '',
+      intelForm:       intelToFormState(lead.intel ?? emptyIntel()),
     });
   };
 
@@ -761,12 +860,14 @@ export function LeadsKanban({
       estimated_value: lead.estimated_value != null ? String(lead.estimated_value) : '',
       follow_up_date:  lead.follow_up_date  ?? '',
       source:          lead.source          ?? '',
+      intelForm:       intelToFormState(lead.intel ?? emptyIntel()),
     });
   }, [pendingOpenLeadId, leads, onConsumedPendingOpen]);
 
   const handleEditSave = () => {
     if (!editLead) return;
     startTransition(async () => {
+      const intel = formStateToIntel(editValues.intelForm);
       const result = await updateLead(editLead.id, {
         contact_name:    editValues.contact_name.trim()    || null,
         contact_email:   editValues.contact_email.trim()   || null,
@@ -776,6 +877,7 @@ export function LeadsKanban({
         estimated_value: editValues.estimated_value ? parseFloat(editValues.estimated_value) : null,
         follow_up_date:  editValues.follow_up_date         || null,
         source:          editValues.source                 || null,
+        intel,
       });
       if (result.success) {
         const fresh = await getLeadsForArtist();
@@ -943,12 +1045,17 @@ export function LeadsKanban({
 
       {/* ── Add dialog ── */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl max-h-[min(90vh,920px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-wine">Add Contact</DialogTitle>
             <DialogDescription className="font-serif text-sm">Track a new collector or buyer lead.</DialogDescription>
           </DialogHeader>
-          <LeadForm values={formValues} onChange={(k, v) => setFormValues((prev) => ({ ...prev, [k]: v }))} artistArtworks={artistArtworks} />
+          <LeadForm
+            values={formValues}
+            onChange={(k, v) => setFormValues((prev) => ({ ...prev, [k]: v }))}
+            onIntelChange={(intelForm) => setFormValues((prev) => ({ ...prev, intelForm }))}
+            artistArtworks={artistArtworks}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button
@@ -964,12 +1071,17 @@ export function LeadsKanban({
 
       {/* ── Edit dialog ── */}
       <Dialog open={editLead !== null} onOpenChange={(open) => { if (!open) setEditLead(null); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl max-h-[min(90vh,920px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-wine">Edit Contact</DialogTitle>
             <DialogDescription className="font-serif text-sm">Update contact details and deal info.</DialogDescription>
           </DialogHeader>
-          <LeadForm values={editValues} onChange={(k, v) => setEditValues((prev) => ({ ...prev, [k]: v }))} artistArtworks={artistArtworks} />
+          <LeadForm
+            values={editValues}
+            onChange={(k, v) => setEditValues((prev) => ({ ...prev, [k]: v }))}
+            onIntelChange={(intelForm) => setEditValues((prev) => ({ ...prev, intelForm }))}
+            artistArtworks={artistArtworks}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditLead(null)}>Cancel</Button>
             <Button

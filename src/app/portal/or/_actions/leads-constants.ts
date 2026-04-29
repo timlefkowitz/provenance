@@ -14,6 +14,26 @@ export const LEAD_SOURCES = [
 
 export type LeadSource = (typeof LEAD_SOURCES)[number]['value'];
 
+/** Additional people at the account (beyond the primary lead contact). */
+export type CrmStakeholder = {
+  name?: string;
+  role?: string;
+  email?: string;
+};
+
+/** Structured deal / meeting brief shown as the “artifact” on CRM cards. */
+export type CrmLeadIntel = {
+  account_name?: string | null;
+  /** e.g. current vs planned CMS / collections tooling */
+  current_system_notes?: string | null;
+  pain_points?: string[];
+  next_steps?: string[];
+  key_insights?: string[];
+  positives?: string[];
+  negatives?: string[];
+  stakeholders?: CrmStakeholder[];
+};
+
 export type ArtistLead = {
   id: string;
   artist_user_id: string;
@@ -26,6 +46,8 @@ export type ArtistLead = {
   estimated_value: number | null;
   follow_up_date: string | null;
   source: string | null;
+  /** JSON from DB — use normalizeIntel() when reading. */
+  intel?: CrmLeadIntel | Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   artwork?: { id: string; title: string; image_url: string | null } | null;

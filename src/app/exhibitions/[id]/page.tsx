@@ -52,7 +52,7 @@ export default async function ExhibitionPage({
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
 
-  const exhibition = await getExhibitionWithDetails(id);
+  const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user?.id ?? null });
   if (!exhibition) redirect('/exhibitions');
 
   const isOwner = user?.id === exhibition.gallery_id;

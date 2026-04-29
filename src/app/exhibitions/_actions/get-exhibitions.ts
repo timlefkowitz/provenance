@@ -27,6 +27,9 @@ export type ExhibitionWithDetails = Exhibition & {
     title: string;
     description: string | null;
     image_url: string | null;
+    dimensions: string | null;
+    listPriceDisplay: string | null;
+    status: string;
   }>;
 };
 
@@ -56,7 +59,10 @@ export async function getExhibitionsForGallery(
   return data || [];
 }
 
-export async function getExhibitionWithDetails(exhibitionId: string): Promise<ExhibitionWithDetails | null> {
+export async function getExhibitionWithDetails(
+  exhibitionId: string,
+  options?: { viewerUserId?: string | null },
+): Promise<ExhibitionWithDetails | null> {
   const client = getSupabaseServerClient();
 
   // Get exhibition
@@ -83,6 +89,9 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
     `)
     .eq('exhibition_id', exhibitionId);
 
+  const viewerId = options?.viewerUserId ?? null;
+  const canSeeDraftListings = !!viewerId && viewerId === exhibition.gallery_id;
+
   // Get artworks - fetch ONLY artworks linked to this specific exhibition
   const { data: artworks, error: artworksError } = await (client as any)
     .from('exhibition_artworks')
@@ -95,7 +104,9 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
         description,
         image_url,
         status,
-        is_public
+        is_public,
+        dimensions,
+        metadata
       )
     `)
     .eq('exhibition_id', exhibitionId); // Explicitly filter by this exhibition's ID
@@ -113,15 +124,30 @@ export async function getExhibitionWithDetails(exhibitionId: string): Promise<Ex
         console.warn(`Artwork ${ea.artwork_id} has mismatched exhibition_id: ${ea.exhibition_id} vs ${exhibitionId}`);
         return false;
       }
-      // Only include verified artworks with valid artwork data
-      return ea.artworks && ea.artworks.status === 'verified';
+      const row = ea.artworks;
+      if (!row) return false;
+      if (row.status === 'verified') return true;
+      if (canSeeDraftListings && row.status === 'draft') return true;
+      return false;
     })
-    .map((ea: any) => ({
-      id: ea.artworks.id,
-      title: ea.artworks.title,
-      description: ea.artworks.description ?? null,
-      image_url: ea.artworks.image_url,
-    }));
+    .map((ea: any) => {
+      const a = ea.artworks;
+      const meta =
+        a.metadata && typeof a.metadata === 'object' ? (a.metadata as Record<string, unknown>) : {};
+      const listPrice =
+        typeof meta.exhibition_list_price === 'string' && meta.exhibition_list_price.trim()
+          ? meta.exhibition_list_price.trim()
+          : null;
+      return {
+        id: a.id,
+        title: a.title,
+        description: a.description ?? null,
+        image_url: a.image_url,
+        dimensions: a.dimensions ?? null,
+        listPriceDisplay: listPrice,
+        status: a.status,
+      };
+    });
 
   return {
     ...exhibition,

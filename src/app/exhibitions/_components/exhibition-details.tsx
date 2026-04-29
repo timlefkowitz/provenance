@@ -3,10 +3,11 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, X, Image as ImageIcon, Search } from 'lucide-react';
+import { Plus, X, Image as ImageIcon, Search, ListPlus, Trash2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
   addArtworkToExhibition,
   removeArtworkFromExhibition,
 } from '../_actions/manage-exhibition-artworks';
+import { createQuickExhibitionListings } from '../_actions/create-exhibition-listings';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 
 export function ExhibitionDetails({
@@ -142,6 +144,17 @@ export function ExhibitionDetails({
                       {artwork.description}
                     </p>
                   )}
+                  {(artwork.listPriceDisplay || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-serif text-ink/45">
+                      {artwork.listPriceDisplay && (
+                        <span className="text-ink/55">{artwork.listPriceDisplay}</span>
+                      )}
+                      {artwork.dimensions && <span>{artwork.dimensions}</span>}
+                      {isOwner && artwork.status === 'draft' && (
+                        <span className="text-amber-800/90">Draft · visible to you until verified</span>
+                      )}
+                    </div>
+                  )}
                 </Link>
               )}
 
@@ -167,6 +180,17 @@ export function ExhibitionDetails({
 
 // ─── Add Artwork Dialog ──────────────────────────────────────────────────────
 
+type ManualRow = { key: string; title: string; price: string; dimensions: string };
+
+function emptyManualRow(): ManualRow {
+  return {
+    key: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`,
+    title: '',
+    price: '',
+    dimensions: '',
+  };
+}
+
 function AddArtworkDialog({
   exhibitionId,
   onAdd,
@@ -176,12 +200,21 @@ function AddArtworkDialog({
   onAdd: (artworkId: string) => void;
   existingArtworkIds: string[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [artworks, setArtworks] = useState<
     Array<{ id: string; title: string; image_url: string | null }>
   >([]);
   const [loading, setLoading] = useState(false);
+  const [manualRows, setManualRows] = useState<ManualRow[]>([emptyManualRow()]);
+  const [manualPending, startManualTransition] = useTransition();
+
+  const resetDialog = () => {
+    setSearch('');
+    setArtworks([]);
+    setManualRows([emptyManualRow()]);
+  };
 
   const handleSearch = async (query: string) => {
     if (query.length < 2) { setArtworks([]); return; }
@@ -193,14 +226,71 @@ function AddArtworkDialog({
         setArtworks(data.filter((a: any) => !existingArtworkIds.includes(a.id)));
       }
     } catch (error) {
-      console.error('Error searching artworks:', error);
+      console.error('[ExhibitionDetails] Error searching artworks:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const updateManualRow = (key: string, field: keyof Pick<ManualRow, 'title' | 'price' | 'dimensions'>, value: string) => {
+    setManualRows((rows) =>
+      rows.map((r) => (r.key === key ? { ...r, [field]: value } : r)),
+    );
+  };
+
+  const addManualRow = () => {
+    setManualRows((rows) => [...rows, emptyManualRow()]);
+  };
+
+  const removeManualRow = (key: string) => {
+    setManualRows((rows) => (rows.length <= 1 ? rows : rows.filter((r) => r.key !== key)));
+  };
+
+  const handleSaveManualListings = () => {
+    const payload = manualRows
+      .filter((r) => r.title.trim().length > 0)
+      .map((r) => ({
+        title: r.title.trim(),
+        price: r.price.trim(),
+        dimensions: r.dimensions.trim(),
+      }));
+
+    if (payload.length === 0) {
+      toast.error('Add at least one artwork with a title.');
+      return;
+    }
+
+    startManualTransition(async () => {
+      try {
+        const result = await createQuickExhibitionListings(exhibitionId, payload);
+        if (!result.success) {
+          console.error('[ExhibitionDetails] Manual listings failed', result.error);
+          toast.error(result.error);
+          return;
+        }
+        toast.success(
+          result.created === 1
+            ? 'Listing added to the show.'
+            : `${result.created} listings added to the show.`,
+        );
+        setOpen(false);
+        resetDialog();
+        router.refresh();
+      } catch (e: any) {
+        console.error('[ExhibitionDetails] Manual listings error', e);
+        toast.error(e?.message || 'Failed to save listings');
+      }
+    });
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) resetDialog();
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           size="sm"
@@ -210,55 +300,156 @@ function AddArtworkDialog({
           Add Artwork
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl max-h-[min(90vh,720px)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-wine">Add Artwork</DialogTitle>
           <DialogDescription className="font-serif text-sm">
-            Search for a certified artwork to include in this exhibition.
+            Link an existing certified work, or add quick listings (title, price, dimensions)—you can add several at once.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
-            <Input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); handleSearch(e.target.value); }}
-              placeholder="Search by artwork title…"
-              className="pl-9 font-serif"
-            />
-          </div>
-          <div className="max-h-64 overflow-y-auto space-y-1 -mx-1 px-1">
-            {loading ? (
-              <p className="text-xs text-ink/50 font-serif text-center py-4">Searching…</p>
-            ) : artworks.length === 0 ? (
-              <p className="text-xs text-ink/40 font-serif text-center py-4">
-                {search.length < 2 ? 'Type at least 2 characters' : 'No artworks found'}
-              </p>
-            ) : (
-              artworks.map((artwork) => (
-                <button
-                  key={artwork.id}
-                  type="button"
-                  className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-wine/8 transition-colors group"
-                  onClick={() => { onAdd(artwork.id); setOpen(false); }}
+
+        <Tabs defaultValue="search" className="w-full">
+          <TabsList className="w-full h-auto flex flex-wrap justify-start gap-1 rounded-lg border border-wine/15 bg-parchment/50 p-1">
+            <TabsTrigger
+              value="search"
+              className="font-serif text-xs data-[state=active]:bg-wine data-[state=active]:text-parchment rounded-md"
+            >
+              Search catalog
+            </TabsTrigger>
+            <TabsTrigger
+              value="manual"
+              className="font-serif text-xs data-[state=active]:bg-wine data-[state=active]:text-parchment rounded-md gap-1"
+            >
+              <ListPlus className="h-3 w-3" />
+              Add listings
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="search" className="space-y-4 py-4 outline-none">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); handleSearch(e.target.value); }}
+                placeholder="Search by artwork title…"
+                className="pl-9 font-serif"
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-1 -mx-1 px-1">
+              {loading ? (
+                <p className="text-xs text-ink/50 font-serif text-center py-4">Searching…</p>
+              ) : artworks.length === 0 ? (
+                <p className="text-xs text-ink/40 font-serif text-center py-4">
+                  {search.length < 2 ? 'Type at least 2 characters' : 'No artworks found'}
+                </p>
+              ) : (
+                artworks.map((artwork) => (
+                  <button
+                    key={artwork.id}
+                    type="button"
+                    className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-wine/8 transition-colors group"
+                    onClick={() => { onAdd(artwork.id); setOpen(false); resetDialog(); }}
+                  >
+                    {artwork.image_url ? (
+                      <div className="relative w-10 h-10 rounded overflow-hidden shrink-0 bg-parchment">
+                        <Image src={artwork.image_url} alt="" fill className="object-cover" unoptimized />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-wine/10 flex items-center justify-center shrink-0">
+                        <ImageIcon className="h-4 w-4 text-wine/40" />
+                      </div>
+                    )}
+                    <span className="font-serif text-sm text-ink group-hover:text-wine transition-colors line-clamp-2">
+                      {artwork.title}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="manual" className="space-y-4 py-4 outline-none">
+            <p className="text-[11px] text-ink/45 font-serif">
+              Create draft listings for this show. They stay private until the work is verified; you can add photos and details later from your collection.
+            </p>
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {manualRows.map((row, index) => (
+                <div
+                  key={row.key}
+                  className="rounded-lg border border-wine/12 bg-parchment/40 p-3 space-y-2 relative"
                 >
-                  {artwork.image_url ? (
-                    <div className="relative w-10 h-10 rounded overflow-hidden shrink-0 bg-parchment">
-                      <Image src={artwork.image_url} alt="" fill className="object-cover" unoptimized />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded bg-wine/10 flex items-center justify-center shrink-0">
-                      <ImageIcon className="h-4 w-4 text-wine/40" />
-                    </div>
+                  {manualRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeManualRow(row.key)}
+                      className="absolute top-2 right-2 p-1 rounded text-ink/25 hover:text-red-600 hover:bg-red-50"
+                      aria-label="Remove row"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   )}
-                  <span className="font-serif text-sm text-ink group-hover:text-wine transition-colors line-clamp-2">
-                    {artwork.title}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+                  <p className="text-[10px] uppercase tracking-wider text-ink/35 font-serif font-semibold">
+                    Work {index + 1}
+                  </p>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`tl-${row.key}`} className="text-xs font-serif">Title</Label>
+                    <Input
+                      id={`tl-${row.key}`}
+                      value={row.title}
+                      onChange={(e) => updateManualRow(row.key, 'title', e.target.value)}
+                      placeholder="Artwork title"
+                      className="font-serif text-sm pr-8"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`pr-${row.key}`} className="text-xs font-serif">Price</Label>
+                      <Input
+                        id={`pr-${row.key}`}
+                        value={row.price}
+                        onChange={(e) => updateManualRow(row.key, 'price', e.target.value)}
+                        placeholder="e.g. $1,200 or 1200 USD"
+                        className="font-serif text-sm"
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`dm-${row.key}`} className="text-xs font-serif">Dimensions</Label>
+                      <Input
+                        id={`dm-${row.key}`}
+                        value={row.dimensions}
+                        onChange={(e) => updateManualRow(row.key, 'dimensions', e.target.value)}
+                        placeholder='e.g. 24 × 36 in'
+                        className="font-serif text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="font-serif border-wine/25 text-wine"
+                onClick={addManualRow}
+                disabled={manualPending}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add another
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="font-serif bg-wine text-parchment hover:bg-wine/90 ml-auto"
+                onClick={handleSaveManualListings}
+                disabled={manualPending}
+              >
+                {manualPending ? 'Saving…' : 'Save listings'}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

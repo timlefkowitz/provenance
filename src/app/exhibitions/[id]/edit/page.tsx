@@ -44,7 +44,7 @@ export default async function EditExhibitionPage({
   }
 
   // Get exhibition with details
-  const exhibition = await getExhibitionWithDetails(id);
+  const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user.id });
 
   // Any authenticated user who owns the exhibition (gallery_id = user.id) can edit it,
   // regardless of which role mode they used when creating it.

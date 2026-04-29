@@ -6,7 +6,23 @@ import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { getPerspective } from '~/components/perspective-switcher';
 import { Button } from '@kit/ui/button';
 import { cn } from '@kit/ui/utils';
+import { LayoutGrid } from 'lucide-react';
 import { NewExhibitionDialog } from './new-exhibition-dialog';
+
+/** Public exhibitions index — www in prod when env uses apex (matches sitemap canonical host). */
+function exhibitionsCatalogHref(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  try {
+    if (!raw) return '/exhibitions';
+    const u = new URL(raw);
+    if (u.hostname === 'provenance.guru') {
+      return 'https://www.provenance.guru/exhibitions';
+    }
+    return `${u.origin}/exhibitions`;
+  } catch {
+    return '/exhibitions';
+  }
+}
 
 const PERSPECTIVE_KEY = 'user_perspective';
 const PERSPECTIVE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -106,13 +122,25 @@ export function CollectionHeaderActions({
         </div>
       </div>
 
-      {/* New Exhibition — enabled for all four modes */}
-      <NewExhibitionDialog
-        ownerRole={activeRole}
-        entityName={activeEntityName}
-        disabled={!activeRole}
-        disabledReason={!activeRole ? 'Select a mode to create an exhibition.' : undefined}
-      />
+      {/* New Exhibition + view public catalog */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <NewExhibitionDialog
+          ownerRole={activeRole}
+          entityName={activeEntityName}
+          disabled={!activeRole}
+          disabledReason={!activeRole ? 'Select a mode to create an exhibition.' : undefined}
+        />
+        <Button
+          variant="outline"
+          asChild
+          className="h-10 px-4 font-serif text-sm border-wine/30 bg-parchment/40 text-ink hover:bg-wine/10 hover:text-ink"
+        >
+          <a href={exhibitionsCatalogHref()}>
+            <LayoutGrid className="h-4 w-4 mr-1.5" aria-hidden />
+            View exhibitions
+          </a>
+        </Button>
+      </div>
     </div>
   );
 }
