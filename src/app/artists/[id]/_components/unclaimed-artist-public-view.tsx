@@ -60,7 +60,7 @@ export function UnclaimedArtistPublicView({
           <div className="flex flex-col sm:flex-row gap-7 sm:gap-10 items-start">
 
             {/* Avatar */}
-            <div className="relative flex-shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border border-wine/20 bg-wine/5">
+            <div className="relative flex-shrink-0 w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border border-wine/20 bg-wine/5 shadow-sm">
               {pictureUrl ? (
                 <Image
                   src={pictureUrl}

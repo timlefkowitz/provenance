@@ -23,6 +23,7 @@ import {
   type UnclaimedArtistProfileRow,
 } from './_components/unclaimed-artist-public-view';
 import { GalleryPublicLinks } from './_components/gallery-public-links';
+import { ArtistPublicLinks } from './_components/artist-public-links';
 import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
@@ -286,7 +287,7 @@ export default async function ArtistProfilePage({
     Boolean(bio) ||
     galleries.length > 0 ||
     newsPublications.length > 0 ||
-    (isGallery && isOwner && roleProfile?.id);
+    (isOwner && (isGallery || isArtistProfile));
 
   const exhibitionDetailHref = (exhibitionId: string) => {
     if (isGallery) {
@@ -310,10 +311,8 @@ export default async function ArtistProfilePage({
             {/* Avatar — square for galleries, circle for artists */}
             <div
               className={[
-                'relative flex-shrink-0 overflow-hidden border border-wine/20 bg-wine/5',
-                isGallery
-                  ? 'w-24 h-24 md:w-32 md:h-32 rounded-xl shadow-sm'
-                  : 'w-24 h-24 md:w-28 md:h-28 rounded-full',
+                'relative flex-shrink-0 w-24 h-24 md:w-32 md:h-32 overflow-hidden border border-wine/20 bg-wine/5 shadow-sm',
+                isGallery ? 'rounded-xl' : 'rounded-full',
               ].join(' ')}
             >
               {pictureUrl ? (
@@ -420,6 +419,16 @@ export default async function ArtistProfilePage({
                         <Link href="/exhibitions">Manage Exhibitions</Link>
                       </Button>
                     )}
+                    {isArtistProfile && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="font-serif border-wine/30 hover:bg-wine/10"
+                      >
+                        <Link href="/artworks/my">Manage Works</Link>
+                      </Button>
+                    )}
                     <AccountSettingsButton />
                   </div>
                 )}
@@ -505,6 +514,15 @@ export default async function ArtistProfilePage({
                   <GalleryPublicLinks profileId={roleProfile.id} slug={roleProfile.slug} />
                 </section>
               )}
+
+              {isArtistProfile && isOwner && (
+                <section className="border-t border-wine/10 pt-8">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
+                    Public Links
+                  </p>
+                  <ArtistPublicLinks userId={account.id} profileId={roleProfile?.id ?? null} />
+                </section>
+              )}
             </aside>
           )}
 
@@ -518,7 +536,7 @@ export default async function ArtistProfilePage({
                   <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif">
                     Exhibitions
                   </p>
-                  {isOwner && isGallery && (
+                  {isOwner && (isGallery || isArtistProfile) && (
                     <Button
                       asChild
                       variant="ghost"
@@ -618,7 +636,17 @@ export default async function ArtistProfilePage({
                         ? 'You have not added any artworks yet.'
                         : 'This artist has not added any artworks yet.'}
                   </p>
-                  {isOwner && !isGallery && (
+                  {isOwner && isArtistProfile && (
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
+                        <Link href="/artworks/add">Add Your First Artwork</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="font-serif border-wine/30 hover:bg-wine/10">
+                        <Link href="/artworks/my">Manage Works</Link>
+                      </Button>
+                    </div>
+                  )}
+                  {isOwner && !isGallery && !isArtistProfile && (
                     <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
                       <Link href="/artworks/add">Add Your First Artwork</Link>
                     </Button>
