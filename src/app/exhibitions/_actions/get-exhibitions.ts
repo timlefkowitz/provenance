@@ -59,6 +59,113 @@ export async function getExhibitionsForGallery(
   return data || [];
 }
 
+/**
+ * Exhibitions where this artist is credited (exhibition_artists) or has verified works in the show (exhibition_artworks).
+ */
+export async function getExhibitionsForArtistAccount(
+  artistAccountId: string,
+  options?: { artistProfileId?: string | null },
+): Promise<Exhibition[]> {
+  const client = getSupabaseServerClient();
+  const profileId = options?.artistProfileId ?? null;
+
+  const byId = new Map<string, Exhibition>();
+
+  const { data: creditedRows, error: creditedErr } = await (client as any)
+    .from('exhibition_artists')
+    .select(
+      `
+      exhibition_id,
+      exhibitions!exhibition_artists_exhibition_id_fkey (
+        id,
+        gallery_id,
+        title,
+        description,
+        start_date,
+        end_date,
+        location,
+        image_url,
+        owner_role,
+        created_at,
+        updated_at
+      )
+    `,
+    )
+    .eq('artist_account_id', artistAccountId);
+
+  if (creditedErr) {
+    console.error('[Exhibitions] getExhibitionsForArtistAccount exhibition_artists failed', creditedErr);
+  }
+
+  for (const row of creditedRows || []) {
+    const ex = row.exhibitions as Exhibition | undefined;
+    if (ex?.id) byId.set(ex.id, ex);
+  }
+
+  const orParts: string[] = [`artist_account_id.eq.${artistAccountId}`];
+  if (profileId) {
+    orParts.push(`artist_profile_id.eq.${profileId}`);
+  }
+  orParts.push(
+    `and(account_id.eq.${artistAccountId},artist_account_id.is.null,artist_profile_id.is.null)`,
+  );
+
+  const { data: artworkRows, error: artworkErr } = await (client as any)
+    .from('artworks')
+    .select('id')
+    .eq('status', 'verified')
+    .or(orParts.join(','));
+
+  if (artworkErr) {
+    console.error('[Exhibitions] getExhibitionsForArtistAccount artworks query failed', artworkErr);
+  }
+
+  const artworkIds = (artworkRows || []).map((a: { id: string }) => a.id).filter(Boolean);
+
+  if (artworkIds.length > 0) {
+    const { data: linkRows, error: linkErr } = await (client as any)
+      .from('exhibition_artworks')
+      .select(
+        `
+        exhibition_id,
+        exhibitions!exhibition_artworks_exhibition_id_fkey (
+          id,
+          gallery_id,
+          title,
+          description,
+          start_date,
+          end_date,
+          location,
+          image_url,
+          owner_role,
+          created_at,
+          updated_at
+        )
+      `,
+      )
+      .in('artwork_id', artworkIds);
+
+    if (linkErr) {
+      console.error('[Exhibitions] getExhibitionsForArtistAccount exhibition_artworks failed', linkErr);
+    }
+
+    for (const row of linkRows || []) {
+      const ex = row.exhibitions as Exhibition | undefined;
+      if (ex?.id) byId.set(ex.id, ex);
+    }
+  }
+
+  const list = Array.from(byId.values());
+  list.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+
+  console.log('[Exhibitions] getExhibitionsForArtistAccount', {
+    artistAccountId,
+    count: list.length,
+  });
+
+  return list;
+}
+
 export async function getExhibitionWithDetails(
   exhibitionId: string,
   options?: { viewerUserId?: string | null },

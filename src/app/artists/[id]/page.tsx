@@ -5,7 +5,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
-import { getExhibitionsForGallery } from '../../exhibitions/_actions/get-exhibitions';
+import {
+  getExhibitionsForGallery,
+  getExhibitionsForArtistAccount,
+} from '../../exhibitions/_actions/get-exhibitions';
 import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
 import {
   getUserProfileByRole,
@@ -177,6 +180,7 @@ export default async function ArtistProfilePage({
   }
   
   const isGallery = userRole === USER_ROLES.GALLERY;
+  const isArtistProfile = userRole === USER_ROLES.ARTIST;
 
   // Try to get role-specific profile, fallback to account data
   // For galleries, if profileId is provided, use that specific profile
@@ -192,8 +196,15 @@ export default async function ArtistProfilePage({
         // If profileId is invalid, fall back to first gallery profile
         roleProfile = await getUserProfileByRole(account.id, USER_ROLES.GALLERY);
       }
+    } else if (isArtistProfile && requestedProfileId) {
+      const specificProfile = await getUserProfileById(requestedProfileId);
+      if (specificProfile && specificProfile.user_id === account.id && specificProfile.role === USER_ROLES.ARTIST) {
+        roleProfile = specificProfile;
+      } else {
+        roleProfile = await getUserProfileByRole(account.id, USER_ROLES.ARTIST);
+      }
     } else {
-      // For other roles or galleries without profileId, get by role
+      // For other roles or profiles without profileId, get by role
       roleProfile = await getUserProfileByRole(account.id, userRole as any);
     }
   }
@@ -212,9 +223,15 @@ export default async function ArtistProfilePage({
 
   const streak = !isGallery ? await getUserStreak(account.id) : null;
 
-  // Fetch exhibitions if this is a gallery - limit to 6 for initial load
-  const allExhibitions = isGallery ? await getExhibitionsForGallery(account.id) : [];
-  const exhibitions = allExhibitions.slice(0, 6); // Show only first 6 initially
+  let allExhibitions: Awaited<ReturnType<typeof getExhibitionsForGallery>> = [];
+  if (isGallery) {
+    allExhibitions = await getExhibitionsForGallery(account.id);
+  } else if (isArtistProfile) {
+    allExhibitions = await getExhibitionsForArtistAccount(account.id, {
+      artistProfileId: roleProfile?.id ?? null,
+    });
+  }
+  const exhibitions = allExhibitions.slice(0, 6);
 
   // For galleries, fetch artworks from their exhibitions
   // For artists/collectors, fetch their own artworks
@@ -270,6 +287,18 @@ export default async function ArtistProfilePage({
     galleries.length > 0 ||
     newsPublications.length > 0 ||
     (isGallery && isOwner && roleProfile?.id);
+
+  const exhibitionDetailHref = (exhibitionId: string) => {
+    if (isGallery) {
+      return `/exhibitions/${exhibitionId}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`;
+    }
+    if (isArtistProfile) {
+      const q = new URLSearchParams({ from: 'artist', artistId: account.id });
+      if (roleProfile?.id) q.set('profileId', roleProfile.id);
+      return `/exhibitions/${exhibitionId}?${q.toString()}`;
+    }
+    return `/exhibitions/${exhibitionId}`;
+  };
 
   return (
     <div className="min-h-screen">
@@ -482,14 +511,14 @@ export default async function ArtistProfilePage({
           {/* ── MAIN CONTENT ── */}
           <main className="min-w-0">
 
-            {/* Exhibitions (galleries only) */}
-            {isGallery && exhibitions.length > 0 && (
+            {/* Exhibitions (galleries + artists) */}
+            {(isGallery || isArtistProfile) && exhibitions.length > 0 && (
               <section className="mb-12">
                 <div className="flex items-baseline justify-between mb-6">
                   <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif">
                     Exhibitions
                   </p>
-                  {isOwner && (
+                  {isOwner && isGallery && (
                     <Button
                       asChild
                       variant="ghost"
@@ -505,7 +534,7 @@ export default async function ArtistProfilePage({
                   {exhibitions.slice(0, 6).map((exhibition) => (
                     <Link
                       key={exhibition.id}
-                      href={`/exhibitions/${exhibition.id}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`}
+                      href={exhibitionDetailHref(exhibition.id)}
                       className="group block p-5 bg-parchment hover:bg-wine/5 transition-colors"
                     >
                       <h3 className="font-display font-semibold text-ink group-hover:text-wine transition-colors mb-3 leading-snug">
@@ -539,10 +568,12 @@ export default async function ArtistProfilePage({
                   ))}
                 </div>
 
-                {exhibitions.length > 6 && (
+                {allExhibitions.length > 6 && (
                   <div className="mt-4 text-center">
                     <Button asChild variant="ghost" size="sm" className="font-serif text-wine/70 hover:text-wine">
-                      <Link href="/exhibitions">View all {exhibitions.length} exhibitions</Link>
+                      <Link href="/exhibitions">
+                        View all {allExhibitions.length} exhibitions
+                      </Link>
                     </Button>
                   </div>
                 )}

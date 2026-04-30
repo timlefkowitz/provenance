@@ -45,7 +45,7 @@ export default async function ExhibitionPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ from?: string; profileId?: string }>;
+  searchParams?: Promise<{ from?: string; profileId?: string; artistId?: string }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
@@ -60,7 +60,14 @@ export default async function ExhibitionPage({
   // Resolve back link
   let backLink = '/exhibitions';
   let backLabel = 'Exhibitions';
-  if (resolvedSearchParams?.from === 'gallery' || exhibition.gallery_id) {
+  if (resolvedSearchParams?.from === 'artist' && resolvedSearchParams?.artistId) {
+    const aid = resolvedSearchParams.artistId;
+    const pid = resolvedSearchParams.profileId;
+    backLink = pid
+      ? `/artists/${aid}?role=artist&profileId=${pid}`
+      : `/artists/${aid}?role=artist`;
+    backLabel = 'Artist';
+  } else if (resolvedSearchParams?.from === 'gallery' || exhibition.gallery_id) {
     try {
       const galleryProfile = await getUserProfileByRole(exhibition.gallery_id, USER_ROLES.GALLERY);
       if (galleryProfile) {
