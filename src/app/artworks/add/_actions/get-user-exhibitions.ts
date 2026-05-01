@@ -1,7 +1,8 @@
 'use server';
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- exhibitions tables not fully typed on Supabase client */
+
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 export type UserExhibition = {
   id: string;
@@ -14,7 +15,7 @@ export type GetUserExhibitionsOptions = {
   /**
    * When true (Collection Management / mass provenance edit), only list:
    * - exhibitions linked to the user's own artworks, and
-   * - exhibitions owned by this account when the user is a gallery (gallery_id = userId).
+   * - exhibitions owned by this account (`gallery_id` = user's account id — all roles).
    * Does not attach every exhibition for galleries where the user is only a team member,
    * so personal collections are not flooded with unrelated shows or open-call listings.
    */
@@ -23,9 +24,29 @@ export type GetUserExhibitionsOptions = {
    * When set, only return exhibitions that were created under the given mode.
    * Scopes pickers so a gallery account in gallery mode does not see the
    * institution-mode exhibitions it also owns (and vice versa).
+   *
+   * When `forCollectionManagement` is true, artist-/collector-owner_role exhibitions are
+   * always included too so draft shows remain linkable while working in gallery/institution mode.
    */
   ownerRole?: 'gallery' | 'institution';
 };
+
+/**
+ * Applies owner_role narrowing for exhibition pickers (Supabase chain).
+ */
+function applyPickerOwnerRoleFilter(query: any, forCollectionManagement: boolean, ownerRole: GetUserExhibitionsOptions['ownerRole']) {
+  if (!ownerRole) {
+    return query;
+  }
+
+  if (forCollectionManagement) {
+    return query.or(
+      `owner_role.eq.${ownerRole},owner_role.eq.artist,owner_role.eq.collector`,
+    );
+  }
+
+  return query.eq('owner_role', ownerRole);
+}
 
 export async function getUserExhibitions(
   userId: string,
@@ -34,7 +55,12 @@ export async function getUserExhibitions(
   const client = getSupabaseServerClient();
   const forCollectionManagement = options?.forCollectionManagement === true;
   const ownerRole = options?.ownerRole ?? null;
-  console.log('[getUserExhibitions] started', { forCollectionManagement, ownerRole });
+  console.log('[getUserExhibitions] started', {
+    forCollectionManagement,
+    ownerRole,
+    collectionIncludesArtistCollectorDrafts:
+      forCollectionManagement && !!ownerRole,
+  });
 
   const galleryAccountIds = new Set<string>();
 
@@ -45,10 +71,8 @@ export async function getUserExhibitions(
     .single();
 
   if (account) {
-    const userRole = getUserRole(account.public_data as Record<string, any>);
-    if (userRole === USER_ROLES.GALLERY) {
-      galleryAccountIds.add(userId);
-    }
+    // `exhibitions.gallery_id` is always the creating account id (any role — see createExhibition).
+    galleryAccountIds.add(userId);
   }
 
   // Gallery team members: exhibitions belong to the gallery account (for Add Artwork / API only).
@@ -103,7 +127,7 @@ export async function getUserExhibitions(
       .order('start_date', { ascending: false });
 
     if (ownerRole) {
-      ownedQuery = ownedQuery.eq('owner_role', ownerRole);
+      ownedQuery = applyPickerOwnerRoleFilter(ownedQuery, forCollectionManagement, ownerRole);
     }
 
     const { data, error } = await ownedQuery;
@@ -155,7 +179,7 @@ export async function getUserExhibitions(
         .order('start_date', { ascending: false });
 
       if (ownerRole) {
-        linkedQuery = linkedQuery.eq('owner_role', ownerRole);
+        linkedQuery = applyPickerOwnerRoleFilter(linkedQuery, forCollectionManagement, ownerRole);
       }
 
       const { data: linkedExhibitions, error: linkedError } = await linkedQuery;

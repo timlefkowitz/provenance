@@ -25,7 +25,11 @@ export async function ensureArtistProfileForCertificate(params: {
     return { artistAccountId: null, artistProfileId: null };
   }
 
-  if (posterRole !== USER_ROLES.GALLERY && posterRole !== USER_ROLES.COLLECTOR) {
+  if (
+    posterRole !== USER_ROLES.GALLERY &&
+    posterRole !== USER_ROLES.COLLECTOR &&
+    posterRole !== USER_ROLES.INSTITUTION
+  ) {
     return { artistAccountId: null, artistProfileId: null };
   }
 

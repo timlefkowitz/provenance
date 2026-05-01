@@ -4,7 +4,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
-import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
@@ -20,21 +20,26 @@ export async function generateMetadata({
   const { id } = await params;
   const client = getSupabaseServerClient();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- artworks table not fully typed on client
   const { data: artwork } = await (client as any)
     .from('artworks')
-    .select('title, artist_name, image_url, status')
+    .select('title, artist_name, image_url, status, certificate_type')
     .eq('id', id)
     .single();
 
+  const certLabel = getCertificateTypeLabel(
+    (artwork?.certificate_type as string) || CERTIFICATE_TYPES.AUTHENTICITY,
+  );
+
   const title = artwork?.title
-    ? `${artwork.title}${artwork.artist_name ? ` by ${artwork.artist_name}` : ''} — Certificate of Authenticity | Provenance`
-    : 'Certificate of Authenticity | Provenance';
+    ? `${artwork.title}${artwork.artist_name ? ` by ${artwork.artist_name}` : ''} — ${certLabel} | Provenance`
+    : `${certLabel} | Provenance`;
 
   const description = artwork?.artist_name
-    ? `Certificate of Authenticity for "${artwork.title}" by ${artwork.artist_name}. Verified on Provenance.`
+    ? `${certLabel} for "${artwork.title}" by ${artwork.artist_name}. Verified on Provenance.`
     : artwork?.title
-    ? `Certificate of Authenticity for "${artwork.title}". Verified on Provenance.`
-    : 'Verified certificate of authenticity on Provenance.';
+    ? `${certLabel} for "${artwork.title}". Verified on Provenance.`
+    : `Verified ${certLabel.toLowerCase()} on Provenance.`;
 
   const images = artwork?.image_url
     ? [{ url: artwork.image_url, width: 1200, height: 630, alt: artwork.title ?? 'Artwork' }]

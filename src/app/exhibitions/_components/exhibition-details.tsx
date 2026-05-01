@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, X, Image as ImageIcon, Search, ListPlus, Trash2 } from 'lucide-react';
+import { Plus, X, Image as ImageIcon, Search, ListPlus, Trash2, Camera, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -23,6 +23,7 @@ import {
   removeArtworkFromExhibition,
 } from '../_actions/manage-exhibition-artworks';
 import { createQuickExhibitionListings } from '../_actions/create-exhibition-listings';
+import { publishExhibitionListing } from '../_actions/publish-exhibition-listing';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 
 export function ExhibitionDetails({
@@ -42,9 +43,9 @@ export function ExhibitionDetails({
         await addArtworkToExhibition(exhibition.id, artworkId);
         toast.success('Artwork added to exhibition');
         router.refresh();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[ExhibitionDetails] Error adding artwork', error);
-        toast.error(error.message || 'Failed to add artwork');
+        toast.error(error instanceof Error ? error.message : 'Failed to add artwork');
       }
     });
   };
@@ -56,9 +57,9 @@ export function ExhibitionDetails({
         await removeArtworkFromExhibition(exhibition.id, artworkId);
         toast.success('Artwork removed');
         router.refresh();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[ExhibitionDetails] Error removing artwork', error);
-        toast.error(error.message || 'Failed to remove artwork');
+        toast.error(error instanceof Error ? error.message : 'Failed to remove artwork');
       } finally {
         setRemovingId(null);
       }
@@ -78,7 +79,6 @@ export function ExhibitionDetails({
 
   return (
     <div>
-      {/* Owner add-artwork button */}
       {isOwner && (
         <div className="flex justify-end mb-6">
           <AddArtworkDialog
@@ -98,7 +98,6 @@ export function ExhibitionDetails({
         </div>
       )}
 
-      {/* ── Artwork grid ────────────────────────────────────── */}
       {exhibition.artworks.length > 0 && (
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 md:gap-5 space-y-0">
           {exhibition.artworks.map((artwork) => (
@@ -106,7 +105,6 @@ export function ExhibitionDetails({
               key={artwork.id}
               className="group relative break-inside-avoid mb-4 md:mb-5 rounded-lg bg-parchment/60 overflow-hidden"
             >
-              {/* Image */}
               <Link href={`/artworks/${artwork.id}/certificate`} className="block relative overflow-hidden">
                 {artwork.image_url ? (
                   <div className="relative w-full overflow-hidden">
@@ -123,27 +121,24 @@ export function ExhibitionDetails({
                     <ImageIcon className="h-10 w-10 text-wine/20" />
                   </div>
                 )}
-
-                {/* Subtle hover sheen over image */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </Link>
 
-              {/* Below-image: title + optional description */}
-              {(artwork.title || artwork.description) && (
-                <Link
-                  href={`/artworks/${artwork.id}/certificate`}
-                  className="block px-4 pt-3 pb-4 border-t border-wine/10 hover:bg-wine/[0.03] transition-colors"
-                >
-                  {artwork.title && (
-                    <p className="font-serif text-sm font-semibold text-ink leading-snug line-clamp-2 group-hover:text-wine transition-colors">
-                      {artwork.title}
-                    </p>
-                  )}
-                  {artwork.description && (
-                    <p className="font-serif text-xs text-ink/50 leading-relaxed line-clamp-3 mt-1">
-                      {artwork.description}
-                    </p>
-                  )}
+              {(artwork.title || artwork.description || isOwner || artwork.status === 'draft') && (
+                <div className="px-4 pt-3 pb-4 border-t border-wine/10">
+                  <Link href={`/artworks/${artwork.id}/certificate`} className="block hover:bg-wine/[0.03] -mx-2 px-2 rounded-md transition-colors">
+                    {artwork.title && (
+                      <p className="font-serif text-sm font-semibold text-ink leading-snug line-clamp-2 group-hover:text-wine transition-colors">
+                        {artwork.title}
+                      </p>
+                    )}
+                    {artwork.description && (
+                      <p className="font-serif text-xs text-ink/50 leading-relaxed line-clamp-3 mt-1">
+                        {artwork.description}
+                      </p>
+                    )}
+                  </Link>
+
                   {(artwork.listPriceDisplay || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-serif text-ink/45">
                       {artwork.listPriceDisplay && (
@@ -151,14 +146,29 @@ export function ExhibitionDetails({
                       )}
                       {artwork.dimensions && <span>{artwork.dimensions}</span>}
                       {isOwner && artwork.status === 'draft' && (
-                        <span className="text-amber-800/90">Draft · visible to you until verified</span>
+                        <span className="text-amber-800/90">
+                          Draft · add a photo, then publish to show publicly
+                        </span>
                       )}
                     </div>
                   )}
-                </Link>
+
+                  {isOwner && artwork.status === 'draft' && (
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <PublishDraftButton
+                        exhibitionId={exhibition.id}
+                        artworkId={artwork.id}
+                        hasImage={Boolean(artwork.image_url?.trim())}
+                        hasTitle={Boolean(artwork.title?.trim())}
+                      />
+                      <Button variant="outline" size="sm" className="font-serif text-xs h-8 border-wine/25" asChild>
+                        <Link href={`/artworks/${artwork.id}/certificate`}>Edit details</Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Owner remove button */}
               {isOwner && (
                 <button
                   type="button"
@@ -178,18 +188,83 @@ export function ExhibitionDetails({
   );
 }
 
+function PublishDraftButton({
+  exhibitionId,
+  artworkId,
+  hasImage,
+  hasTitle,
+}: {
+  exhibitionId: string;
+  artworkId: string;
+  hasImage: boolean;
+  hasTitle: boolean;
+}) {
+  const router = useRouter();
+  const [pubPending, startPub] = useTransition();
+  const canPublish = hasImage && hasTitle;
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      disabled={!canPublish || pubPending}
+      title={!canPublish ? 'Add a title and photo on the certificate page (or when creating the listing), then publish.' : undefined}
+      className="font-serif text-xs h-8 bg-wine text-parchment hover:bg-wine/90"
+      onClick={() => {
+        startPub(async () => {
+          console.log('[ExhibitionDetails] publishExhibitionListing clicked', { exhibitionId, artworkId });
+          try {
+            const result = await publishExhibitionListing({ exhibitionId, artworkId });
+            if (!result.success) {
+              toast.error(result.error);
+              return;
+            }
+            toast.success('Listing published to the show.');
+            router.refresh();
+          } catch (e: unknown) {
+            console.error('[ExhibitionDetails] publish failed', e);
+            toast.error(e instanceof Error ? e.message : 'Failed to publish');
+          }
+        });
+      }}
+    >
+      {pubPending ? (
+        <>
+          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+          Publishing…
+        </>
+      ) : (
+        'Publish'
+      )}
+    </Button>
+  );
+}
+
 // ─── Add Artwork Dialog ──────────────────────────────────────────────────────
 
-type ManualRow = { key: string; title: string; price: string; dimensions: string };
+type ManualRow = {
+  key: string;
+  title: string;
+  artistName: string;
+  price: string;
+  dimensions: string;
+  file: File | null;
+  previewUrl: string | null;
+};
 
 function emptyManualRow(): ManualRow {
   return {
     key: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`,
     title: '',
+    artistName: '',
     price: '',
     dimensions: '',
+    file: null,
+    previewUrl: null,
   };
 }
+
+const ARTIST_DATALIST_ID = 'exhibition-quick-listing-artists';
 
 function AddArtworkDialog({
   exhibitionId,
@@ -209,21 +284,67 @@ function AddArtworkDialog({
   const [loading, setLoading] = useState(false);
   const [manualRows, setManualRows] = useState<ManualRow[]>([emptyManualRow()]);
   const [manualPending, startManualTransition] = useTransition();
+  const [sessionArtistNames, setSessionArtistNames] = useState<string[]>([]);
+  const [artistApiNames, setArtistApiNames] = useState<string[]>([]);
+  const [artistSearchQuery, setArtistSearchQuery] = useState('');
+  const artistInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const cameraInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const revokePreview = (row: ManualRow) => {
+    if (row.previewUrl) {
+      URL.revokeObjectURL(row.previewUrl);
+    }
+  };
 
   const resetDialog = () => {
     setSearch('');
     setArtworks([]);
-    setManualRows([emptyManualRow()]);
+    setManualRows((rows) => {
+      rows.forEach(revokePreview);
+      return [emptyManualRow()];
+    });
+    setArtistApiNames([]);
+    setArtistSearchQuery('');
   };
 
+  useEffect(() => {
+    if (artistSearchQuery.length < 2) {
+      setArtistApiNames([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/search-artists?q=${encodeURIComponent(artistSearchQuery)}`,
+        );
+        if (response.ok) {
+          const data = (await response.json()) as Array<{ name?: string }>;
+          const names = data.map((a) => a.name).filter((n): n is string => Boolean(n?.trim()));
+          setArtistApiNames(Array.from(new Set(names)).slice(0, 20));
+        }
+      } catch (error) {
+        console.error('[ExhibitionDetails] Artist suggest failed', error);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [artistSearchQuery]);
+
   const handleSearch = async (query: string) => {
-    if (query.length < 2) { setArtworks([]); return; }
+    if (query.length < 2) {
+      setArtworks([]);
+      return;
+    }
     setLoading(true);
     try {
       const response = await fetch(`/api/search-artworks?q=${encodeURIComponent(query)}`);
       if (response.ok) {
-        const data = await response.json();
-        setArtworks(data.filter((a: any) => !existingArtworkIds.includes(a.id)));
+        const data = (await response.json()) as Array<{
+          id: string;
+          title: string;
+          image_url: string | null;
+        }>;
+        setArtworks(data.filter((a) => !existingArtworkIds.includes(a.id)));
       }
     } catch (error) {
       console.error('[ExhibitionDetails] Error searching artworks:', error);
@@ -232,37 +353,81 @@ function AddArtworkDialog({
     }
   };
 
-  const updateManualRow = (key: string, field: keyof Pick<ManualRow, 'title' | 'price' | 'dimensions'>, value: string) => {
+  const updateManualRow = useCallback((key: string, patch: Partial<ManualRow>) => {
     setManualRows((rows) =>
-      rows.map((r) => (r.key === key ? { ...r, [field]: value } : r)),
+      rows.map((r) => {
+        if (r.key !== key) return r;
+        if (patch.file !== undefined && patch.file !== r.file) {
+          revokePreview(r);
+          const previewUrl =
+            patch.file && patch.file.size > 0 ? URL.createObjectURL(patch.file) : null;
+          return {
+            ...r,
+            ...patch,
+            previewUrl,
+            file: patch.file ?? null,
+          };
+        }
+        return { ...r, ...patch };
+      }),
     );
-  };
+  }, []);
 
   const addManualRow = () => {
-    setManualRows((rows) => [...rows, emptyManualRow()]);
+    const nr = emptyManualRow();
+    setManualRows((rows) => {
+      const namesFromRows = rows.map((r) => r.artistName.trim()).filter(Boolean);
+      setSessionArtistNames((prev) => Array.from(new Set([...prev, ...namesFromRows])));
+      return [...rows, nr];
+    });
+    queueMicrotask(() => {
+      artistInputRefs.current[nr.key]?.focus();
+    });
   };
 
   const removeManualRow = (key: string) => {
-    setManualRows((rows) => (rows.length <= 1 ? rows : rows.filter((r) => r.key !== key)));
+    setManualRows((rows) => {
+      if (rows.length <= 1) return rows;
+      const row = rows.find((r) => r.key === key);
+      if (row) revokePreview(row);
+      return rows.filter((r) => r.key !== key);
+    });
+  };
+
+  const recordSessionArtist = (name: string) => {
+    const t = name.trim();
+    if (t.length < 2) return;
+    setSessionArtistNames((prev) => (prev.includes(t) ? prev : [...prev, t]));
   };
 
   const handleSaveManualListings = () => {
-    const payload = manualRows
-      .filter((r) => r.title.trim().length > 0)
-      .map((r) => ({
-        title: r.title.trim(),
-        price: r.price.trim(),
-        dimensions: r.dimensions.trim(),
-      }));
-
-    if (payload.length === 0) {
+    const rowsWithTitle = manualRows.filter((r) => r.title.trim().length > 0);
+    if (rowsWithTitle.length === 0) {
       toast.error('Add at least one artwork with a title.');
       return;
     }
 
+    rowsWithTitle.forEach((r) => recordSessionArtist(r.artistName));
+
+    const payload = rowsWithTitle.map((r) => ({
+      key: r.key,
+      title: r.title.trim(),
+      artistName: r.artistName.trim(),
+      price: r.price.trim(),
+      dimensions: r.dimensions.trim(),
+    }));
+
     startManualTransition(async () => {
       try {
-        const result = await createQuickExhibitionListings(exhibitionId, payload);
+        const fd = new FormData();
+        fd.append('exhibitionId', exhibitionId);
+        fd.append('items', JSON.stringify(payload));
+        for (const r of rowsWithTitle) {
+          if (r.file && r.file.size > 0) {
+            fd.append(`image_${r.key}`, r.file);
+          }
+        }
+        const result = await createQuickExhibitionListings(fd);
         if (!result.success) {
           console.error('[ExhibitionDetails] Manual listings failed', result.error);
           toast.error(result.error);
@@ -276,12 +441,16 @@ function AddArtworkDialog({
         setOpen(false);
         resetDialog();
         router.refresh();
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('[ExhibitionDetails] Manual listings error', e);
-        toast.error(e?.message || 'Failed to save listings');
+        toast.error(e instanceof Error ? e.message : 'Failed to save listings');
       }
     });
   };
+
+  const datalistOptions = Array.from(
+    new Set([...sessionArtistNames, ...artistApiNames].filter((n) => n.trim().length > 0)),
+  ).slice(0, 40);
 
   return (
     <Dialog
@@ -301,10 +470,16 @@ function AddArtworkDialog({
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl max-h-[min(90vh,720px)] overflow-y-auto">
+        <datalist id={ARTIST_DATALIST_ID}>
+          {datalistOptions.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+
         <DialogHeader>
           <DialogTitle className="font-display text-wine">Add Artwork</DialogTitle>
           <DialogDescription className="font-serif text-sm">
-            Link an existing certified work, or add quick listings (title, price, dimensions)—you can add several at once.
+            Link an existing work, or add quick listings with optional photos—then publish from the exhibition page when ready.
           </DialogDescription>
         </DialogHeader>
 
@@ -330,7 +505,10 @@ function AddArtworkDialog({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
               <Input
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); handleSearch(e.target.value); }}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  handleSearch(e.target.value);
+                }}
                 placeholder="Search by artwork title…"
                 className="pl-9 font-serif"
               />
@@ -348,7 +526,11 @@ function AddArtworkDialog({
                     key={artwork.id}
                     type="button"
                     className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-wine/8 transition-colors group"
-                    onClick={() => { onAdd(artwork.id); setOpen(false); resetDialog(); }}
+                    onClick={() => {
+                      onAdd(artwork.id);
+                      setOpen(false);
+                      resetDialog();
+                    }}
                   >
                     {artwork.image_url ? (
                       <div className="relative w-10 h-10 rounded overflow-hidden shrink-0 bg-parchment">
@@ -370,7 +552,8 @@ function AddArtworkDialog({
 
           <TabsContent value="manual" className="space-y-4 py-4 outline-none">
             <p className="text-[11px] text-ink/45 font-serif">
-              Create draft listings for this show. They stay private until the work is verified; you can add photos and details later from your collection.
+              Certificates of Show: drafts stay visible only to you until you publish from the exhibition.
+              Add a photo here or later on the artwork page.
             </p>
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
               {manualRows.map((row, index) => (
@@ -391,33 +574,148 @@ function AddArtworkDialog({
                   <p className="text-[10px] uppercase tracking-wider text-ink/35 font-serif font-semibold">
                     Work {index + 1}
                   </p>
+
+                  {/* Image drop / camera */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={(el) => {
+                      fileInputRefs.current[row.key] = el;
+                    }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) updateManualRow(row.key, { file: f });
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    ref={(el) => {
+                      cameraInputRefs.current[row.key] = el;
+                    }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) updateManualRow(row.key, { file: f });
+                      e.target.value = '';
+                    }}
+                  />
+
+                  <div
+                    role="presentation"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const f = e.dataTransfer.files?.[0];
+                      if (f && f.type.startsWith('image/')) {
+                        updateManualRow(row.key, { file: f });
+                      }
+                    }}
+                    className="rounded-lg border border-dashed border-wine/20 bg-parchment/60 p-3 text-center space-y-2"
+                  >
+                    {row.previewUrl ? (
+                      <div className="relative mx-auto max-h-36 w-full overflow-hidden rounded-md">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={row.previewUrl} alt="" className="w-full h-auto max-h-36 object-cover" />
+                        <button
+                          type="button"
+                          className="absolute top-2 right-2 rounded bg-black/55 text-white p-1 text-[10px] font-serif hover:bg-black/75"
+                          onClick={() => updateManualRow(row.key, { file: null })}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-ink/45 font-serif">Drag a photo here, or:</p>
+                    )}
+                    {!row.previewUrl && (
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="font-serif text-xs border-wine/25 h-8"
+                          onClick={() => fileInputRefs.current[row.key]?.click()}
+                        >
+                          <Upload className="h-3 w-3 mr-1.5" />
+                          Upload
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="font-serif text-xs border-wine/25 h-8"
+                          onClick={() => cameraInputRefs.current[row.key]?.click()}
+                        >
+                          <Camera className="h-3 w-3 mr-1.5" />
+                          Take photo
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid gap-1.5">
-                    <Label htmlFor={`tl-${row.key}`} className="text-xs font-serif">Title</Label>
+                    <Label htmlFor={`tl-${row.key}`} className="text-xs font-serif">
+                      Title
+                    </Label>
                     <Input
                       id={`tl-${row.key}`}
                       value={row.title}
-                      onChange={(e) => updateManualRow(row.key, 'title', e.target.value)}
+                      onChange={(e) => updateManualRow(row.key, { title: e.target.value })}
                       placeholder="Artwork title"
                       className="font-serif text-sm pr-8"
                     />
                   </div>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`ar-${row.key}`} className="text-xs font-serif">
+                      Artist name
+                    </Label>
+                    <Input
+                      id={`ar-${row.key}`}
+                      ref={(el) => {
+                        artistInputRefs.current[row.key] = el;
+                      }}
+                      value={row.artistName}
+                      list={ARTIST_DATALIST_ID}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        updateManualRow(row.key, { artistName: e.target.value });
+                        setArtistSearchQuery(e.target.value.trim());
+                      }}
+                      onBlur={() => recordSessionArtist(row.artistName)}
+                      placeholder="Artist name"
+                      className="font-serif text-sm pr-8"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="grid gap-1.5">
-                      <Label htmlFor={`pr-${row.key}`} className="text-xs font-serif">Price</Label>
+                      <Label htmlFor={`pr-${row.key}`} className="text-xs font-serif">
+                        Price
+                      </Label>
                       <Input
                         id={`pr-${row.key}`}
                         value={row.price}
-                        onChange={(e) => updateManualRow(row.key, 'price', e.target.value)}
-                        placeholder="e.g. $1,200 or 1200 USD"
+                        onChange={(e) => updateManualRow(row.key, { price: e.target.value })}
+                        placeholder="e.g. $1,200"
                         className="font-serif text-sm"
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor={`dm-${row.key}`} className="text-xs font-serif">Dimensions</Label>
+                      <Label htmlFor={`dm-${row.key}`} className="text-xs font-serif">
+                        Dimensions
+                      </Label>
                       <Input
                         id={`dm-${row.key}`}
                         value={row.dimensions}
-                        onChange={(e) => updateManualRow(row.key, 'dimensions', e.target.value)}
+                        onChange={(e) => updateManualRow(row.key, { dimensions: e.target.value })}
                         placeholder='e.g. 24 × 36 in'
                         className="font-serif text-sm"
                       />
