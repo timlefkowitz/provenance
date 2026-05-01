@@ -5,20 +5,13 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import {
-  CERTIFICATE_TYPES,
   getCertificateTypeForRole,
   getUserRole,
   USER_ROLES,
-  type CertificateType,
-  type UserRole,
 } from '~/lib/user-roles';
+import type { ExhibitionPosterContext } from '../_helpers/gallery-posting-helpers';
 
-export type ExhibitionPosterContext = {
-  userRole: UserRole | null;
-  certificateType: CertificateType;
-  /** user_profiles.id for gallery or institution, when posting show certificates */
-  galleryProfileId: string | null;
-};
+export type { ExhibitionPosterContext } from '../_helpers/gallery-posting-helpers';
 
 /**
  * Resolves poster role (from accounts.public_data), certificate type, and default profile row
@@ -65,10 +58,7 @@ export async function canAttachGalleryProfile(
       .maybeSingle();
 
     if (!profile) return false;
-    if (
-      profile.role !== USER_ROLES.GALLERY &&
-      profile.role !== USER_ROLES.INSTITUTION
-    ) {
+    if (profile.role !== USER_ROLES.GALLERY && profile.role !== USER_ROLES.INSTITUTION) {
       return false;
     }
 
@@ -88,9 +78,4 @@ export async function canAttachGalleryProfile(
   } catch {
     return false;
   }
-}
-
-/** Show certificates align with CERTIFICATE_TYPES.SHOW (gallery / institution poster roles). */
-export function isEligibleForShowCertificate(context: ExhibitionPosterContext): boolean {
-  return context.certificateType === CERTIFICATE_TYPES.SHOW;
 }

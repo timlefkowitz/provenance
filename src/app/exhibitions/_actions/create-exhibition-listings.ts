@@ -11,8 +11,8 @@ import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensur
 import {
   canAttachGalleryProfile,
   getExhibitionPosterContext,
-  isEligibleForShowCertificate,
 } from './gallery-posting-context';
+import { isEligibleForShowCertificate } from '../_helpers/gallery-posting-helpers';
 
 /** Client sends `items` JSON; optional `image_<key>` files in the same FormData. */
 export type QuickExhibitionListingInput = {
