@@ -64,11 +64,11 @@ export default async function MassEditProvenancePage({
        medium, dimensions, former_owners, auction_history, exhibition_history,
        historic_context, celebrity_notes, is_public, value, value_is_public,
        edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
-       image_url`
+       image_url, created_at, is_sold, display_order, certificate_type, status`
     )
     .in('id', artworkIds)
-    .eq('account_id', user.id) // Ensure user can only see their own artworks
-    .eq('status', 'verified');
+    .eq('account_id', user.id)
+    .in('status', ['verified', 'draft']);
 
   if (error || !artworks || artworks.length === 0) {
     redirect('/artworks/my');

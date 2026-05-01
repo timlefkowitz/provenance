@@ -3,7 +3,17 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Eye, Sparkles, Tag, X } from 'lucide-react';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+  Eye,
+  Loader2,
+  Sparkles,
+  Tag,
+  X,
+} from 'lucide-react';
 import { PrintMenu } from './print-menu';
 import { SendMenu } from './send-menu';
 import { RegistryPhotoToggle } from '~/app/artworks/my/_components/registry-photo-toggle';
@@ -37,7 +47,9 @@ import {
   SheetTitle,
 } from '@kit/ui/sheet';
 import { cn } from '@kit/ui/utils';
+import { toast } from '@kit/ui/sonner';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
+import { publishExhibitionListing } from '~/app/exhibitions/_actions/publish-exhibition-listing';
 import { markArtworkSold } from '~/app/artworks/[id]/_actions/mark-artwork-sold';
 import { SoldToPicker, type SoldToValue } from './sold-to-picker';
 import { RequestValuationRow } from './request-valuation-row';
@@ -77,6 +89,8 @@ type Artwork = {
   is_sold: boolean | null;
   display_order: number | null;
   certificate_type?: string | null;
+  /** DB status; draft rows are showroom listings not yet published. */
+  status?: string | null;
 };
 
 type ArtworkFormData = {
@@ -531,6 +545,7 @@ export function SpreadsheetEditForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [publishingArtworkId, setPublishingArtworkId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [previewArtworkId, setPreviewArtworkId] = useState<string | null>(null);
@@ -892,6 +907,42 @@ export function SpreadsheetEditForm({
         next.delete(artworkId);
         return next;
       });
+    }
+  };
+
+  const handlePublishDraft = async (artworkId: string) => {
+    const artwork = artworks.find((a) => a.id === artworkId);
+    const row = artworkData[artworkId];
+    const exhibitionId = row?.exhibition_id ?? null;
+    console.log('[Collection] publish draft from spreadsheet started', {
+      artworkId,
+      exhibitionId,
+    });
+
+    if (!artwork || !row) return;
+
+    if (!exhibitionId) {
+      toast.error('Link this listing to an exhibition (and save if you just changed it) before publishing.');
+      return;
+    }
+
+    if (publishingArtworkId) return;
+    setPublishingArtworkId(artworkId);
+    try {
+      const result = await publishExhibitionListing({ exhibitionId, artworkId });
+      if (!result.success) {
+        console.error('[Collection] publish draft from spreadsheet failed', result.error);
+        toast.error(result.error);
+        return;
+      }
+      console.log('[Collection] publish draft from spreadsheet success', { artworkId });
+      toast.success('Listing published to the show.');
+      router.refresh();
+    } catch (e: unknown) {
+      console.error('[Collection] publish draft from spreadsheet threw', e);
+      toast.error(e instanceof Error ? e.message : 'Failed to publish');
+    } finally {
+      setPublishingArtworkId(null);
     }
   };
 
@@ -1257,6 +1308,14 @@ export function SpreadsheetEditForm({
                             title="Sold"
                           />
                         ) : null}
+                        {artwork.status === 'draft' ? (
+                          <span
+                            className="absolute bottom-1 right-1 rounded px-1.5 py-0.5 bg-black/55 text-[9px] font-serif font-medium text-amber-100 uppercase tracking-wide"
+                            title="Draft listing — publish when ready"
+                          >
+                            Draft
+                          </span>
+                        ) : null}
                         {artwork.display_order != null ? (
                           <div className="absolute top-1 left-1 rounded px-1.5 py-0.5 bg-wine/80 text-parchment text-[9px] font-display font-bold">
                             #{artwork.display_order}
@@ -1418,10 +1477,11 @@ export function SpreadsheetEditForm({
                   >
                     <td className="px-3 py-4 sm:px-5 align-top">
                       <div className="max-w-xl min-w-0 space-y-4">
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 mb-1">
                           <p className="text-[10px] text-ink/40 font-serif uppercase tracking-wide">
                             Editing
                           </p>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => setPreviewArtworkId(artwork.id)}
@@ -1431,6 +1491,39 @@ export function SpreadsheetEditForm({
                             <Eye className="h-3 w-3" />
                             Preview certificate
                           </button>
+                          {(senderRole === 'gallery' || senderRole === 'institution') &&
+                          artwork.status === 'draft' ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={
+                                publishingArtworkId === artwork.id ||
+                                !Boolean((data.exhibition_id || '').trim()) ||
+                                !Boolean((artwork.title || '').trim()) ||
+                                !Boolean((artwork.image_url || '').trim())
+                              }
+                              title={
+                                !Boolean((data.exhibition_id || '').trim())
+                                  ? 'Choose an exhibition for this listing in “Exhibition link” and save any changes first.'
+                                  : !Boolean((artwork.title || '').trim()) ||
+                                      !Boolean((artwork.image_url || '').trim())
+                                    ? 'Add a saved title and photo before publishing.'
+                                    : undefined
+                              }
+                              className="font-serif text-[11px] h-8 px-2.5 shrink-0 bg-wine text-parchment hover:bg-wine/90 flex items-center gap-1"
+                              onClick={() => handlePublishDraft(artwork.id)}
+                            >
+                              {publishingArtworkId === artwork.id ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                                  Publishing…
+                                </>
+                              ) : (
+                                'Publish'
+                              )}
+                            </Button>
+                          ) : null}
+                          </div>
                         </div>
 
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

@@ -183,6 +183,7 @@ export async function publishExhibitionListing(params: {
   revalidatePath(`/artworks/${artworkId}`);
   revalidatePath(`/artworks/${artworkId}/certificate`);
   revalidatePath('/artworks');
+  revalidatePath('/artworks/my');
 
   return { success: true };
 }

@@ -53,25 +53,80 @@ export default async function MyArtworksPage({
     isAssignFlow,
   });
 
+  const artworkCollectionSelect =
+    `id, title, artist_name, description, creation_date, certificate_number, account_id,
+       medium, dimensions, former_owners, auction_history, exhibition_history,
+       historic_context, celebrity_notes, is_public, value, value_is_public,
+       edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
+       image_url, created_at, is_sold, display_order, certificate_type, status`;
+
   // Fetch artworks + user profiles in parallel so the early-return path also
   // has entity names available for the New Exhibition dialog.
   const [artworksResult, userProfiles] = await Promise.all([
     client
       .from('artworks')
-      .select(
-        `id, title, artist_name, description, creation_date, certificate_number, account_id,
-       medium, dimensions, former_owners, auction_history, exhibition_history,
-       historic_context, celebrity_notes, is_public, value, value_is_public,
-       edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
-       image_url, created_at, is_sold, display_order, certificate_type`,
-      )
+      .select(artworkCollectionSelect)
       .eq('account_id', user.id)
       .eq('status', 'verified')
       .order('display_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false }),
     getUserProfiles(user.id),
   ]);
-  const artworks = artworksResult.data;
+
+  /** Draft listings linked to shows you own (`exhibition_artworks` → exhibitions.gallery_id). */
+  const { data: ownedExhibitions } = await client
+    .from('exhibitions')
+    .select('id')
+    .eq('gallery_id', user.id);
+
+  const ownedExhibitionIds = (ownedExhibitions ?? []).map((e: { id: string }) => e.id).filter(Boolean);
+  let draftRowsForShows: Record<string, unknown>[] = [];
+
+  if (ownedExhibitionIds.length > 0) {
+    const { data: showLinks } = await client
+      .from('exhibition_artworks')
+      .select('artwork_id')
+      .in('exhibition_id', ownedExhibitionIds);
+
+    const showArtworkIds = [
+      ...new Set(
+        (showLinks ?? [])
+          .map((r: { artwork_id: string }) => r.artwork_id)
+          .filter(Boolean),
+      ),
+    ] as string[];
+
+    if (showArtworkIds.length > 0) {
+      const { data: drafts } = await client
+        .from('artworks')
+        .select(artworkCollectionSelect)
+        .in('id', showArtworkIds)
+        .eq('account_id', user.id)
+        .eq('status', 'draft');
+      draftRowsForShows = (drafts ?? []) as Record<string, unknown>[];
+    }
+  }
+
+  const verifiedList = (artworksResult.data ?? []) as Record<string, unknown>[];
+  const verifiedIdSet = new Set(verifiedList.map((a) => a.id as string));
+  const extraDrafts = draftRowsForShows.filter((row) => !verifiedIdSet.has(row.id as string));
+
+  type CollatableRow = { display_order?: number | string | null; created_at?: string };
+  const artworks = [...verifiedList, ...extraDrafts];
+  artworks.sort((a, b) => {
+    const ar = a as CollatableRow;
+    const br = b as CollatableRow;
+    const ao = ar.display_order;
+    const bo = br.display_order;
+    const aHas = ao != null && ao !== '';
+    const bHas = bo != null && bo !== '';
+    if (aHas && bHas && Number(ao) !== Number(bo)) return Number(ao) - Number(bo);
+    if (aHas && !bHas) return -1;
+    if (!aHas && bHas) return 1;
+    const ca = new Date(String(ar.created_at ?? 0)).getTime();
+    const cb = new Date(String(br.created_at ?? 0)).getTime();
+    return cb - ca;
+  });
 
   // Per-role display names for New Exhibition "Creating as" (profile → account → email).
   const modeEntityNames = buildModeEntityDisplayNames(
@@ -114,11 +169,11 @@ export default async function MyArtworksPage({
               <Images className="h-7 w-7" strokeWidth={1.25} aria-hidden />
             </div>
             <h2 className="font-display text-xl font-semibold text-wine sm:text-2xl">
-              No verified artworks yet
+              No artworks in collection yet
             </h2>
             <p className="mt-3 font-serif text-sm text-ink/65 leading-relaxed">
-              Once an artwork is verified, it appears here so you can edit details and link it to
-              exhibitions.
+              Verified pieces and draft showroom listings tied to your exhibitions appear here once
+              you add them from Add artwork or from an exhibition.
             </p>
           </div>
         </div>
