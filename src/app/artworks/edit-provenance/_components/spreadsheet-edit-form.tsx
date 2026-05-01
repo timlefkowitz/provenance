@@ -676,22 +676,40 @@ export function SpreadsheetEditForm({
   const linkableExhibitionById = new Map(
     linkableExhibitions.map((exhibition) => [exhibition.id, exhibition]),
   );
-  const collectionIdsInUserArtworks = new Set<string>();
-  for (const artwork of artworks) {
-    const currentCollectionId = artworkData[artwork.id]?.exhibition_id ?? null;
-    if (currentCollectionId) {
-      collectionIdsInUserArtworks.add(currentCollectionId);
+
+  /** All exhibitions eligible for linking (draft shows included), merged with IDs only referenced on rows. */
+  const collectionOptionIds = new Set<string>();
+  const collectionOptions: LinkableExhibition[] = [];
+
+  for (const ex of linkableExhibitions) {
+    if (!collectionOptionIds.has(ex.id)) {
+      collectionOptionIds.add(ex.id);
+      collectionOptions.push(ex);
     }
   }
-  const collectionOptions = [...collectionIdsInUserArtworks].map((collectionId) => {
-    return (
-      linkableExhibitionById.get(collectionId) ?? {
-        id: collectionId,
-        title: 'Current linked exhibition',
-        start_date: null,
-        end_date: null,
-      }
-    );
+
+  for (const artwork of artworks) {
+    const cid = artworkData[artwork.id]?.exhibition_id ?? null;
+    if (cid && !collectionOptionIds.has(cid)) {
+      collectionOptionIds.add(cid);
+      collectionOptions.push(
+        linkableExhibitionById.get(cid) ?? {
+          id: cid,
+          title: 'Current linked exhibition',
+          start_date: null,
+          end_date: null,
+        },
+      );
+    }
+  }
+
+  collectionOptions.sort((a, b) => {
+    const ta = a.start_date ? new Date(a.start_date).getTime() : null;
+    const tb = b.start_date ? new Date(b.start_date).getTime() : null;
+    if (ta !== null && tb !== null && ta !== tb) return tb - ta;
+    if (ta !== null && tb === null) return -1;
+    if (ta === null && tb !== null) return 1;
+    return (a.title || '').localeCompare(b.title || '');
   });
 
   const collectionFilteredArtworks = artworks.filter((artwork) => {
