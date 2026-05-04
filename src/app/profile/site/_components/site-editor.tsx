@@ -123,6 +123,12 @@ export function SiteEditor({
   const [publishedAt, setPublishedAt] = useState(initialConfig?.publishedAt ?? null);
   const [siteUrl, setSiteUrl] = useState(initialConfig?.siteUrl ?? null);
 
+  // Persistent save status — shown in both the action bar and preview header
+  const [saveStatus, setSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >(initialConfig?.handle ? 'saved' : 'idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // Preview iframe state
   const previewRef = useRef<HTMLIFrameElement>(null);
   const [previewKey, setPreviewKey] = useState(0);
@@ -171,6 +177,8 @@ export function SiteEditor({
   // ── Save & refresh preview ──
   async function persist(): Promise<{ ok: boolean }> {
     console.log('[SiteEditor] persist start', { profileId, handle, templateId });
+    setSaveStatus('saving');
+    setSaveError(null);
     const result = await upsertSiteAction({
       profileId,
       handle,
@@ -186,11 +194,15 @@ export function SiteEditor({
     });
     if (!result.success) {
       console.error('[SiteEditor] persist failed', result.error);
-      toast.error(result.error);
+      setSaveStatus('error');
+      setSaveError(result.error);
+      toast.error(`Save failed: ${result.error}`);
       return { ok: false };
     }
     console.log('[SiteEditor] persist success', { handle: result.handle });
     setHandle(result.handle);
+    setSaveStatus('saved');
+    setSaveError(null);
     pinProfileIdInUrl();
     return { ok: true };
   }
@@ -206,6 +218,11 @@ export function SiteEditor({
 
   function handleRefreshPreview() {
     setPreviewKey((k) => k + 1);
+  }
+
+  // Mark form dirty when user changes anything
+  function markUnsaved() {
+    if (saveStatus === 'saved') setSaveStatus('idle');
   }
 
   function handleHandleBlur() {
@@ -414,6 +431,7 @@ export function SiteEditor({
                   setHandle(e.target.value);
                   setHandleOk(false);
                   setHandleError(null);
+                  markUnsaved();
                 }}
                 onBlur={handleHandleBlur}
                 placeholder="your-name"
@@ -561,7 +579,7 @@ export function SiteEditor({
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTemplateId(t.id)}
+                onClick={() => { setTemplateId(t.id); markUnsaved(); }}
                 className={cn(
                   'w-full text-left rounded-lg border px-4 py-3 transition-all',
                   templateId === t.id
@@ -597,7 +615,7 @@ export function SiteEditor({
                   <button
                     key={s.key}
                     type="button"
-                    onClick={() => setSurfaceColor(s.key)}
+                    onClick={() => { setSurfaceColor(s.key); markUnsaved(); }}
                     title={s.label}
                     className={cn(
                       'flex flex-col items-center gap-1.5 transition-transform',
@@ -626,7 +644,7 @@ export function SiteEditor({
                   <button
                     key={a.key}
                     type="button"
-                    onClick={() => setTheme((prev) => ({ ...prev, accent: a.key }))}
+                    onClick={() => { setTheme((prev) => ({ ...prev, accent: a.key })); markUnsaved(); }}
                     title={a.label}
                     className={cn(
                       'w-8 h-8 rounded-full border-2 transition-all',
@@ -755,6 +773,47 @@ export function SiteEditor({
       {/* ─────────────── RIGHT: LIVE PREVIEW ─────────────── */}
       <div className="lg:sticky lg:top-[140px] self-start">
         <div className="rounded-xl border border-wine/15 bg-white shadow-sm overflow-hidden flex flex-col h-[calc(100vh-180px)] min-h-[600px]">
+
+          {/* ── Save status strip ── */}
+          {saveStatus === 'error' && saveError && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200">
+              <span className="text-[10px] uppercase tracking-widest font-serif font-bold text-red-600">Save failed</span>
+              <span className="text-xs text-red-700 font-serif flex-1 truncate">{saveError}</span>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="shrink-0 text-[11px] font-semibold font-serif px-2.5 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {saveStatus === 'saving' && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200">
+              <span className="text-[11px] font-serif text-amber-700 animate-pulse">Saving…</span>
+            </div>
+          )}
+          {saveStatus === 'idle' && handle && (
+            <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200">
+              <span className="text-[11px] font-serif text-amber-700">Unsaved changes</span>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="text-[11px] font-semibold font-serif px-2.5 py-1 rounded bg-wine text-parchment hover:bg-wine/90 transition-colors"
+              >
+                Save now
+              </button>
+            </div>
+          )}
+          {saveStatus === 'saved' && (
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-green-50 border-b border-green-100">
+              <span className="text-[11px] font-serif text-green-700">✓ Saved</span>
+              {handle && <span className="text-[11px] text-green-600/70 font-serif">{handle}.{siteDomain}</span>}
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-wine/10 bg-parchment/40">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-widest text-wine/70 font-serif font-semibold">

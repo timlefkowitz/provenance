@@ -104,7 +104,8 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     artworkFilters.certificate_types = DEFAULT_ARTWORK_FILTERS.certificate_types;
   }
 
-  const payload = {
+  // Full payload — requires migration 20260514 (extra columns)
+  const fullPayload = {
     profile_id: input.profileId,
     handle: handleResult.normalized,
     template_id: input.templateId,
@@ -119,13 +120,50 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     updated_at: new Date().toISOString(),
   };
 
-  const { error: upsertErr } = await (client as any)
-    .from('profile_sites')
-    .upsert(payload, { onConflict: 'profile_id' });
+  // Base payload — only columns from the original migration 20260513
+  // Used as a fallback if the extra-columns migration hasn't been applied yet.
+  const basePayload = {
+    profile_id: input.profileId,
+    handle: handleResult.normalized,
+    template_id: input.templateId,
+    theme,
+    sections,
+    cta: input.cta ?? null,
+    updated_at: new Date().toISOString(),
+  };
 
+  console.log('[Sites] upsertSiteAction attempting full payload', { handle: handleResult.normalized });
+
+  let { error: upsertErr } = await (client as any)
+    .from('profile_sites')
+    .upsert(fullPayload, { onConflict: 'profile_id' });
+
+  // If the extra columns don't exist yet (migration 20260514 not applied),
+  // Postgres returns a column-not-found error. Fall back to base columns so
+  // saves still work — the extra fields will persist once the migration runs.
   if (upsertErr) {
-    console.error('[Sites] upsertSiteAction upsert failed', upsertErr);
-    return { success: false, error: upsertErr.message };
+    const isColumnMissing =
+      upsertErr.message?.includes('column') ||
+      upsertErr.code === '42703' || // undefined_column
+      upsertErr.code === 'PGRST204'; // schema cache mismatch
+
+    if (isColumnMissing) {
+      console.warn('[Sites] upsertSiteAction extra columns missing — falling back to base payload', upsertErr.message);
+      const fallback = await (client as any)
+        .from('profile_sites')
+        .upsert(basePayload, { onConflict: 'profile_id' });
+      upsertErr = fallback.error ?? null;
+    }
+
+    if (upsertErr) {
+      console.error('[Sites] upsertSiteAction upsert failed', {
+        code: upsertErr.code,
+        message: upsertErr.message,
+        details: upsertErr.details,
+        hint: upsertErr.hint,
+      });
+      return { success: false, error: upsertErr.message };
+    }
   }
 
   console.log('[Sites] upsertSiteAction succeeded', { handle: handleResult.normalized });
