@@ -37,6 +37,7 @@ export type SiteConfig = {
  * Fetch the site config for a profile. Returns null if no row exists yet.
  */
 export async function getSiteConfig(profileId: string): Promise<SiteConfig | null> {
+  console.log('[Sites] getSiteConfig query', { profileId });
   const client = getSupabaseServerClient();
 
   const { data, error } = await (client as any)
@@ -46,10 +47,14 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     .maybeSingle();
 
   if (error) {
-    console.error('[Sites] getSiteConfig failed', error);
+    console.error('[Sites] getSiteConfig failed', { profileId, error });
     return null;
   }
-  if (!data) return null;
+  if (!data) {
+    console.log('[Sites] getSiteConfig: no row for profile', { profileId });
+    return null;
+  }
+  console.log('[Sites] getSiteConfig: row found', { profileId, handle: data.handle, published: !!data.published_at });
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
   const rawHost = new URL(baseUrl).hostname;

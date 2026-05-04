@@ -142,8 +142,20 @@ export function SiteEditor({
     router.push(`/profile/site?${params.toString()}`);
   }
 
+  // Pin the active profileId into the URL so refresh / back stays on this profile.
+  // Replaces (not pushes) so navigation history isn't polluted by every save.
+  function pinProfileIdInUrl() {
+    const current = searchParams?.get('profileId');
+    if (current === profileId) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set('profileId', profileId);
+    console.log('[SiteEditor] pinning profileId in URL', { profileId });
+    router.replace(`/profile/site?${params.toString()}`, { scroll: false });
+  }
+
   // ── Save & refresh preview ──
   async function persist(): Promise<{ ok: boolean }> {
+    console.log('[SiteEditor] persist start', { profileId, handle, templateId });
     const result = await upsertSiteAction({
       profileId,
       handle,
@@ -158,10 +170,13 @@ export function SiteEditor({
       artworkFilters,
     });
     if (!result.success) {
+      console.error('[SiteEditor] persist failed', result.error);
       toast.error(result.error);
       return { ok: false };
     }
+    console.log('[SiteEditor] persist success', { handle: result.handle });
     setHandle(result.handle);
+    pinProfileIdInUrl();
     return { ok: true };
   }
 
@@ -217,6 +232,7 @@ export function SiteEditor({
       setHandleOk(true);
       setTakenByOwnProfile(null);
       setPreviewKey((k) => k + 1);
+      pinProfileIdInUrl();
       toast.success(`Site transferred from "${profileName}" to this profile.`);
       // Don't router.refresh() — that resets all client state; preview key bump is enough
     });
@@ -264,6 +280,7 @@ export function SiteEditor({
       console.log('[SiteEditor] removeConflict: success', { handle: saveResult.handle });
       setHandle(saveResult.handle);
       setPreviewKey((k) => k + 1);
+      pinProfileIdInUrl();
       toast.success(`Started fresh on "${saveResult.handle}" — removed from "${profileName}".`);
     });
   }
@@ -327,7 +344,7 @@ export function SiteEditor({
         toast.success('Site unpublished.');
       }
       setPreviewKey((k) => k + 1);
-      router.refresh();
+      pinProfileIdInUrl();
     });
   }
 

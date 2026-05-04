@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
 import { getSiteConfig } from './_actions/get-site-config';
 import { getManageableProfiles } from './_actions/get-manageable-profiles';
+import { findProfileWithSite } from './_actions/find-profile-with-site';
 import { SiteEditor } from './_components/site-editor';
 import { Button } from '@kit/ui/button';
 
@@ -70,10 +71,32 @@ export default async function ProfileSitePage({
     );
   }
 
-  // Choose which profile we're editing — query param wins, otherwise first manageable
+  // Choose which profile we're editing.
+  // Priority: explicit ?profileId= → first manageable profile that has a saved site
+  //           → first manageable profile.
   const requestedId = params.profileId;
-  const activeProfile =
-    manageableProfiles.find((p) => p.id === requestedId) ?? manageableProfiles[0];
+  const explicitMatch = manageableProfiles.find((p) => p.id === requestedId);
+
+  let activeProfile = explicitMatch ?? null;
+
+  if (!activeProfile) {
+    const profileWithSiteId = await findProfileWithSite(
+      manageableProfiles.map((p) => p.id),
+    );
+    if (profileWithSiteId) {
+      activeProfile = manageableProfiles.find((p) => p.id === profileWithSiteId) ?? null;
+    }
+  }
+
+  if (!activeProfile) {
+    activeProfile = manageableProfiles[0];
+  }
+
+  console.log('[Sites] /profile/site active profile resolved', {
+    requestedId: requestedId ?? null,
+    activeProfileId: activeProfile.id,
+    activeProfileName: activeProfile.name,
+  });
 
   const existingConfig = await getSiteConfig(activeProfile.id);
 
