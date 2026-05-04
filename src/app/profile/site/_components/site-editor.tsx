@@ -127,13 +127,20 @@ export function SiteEditor({
   const previewRef = useRef<HTMLIFrameElement>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus + scroll the handle input — used by the empty preview affordance
+  // Focus + scroll the handle input — works even when Input doesn't forward refs
   function focusHandleInput() {
     console.log('[SiteEditor] focusHandleInput');
-    handleInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => handleInputRef.current?.focus(), 350);
+    const section = document.getElementById('site-address');
+    const input = section?.querySelector('input') as HTMLInputElement | null;
+    console.log('[SiteEditor] focusHandleInput resolved', { section: !!section, input: !!input });
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // Delay focus until scroll animation settles
+    setTimeout(() => {
+      input?.focus();
+    }, 400);
   }
 
   const isPublished = Boolean(publishedAt);
@@ -402,7 +409,6 @@ export function SiteEditor({
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Input
-                ref={handleInputRef}
                 value={handle}
                 onChange={(e) => {
                   setHandle(e.target.value);
