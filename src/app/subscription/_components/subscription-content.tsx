@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { gtmService } from '~/lib/gtm';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import {
@@ -70,6 +71,14 @@ export function SubscriptionContent({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fire a GTM purchase event exactly once when Stripe redirects back with ?success=1
+  useEffect(() => {
+    if (!success) return;
+    console.log('[GTM] Stripe checkout success — firing purchase event', { role: selectedRole, interval });
+    gtmService.trackPurchase({ role: selectedRole, interval });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success]);
 
   const isActiveSubscription = subscription?.status === 'active';
   const isTrialing = subscription?.status === 'trialing';

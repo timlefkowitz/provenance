@@ -16,6 +16,7 @@ import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favo
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getLeadsForArtist } from './or/_actions/leads';
+import { NewUserConversionTracker } from './_components/new-user-conversion-tracker';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -208,6 +209,7 @@ export default async function PortalPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <NewUserConversionTracker />
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">

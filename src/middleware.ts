@@ -101,11 +101,15 @@ export async function middleware(request: NextRequest) {
   // Content-Security-Policy: restrict script/style/resources. Next.js and Supabase require specific allowances.
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js / React hydration
+    // Next.js / React hydration + Google Tag Manager container and ads scripts
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net",
+    // Supabase, Vercel analytics, Google Analytics / Ads measurement endpoints
+    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net",
+    // Google Ads remarketing iframes (Floodlight / DoubleClick)
+    "frame-src 'self' https://bid.g.doubleclick.net https://td.doubleclick.net",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

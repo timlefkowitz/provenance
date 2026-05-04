@@ -12,6 +12,8 @@ import { Navigation } from "~/components/navigation";
 import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { ClientAnalytics } from "~/components/client-analytics";
+import { GoogleTagManager } from "~/components/google-tag-manager";
+import { CookieConsentBanner } from "~/components/cookie-consent-banner";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
 import { TrialBanner } from "~/components/trial-banner";
@@ -98,6 +100,7 @@ export default async function RootLayout({
       className={cn(currentTheme)}
       suppressHydrationWarning
     >
+      <GoogleTagManager />
       <body
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased overflow-x-hidden`}
       >
@@ -115,6 +118,7 @@ export default async function RootLayout({
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
         <Toaster position="bottom-center" />
         <ClientAnalytics />
+        <CookieConsentBanner />
       </body>
     </html>
   );

@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
     redirectPath: '/portal', // Redirect authenticated users to portal
   });
 
+  // Track whether this is a brand-new account so we can signal GTM on the client.
+  let isNewUser = false;
+
   // After exchanging the code, we can safely read the authenticated user
   // and provision a 14-day free trial entitlement for subscription-gated features.
   try {
@@ -94,8 +97,9 @@ export async function GET(request: NextRequest) {
           const createdAt = new Date(account.created_at);
           const minutesSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60);
 
-          // If account was created in the last 2 minutes, send welcome email
+          // If account was created in the last 2 minutes, treat as new user
           if (minutesSinceCreation < 2) {
+            isNewUser = true;
             const userName = account.name || account.email.split('@')[0] || 'there';
 
             // Send email asynchronously (don't block the redirect)
@@ -130,6 +134,11 @@ export async function GET(request: NextRequest) {
   }
   
   const redirectUrl = new URL(pathToRedirect, origin);
+
+  if (isNewUser) {
+    redirectUrl.searchParams.set('new_user', '1');
+    console.log('[GTM] New user detected — appending ?new_user=1 to redirect');
+  }
 
   return NextResponse.redirect(redirectUrl);
 }
