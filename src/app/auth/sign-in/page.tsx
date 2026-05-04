@@ -24,22 +24,39 @@ const paths = {
 };
 
 function SignInPage() {
+  console.log('[Auth/SignIn] rendering sign-in page', {
+    providers: {
+      password: authConfig.providers.password,
+      magicLink: authConfig.providers.magicLink,
+      oAuth: authConfig.providers.oAuth,
+    },
+  });
+
   return (
-    <>
-      <Heading level={5} className={'tracking-tight'}>
-        <Trans i18nKey={'auth:signInHeading'} />
-      </Heading>
+    <div className={'flex flex-col gap-y-5'}>
+      <div className={'flex flex-col gap-y-1.5 text-center'}>
+        <Heading level={4} className={'tracking-tight'}>
+          <Trans i18nKey={'auth:signInHeading'} />
+        </Heading>
+
+        <p className={'text-sm text-muted-foreground'}>
+          Welcome back. Pick how you&apos;d like to sign in.
+        </p>
+      </div>
 
       <SignInMethodsContainer paths={paths} providers={authConfig.providers} />
 
-      <div className={'flex justify-center mt-4'}>
+      <div className={'flex justify-center'}>
         <Button asChild variant={'link'} size={'sm'}>
           <Link href={pathsConfig.auth.signUp}>
-            <Trans i18nKey={'auth:doNotHaveAccountYet'} defaults="Do not have an account yet?" />
+            <Trans
+              i18nKey={'auth:doNotHaveAccountYet'}
+              defaults="Don't have an account? Sign up"
+            />
           </Link>
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 

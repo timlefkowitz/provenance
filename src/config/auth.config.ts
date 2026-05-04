@@ -13,12 +13,25 @@ const AuthConfigSchema = z.object({
   }),
 });
 
+// Auth providers are enabled by default. To explicitly disable one, set the
+// corresponding env var to "false" (e.g. NEXT_PUBLIC_AUTH_MAGIC_LINK=false).
+// This keeps configuration simple: the defaults Just Work in dev and prod
+// without requiring extra env vars.
+const passwordEnabled = process.env.NEXT_PUBLIC_AUTH_PASSWORD !== 'false';
+const magicLinkEnabled = process.env.NEXT_PUBLIC_AUTH_MAGIC_LINK !== 'false';
+
+console.log('[Auth] providers configured', {
+  password: passwordEnabled,
+  magicLink: magicLinkEnabled,
+  oAuth: ['google'],
+});
+
 const authConfig = AuthConfigSchema.parse({
   captchaTokenSiteKey: process.env.NEXT_PUBLIC_CAPTCHA_SITE_KEY,
   displayTermsCheckbox: false,
   providers: {
-    password: process.env.NEXT_PUBLIC_AUTH_PASSWORD === 'true',
-    magicLink: process.env.NEXT_PUBLIC_AUTH_MAGIC_LINK === 'true',
+    password: passwordEnabled,
+    magicLink: magicLinkEnabled,
     oAuth: ['google'],
   },
 } satisfies z.infer<typeof AuthConfigSchema>);
