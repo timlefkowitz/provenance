@@ -35,6 +35,7 @@ import { publishSiteAction } from '../_actions/publish-site';
 import { validateHandleAction } from '../_actions/validate-handle';
 import { uploadSiteImage } from '../_actions/upload-site-image';
 import { transferHandleAction } from '../_actions/transfer-handle';
+import { deleteSiteAction } from '../_actions/delete-site';
 
 type Template = { id: TemplateId; name: string; description: string; bestFor: string };
 
@@ -94,6 +95,7 @@ export function SiteEditor({
   const [checkingHandle, startHandleCheck] = useTransition();
   const [takenByOwnProfile, setTakenByOwnProfile] = useState<{ profileId: string; profileName: string } | null>(null);
   const [transferring, startTransfer] = useTransition();
+  const [deletingConflict, startDeleteConflict] = useTransition();
 
   const [templateId, setTemplateId] = useState<TemplateId>(initialConfig?.templateId ?? 'studio');
   const [theme, setTheme] = useState<SiteTheme>(initialConfig?.theme ?? DEFAULT_THEME);
@@ -204,6 +206,21 @@ export function SiteEditor({
       toast.success(`Handle transferred from "${takenByOwnProfile.profileName}" to this profile.`);
       setPreviewKey((k) => k + 1);
       router.refresh();
+    });
+  }
+
+  function handleRemoveConflict() {
+    if (!takenByOwnProfile) return;
+    startDeleteConflict(async () => {
+      const result = await deleteSiteAction(takenByOwnProfile.profileId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setHandleError(null);
+      setHandleOk(true);
+      setTakenByOwnProfile(null);
+      toast.success(`Site removed from "${takenByOwnProfile.profileName}". Handle is now free — save to claim it.`);
     });
   }
 
@@ -332,21 +349,35 @@ export function SiteEditor({
           <p className="mt-1.5 text-xs text-red-600 font-serif">{handleError}</p>
         )}
         {takenByOwnProfile && (
-          <div className="mt-2 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
-            <div className="min-w-0 flex-1">
+          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 space-y-2.5">
+            <div>
               <p className="text-xs font-medium text-amber-900 font-serif">{handleError}</p>
               <p className="text-[11px] text-amber-700 font-serif mt-0.5">
-                Transfer it here to use it for this profile instead. The other profile will lose its site.
+                Choose how to free up this handle:
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleTransferClaim}
-              disabled={transferring}
-              className="shrink-0 text-xs font-semibold font-serif px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
-            >
-              {transferring ? 'Transferring…' : 'Transfer to this profile'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleTransferClaim}
+                disabled={transferring || deletingConflict}
+                className="text-xs font-semibold font-serif px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+              >
+                {transferring ? 'Transferring…' : 'Transfer site to this profile'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveConflict}
+                disabled={transferring || deletingConflict}
+                className="text-xs font-semibold font-serif px-3 py-1.5 rounded-md border border-amber-400 text-amber-800 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                {deletingConflict ? 'Removing…' : `Remove from "${takenByOwnProfile.profileName}" and start fresh`}
+              </button>
+            </div>
+            <p className="text-[10px] text-amber-600 font-serif">
+              Transfer keeps the existing config (theme, hero, published state).
+              Remove clears the old site entirely so you can configure from scratch here.
+            </p>
           </div>
         )}
         </section>
