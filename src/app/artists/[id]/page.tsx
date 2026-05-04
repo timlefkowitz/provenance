@@ -26,10 +26,32 @@ import { GalleryPublicLinks } from './_components/gallery-public-links';
 import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
+import { ExternalLink } from 'lucide-react';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
 };
+
+/**
+ * Look up a published creator website for the given profile_id.
+ * Returns null if no published site exists.
+ */
+async function getPublishedSiteUrl(sb: any, profileId: string | null): Promise<string | null> {
+  if (!profileId) return null;
+  const { data } = await sb
+    .from('profile_sites')
+    .select('handle, custom_domain, custom_domain_verified_at')
+    .eq('profile_id', profileId)
+    .not('published_at', 'is', null)
+    .maybeSingle();
+  if (!data) return null;
+  if (data.custom_domain && data.custom_domain_verified_at) {
+    return `https://${data.custom_domain}`;
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.app';
+  const mainHost = new URL(baseUrl).hostname;
+  return `https://${data.handle}.${mainHost}`;
+}
 
 type Account = {
   id: string;
@@ -222,6 +244,9 @@ export default async function ArtistProfilePage({
   const newsPublications = (roleProfile?.news_publications as { title: string; url: string; publication_name?: string; date?: string }[] | undefined) || [];
 
   const streak = !isGallery ? await getUserStreak(account.id) : null;
+
+  // Fetch published creator website for this account (if any)
+  const publishedSiteUrl = await getPublishedSiteUrl(client as any, roleProfile?.id ?? null);
 
   let allExhibitions: Awaited<ReturnType<typeof getExhibitionsForGallery>> = [];
   if (isGallery) {
@@ -420,7 +445,32 @@ export default async function ArtistProfilePage({
                         <Link href="/exhibitions">Manage Exhibitions</Link>
                       </Button>
                     )}
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="font-serif border-wine/30 hover:bg-wine/10"
+                    >
+                      <Link href="/profile/site">
+                        {publishedSiteUrl ? 'Manage Website' : 'Create Website'}
+                      </Link>
+                    </Button>
                     <AccountSettingsButton />
+                  </div>
+                )}
+
+                {/* Public: "Website" badge when site is live (visible to all visitors) */}
+                {!isOwner && publishedSiteUrl && (
+                  <div className="shrink-0">
+                    <a
+                      href={publishedSiteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-wine/20 bg-wine/5 px-3 py-1.5 text-xs font-serif text-wine hover:bg-wine/10 transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Website
+                    </a>
                   </div>
                 )}
               </div>

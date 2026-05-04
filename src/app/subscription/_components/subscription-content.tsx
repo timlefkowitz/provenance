@@ -36,6 +36,7 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
     'Grant list',
     'Open call list',
     'Residency list',
+    'Creator website (yourname.provenance.app)',
     '+ more',
   ],
   collector: [
@@ -43,6 +44,7 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
     'Collection management',
     'Appraiser tools',
     'Automatically get information on your artworks & artist',
+    'Creator website (yourname.provenance.app)',
     '+ more',
   ],
   gallery: [
@@ -50,6 +52,7 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
     'Exhibition toolset',
     'Artist publication collection',
     'Gallery grants',
+    'Creator website (yourname.provenance.app)',
     'and more',
   ],
 };

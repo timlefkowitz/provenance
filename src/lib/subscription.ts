@@ -26,3 +26,30 @@ export async function getActiveSubscription(userId: string): Promise<{
   if (!row) return null;
   return row;
 }
+
+/**
+ * (v1.5) Returns true if the user has an active custom-domain add-on subscription.
+ * Checks whether any active/trialing subscription has a price ID matching either
+ * STRIPE_PRICE_CUSTOM_DOMAIN_MONTHLY or STRIPE_PRICE_CUSTOM_DOMAIN_YEARLY.
+ */
+export async function hasCustomDomainAddon(userId: string): Promise<boolean> {
+  const monthlyPriceId = process.env.STRIPE_PRICE_CUSTOM_DOMAIN_MONTHLY;
+  const yearlyPriceId = process.env.STRIPE_PRICE_CUSTOM_DOMAIN_YEARLY;
+
+  if (!monthlyPriceId && !yearlyPriceId) return false;
+
+  const client = getSupabaseServerClient();
+  const now = new Date().toISOString();
+  const priceIds = [monthlyPriceId, yearlyPriceId].filter(Boolean) as string[];
+
+  const { data: rows } = await (client as any)
+    .from('subscriptions')
+    .select('id')
+    .eq('user_id', userId)
+    .in('status', ['active', 'trialing'])
+    .in('stripe_price_id', priceIds)
+    .or(`current_period_end.is.null,current_period_end.gte.${now}`)
+    .limit(1);
+
+  return (rows?.length ?? 0) > 0;
+}
