@@ -12,25 +12,28 @@ import { SiteCtaButton } from '../_components/site-cta-button';
 
 export function AtelierTemplate({ site }: { site: SiteData }) {
   const accentColor = resolveAccent(site.theme.accent);
+  const surface = resolveSurface(site.surface_color);
   // Featured works: up to 6, in a 2-column staggered layout
   const featuredWorks = site.artworks.slice(0, 6);
+  // Hero background priority: explicit hero → first artwork
+  const heroBg = site.hero_image_url ?? site.artworks[0]?.image_url ?? null;
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: '#1a1a1a', background: '#faf9f7' }}>
+    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
 
       {/* ── HERO (full-viewport) ── */}
       <section
         className="relative flex flex-col justify-between"
         style={{ minHeight: '100svh', background: '#1a1a1a' }}
       >
-        {/* Background artwork image */}
-        {site.artworks[0]?.image_url && (
+        {heroBg && (
           <div className="absolute inset-0">
             <Image
-              src={site.artworks[0].image_url}
+              src={heroBg}
               alt={site.name}
               fill
-              className="object-cover opacity-30"
+              className="object-cover"
+              style={{ opacity: site.hero_image_url ? 0.55 : 0.3 }}
               unoptimized
               priority
             />
@@ -72,6 +75,14 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
           >
             {site.name}
           </h1>
+          {site.tagline && (
+            <p
+              className="mt-5 text-xl md:text-2xl italic"
+              style={{ color: 'rgba(255,255,255,0.8)', maxWidth: '32ch' }}
+            >
+              {site.tagline}
+            </p>
+          )}
           {site.location && (
             <p className="mt-4 text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
               {site.location}
@@ -243,4 +254,16 @@ function resolveAccent(key: string): string {
     sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
   };
   return map[key] ?? '#4A2F25';
+}
+
+function resolveSurface(key: string | null): { bg: string; ink: string } {
+  const map: Record<string, { bg: string; ink: string }> = {
+    parchment: { bg: '#F5F1E8', ink: '#1A1A1A' },
+    cream:     { bg: '#FAF7F0', ink: '#1A1A1A' },
+    white:     { bg: '#FFFFFF', ink: '#111111' },
+    slate:     { bg: '#F1F4F7', ink: '#0F1419' },
+    charcoal:  { bg: '#1A1A1A', ink: '#F5F5F5' },
+    ink:       { bg: '#0F0F12', ink: '#F0EBE0' },
+  };
+  return map[key ?? 'parchment'] ?? map.parchment;
 }

@@ -1,8 +1,19 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import type { TemplateId, SiteTheme, SiteSections, SiteCta } from '~/app/_sites/types';
-import { DEFAULT_THEME, DEFAULT_SECTIONS } from '~/app/_sites/types';
+import type {
+  TemplateId,
+  SiteTheme,
+  SiteSections,
+  SiteCta,
+  SiteArtworkFilters,
+} from '~/app/_sites/types';
+import {
+  DEFAULT_THEME,
+  DEFAULT_SECTIONS,
+  DEFAULT_ARTWORK_FILTERS,
+  DEFAULT_SURFACE,
+} from '~/app/_sites/types';
 
 export type SiteConfig = {
   profileId: string;
@@ -11,6 +22,11 @@ export type SiteConfig = {
   theme: SiteTheme;
   sections: SiteSections;
   cta: SiteCta | null;
+  heroImageUrl: string | null;
+  tagline: string | null;
+  aboutOverride: string | null;
+  surfaceColor: string;
+  artworkFilters: SiteArtworkFilters;
   publishedAt: string | null;
   siteUrl: string | null;
   /** Root hostname without www. (e.g. "provenance.guru") */
@@ -18,8 +34,7 @@ export type SiteConfig = {
 };
 
 /**
- * Fetch the current user's site config for the given profile.
- * Returns null if no site has been configured yet.
+ * Fetch the site config for a profile. Returns null if no row exists yet.
  */
 export async function getSiteConfig(profileId: string): Promise<SiteConfig | null> {
   const client = getSupabaseServerClient();
@@ -38,7 +53,6 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
   const rawHost = new URL(baseUrl).hostname;
-  // Strip www. to get the root domain for subdomain construction
   const siteDomain = rawHost.startsWith('www.') ? rawHost.slice(4) : rawHost;
   const siteUrl = data.published_at ? `https://${data.handle}.${siteDomain}` : null;
 
@@ -49,6 +63,11 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     theme: { ...DEFAULT_THEME, ...(data.theme ?? {}) },
     sections: { ...DEFAULT_SECTIONS, ...(data.sections ?? {}) },
     cta: data.cta ?? null,
+    heroImageUrl: data.hero_image_url ?? null,
+    tagline: data.tagline ?? null,
+    aboutOverride: data.about_override ?? null,
+    surfaceColor: data.surface_color ?? DEFAULT_SURFACE,
+    artworkFilters: { ...DEFAULT_ARTWORK_FILTERS, ...(data.artwork_filters ?? {}) },
     publishedAt: data.published_at ?? null,
     siteUrl,
     siteDomain,

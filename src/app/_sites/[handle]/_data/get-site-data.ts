@@ -4,8 +4,14 @@ import type {
   SiteTheme,
   SiteSections,
   SiteCta,
+  SiteArtworkFilters,
+  CertificateTypeKey,
 } from '~/app/_sites/types';
-import { DEFAULT_THEME, DEFAULT_SECTIONS } from '~/app/_sites/types';
+import {
+  DEFAULT_THEME,
+  DEFAULT_SECTIONS,
+  DEFAULT_ARTWORK_FILTERS,
+} from '~/app/_sites/types';
 
 /**
  * Resolve a site handle → full SiteData for rendering.
@@ -61,12 +67,20 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
 
   const cta: SiteCta | null = siteRow.cta ?? null;
 
-  // 3. Fetch public artworks (up to 24)
+  const artworkFilters: SiteArtworkFilters = {
+    ...DEFAULT_ARTWORK_FILTERS,
+    ...(siteRow.artwork_filters ?? {}),
+  };
+  const allowedCertTypes = (artworkFilters.certificate_types?.length
+    ? artworkFilters.certificate_types
+    : DEFAULT_ARTWORK_FILTERS.certificate_types) as CertificateTypeKey[];
+
+  // 3. Fetch public artworks (up to 24), filtered by chosen certificate types
   const artworks: SiteData['artworks'] = [];
   if (sections.artworks) {
-    const { data: artworkRows } = await sb
+    let q = sb
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type')
       .or(
         [
           `artist_account_id.eq.${profile.user_id}`,
@@ -77,6 +91,12 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(24);
+
+    if (allowedCertTypes.length > 0 && allowedCertTypes.length < 3) {
+      q = q.in('certificate_type', allowedCertTypes);
+    }
+
+    const { data: artworkRows } = await q;
 
     for (const row of artworkRows ?? []) {
       artworks.push({
@@ -131,8 +151,10 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     sections,
     cta,
     published_at: siteRow.published_at,
+    hero_image_url: siteRow.hero_image_url ?? null,
+    tagline: siteRow.tagline ?? null,
     name: profile.name,
-    bio: profile.bio ?? null,
+    bio: siteRow.about_override ?? profile.bio ?? null,
     location: profile.location ?? null,
     website: profile.website ?? null,
     picture_url: profile.picture_url ?? null,
@@ -141,6 +163,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     artworks,
     exhibitions,
     press,
+    surface_color: siteRow.surface_color ?? null,
     custom_domain: siteRow.custom_domain ?? null,
   };
 }

@@ -13,11 +13,13 @@ import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
 
 export function EditorialTemplate({ site }: { site: SiteData }) {
-  const heroBg = site.picture_url ?? null;
+  // Prefer the dedicated hero image; fall back to profile picture
+  const heroBg = site.hero_image_url ?? site.picture_url ?? null;
   const accentColor = resolveAccent(site.theme.accent);
+  const surface = resolveSurface(site.surface_color);
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: '#111', background: '#fff' }}>
+    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
 
       {/* ── NAV ── */}
       <header
@@ -85,6 +87,18 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
           >
             {site.name}
           </h1>
+          {site.tagline && (
+            <p
+              className="mt-4 text-lg md:text-xl italic"
+              style={{
+                color: heroBg ? 'rgba(255,255,255,0.85)' : '#444',
+                maxWidth: '36ch',
+                lineHeight: '1.4',
+              }}
+            >
+              {site.tagline}
+            </p>
+          )}
           {site.location && (
             <p className="mt-4 text-sm" style={{ color: heroBg ? 'rgba(255,255,255,0.65)' : '#888' }}>
               {site.location}
@@ -207,4 +221,16 @@ function resolveAccent(key: string): string {
     sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
   };
   return map[key] ?? '#4A2F25';
+}
+
+function resolveSurface(key: string | null): { bg: string; ink: string } {
+  const map: Record<string, { bg: string; ink: string }> = {
+    parchment: { bg: '#F5F1E8', ink: '#111111' },
+    cream:     { bg: '#FAF7F0', ink: '#1A1A1A' },
+    white:     { bg: '#FFFFFF', ink: '#111111' },
+    slate:     { bg: '#F1F4F7', ink: '#0F1419' },
+    charcoal:  { bg: '#1A1A1A', ink: '#F5F5F5' },
+    ink:       { bg: '#0F0F12', ink: '#F0EBE0' },
+  };
+  return map[key ?? 'parchment'] ?? map.parchment;
 }

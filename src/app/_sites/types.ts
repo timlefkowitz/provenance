@@ -25,6 +25,12 @@ export type SiteCta = {
   url: string;
 };
 
+export type CertificateTypeKey = 'authenticity' | 'ownership' | 'show';
+
+export type SiteArtworkFilters = {
+  certificate_types: CertificateTypeKey[];
+};
+
 export type SiteArtwork = {
   id: string;
   title: string;
@@ -57,7 +63,11 @@ export type SiteData = {
   sections: SiteSections;
   cta: SiteCta | null;
   published_at: string | null;
-  /** From user_profiles */
+  /** Optional hero/banner image (separate from profile picture) */
+  hero_image_url: string | null;
+  /** Optional tagline displayed under the site name */
+  tagline: string | null;
+  /** From user_profiles, but may be overridden by about_override */
   name: string;
   bio: string | null;
   location: string | null;
@@ -68,6 +78,8 @@ export type SiteData = {
   artworks: SiteArtwork[];
   exhibitions: SiteExhibition[];
   press: SitePress[];
+  /** Constrained surface color key */
+  surface_color: string | null;
   /** custom domain if verified */
   custom_domain: string | null;
 };
@@ -100,4 +112,35 @@ export const DEFAULT_SECTIONS: SiteSections = {
   press: true,
   cv: false,
   contact: true,
+};
+
+/** Surface (background) tone presets — paired well with each accent */
+export const SITE_SURFACES: { key: string; label: string; bg: string; ink: string }[] = [
+  { key: 'parchment', label: 'Parchment', bg: '#F5F1E8', ink: '#111111' },
+  { key: 'cream',     label: 'Cream',     bg: '#FAF7F0', ink: '#1A1A1A' },
+  { key: 'white',     label: 'White',     bg: '#FFFFFF', ink: '#111111' },
+  { key: 'slate',     label: 'Slate',     bg: '#F1F4F7', ink: '#0F1419' },
+  { key: 'charcoal',  label: 'Charcoal',  bg: '#1A1A1A', ink: '#F5F5F5' },
+  { key: 'ink',       label: 'Ink',       bg: '#0F0F12', ink: '#F0EBE0' },
+];
+
+export const DEFAULT_SURFACE = 'parchment';
+
+export const DEFAULT_ARTWORK_FILTERS: SiteArtworkFilters = {
+  certificate_types: ['authenticity', 'ownership', 'show'],
+};
+
+export const CERTIFICATE_TYPE_LABELS: Record<CertificateTypeKey, { label: string; description: string }> = {
+  authenticity: {
+    label: 'Certificate of Authenticity',
+    description: 'Works you created or claimed as the artist',
+  },
+  ownership: {
+    label: 'Certificate of Ownership',
+    description: 'Works in your collection',
+  },
+  show: {
+    label: 'Certificate of Show',
+    description: 'Works exhibited by your gallery or institution',
+  },
 };

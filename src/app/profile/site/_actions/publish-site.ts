@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
+import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
 export type PublishSiteResult =
   | { success: true; url: string }
@@ -30,16 +31,24 @@ export async function publishSiteAction(
     return { success: false, error: 'An active subscription is required to publish your site.' };
   }
 
-  // Verify ownership
+  // Verify ownership OR gallery team management access
   const { data: profile, error: profileErr } = await (client as any)
     .from('user_profiles')
-    .select('id, user_id')
+    .select('id, user_id, role')
     .eq('id', profileId)
-    .eq('user_id', user.id)
+    .eq('is_active', true)
     .maybeSingle();
 
   if (profileErr || !profile) {
-    return { success: false, error: 'Profile not found or not owned by you' };
+    return { success: false, error: 'Profile not found' };
+  }
+
+  let hasAccess = profile.user_id === user.id;
+  if (!hasAccess && profile.role === 'gallery') {
+    hasAccess = await canManageGallery(user.id, profileId);
+  }
+  if (!hasAccess) {
+    return { success: false, error: 'You do not have permission to publish this site' };
   }
 
   // Fetch current site row to get handle

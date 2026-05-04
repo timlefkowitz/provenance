@@ -15,15 +15,18 @@ Add `*.provenance.app` as a custom domain on the Vercel project:
 
 > **Note:** `www.provenance.app` and the apex `provenance.app` must remain as separate A/CNAME records — the wildcard `*` only matches one level of subdomain (i.e. `handle.provenance.app`, not `a.b.provenance.app`).
 
-## 2. Run the database migration
+## 2. Run the database migrations
 
-Apply `20260513000000_profile_sites.sql` to your production Supabase project:
+Apply both migrations to your production Supabase project:
+
+- `20260513000000_profile_sites.sql` — base `profile_sites` table & RLS
+- `20260514000000_profile_sites_extra.sql` — adds `hero_image_url`, `tagline`, `about_override`, `surface_color`, `artwork_filters`
 
 ```sh
 supabase db push --linked
 ```
 
-Or run the SQL directly in the Supabase SQL editor.
+Or run the SQL directly in the Supabase SQL editor. The second migration is purely additive (uses `add column if not exists`) and safe to re-run.
 
 ## 3. Environment variables
 
