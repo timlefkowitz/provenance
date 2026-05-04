@@ -96,7 +96,12 @@ export async function middleware(request: NextRequest) {
     // All other high-risk features remain blocked.
     'camera=(), microphone=(), geolocation=(self), payment=(), usb=()',
   );
-  response.headers.set('X-Frame-Options', 'DENY');
+  // The site preview route is intentionally embedded same-origin in the editor iframe.
+  // Relax X-Frame-Options and frame-ancestors for that route only.
+  const pathname = request.nextUrl.pathname;
+  const isPreviewRoute = pathname.startsWith('/profile/site/preview');
+
+  response.headers.set('X-Frame-Options', isPreviewRoute ? 'SAMEORIGIN' : 'DENY');
 
   // Content-Security-Policy: restrict script/style/resources. Next.js and Supabase require specific allowances.
   const cspDirectives = [
@@ -110,7 +115,8 @@ export async function middleware(request: NextRequest) {
     "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net",
     // Google Ads remarketing iframes (Floodlight / DoubleClick)
     "frame-src 'self' https://bid.g.doubleclick.net https://td.doubleclick.net",
-    "frame-ancestors 'none'",
+    // Preview route: allow same-origin embedding. All other routes deny framing entirely.
+    isPreviewRoute ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
   ];
