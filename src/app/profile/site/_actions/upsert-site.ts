@@ -32,7 +32,14 @@ export type UpsertSiteInput = {
 
 export type UpsertSiteResult =
   | { success: true; handle: string }
-  | { success: false; error: string };
+  | {
+      success: false;
+      error: string;
+      /** Present when the handle is taken by another profile the caller manages.
+       *  Forwarded verbatim from validateHandleAction so the editor can render
+       *  the Transfer / Remove conflict banner on a Save click. */
+      takenByOwnProfile?: { profileId: string; profileName: string };
+    };
 
 /**
  * Verify caller can manage the given user_profiles row.
@@ -89,7 +96,13 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
 
   const handleResult = await validateHandleAction(input.handle, input.profileId);
   if (!handleResult.ok) {
-    return { success: false, error: handleResult.error };
+    // Forward takenByOwnProfile so the editor can show Transfer/Remove buttons
+    // rather than a dead-end error strip.
+    return {
+      success: false,
+      error: handleResult.error,
+      takenByOwnProfile: handleResult.takenByOwnProfile,
+    };
   }
 
   const theme: SiteTheme = { ...DEFAULT_THEME, ...(input.theme ?? {}) };

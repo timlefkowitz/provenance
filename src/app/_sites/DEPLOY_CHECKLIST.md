@@ -17,10 +17,11 @@ Add `*.provenance.app` as a custom domain on the Vercel project:
 
 ## 2. Run the database migrations
 
-Apply both migrations to your production Supabase project:
+Apply all migrations to your production Supabase project:
 
 - `20260513000000_profile_sites.sql` — base `profile_sites` table & RLS
 - `20260514000000_profile_sites_extra.sql` — adds `hero_image_url`, `tagline`, `about_override`, `surface_color`, `artwork_filters`
+- `20260515000000_profile_sites_delete_policy.sql` — adds the missing RLS DELETE policy (required for the Transfer / Remove handle actions to work)
 
 ```sh
 supabase db push --linked

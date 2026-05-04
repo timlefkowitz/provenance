@@ -193,10 +193,28 @@ export function SiteEditor({
       artworkFilters,
     });
     if (!result.success) {
-      console.error('[SiteEditor] persist failed', result.error);
-      setSaveStatus('error');
-      setSaveError(result.error);
-      toast.error(`Save failed: ${result.error}`);
+      console.error('[SiteEditor] persist failed', result.error, {
+        takenByOwnProfile: result.takenByOwnProfile ?? null,
+      });
+
+      if (result.takenByOwnProfile) {
+        // Surface the conflict banner (Transfer / Remove) instead of a dead-end
+        // red strip. The banner is already wired up for blur-triggered validation;
+        // we reuse the same state here so Save also triggers it.
+        setHandleError(result.error);
+        setHandleOk(false);
+        setTakenByOwnProfile(result.takenByOwnProfile);
+        setSaveStatus('idle');
+        setSaveError(null);
+        // Scroll the conflict into view
+        setTimeout(() => {
+          document.getElementById('site-address')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      } else {
+        setSaveStatus('error');
+        setSaveError(result.error);
+        toast.error(`Save failed: ${result.error}`);
+      }
       return { ok: false };
     }
     console.log('[SiteEditor] persist success', { handle: result.handle });
