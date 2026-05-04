@@ -34,6 +34,7 @@ import { upsertSiteAction } from '../_actions/upsert-site';
 import { publishSiteAction } from '../_actions/publish-site';
 import { validateHandleAction } from '../_actions/validate-handle';
 import { uploadSiteImage } from '../_actions/upload-site-image';
+import { transferHandleAction } from '../_actions/transfer-handle';
 
 type Template = { id: TemplateId; name: string; description: string; bestFor: string };
 
@@ -91,6 +92,8 @@ export function SiteEditor({
   const [handleError, setHandleError] = useState<string | null>(null);
   const [handleOk, setHandleOk] = useState(false);
   const [checkingHandle, startHandleCheck] = useTransition();
+  const [takenByOwnProfile, setTakenByOwnProfile] = useState<{ profileId: string; profileName: string } | null>(null);
+  const [transferring, startTransfer] = useTransition();
 
   const [templateId, setTemplateId] = useState<TemplateId>(initialConfig?.templateId ?? 'studio');
   const [theme, setTheme] = useState<SiteTheme>(initialConfig?.theme ?? DEFAULT_THEME);
@@ -168,6 +171,7 @@ export function SiteEditor({
     if (!handle.trim()) {
       setHandleError(null);
       setHandleOk(false);
+      setTakenByOwnProfile(null);
       return;
     }
     startHandleCheck(async () => {
@@ -176,10 +180,30 @@ export function SiteEditor({
         setHandle(result.normalized);
         setHandleError(null);
         setHandleOk(true);
+        setTakenByOwnProfile(null);
       } else {
         setHandleError(result.error);
         setHandleOk(false);
+        setTakenByOwnProfile(result.takenByOwnProfile ?? null);
       }
+    });
+  }
+
+  function handleTransferClaim() {
+    if (!takenByOwnProfile) return;
+    startTransfer(async () => {
+      const result = await transferHandleAction(takenByOwnProfile.profileId, profileId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setHandle(result.handle);
+      setHandleError(null);
+      setHandleOk(true);
+      setTakenByOwnProfile(null);
+      toast.success(`Handle transferred from "${takenByOwnProfile.profileName}" to this profile.`);
+      setPreviewKey((k) => k + 1);
+      router.refresh();
     });
   }
 
@@ -304,9 +328,27 @@ export function SiteEditor({
               <span className="text-xs text-green-600 font-serif">Available</span>
             )}
           </div>
-          {handleError && (
-            <p className="mt-1.5 text-xs text-red-600 font-serif">{handleError}</p>
-          )}
+        {handleError && !takenByOwnProfile && (
+          <p className="mt-1.5 text-xs text-red-600 font-serif">{handleError}</p>
+        )}
+        {takenByOwnProfile && (
+          <div className="mt-2 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-amber-900 font-serif">{handleError}</p>
+              <p className="text-[11px] text-amber-700 font-serif mt-0.5">
+                Transfer it here to use it for this profile instead. The other profile will lose its site.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleTransferClaim}
+              disabled={transferring}
+              className="shrink-0 text-xs font-semibold font-serif px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+            >
+              {transferring ? 'Transferring…' : 'Transfer to this profile'}
+            </button>
+          </div>
+        )}
         </section>
 
         {/* ── TAGLINE ── */}

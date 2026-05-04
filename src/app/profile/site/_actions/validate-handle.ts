@@ -2,15 +2,20 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { validateSiteHandle } from '~/lib/gallery-public-slug';
+import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
 export type HandleValidationResult =
   | { ok: true; normalized: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; takenByOwnProfile?: { profileId: string; profileName: string } };
 
 /**
  * Validate and check availability of a site handle.
- * Returns ok=false with an error string if the handle is invalid or taken.
- * currentProfileId is excluded from the uniqueness check (for re-saves).
+ *
+ * - Rejects invalid format (reserved names, bad chars).
+ * - If the handle is taken by the *same* profile (re-save), it's fine.
+ * - If the handle is taken by *another profile the user manages*, returns
+ *   ok=false with `takenByOwnProfile` so the editor can offer a transfer UI.
+ * - If the handle is taken by someone else entirely, returns a plain error.
  */
 export async function validateHandleAction(
   raw: string,
@@ -22,7 +27,10 @@ export async function validateHandleAction(
   const { normalized } = formatResult;
 
   const client = getSupabaseServerClient();
-  const { data, error } = await (client as any)
+  const sb = client as any;
+
+  // Check who currently holds this handle
+  const { data, error } = await sb
     .from('profile_sites')
     .select('profile_id')
     .eq('handle', normalized)
@@ -33,9 +41,41 @@ export async function validateHandleAction(
     return { ok: false, error: 'Could not check handle availability. Try again.' };
   }
 
-  if (data && data.profile_id !== currentProfileId) {
+  // Available, or same profile re-saving
+  if (!data || data.profile_id === currentProfileId) {
+    return { ok: true, normalized };
+  }
+
+  // Handle is taken. Check if the current user also manages that profile.
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
     return { ok: false, error: 'That handle is already taken. Choose another.' };
   }
 
-  return { ok: true, normalized };
+  const conflictingProfileId: string = data.profile_id;
+
+  // Check: does the user own or manage the conflicting profile?
+  const { data: conflictProfile } = await sb
+    .from('user_profiles')
+    .select('id, name, user_id, role')
+    .eq('id', conflictingProfileId)
+    .maybeSingle();
+
+  let userManagesConflict = conflictProfile?.user_id === user.id;
+  if (!userManagesConflict && conflictProfile?.role === 'gallery') {
+    userManagesConflict = await canManageGallery(user.id, conflictingProfileId);
+  }
+
+  if (userManagesConflict && conflictProfile) {
+    return {
+      ok: false,
+      error: `"${normalized}" is linked to your ${conflictProfile.name} profile.`,
+      takenByOwnProfile: {
+        profileId: conflictingProfileId,
+        profileName: conflictProfile.name,
+      },
+    };
+  }
+
+  return { ok: false, error: 'That handle is already taken. Choose another.' };
 }
