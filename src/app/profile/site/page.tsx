@@ -112,6 +112,7 @@ export default async function ProfileSitePage() {
         <SiteEditor
           profileId={activeProfile.id}
           initialConfig={existingConfig}
+          siteDomain={existingConfig?.siteDomain ?? 'provenance.guru'}
         />
       </div>
     </div>

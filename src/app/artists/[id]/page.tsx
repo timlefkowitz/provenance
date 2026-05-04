@@ -48,8 +48,9 @@ async function getPublishedSiteUrl(sb: any, profileId: string | null): Promise<s
   if (data.custom_domain && data.custom_domain_verified_at) {
     return `https://${data.custom_domain}`;
   }
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.app';
-  const mainHost = new URL(baseUrl).hostname;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
+  const rawHost = new URL(baseUrl).hostname;
+  const mainHost = rawHost.startsWith('www.') ? rawHost.slice(4) : rawHost;
   return `https://${data.handle}.${mainHost}`;
 }
 

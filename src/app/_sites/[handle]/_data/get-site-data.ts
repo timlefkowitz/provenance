@@ -149,6 +149,13 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
  * Get the SiteData for a profile_id (used in the editor to preview unpublished drafts).
  * Only callable server-side with the authenticated user's session.
  */
+// Re-export so preview page and other callers can resolve the root domain consistently
+export function getRootDomain(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
+  const h = new URL(raw).hostname;
+  return h.startsWith('www.') ? h.slice(4) : h;
+}
+
 export async function getSiteDataByProfileId(profileId: string): Promise<SiteData | null> {
   console.log('[Sites] getSiteDataByProfileId', { profileId });
   const client = getSupabaseServerClient();

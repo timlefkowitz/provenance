@@ -13,6 +13,8 @@ export type SiteConfig = {
   cta: SiteCta | null;
   publishedAt: string | null;
   siteUrl: string | null;
+  /** Root hostname without www. (e.g. "provenance.guru") */
+  siteDomain: string;
 };
 
 /**
@@ -34,9 +36,11 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
   }
   if (!data) return null;
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.app';
-  const mainHost = new URL(baseUrl).hostname;
-  const siteUrl = data.published_at ? `https://${data.handle}.${mainHost}` : null;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
+  const rawHost = new URL(baseUrl).hostname;
+  // Strip www. to get the root domain for subdomain construction
+  const siteDomain = rawHost.startsWith('www.') ? rawHost.slice(4) : rawHost;
+  const siteUrl = data.published_at ? `https://${data.handle}.${siteDomain}` : null;
 
   return {
     profileId: data.profile_id,
@@ -47,5 +51,6 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     cta: data.cta ?? null,
     publishedAt: data.published_at ?? null,
     siteUrl,
+    siteDomain,
   };
 }

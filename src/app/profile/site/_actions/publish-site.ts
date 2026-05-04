@@ -64,8 +64,9 @@ export async function publishSiteAction(
     return { success: false, error: updateErr.message };
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.app';
-  const mainHost = new URL(baseUrl).hostname;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
+  const rawHost = new URL(baseUrl).hostname;
+  const mainHost = rawHost.startsWith('www.') ? rawHost.slice(4) : rawHost;
   const siteUrl = `https://${siteRow.handle}.${mainHost}`;
 
   console.log('[Sites] publishSiteAction succeeded', { handle: siteRow.handle, published });

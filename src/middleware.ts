@@ -14,10 +14,14 @@ export const config = {
   ],
 };
 
-const MAIN_HOSTNAME =
-  process.env.NEXT_PUBLIC_SITE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname
-    : 'provenance.app';
+// Strip www. so flight.provenance.guru is detected correctly even when
+// NEXT_PUBLIC_SITE_URL is set to https://www.provenance.guru
+const MAIN_HOSTNAME = (() => {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!raw) return 'provenance.guru';
+  const h = new URL(raw).hostname;
+  return h.startsWith('www.') ? h.slice(4) : h;
+})();
 
 /**
  * Detect a creator-site subdomain request.

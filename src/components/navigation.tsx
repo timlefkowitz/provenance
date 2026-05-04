@@ -29,7 +29,8 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Investor pages have their own dedicated nav; hide the main nav there.
-  if (pathname?.startsWith('/investors')) {
+  // Preview mode renders templates full-screen with its own floating bar.
+  if (pathname?.startsWith('/investors') || pathname?.startsWith('/profile/site/preview')) {
     return null;
   }
 

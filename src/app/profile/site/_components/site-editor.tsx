@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -44,6 +45,7 @@ const TEMPLATES: Template[] = [
 
 type Props = {
   profileId: string;
+  siteDomain: string;
   initialConfig: {
     handle: string;
     templateId: TemplateId;
@@ -55,10 +57,11 @@ type Props = {
   } | null;
 };
 
-export function SiteEditor({ profileId, initialConfig }: Props) {
+export function SiteEditor({ profileId, siteDomain, initialConfig }: Props) {
   const router = useRouter();
   const [saving, startSave] = useTransition();
   const [publishing, startPublish] = useTransition();
+  const [previewing, startPreview] = useTransition();
 
   const [handle, setHandle] = useState(initialConfig?.handle ?? '');
   const [handleError, setHandleError] = useState<string | null>(null);
@@ -77,6 +80,26 @@ export function SiteEditor({ profileId, initialConfig }: Props) {
   const handleRef = useRef<HTMLInputElement>(null);
 
   const isPublished = Boolean(publishedAt);
+
+  function handlePreview() {
+    startPreview(async () => {
+      // Save the latest state so the preview reflects current edits
+      const result = await upsertSiteAction({
+        profileId,
+        handle,
+        templateId,
+        theme,
+        sections,
+        cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setHandle(result.handle);
+      window.open('/profile/site/preview', '_blank');
+    });
+  }
 
   function handleHandleBlur() {
     if (!handle.trim()) {
@@ -211,7 +234,7 @@ export function SiteEditor({ profileId, initialConfig }: Props) {
               )}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink/35 font-serif pointer-events-none">
-              .provenance.app
+              .{siteDomain}
             </span>
           </div>
           {checkingHandle && (
@@ -383,7 +406,7 @@ export function SiteEditor({ profileId, initialConfig }: Props) {
       <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-wine/10">
         <Button
           onClick={handleSave}
-          disabled={saving || publishing}
+          disabled={saving || publishing || previewing}
           className="bg-wine text-parchment hover:bg-wine/90 font-serif"
         >
           {saving ? 'Saving…' : 'Save changes'}
@@ -391,8 +414,18 @@ export function SiteEditor({ profileId, initialConfig }: Props) {
 
         <Button
           variant="outline"
+          onClick={handlePreview}
+          disabled={saving || publishing || previewing || !handle.trim()}
+          className="font-serif border-wine/30 hover:bg-wine/10 gap-1.5"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          {previewing ? 'Opening…' : 'Preview'}
+        </Button>
+
+        <Button
+          variant="outline"
           onClick={handlePublishToggle}
-          disabled={saving || publishing || !handle.trim()}
+          disabled={saving || publishing || previewing || !handle.trim()}
           className={cn(
             'font-serif',
             isPublished
@@ -412,7 +445,7 @@ export function SiteEditor({ profileId, initialConfig }: Props) {
             rel="noreferrer"
             className="text-sm text-wine underline underline-offset-2 font-serif hover:text-wine/70 transition-colors"
           >
-            Visit site →
+            Visit live site →
           </a>
         )}
       </div>
