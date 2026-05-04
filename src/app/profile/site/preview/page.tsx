@@ -219,19 +219,24 @@ function PreviewEmptyState({ handleMissing, embed }: { handleMissing: boolean; e
           Preview
         </p>
         <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginTop: '0.5rem', color: '#222' }}>
-          Pick a handle to see your site
+          {handleMissing ? 'No site saved yet' : 'Nothing to preview yet'}
         </h1>
-        <p style={{ fontSize: '0.875rem', color: '#777', marginTop: '0.75rem' }}>
+        <p style={{ fontSize: '0.875rem', color: '#777', marginTop: '0.75rem', lineHeight: '1.5' }}>
           {handleMissing
-            ? 'Save a handle in the editor to start previewing your site.'
-            : 'Select a profile and configure your site.'}
+            ? 'Type a handle in the editor and click "Save & refresh preview" to see your site here.'
+            : 'Select a profile and save a handle in the editor.'}
         </p>
+        {embed && (
+          <p style={{ fontSize: '0.75rem', color: '#bbb', marginTop: '1rem' }}>
+            ↑ Use the Save button above
+          </p>
+        )}
         {!embed && (
           <a
             href="/profile/site"
-            style={{ display: 'inline-block', marginTop: '1rem', fontSize: '0.85rem', color: '#4A2F25', textDecoration: 'underline' }}
+            style={{ display: 'inline-block', marginTop: '1.25rem', fontSize: '0.85rem', color: '#4A2F25', textDecoration: 'underline' }}
           >
-            Open editor
+            ← Back to editor
           </a>
         )}
       </div>

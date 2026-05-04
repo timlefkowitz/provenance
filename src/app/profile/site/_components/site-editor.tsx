@@ -84,6 +84,15 @@ export function SiteEditor({
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  console.log('[SiteEditor] mount', {
+    profileId,
+    profileName: profile.name,
+    initialHandle: initialConfig?.handle ?? '(none)',
+    initialPublished: initialConfig?.publishedAt ?? null,
+    siteDomain,
+  });
+
   const [saving, startSave] = useTransition();
   const [publishing, startPublish] = useTransition();
   const [uploadingHero, startUploadHero] = useTransition();
@@ -193,34 +202,69 @@ export function SiteEditor({
 
   function handleTransferClaim() {
     if (!takenByOwnProfile) return;
+    const profileName = takenByOwnProfile.profileName;
     startTransfer(async () => {
+      console.log('[SiteEditor] transferClaim', { from: takenByOwnProfile.profileId, to: profileId });
       const result = await transferHandleAction(takenByOwnProfile.profileId, profileId);
       if (!result.success) {
+        console.error('[SiteEditor] transferClaim failed', result.error);
         toast.error(result.error);
         return;
       }
+      console.log('[SiteEditor] transferClaim success', { handle: result.handle });
       setHandle(result.handle);
       setHandleError(null);
       setHandleOk(true);
       setTakenByOwnProfile(null);
-      toast.success(`Handle transferred from "${takenByOwnProfile.profileName}" to this profile.`);
       setPreviewKey((k) => k + 1);
-      router.refresh();
+      toast.success(`Site transferred from "${profileName}" to this profile.`);
+      // Don't router.refresh() — that resets all client state; preview key bump is enough
     });
   }
 
   function handleRemoveConflict() {
     if (!takenByOwnProfile) return;
+    const profileName = takenByOwnProfile.profileName;
     startDeleteConflict(async () => {
-      const result = await deleteSiteAction(takenByOwnProfile.profileId);
-      if (!result.success) {
-        toast.error(result.error);
+      console.log('[SiteEditor] removeConflict: deleting old row', { from: takenByOwnProfile.profileId });
+      const deleteResult = await deleteSiteAction(takenByOwnProfile.profileId);
+      if (!deleteResult.success) {
+        console.error('[SiteEditor] removeConflict: delete failed', deleteResult.error);
+        toast.error(deleteResult.error);
         return;
       }
+
+      // Clear conflict state immediately so handle shows green
       setHandleError(null);
       setHandleOk(true);
       setTakenByOwnProfile(null);
-      toast.success(`Site removed from "${takenByOwnProfile.profileName}". Handle is now free — save to claim it.`);
+
+      // Auto-save to create the new profile_sites row for this profile
+      console.log('[SiteEditor] removeConflict: auto-saving for new profile', { profileId, handle });
+      const saveResult = await upsertSiteAction({
+        profileId,
+        handle,
+        templateId,
+        theme,
+        sections,
+        cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
+        heroImageUrl,
+        tagline,
+        aboutOverride,
+        surfaceColor,
+        artworkFilters,
+      });
+
+      if (!saveResult.success) {
+        console.error('[SiteEditor] removeConflict: auto-save failed', saveResult.error);
+        toast.error(`Handle freed but save failed: ${saveResult.error}`);
+        return;
+      }
+
+      console.log('[SiteEditor] removeConflict: success', { handle: saveResult.handle });
+      setHandle(saveResult.handle);
+      setPreviewKey((k) => k + 1);
+      toast.success(`Started fresh on "${saveResult.handle}" — removed from "${profileName}".`);
     });
   }
 
@@ -697,21 +741,28 @@ export function SiteEditor({
           </div>
 
           {handle ? (
-            <iframe
-              ref={previewRef}
-              key={previewKey}
-              src={previewSrc}
-              className="flex-1 w-full"
-              title="Site preview"
-            />
+            <div className="relative flex-1 flex flex-col">
+              <iframe
+                ref={previewRef}
+                key={previewKey}
+                src={previewSrc}
+                className="flex-1 w-full"
+                title="Site preview"
+              />
+              {/* Overlay nudge: visible only while saving/transferring, shown for a moment */}
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-center p-6">
               <div>
                 <p className="text-xs text-ink/40 font-serif uppercase tracking-widest mb-2">
                   Preview
                 </p>
-                <p className="text-sm text-ink/60 font-serif">
-                  Set a handle to see your site preview.
+                <p className="text-sm font-semibold text-ink/70 font-serif mb-1">
+                  Set a handle to see your site
+                </p>
+                <p className="text-xs text-ink/45 font-serif">
+                  Type a handle above, then click{' '}
+                  <span className="font-semibold text-wine">Save &amp; refresh preview</span>.
                 </p>
               </div>
             </div>
