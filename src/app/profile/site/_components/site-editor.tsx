@@ -127,6 +127,14 @@ export function SiteEditor({
   const previewRef = useRef<HTMLIFrameElement>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus + scroll the handle input — used by the empty preview affordance
+  function focusHandleInput() {
+    console.log('[SiteEditor] focusHandleInput');
+    handleInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => handleInputRef.current?.focus(), 350);
+  }
 
   const isPublished = Boolean(publishedAt);
   const previewSrc = useMemo(
@@ -373,14 +381,28 @@ export function SiteEditor({
         </section>
 
         {/* ── HANDLE ── */}
-        <section>
-          <h2 className="text-sm font-semibold text-ink font-serif mb-1">Site address</h2>
+        <section
+          id="site-address"
+          className={cn(
+            'rounded-xl transition-all',
+            !handle && 'border-2 border-wine/30 bg-wine/5 p-4 -mx-1',
+          )}
+        >
+          <div className="flex items-center justify-between gap-3 mb-1">
+            <h2 className="text-sm font-semibold text-ink font-serif">Site address</h2>
+            {!handle && (
+              <span className="text-[10px] uppercase tracking-widest font-serif font-bold text-wine bg-wine/15 px-2 py-0.5 rounded-full">
+                Required
+              </span>
+            )}
+          </div>
           <p className="text-xs text-ink/50 font-serif mb-3">
             Lowercase letters, numbers, and hyphens. Max 63 chars.
           </p>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Input
+                ref={handleInputRef}
                 value={handle}
                 onChange={(e) => {
                   setHandle(e.target.value);
@@ -389,10 +411,12 @@ export function SiteEditor({
                 }}
                 onBlur={handleHandleBlur}
                 placeholder="your-name"
+                autoComplete="off"
                 className={cn(
-                  'font-serif pr-32',
+                  'font-serif pr-32 bg-white',
                   handleError && 'border-red-400 focus-visible:ring-red-300',
                   handleOk && 'border-green-500 focus-visible:ring-green-200',
+                  !handle && 'border-wine/40 focus-visible:ring-wine/30',
                 )}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink/35 font-serif pointer-events-none">
@@ -769,18 +793,26 @@ export function SiteEditor({
               {/* Overlay nudge: visible only while saving/transferring, shown for a moment */}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-center p-6">
-              <div>
-                <p className="text-xs text-ink/40 font-serif uppercase tracking-widest mb-2">
+            <div className="flex-1 flex items-center justify-center text-center p-6 bg-parchment/30">
+              <div className="max-w-xs">
+                <p className="text-xs text-ink/40 font-serif uppercase tracking-widest mb-3">
                   Preview
                 </p>
-                <p className="text-sm font-semibold text-ink/70 font-serif mb-1">
-                  Set a handle to see your site
+                <p className="text-base font-semibold text-ink font-serif mb-2">
+                  Choose a site address
                 </p>
-                <p className="text-xs text-ink/45 font-serif">
-                  Type a handle above, then click{' '}
-                  <span className="font-semibold text-wine">Save &amp; refresh preview</span>.
+                <p className="text-xs text-ink/55 font-serif mb-5 leading-relaxed">
+                  Pick a handle (e.g. <span className="font-mono text-wine">flight</span>),
+                  then save to see your site here.
                 </p>
+                <button
+                  type="button"
+                  onClick={focusHandleInput}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-wine text-parchment text-xs font-semibold font-serif hover:bg-wine/90 transition-colors"
+                >
+                  Choose a handle
+                  <span aria-hidden>→</span>
+                </button>
               </div>
             </div>
           )}
