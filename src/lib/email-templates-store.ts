@@ -2,11 +2,24 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import type { EmailTheme } from '~/lib/email-layout';
 import {
   EMAIL_FONT_FAMILY,
+  EMAIL_FONT_SERIF,
   buildBulletproofButtonTable,
   buildBulletproofSecondaryButtonTable,
   buildEmailHtml,
   escapeHtml,
   stripMarkdownLinkLineByHref,
+  // New styled email builders
+  buildEditorialEmailHtml,
+  buildEditorialButtonTable,
+  buildGalleryEmailHtml,
+  buildGalleryButtonTable,
+  buildGallerySecondaryButtonTable,
+  buildMinimalEmailHtml,
+  buildMinimalButtonTable,
+  buildMinimalSecondaryButtonTable,
+  EDITORIAL_COLORS,
+  GALLERY_COLORS,
+  MINIMAL_COLORS,
 } from '~/lib/email-layout';
 import { renderMarkdownToEmailHtml } from '~/lib/email-markdown';
 import {
@@ -119,6 +132,38 @@ function buildCertBlockHtml(theme: EmailTheme, certificateNumber: string): strin
 </table>`.trim();
 }
 
+/**
+ * GALLERY style certificate block - elegant, refined aesthetic
+ */
+function buildGalleryCertBlockHtml(certificateNumber: string): string {
+  const safe = escapeHtml(certificateNumber);
+  const { accent, accentSecondary, textMuted, divider } = GALLERY_COLORS;
+  return `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:32px 0;border-collapse:collapse;">
+  <tr>
+    <td style="padding:28px 32px;background-color:#FDFCFA;border:1px solid ${divider};">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+        <tr>
+          <td align="center">
+            <p style="margin:0 0 8px;font-family:${EMAIL_FONT_FAMILY};font-size:10px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:${textMuted};">Certificate of Authenticity</p>
+            <p style="margin:0 0 4px;font-family:ui-monospace,monospace;font-size:22px;font-weight:400;letter-spacing:0.1em;color:${accent};">${safe}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:12px auto 0;">
+              <tr>
+                <td width="40" height="1" bgcolor="${divider}" style="width:40px;height:1px;line-height:1px;font-size:1px;">&nbsp;</td>
+                <td width="16" align="center" style="padding:0 6px;">
+                  <span style="font-family:${EMAIL_FONT_SERIF};font-size:12px;color:${accentSecondary};">&loz;</span>
+                </td>
+                <td width="40" height="1" bgcolor="${divider}" style="width:40px;height:1px;line-height:1px;font-size:1px;">&nbsp;</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`.trim();
+}
+
 function buildItemsHtml(theme: EmailTheme, items: SummaryItem[]): string {
   const { wine, ink, inkMuted, fontFamily } = theme;
   const rows = items
@@ -183,6 +228,10 @@ function renderMarkdownWithBulletCta(
   return bodyHtml + btnHtml;
 }
 
+/**
+ * WELCOME EMAIL - Uses EDITORIAL style
+ * Bold, magazine-inspired with dramatic typography on dark background
+ */
 export async function renderWelcomeEmailHtml(name: string): Promise<string> {
   const theme = await getResolvedEmailTheme();
   const { bodyMarkdown } = await getResolvedTemplateMarkdown('welcome');
@@ -196,8 +245,15 @@ export async function renderWelcomeEmailHtml(name: string): Promise<string> {
     { siteUrl: resolvedSite },
   );
   const ctaHref = `${resolvedSite}/artworks/add`;
-  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, ctaHref, 'Get Started')}</div>`;
-  return buildEmailHtml('Welcome to Provenance', inner, theme);
+  
+  // Use editorial style with its unique rendering
+  const { markdown: stripped, linkLabel } = stripMarkdownLinkLineByHref(md, ctaHref);
+  const btnLabel = linkLabel ?? 'Get Started';
+  const bodyHtml = renderMarkdownToEmailHtml(stripped, theme, 'editorial');
+  const btnHtml = buildEditorialButtonTable(ctaHref, btnLabel);
+  const inner = `<div>${bodyHtml}${btnHtml}</div>`;
+  
+  return buildEditorialEmailHtml('Welcome to Provenance', inner);
 }
 
 export async function getWelcomeEmailSubject(): Promise<string> {
@@ -205,6 +261,10 @@ export async function getWelcomeEmailSubject(): Promise<string> {
   return subject;
 }
 
+/**
+ * CERTIFICATION EMAIL - Uses GALLERY style
+ * Refined museum/gallery aesthetic with elegant serif typography
+ */
 export async function renderCertificationEmailHtml(
   name: string,
   artworkTitle: string,
@@ -215,7 +275,7 @@ export async function renderCertificationEmailHtml(
   const { bodyMarkdown } = await getResolvedTemplateMarkdown('certification');
   const safeTitle = escapeHtml(artworkTitle);
   const safeArtworkUrl = isSafeHttpUrl(artworkUrl) ? artworkUrl : 'https://provenance.guru';
-  const certBlock = buildCertBlockHtml(theme, certificateNumber);
+  const certBlock = buildGalleryCertBlockHtml(certificateNumber);
 
   const md = interpolateTemplate(
     bodyMarkdown,
@@ -229,8 +289,14 @@ export async function renderCertificationEmailHtml(
     },
   );
 
-  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, safeArtworkUrl, 'View Your Artwork')}</div>`;
-  return buildEmailHtml('Your Artwork Has Been Certified', inner, theme);
+  // Use gallery style with its unique rendering
+  const { markdown: stripped, linkLabel } = stripMarkdownLinkLineByHref(md, safeArtworkUrl);
+  const btnLabel = linkLabel ?? 'View Your Artwork';
+  const bodyHtml = renderMarkdownToEmailHtml(stripped, theme, 'gallery');
+  const btnHtml = buildGalleryButtonTable(safeArtworkUrl, btnLabel);
+  const inner = `<div>${bodyHtml}${btnHtml}</div>`;
+  
+  return buildGalleryEmailHtml('Your Artwork Has Been Certified', inner);
 }
 
 export async function getCertificationEmailSubject(artworkTitle: string): Promise<string> {
@@ -354,6 +420,10 @@ export async function renderUpdateEmailHtml(
   return buildEmailHtml(title, inner, theme);
 }
 
+/**
+ * INSTITUTION THANKS EMAIL - Uses MINIMAL style
+ * Clean, warm, friendly with modern simplicity
+ */
 export async function renderInstitutionThanksEmailHtml(name: string): Promise<string> {
   const theme = await getResolvedEmailTheme();
   const { bodyMarkdown } = await getResolvedTemplateMarkdown('institution_thanks');
@@ -373,12 +443,13 @@ export async function renderInstitutionThanksEmailHtml(name: string): Promise<st
   const { markdown: strippedSecondary, linkLabel: secondaryLabel } = stripMarkdownLinkLineByHref(md, institutionUrl);
   const { markdown: strippedPrimary, linkLabel: primaryLabel } = stripMarkdownLinkLineByHref(strippedSecondary, feedbackUrl);
 
-  const bodyHtml = renderMarkdownToEmailHtml(strippedPrimary, theme);
-  const primaryBtn = buildBulletproofButtonTable(feedbackUrl, primaryLabel ?? 'Share your feedback', theme);
-  const secondaryBtn = buildBulletproofSecondaryButtonTable(institutionUrl, secondaryLabel ?? 'Visit the institution page', theme);
+  // Use minimal style - clean, warm, friendly
+  const bodyHtml = renderMarkdownToEmailHtml(strippedPrimary, theme, 'minimal');
+  const primaryBtn = buildMinimalButtonTable(feedbackUrl, primaryLabel ?? 'Share your feedback');
+  const secondaryBtn = buildMinimalSecondaryButtonTable(institutionUrl, secondaryLabel ?? 'Learn more');
 
   const inner = `<div>${bodyHtml}${primaryBtn}${secondaryBtn}</div>`;
-  return buildEmailHtml('Thank you from Provenance', inner, theme);
+  return buildMinimalEmailHtml('Thank you from Provenance', inner);
 }
 
 export async function getInstitutionThanksEmailSubject(): Promise<string> {
@@ -432,6 +503,7 @@ export function buildEmailPreviewHtml(
 
   switch (key) {
     case 'welcome': {
+      // EDITORIAL style preview
       const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
         ? PREVIEW_SAMPLE.siteUrl
         : 'https://provenance.guru'
@@ -442,18 +514,23 @@ export function buildEmailPreviewHtml(
         { siteUrl: resolvedSite },
       );
       const ctaHref = `${resolvedSite}/artworks/add`;
-      const inner = `<div>${renderMarkdownWithBulletCta(md, t, ctaHref, 'Get Started')}</div>`;
+      const { markdown: stripped, linkLabel } = stripMarkdownLinkLineByHref(md, ctaHref);
+      const btnLabel = linkLabel ?? 'Get Started';
+      const bodyHtml = renderMarkdownToEmailHtml(stripped, t, 'editorial');
+      const btnHtml = buildEditorialButtonTable(ctaHref, btnLabel);
+      const inner = `<div>${bodyHtml}${btnHtml}</div>`;
       return {
-        html: buildEmailHtml('Welcome to Provenance', inner, t),
+        html: buildEditorialEmailHtml('Welcome to Provenance', inner),
         previewSubject: subject,
       };
     }
     case 'certification': {
+      // GALLERY style preview
       const safeTitle = escapeHtml(PREVIEW_SAMPLE.artworkTitle);
       const safeArtworkUrl = isSafeHttpUrl(PREVIEW_SAMPLE.artworkUrl)
         ? PREVIEW_SAMPLE.artworkUrl
         : 'https://provenance.guru';
-      const certBlock = buildCertBlockHtml(t, PREVIEW_SAMPLE.certificateNumber);
+      const certBlock = buildGalleryCertBlockHtml(PREVIEW_SAMPLE.certificateNumber);
       const md = interpolateTemplate(
         bodyMarkdown,
         {
@@ -465,9 +542,13 @@ export function buildEmailPreviewHtml(
           CERT_BLOCK: certBlock,
         },
       );
-      const inner = `<div>${renderMarkdownWithBulletCta(md, t, safeArtworkUrl, 'View Your Artwork')}</div>`;
+      const { markdown: stripped, linkLabel } = stripMarkdownLinkLineByHref(md, safeArtworkUrl);
+      const btnLabel = linkLabel ?? 'View Your Artwork';
+      const bodyHtml = renderMarkdownToEmailHtml(stripped, t, 'gallery');
+      const btnHtml = buildGalleryButtonTable(safeArtworkUrl, btnLabel);
+      const inner = `<div>${bodyHtml}${btnHtml}</div>`;
       return {
-        html: buildEmailHtml('Your Artwork Has Been Certified', inner, t),
+        html: buildGalleryEmailHtml('Your Artwork Has Been Certified', inner),
         previewSubject: subject.split('{{artworkTitle}}').join(PREVIEW_SAMPLE.artworkTitle),
       };
     }
@@ -545,6 +626,7 @@ export function buildEmailPreviewHtml(
       };
     }
     case 'institution_thanks': {
+      // MINIMAL style preview
       const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
         ? PREVIEW_SAMPLE.siteUrl
         : 'https://provenance.guru'
@@ -558,12 +640,12 @@ export function buildEmailPreviewHtml(
       );
       const { markdown: strippedSecondary, linkLabel: secondaryLabel } = stripMarkdownLinkLineByHref(md, institutionUrl);
       const { markdown: strippedPrimary, linkLabel: primaryLabel } = stripMarkdownLinkLineByHref(strippedSecondary, feedbackUrl);
-      const bodyHtml = renderMarkdownToEmailHtml(strippedPrimary, t);
-      const primaryBtn = buildBulletproofButtonTable(feedbackUrl, primaryLabel ?? 'Share your feedback', t);
-      const secondaryBtn = buildBulletproofSecondaryButtonTable(institutionUrl, secondaryLabel ?? 'Visit the institution page', t);
+      const bodyHtml = renderMarkdownToEmailHtml(strippedPrimary, t, 'minimal');
+      const primaryBtn = buildMinimalButtonTable(feedbackUrl, primaryLabel ?? 'Share your feedback');
+      const secondaryBtn = buildMinimalSecondaryButtonTable(institutionUrl, secondaryLabel ?? 'Learn more');
       const inner = `<div>${bodyHtml}${primaryBtn}${secondaryBtn}</div>`;
       return {
-        html: buildEmailHtml('Thank you from Provenance', inner, t),
+        html: buildMinimalEmailHtml('Thank you from Provenance', inner),
         previewSubject: subject,
       };
     }
