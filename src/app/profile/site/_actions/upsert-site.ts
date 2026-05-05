@@ -136,8 +136,25 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     updated_at: new Date().toISOString(),
   };
 
-  // Base payload — only columns from the original migration 20260513
-  // Used as a fallback if the extra-columns migration hasn't been applied yet.
+  // Mid payload — columns from migration 20260514 (extra cols) but not 20260531 (display_name).
+  // Used as a fallback when only display_name is missing.
+  const midPayload = {
+    profile_id: input.profileId,
+    handle: handleResult.normalized,
+    template_id: input.templateId,
+    theme,
+    sections,
+    cta: input.cta ?? null,
+    hero_image_url: input.heroImageUrl ?? null,
+    tagline: input.tagline?.trim() || null,
+    about_override: input.aboutOverride?.trim() || null,
+    surface_color: input.surfaceColor ?? null,
+    artwork_filters: artworkFilters,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Base payload — only columns from the original migration 20260513.
+  // Used as a last-resort fallback if the extra-columns migrations haven't been applied yet.
   const basePayload = {
     profile_id: input.profileId,
     handle: handleResult.normalized,
@@ -154,17 +171,26 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     .from('profile_sites')
     .upsert(fullPayload, { onConflict: 'profile_id' });
 
-  // If the extra columns don't exist yet (migration 20260514 not applied),
-  // Postgres returns a column-not-found error. Fall back to base columns so
-  // saves still work — the extra fields will persist once the migration runs.
+  // If a column is missing (migration not yet applied), step down through progressively
+  // narrower payloads so saves degrade gracefully rather than silently dropping fields.
   if (upsertErr) {
-    const isColumnMissing =
-      upsertErr.message?.includes('column') ||
-      upsertErr.code === '42703' || // undefined_column
-      upsertErr.code === 'PGRST204'; // schema cache mismatch
+    const isColumnMissing = (err: { message?: string; code?: string }) =>
+      err.message?.includes('column') ||
+      err.code === '42703' || // undefined_column
+      err.code === 'PGRST204'; // schema cache mismatch
 
-    if (isColumnMissing) {
-      console.warn('[Sites] upsertSiteAction extra columns missing — falling back to base payload', upsertErr.message);
+    if (isColumnMissing(upsertErr)) {
+      // display_name column may not exist yet (migration 20260531) — try mid payload
+      console.warn('[Sites] upsertSiteAction full payload failed — trying mid payload', upsertErr.message);
+      const mid = await (client as any)
+        .from('profile_sites')
+        .upsert(midPayload, { onConflict: 'profile_id' });
+      upsertErr = mid.error ?? null;
+    }
+
+    if (upsertErr && isColumnMissing(upsertErr)) {
+      // Extra columns (migration 20260514) also missing — fall back to base payload
+      console.warn('[Sites] upsertSiteAction mid payload failed — falling back to base payload', upsertErr.message);
       const fallback = await (client as any)
         .from('profile_sites')
         .upsert(basePayload, { onConflict: 'profile_id' });
