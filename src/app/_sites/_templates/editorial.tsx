@@ -13,8 +13,8 @@ import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
 
 export function EditorialTemplate({ site }: { site: SiteData }) {
-  // Prefer the dedicated hero image; fall back to profile picture
-  const heroBg = site.hero_image_url ?? site.picture_url ?? null;
+  // Prefer the dedicated hero image; fall back to most recent artwork, then profile picture
+  const heroBg = site.hero_image_url ?? site.artworks[0]?.image_url ?? site.picture_url ?? null;
   const accentColor = resolveAccent(site.theme.accent);
   const surface = resolveSurface(site.surface_color);
 
