@@ -21,6 +21,8 @@ const TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   notification: 'Notification',
   summary: 'Summary',
   update: 'Update',
+  artwork_featured: 'Artwork featured',
+  institution_thanks: 'Institution thank-you',
 };
 
 const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
@@ -29,6 +31,8 @@ const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
 • notification: {{name}}, {{title}}, {{body}}, {{ctaUrl}}, {{ctaLabel}}
 • summary: {{name}}, {{periodLabel}}, {{siteUrl}}, {{ITEMS}}
 • update: {{name}}, {{title}}, {{body}}, {{ctaUrl}}, {{ctaLabel}}
+• artwork_featured: {{artistName}}, {{artworkTitle}}, {{artworkUrl}}
+• institution_thanks: {{name}}, {{feedbackUrl}}, {{institutionUrl}}
 
 Primary action links: keep one markdown line like [Your label](https://…) that matches the main URL we inject (e.g. Get Started → site/artworks/add). That line is replaced by a bulletproof button; if you change the URL or label, remove the old markdown line to avoid a duplicate text link.`;
 

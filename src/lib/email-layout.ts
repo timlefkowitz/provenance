@@ -78,20 +78,21 @@ export function stripMarkdownLinkLineByHref(
 }
 
 /**
- * Gallery-quality CTA button — readable sentence-case label on wine bg.
+ * Gallery-quality primary CTA button — white label on wine background.
  *
- * Typography rationale:
- *   - 15px with 1.3 line-height = comfortable reading (was 11px uppercase,
- *     which tested poorly on mobile and with older eyes).
- *   - Sentence case preserves the label the caller passes in (e.g.
- *     "Complete certificate", "Claim certificate", "Create Certificate
- *     of Show"). No forced `text-transform: uppercase` — uppercase
- *     destroys readability on long button labels.
- *   - Slight +0.01em tracking for a refined feel without shouting.
- *   - 18px / 36px padding gives a generous, tappable target (min 44×44
- *     per iOS HIG even on small screens).
- *   - 4px radius — a touch of softness without being childish.
- *   - Bulletproof: VML fallback wrapping for Outlook 07–19 on Windows.
+ * Design notes:
+ *   - Background applied to BOTH <td> and <a> so Gmail web / Apple Mail
+ *     dark-mode can't lose the fill behind the link.
+ *   - display:block on the <a> makes the entire pill a click target,
+ *     not just the text run.
+ *   - Pure white (#FFFFFF) on wine (#4A2F25) exceeds WCAG AAA (10.5:1).
+ *   - 6px radius — refined but approachable.
+ *   - 16px / 32px padding with mso-padding-alt:0 so the VML height is
+ *     authoritative in Outlook 07–19.
+ *   - -webkit-text-size-adjust:none prevents iOS from bumping font-size.
+ *   - border:1px solid wine preserves the edge when dark-mode clients
+ *     override backgrounds but keep borders.
+ *   - VML <v:roundrect> kept in lockstep (arcsize 10%, height 52px).
  */
 export function buildBulletproofButtonTable(
   href: string,
@@ -104,17 +105,45 @@ export function buildBulletproofButtonTable(
   return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:32px 0 8px;border-collapse:collapse;">
   <tr>
-    <td align="left" bgcolor="${wine}" style="background-color:${wine};border-radius:4px;mso-padding-alt:0;">
+    <td align="center" bgcolor="${wine}" style="background-color:${wine};border-radius:6px;border:1px solid ${wine};mso-padding-alt:0;">
       <!--[if mso]>
-      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:52px;v-text-anchor:middle;width:240px;" arcsize="8%" stroke="f" fillcolor="${wine}">
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:52px;v-text-anchor:middle;width:260px;" arcsize="10%" stroke="f" fillcolor="${wine}">
         <w:anchorlock/>
-        <center style="color:#F5F1E8;font-family:${fontFamily};font-size:15px;font-weight:600;letter-spacing:0.01em;">${safeLabel}</center>
+        <center style="color:#FFFFFF;font-family:${fontFamily};font-size:16px;font-weight:600;letter-spacing:0.02em;mso-text-raise:8;">${safeLabel}</center>
       </v:roundrect>
       <![endif]-->
       <!--[if !mso]><!-- -->
-      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:18px 36px;font-family:${fontFamily};font-size:15px;font-weight:600;letter-spacing:0.01em;line-height:1.3;color:#F5F1E8;text-decoration:none;border-radius:4px;mso-hide:all;">
-        ${safeLabel}
-      </a>
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:block;background-color:${wine};border:1px solid ${wine};border-radius:6px;padding:16px 32px;font-family:${fontFamily};font-size:16px;font-weight:600;letter-spacing:0.02em;line-height:1.2;color:#FFFFFF;text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">${safeLabel}</a>
+      <!--<![endif]-->
+    </td>
+  </tr>
+</table>`.trim();
+}
+
+/**
+ * Secondary CTA button — outline variant: transparent fill, wine border, wine label.
+ * Use beneath a primary button to offer a lower-weight second action.
+ */
+export function buildBulletproofSecondaryButtonTable(
+  href: string,
+  label: string,
+  theme: EmailTheme,
+): string {
+  const { wine, fontFamily } = theme;
+  const safeHref = escapeHtml(href);
+  const safeLabel = escapeHtml(label);
+  return `
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:12px 0 8px;border-collapse:collapse;">
+  <tr>
+    <td align="center" style="background-color:transparent;border-radius:6px;border:1px solid ${wine};mso-padding-alt:0;">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:52px;v-text-anchor:middle;width:260px;" arcsize="10%" strokecolor="${wine}" fillcolor="#FFFFFF">
+        <w:anchorlock/>
+        <center style="color:${wine};font-family:${fontFamily};font-size:16px;font-weight:600;letter-spacing:0.02em;mso-text-raise:8;">${safeLabel}</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-- -->
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:block;background-color:transparent;border:1px solid ${wine};border-radius:6px;padding:16px 32px;font-family:${fontFamily};font-size:16px;font-weight:600;letter-spacing:0.02em;line-height:1.2;color:${wine};text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">${safeLabel}</a>
       <!--<![endif]-->
     </td>
   </tr>

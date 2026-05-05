@@ -3,6 +3,7 @@ import type { EmailTheme } from '~/lib/email-layout';
 import {
   EMAIL_FONT_FAMILY,
   buildBulletproofButtonTable,
+  buildBulletproofSecondaryButtonTable,
   buildEmailHtml,
   escapeHtml,
   stripMarkdownLinkLineByHref,
@@ -353,6 +354,38 @@ export async function renderUpdateEmailHtml(
   return buildEmailHtml(title, inner, theme);
 }
 
+export async function renderInstitutionThanksEmailHtml(name: string): Promise<string> {
+  const theme = await getResolvedEmailTheme();
+  const { bodyMarkdown } = await getResolvedTemplateMarkdown('institution_thanks');
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+  const displayName = name || 'there';
+
+  const resolvedSite = (isSafeHttpUrl(siteUrl) ? siteUrl : 'https://provenance.guru').replace(/\/$/, '');
+  const feedbackUrl = `${resolvedSite}/feedback?source=institution_thanks`;
+  const institutionUrl = `${resolvedSite}/lp/institution`;
+
+  const md = interpolateTemplate(
+    bodyMarkdown,
+    { name: escapeHtml(displayName) },
+    { feedbackUrl, institutionUrl },
+  );
+
+  const { markdown: strippedSecondary, linkLabel: secondaryLabel } = stripMarkdownLinkLineByHref(md, institutionUrl);
+  const { markdown: strippedPrimary, linkLabel: primaryLabel } = stripMarkdownLinkLineByHref(strippedSecondary, feedbackUrl);
+
+  const bodyHtml = renderMarkdownToEmailHtml(strippedPrimary, theme);
+  const primaryBtn = buildBulletproofButtonTable(feedbackUrl, primaryLabel ?? 'Share your feedback', theme);
+  const secondaryBtn = buildBulletproofSecondaryButtonTable(institutionUrl, secondaryLabel ?? 'Visit the institution page', theme);
+
+  const inner = `<div>${bodyHtml}${primaryBtn}${secondaryBtn}</div>`;
+  return buildEmailHtml('Thank you from Provenance', inner, theme);
+}
+
+export async function getInstitutionThanksEmailSubject(): Promise<string> {
+  const { subject } = await getResolvedTemplateMarkdown('institution_thanks');
+  return subject;
+}
+
 /** Sample data for admin preview only — mirrors real sends without hitting the database. */
 const PREVIEW_SAMPLE = {
   name: 'Alex Rivera',
@@ -508,6 +541,29 @@ export function buildEmailPreviewHtml(
       const inner = `<div>${renderMarkdownWithBulletCta(md, t, url, PREVIEW_SAMPLE.updateLinkLabel)}</div>`;
       return {
         html: buildEmailHtml(PREVIEW_SAMPLE.updateTitle, inner, t),
+        previewSubject: subject,
+      };
+    }
+    case 'institution_thanks': {
+      const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
+        ? PREVIEW_SAMPLE.siteUrl
+        : 'https://provenance.guru'
+      ).replace(/\/$/, '');
+      const feedbackUrl = `${resolvedSite}/feedback?source=institution_thanks`;
+      const institutionUrl = `${resolvedSite}/lp/institution`;
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        { name: escapeHtml(PREVIEW_SAMPLE.name) },
+        { feedbackUrl, institutionUrl },
+      );
+      const { markdown: strippedSecondary, linkLabel: secondaryLabel } = stripMarkdownLinkLineByHref(md, institutionUrl);
+      const { markdown: strippedPrimary, linkLabel: primaryLabel } = stripMarkdownLinkLineByHref(strippedSecondary, feedbackUrl);
+      const bodyHtml = renderMarkdownToEmailHtml(strippedPrimary, t);
+      const primaryBtn = buildBulletproofButtonTable(feedbackUrl, primaryLabel ?? 'Share your feedback', t);
+      const secondaryBtn = buildBulletproofSecondaryButtonTable(institutionUrl, secondaryLabel ?? 'Visit the institution page', t);
+      const inner = `<div>${bodyHtml}${primaryBtn}${secondaryBtn}</div>`;
+      return {
+        html: buildEmailHtml('Thank you from Provenance', inner, t),
         previewSubject: subject,
       };
     }

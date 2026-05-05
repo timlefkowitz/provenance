@@ -2,9 +2,11 @@ import { Resend } from 'resend';
 import {
   getCertificationEmailSubject,
   getArtworkFeaturedEmailSubject,
+  getInstitutionThanksEmailSubject,
   getWelcomeEmailSubject,
   renderArtworkFeaturedEmailHtml,
   renderCertificationEmailHtml,
+  renderInstitutionThanksEmailHtml,
   renderNotificationEmailHtml,
   renderSummaryEmailHtml,
   renderUpdateEmailHtml,
@@ -169,6 +171,22 @@ export async function sendArtworkFeaturedEmail(
   ]);
 
   await sendEmail({ to: email, subject, html });
+}
+
+/**
+ * Send the institution thank-you email (admin-triggered, not auto-sent on signup).
+ */
+export async function sendInstitutionThanksEmail(email: string, name: string): Promise<void> {
+  const [subject, html] = await Promise.all([
+    getInstitutionThanksEmailSubject(),
+    renderInstitutionThanksEmailHtml(name),
+  ]);
+
+  await sendEmail({
+    to: email,
+    subject,
+    html,
+  });
 }
 
 export interface NotificationEmailParams {

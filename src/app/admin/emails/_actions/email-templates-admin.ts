@@ -33,6 +33,7 @@ const templateSchema = z.object({
     'notification',
     'summary',
     'update',
+    'institution_thanks',
   ]),
   subject: z.string().min(1).max(500),
   body_markdown: z.string().min(1).max(100_000),
