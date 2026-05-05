@@ -50,7 +50,7 @@ export function StudioTemplate({ site }: { site: SiteData }) {
             )}
             <div>
               <h1 className="text-base font-semibold tracking-tight" style={{ color: surface.ink }}>
-                {site.name}
+                {site.display_name ?? site.name}
               </h1>
               {site.tagline ? (
                 <p className="text-xs mt-0.5" style={{ color: isDarkSurface ? 'rgba(255,255,255,0.6)' : '#888' }}>

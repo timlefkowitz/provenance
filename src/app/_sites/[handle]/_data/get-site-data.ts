@@ -189,6 +189,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     hero_image_url: siteRow.hero_image_url ?? null,
     tagline: siteRow.tagline ?? null,
     name: profile.name,
+    display_name: siteRow.display_name ?? null,
     bio: siteRow.about_override ?? profile.bio ?? null,
     location: profile.location ?? null,
     website: profile.website ?? null,

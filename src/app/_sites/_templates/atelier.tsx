@@ -73,7 +73,7 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
             className="text-6xl md:text-8xl font-bold leading-none"
             style={{ color: '#fff', letterSpacing: '-0.02em' }}
           >
-            {site.name}
+            {site.display_name ?? site.name}
           </h1>
           {site.tagline && (
             <p
@@ -127,7 +127,7 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
                   About
                 </p>
                 <p className="text-sm font-semibold" style={{ fontFamily: 'system-ui, sans-serif', color: '#333' }}>
-                  {site.name}
+                  {site.display_name ?? site.name}
                 </p>
               </div>
             </div>

@@ -67,8 +67,10 @@ export type SiteData = {
   hero_image_url: string | null;
   /** Optional tagline displayed under the site name */
   tagline: string | null;
-  /** From user_profiles, but may be overridden by about_override */
+  /** From user_profiles — the canonical profile name */
   name: string;
+  /** Optional site-specific display name override (e.g. "FLIGHT" instead of "Fl!ght") */
+  display_name: string | null;
   bio: string | null;
   location: string | null;
   website: string | null;

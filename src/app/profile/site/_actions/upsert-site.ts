@@ -26,6 +26,8 @@ export type UpsertSiteInput = {
   heroImageUrl?: string | null;
   tagline?: string | null;
   aboutOverride?: string | null;
+  /** Optional display name override shown in the site header/logo */
+  displayName?: string | null;
   surfaceColor?: string | null;
   artworkFilters?: Partial<SiteArtworkFilters>;
 };
@@ -128,6 +130,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     hero_image_url: input.heroImageUrl ?? null,
     tagline: input.tagline?.trim() || null,
     about_override: input.aboutOverride?.trim() || null,
+    display_name: input.displayName?.trim() || null,
     surface_color: input.surfaceColor ?? null,
     artwork_filters: artworkFilters,
     updated_at: new Date().toISOString(),

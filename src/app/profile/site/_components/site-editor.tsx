@@ -113,6 +113,7 @@ export function SiteEditor({
   const [ctaEnabled, setCtaEnabled] = useState(Boolean(initialConfig?.cta));
 
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(initialConfig?.heroImageUrl ?? null);
+  const [displayName, setDisplayName] = useState<string>(initialConfig?.displayName ?? '');
   const [tagline, setTagline] = useState<string>(initialConfig?.tagline ?? '');
   const [aboutOverride, setAboutOverride] = useState<string>(initialConfig?.aboutOverride ?? '');
   const [surfaceColor, setSurfaceColor] = useState<string>(initialConfig?.surfaceColor ?? DEFAULT_SURFACE);
@@ -187,6 +188,7 @@ export function SiteEditor({
       sections,
       cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
       heroImageUrl,
+      displayName,
       tagline,
       aboutOverride,
       surfaceColor,
@@ -315,6 +317,7 @@ export function SiteEditor({
         sections,
         cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
         heroImageUrl,
+        displayName,
         tagline,
         aboutOverride,
         surfaceColor,
@@ -507,6 +510,26 @@ export function SiteEditor({
             </p>
           </div>
         )}
+        </section>
+
+        {/* ── DISPLAY NAME ── */}
+        <section>
+          <h2 className="text-sm font-semibold text-ink font-serif mb-1">Site display name</h2>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            The name shown in your site&apos;s header and logo. Leave blank to use your profile name.
+          </p>
+          <Input
+            value={displayName}
+            onChange={(e) => { setDisplayName(e.target.value); markUnsaved(); }}
+            placeholder={profile.name}
+            maxLength={80}
+            className="font-serif"
+          />
+          {displayName.trim() && displayName.trim() !== profile.name && (
+            <p className="mt-1.5 text-[11px] text-ink/50 font-serif">
+              Showing <span className="font-medium text-ink">&ldquo;{displayName.trim()}&rdquo;</span> instead of &ldquo;{profile.name}&rdquo;
+            </p>
+          )}
         </section>
 
         {/* ── TAGLINE ── */}

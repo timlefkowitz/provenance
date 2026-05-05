@@ -28,7 +28,7 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
       >
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="text-lg font-bold tracking-tight" style={{ color: accentColor }}>
-            {site.name}
+            {site.display_name ?? site.name}
           </a>
           <nav className="flex items-center gap-6">
             {site.sections.artworks && site.artworks.length > 0 && (
@@ -85,7 +85,7 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
               lineHeight: '1.05',
             }}
           >
-            {site.name}
+            {site.display_name ?? site.name}
           </h1>
           {site.tagline && (
             <p
