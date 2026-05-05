@@ -30,12 +30,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
 
   // Investor pages have their own dedicated nav; hide the main nav there.
   // Preview mode renders templates full-screen with its own floating bar.
-  // Admin uses the admin sidebar only.
-  if (
-    pathname?.startsWith('/investors') ||
-    pathname?.startsWith('/profile/site/preview') ||
-    pathname?.startsWith('/admin')
-  ) {
+  if (pathname?.startsWith('/investors') || pathname?.startsWith('/profile/site/preview')) {
     return null;
   }
 

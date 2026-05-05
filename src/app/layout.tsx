@@ -116,7 +116,6 @@ export default async function RootLayout({
           </OnboardingGuard>
         </RootProviders>
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
-        <TacoChatWidget />
         <Toaster position="bottom-center" />
         <ClientAnalytics />
         <CookieConsentBanner />
