@@ -30,13 +30,13 @@ export default async function FeedbackPage() {
     <main className="min-h-screen bg-parchment py-12 sm:py-20">
       <div className="container mx-auto max-w-3xl px-4">
         <header className="mb-10 text-center">
-          <div className="mx-auto mb-6 h-20 w-20 overflow-hidden rounded-full border-4 border-wine/15 bg-parchment shadow-sm">
+          <div className="mx-auto mb-6 h-24 w-24 overflow-hidden rounded-xl border-4 border-wine/15 bg-[#2a2a2a] shadow-sm">
             <Image
-              src="/taco-cat.png"
+              src="/taco-cat-portrait.png"
               alt="Taco the cat, the Provenance mascot"
-              width={80}
-              height={80}
-              className="h-full w-full object-cover"
+              width={96}
+              height={96}
+              className="h-full w-full object-cover object-center"
               priority
             />
           </div>
