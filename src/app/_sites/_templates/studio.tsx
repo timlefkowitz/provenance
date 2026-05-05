@@ -49,9 +49,17 @@ export function StudioTemplate({ site }: { site: SiteData }) {
               </div>
             )}
             <div>
-              <h1 className="text-base font-semibold tracking-tight" style={{ color: surface.ink }}>
-                {site.display_name ?? site.name}
-              </h1>
+              {site.logo_image_url ? (
+                <img
+                  src={site.logo_image_url}
+                  alt={site.display_name ?? site.name}
+                  className="h-7 w-auto object-contain"
+                />
+              ) : (
+                <h1 className="text-base font-semibold tracking-tight" style={{ color: surface.ink }}>
+                  {site.display_name ?? site.name}
+                </h1>
+              )}
               {site.tagline ? (
                 <p className="text-xs mt-0.5" style={{ color: isDarkSurface ? 'rgba(255,255,255,0.6)' : '#888' }}>
                   {site.tagline}

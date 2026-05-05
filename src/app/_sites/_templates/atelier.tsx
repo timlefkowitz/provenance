@@ -69,12 +69,21 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
 
         {/* Hero name */}
         <div className="relative z-10 max-w-4xl mx-auto w-full px-8 pb-16">
-          <h1
-            className="text-6xl md:text-8xl font-bold leading-none"
-            style={{ color: '#fff', letterSpacing: '-0.02em' }}
-          >
-            {site.display_name ?? site.name}
-          </h1>
+          {site.logo_image_url ? (
+            <img
+              src={site.logo_image_url}
+              alt={site.display_name ?? site.name}
+              className="max-h-28 md:max-h-40 w-auto object-contain"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
+          ) : (
+            <h1
+              className="text-6xl md:text-8xl font-bold leading-none"
+              style={{ color: '#fff', letterSpacing: '-0.02em' }}
+            >
+              {site.display_name ?? site.name}
+            </h1>
+          )}
           {site.tagline && (
             <p
               className="mt-5 text-xl md:text-2xl italic"

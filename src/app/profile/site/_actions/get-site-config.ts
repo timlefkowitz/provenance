@@ -27,6 +27,8 @@ export type SiteConfig = {
   aboutOverride: string | null;
   /** Optional display name override shown in the site header/logo */
   displayName: string | null;
+  /** Optional logo image URL — replaces the text name in hero / nav */
+  logoImageUrl: string | null;
   surfaceColor: string;
   artworkFilters: SiteArtworkFilters;
   publishedAt: string | null;
@@ -74,6 +76,7 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     tagline: data.tagline ?? null,
     aboutOverride: data.about_override ?? null,
     displayName: data.display_name ?? null,
+    logoImageUrl: data.logo_image_url ?? null,
     surfaceColor: data.surface_color ?? DEFAULT_SURFACE,
     artworkFilters: { ...DEFAULT_ARTWORK_FILTERS, ...(data.artwork_filters ?? {}) },
     publishedAt: data.published_at ?? null,

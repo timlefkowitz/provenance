@@ -71,6 +71,8 @@ export type SiteData = {
   name: string;
   /** Optional site-specific display name override (e.g. "FLIGHT" instead of "Fl!ght") */
   display_name: string | null;
+  /** Optional logo image — replaces the text name in hero / nav */
+  logo_image_url: string | null;
   bio: string | null;
   location: string | null;
   website: string | null;

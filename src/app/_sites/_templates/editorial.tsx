@@ -27,8 +27,16 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
         style={{ background: '#fff', borderColor: '#e8e8e8' }}
       >
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="text-lg font-bold tracking-tight" style={{ color: accentColor }}>
-            {site.display_name ?? site.name}
+          <a href="/" className="flex items-center" style={{ color: accentColor }}>
+            {site.logo_image_url ? (
+              <img
+                src={site.logo_image_url}
+                alt={site.display_name ?? site.name}
+                className="h-8 w-auto object-contain"
+              />
+            ) : (
+              <span className="text-lg font-bold tracking-tight">{site.display_name ?? site.name}</span>
+            )}
           </a>
           <nav className="flex items-center gap-6">
             {site.sections.artworks && site.artworks.length > 0 && (
@@ -77,16 +85,25 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
           <p className="text-xs uppercase tracking-[0.2em] mb-3" style={{ color: heroBg ? 'rgba(255,255,255,0.7)' : '#999' }}>
             {site.medium || site.role}
           </p>
-          <h1
-            className="text-5xl md:text-7xl font-bold leading-tight"
-            style={{
-              color: heroBg ? '#fff' : accentColor,
-              maxWidth: '16ch',
-              lineHeight: '1.05',
-            }}
-          >
-            {site.display_name ?? site.name}
-          </h1>
+          {site.logo_image_url ? (
+            <img
+              src={site.logo_image_url}
+              alt={site.display_name ?? site.name}
+              className="max-h-32 md:max-h-48 w-auto object-contain"
+              style={heroBg ? { filter: 'brightness(0) invert(1)' } : undefined}
+            />
+          ) : (
+            <h1
+              className="text-5xl md:text-7xl font-bold leading-tight"
+              style={{
+                color: heroBg ? '#fff' : accentColor,
+                maxWidth: '16ch',
+                lineHeight: '1.05',
+              }}
+            >
+              {site.display_name ?? site.name}
+            </h1>
+          )}
           {site.tagline && (
             <p
               className="mt-4 text-lg md:text-xl italic"

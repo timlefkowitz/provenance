@@ -113,6 +113,9 @@ export function SiteEditor({
   const [ctaEnabled, setCtaEnabled] = useState(Boolean(initialConfig?.cta));
 
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(initialConfig?.heroImageUrl ?? null);
+  const [logoImageUrl, setLogoImageUrl] = useState<string | null>(initialConfig?.logoImageUrl ?? null);
+  const [uploadingLogo, startUploadLogo] = useTransition();
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState<string>(initialConfig?.displayName ?? '');
   const [tagline, setTagline] = useState<string>(initialConfig?.tagline ?? '');
   const [aboutOverride, setAboutOverride] = useState<string>(initialConfig?.aboutOverride ?? '');
@@ -188,6 +191,7 @@ export function SiteEditor({
       sections,
       cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
       heroImageUrl,
+      logoImageUrl,
       displayName,
       tagline,
       aboutOverride,
@@ -317,6 +321,7 @@ export function SiteEditor({
         sections,
         cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
         heroImageUrl,
+        logoImageUrl,
         displayName,
         tagline,
         aboutOverride,
@@ -358,6 +363,30 @@ export function SiteEditor({
 
   function handleClearHero() {
     setHeroImageUrl(null);
+  }
+
+  // ── Logo upload ──
+  function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    startUploadLogo(async () => {
+      const fd = new FormData();
+      fd.append('file', file);
+      const result = await uploadSiteImage(profileId, fd);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setLogoImageUrl(result.url);
+      markUnsaved();
+      toast.success('Logo uploaded. Save to apply to your site.');
+    });
+    if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+  }
+
+  function handleClearLogo() {
+    setLogoImageUrl(null);
+    markUnsaved();
   }
 
   // ── Cert type filter ──
@@ -510,6 +539,54 @@ export function SiteEditor({
             </p>
           </div>
         )}
+        </section>
+
+        {/* ── LOGO IMAGE ── */}
+        <section>
+          <h2 className="text-sm font-semibold text-ink font-serif mb-1">Logo image</h2>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            Optional. Replaces the text name in your site&apos;s hero and header. PNG with transparent background works best.
+          </p>
+
+          {logoImageUrl ? (
+            <div className="relative group rounded-lg overflow-hidden border border-wine/15 bg-white/60">
+              <div className="relative h-20 w-full flex items-center justify-center p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoImageUrl}
+                  alt="Site logo"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleClearLogo}
+                className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove logo"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => logoFileInputRef.current?.click()}
+              disabled={uploadingLogo}
+              className="w-full h-20 rounded-lg border-2 border-dashed border-wine/20 hover:border-wine/40 bg-wine/3 hover:bg-wine/5 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Upload className="h-5 w-5 text-wine/60" />
+              <span className="text-xs text-ink/60 font-serif">
+                {uploadingLogo ? 'Uploading…' : 'Upload logo image'}
+              </span>
+            </button>
+          )}
+          <input
+            ref={logoFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleLogoFileChange}
+          />
         </section>
 
         {/* ── DISPLAY NAME ── */}

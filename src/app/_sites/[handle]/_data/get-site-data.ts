@@ -190,6 +190,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     tagline: siteRow.tagline ?? null,
     name: profile.name,
     display_name: siteRow.display_name ?? null,
+    logo_image_url: siteRow.logo_image_url ?? null,
     bio: siteRow.about_override ?? profile.bio ?? null,
     location: profile.location ?? null,
     website: profile.website ?? null,
