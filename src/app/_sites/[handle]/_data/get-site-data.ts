@@ -76,27 +76,62 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     : DEFAULT_ARTWORK_FILTERS.certificate_types) as CertificateTypeKey[];
 
   // 3. Fetch public artworks (up to 24), filtered by chosen certificate types
+  //
+  // The link between an artwork and a profile depends on the profile role:
+  //   - gallery: artworks have `gallery_profile_id = profile.id` (these are
+  //     Certificates of Show, including those posted by gallery team members).
+  //   - artist:  matched via `artist_account_id`, `artist_profile_id`, or a
+  //     legacy `account_id` upload that hasn't been linked to an artist yet.
+  //   - other (collector / fallback): artworks they own via `account_id`.
+  //
+  // Without the gallery branch, a gallery's COSes never appear on its site.
   const artworks: SiteData['artworks'] = [];
   if (sections.artworks) {
     let q = sb
       .from('artworks')
       .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type')
-      .or(
-        [
-          `artist_account_id.eq.${profile.user_id}`,
-          `and(account_id.eq.${profile.user_id},artist_account_id.is.null)`,
-        ].join(','),
-      )
       .eq('status', 'verified')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(24);
 
+    if (profile.role === 'gallery') {
+      console.log('[Sites] artworks query: gallery branch', {
+        galleryProfileId: profile.id,
+      });
+      q = q.eq('gallery_profile_id', profile.id);
+    } else if (profile.role === 'artist') {
+      console.log('[Sites] artworks query: artist branch', {
+        userId: profile.user_id,
+        profileId: profile.id,
+      });
+      q = q.or(
+        [
+          `artist_account_id.eq.${profile.user_id}`,
+          `artist_profile_id.eq.${profile.id}`,
+          `and(account_id.eq.${profile.user_id},artist_account_id.is.null,artist_profile_id.is.null)`,
+        ].join(','),
+      );
+    } else {
+      console.log('[Sites] artworks query: default branch', {
+        userId: profile.user_id,
+      });
+      q = q.or(
+        [
+          `artist_account_id.eq.${profile.user_id}`,
+          `and(account_id.eq.${profile.user_id},artist_account_id.is.null)`,
+        ].join(','),
+      );
+    }
+
     if (allowedCertTypes.length > 0 && allowedCertTypes.length < 3) {
       q = q.in('certificate_type', allowedCertTypes);
     }
 
-    const { data: artworkRows } = await q;
+    const { data: artworkRows, error: artworkErr } = await q;
+    if (artworkErr) {
+      console.error('[Sites] artworks query failed', artworkErr);
+    }
 
     for (const row of artworkRows ?? []) {
       artworks.push({

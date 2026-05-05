@@ -58,22 +58,55 @@ export default async function SitePreviewPage({
     return <PreviewEmptyState handleMissing embed={embedMode} />;
   }
 
-  // Build artworks query, applying certificate-type filter
+  // Build artworks query, applying certificate-type filter.
+  //
+  // Match the live-site loader (get-site-data.ts): galleries link via
+  // `gallery_profile_id` (catches all team-member-posted COSes), artists via
+  // `artist_account_id` / `artist_profile_id`, others via `account_id`.
   const allowedTypes = config.artworkFilters.certificate_types ?? [];
   let artworkQuery = sb
     .from('artworks')
     .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type')
-    .or([
-      `artist_account_id.eq.${profile.user_id}`,
-      `and(account_id.eq.${profile.user_id},artist_account_id.is.null)`,
-    ].join(','))
     .eq('status', 'verified')
     .order('created_at', { ascending: false })
     .limit(24);
+
+  if (profile.role === 'gallery') {
+    console.log('[SitePreview] artworks query: gallery branch', {
+      galleryProfileId: profile.id,
+    });
+    artworkQuery = artworkQuery.eq('gallery_profile_id', profile.id);
+  } else if (profile.role === 'artist') {
+    console.log('[SitePreview] artworks query: artist branch', {
+      userId: profile.user_id,
+      profileId: profile.id,
+    });
+    artworkQuery = artworkQuery.or(
+      [
+        `artist_account_id.eq.${profile.user_id}`,
+        `artist_profile_id.eq.${profile.id}`,
+        `and(account_id.eq.${profile.user_id},artist_account_id.is.null,artist_profile_id.is.null)`,
+      ].join(','),
+    );
+  } else {
+    console.log('[SitePreview] artworks query: default branch', {
+      userId: profile.user_id,
+    });
+    artworkQuery = artworkQuery.or(
+      [
+        `artist_account_id.eq.${profile.user_id}`,
+        `and(account_id.eq.${profile.user_id},artist_account_id.is.null)`,
+      ].join(','),
+    );
+  }
+
   if (allowedTypes.length > 0 && allowedTypes.length < 3) {
     artworkQuery = artworkQuery.in('certificate_type', allowedTypes);
   }
-  const { data: artworkRows } = await artworkQuery;
+  const { data: artworkRows, error: artworkErr } = await artworkQuery;
+  if (artworkErr) {
+    console.error('[SitePreview] artworks query failed', artworkErr);
+  }
 
   const { data: exhibitionRows } = await sb
     .from('exhibitions')
