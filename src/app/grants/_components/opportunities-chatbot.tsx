@@ -3,7 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
-import { Send, Sparkles, Loader2 } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -101,8 +102,14 @@ export function OpportunitiesChatbot({ hasCv, onOpportunitiesUpdated }: Opportun
     <Card className="border-wine/20 bg-parchment/60 flex flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="font-display text-lg text-wine flex items-center gap-2">
-          <Sparkles className="h-5 w-5" />
-          Opportunities assistant
+          <Image
+            src="/taco-cat.png"
+            alt="Taco the cat"
+            width={28}
+            height={28}
+            className="rounded-full object-cover ring-1 ring-wine/20"
+          />
+          Taco the cat
         </CardTitle>
         <p className="text-xs text-ink/60 font-serif">
           Searches Provenance + the web for grants, open calls &amp; residencies
