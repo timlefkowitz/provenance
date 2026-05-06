@@ -10,6 +10,7 @@ import type { AdminContactRow } from '../_actions/admin-contacts';
 import {
   createAdminContact,
   deleteAdminContact,
+  importContactsFromJsonText,
 } from '../_actions/admin-contacts';
 
 type Props = { initialContacts: AdminContactRow[] };
@@ -18,6 +19,9 @@ export function AdminContactsPanel({ initialContacts }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [jsonText, setJsonText] = useState('');
+  const [jsonSource, setJsonSource] = useState('');
+  const [jsonImporting, setJsonImporting] = useState(false);
 
   async function onCreate(formData: FormData) {
     const displayName = String(formData.get('displayName') ?? '');
@@ -60,6 +64,31 @@ export function AdminContactsPanel({ initialContacts }: Props) {
     }
     toast.success('Removed');
     router.refresh();
+  }
+
+  async function onImportJson() {
+    const text = jsonText.trim();
+    if (!text) {
+      toast.error('Paste a JSON array first.');
+      return;
+    }
+    setJsonImporting(true);
+    console.log('[AdminContactsPanel] import JSON');
+    try {
+      const r = await importContactsFromJsonText(
+        text,
+        jsonSource.trim() || undefined,
+      );
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success(`Imported ${r.inserted} rows; skipped ${r.skipped}.`);
+      setJsonText('');
+      router.refresh();
+    } finally {
+      setJsonImporting(false);
+    }
   }
 
   return (
@@ -143,6 +172,50 @@ export function AdminContactsPanel({ initialContacts }: Props) {
             </Button>
           </div>
         </form>
+      </section>
+
+      <section className="rounded-md border border-amber-500/20 bg-amber-500/[0.06] p-4">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-wide text-amber-200/80">
+          import from JSON array
+        </p>
+        <p className="mb-3 font-mono text-[12px] leading-relaxed text-slate-500">
+          Paste a JSON array of objects with fields like{' '}
+          <code className="text-slate-400">full_name</code>,{' '}
+          <code className="text-slate-400">email</code>,{' '}
+          <code className="text-slate-400">phone</code>,{' '}
+          <code className="text-slate-400">office</code>,{' '}
+          <code className="text-slate-400">address1</code>, city, state, etc. Each row needs at
+          least an email, phone, website/url, or street address.
+        </p>
+        <label htmlFor="json-source" className="mb-1 block font-mono text-[11px] text-slate-500">
+          source tag (optional; default{' '}
+          <code className="text-slate-400">json_import</code>)
+        </label>
+        <input
+          id="json-source"
+          value={jsonSource}
+          onChange={(e) => setJsonSource(e.target.value)}
+          placeholder="e.g. tx_bar_export"
+          className="mb-3 w-full max-w-md rounded-sm border border-white/10 bg-black/40 px-3 py-2 font-mono text-[13px] text-slate-200 outline-none focus:border-[#1793d1]/50"
+        />
+        <textarea
+          id="json-paste"
+          value={jsonText}
+          onChange={(e) => setJsonText(e.target.value)}
+          rows={10}
+          spellCheck={false}
+          placeholder='[{"full_name":"…","email":"…","phone":"…","office":"…","address1":"…","city":"…","state":"TX"}, …]'
+          className="mb-3 w-full rounded-sm border border-white/10 bg-black/40 px-3 py-2 font-mono text-[12px] text-slate-200 outline-none focus:border-[#1793d1]/50"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={jsonImporting || !jsonText.trim()}
+          onClick={() => void onImportJson()}
+          className="font-mono text-[13px] border-amber-500/40 text-amber-100/90 hover:bg-amber-500/10"
+        >
+          {jsonImporting ? 'importing…' : 'import JSON rows'}
+        </Button>
       </section>
 
       <section>

@@ -25,11 +25,11 @@ export default async function AdminContactsPage() {
             contact list
           </h1>
           <p className="mt-2 max-w-2xl font-mono text-sm leading-relaxed text-slate-500">
-            Keep a private outreach list for admins. Add rows by hand or import from{' '}
+            Keep a private outreach list for admins. Add rows by hand, import from{' '}
             <Link href="/admin/leads" className="text-[#67d4ff] hover:underline">
               leads
             </Link>
-            .
+            , or paste a JSON array (directory / export format).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
