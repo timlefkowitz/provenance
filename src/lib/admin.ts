@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { NextResponse } from 'next/server';
+
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { User } from '@supabase/supabase-js';
 
@@ -66,6 +68,27 @@ export async function requireAdmin(): Promise<{ user: User }> {
   const userIsAdmin = await isAdmin(user.id);
   if (!userIsAdmin) {
     redirect('/');
+  }
+
+  return { user };
+}
+
+/**
+ * For API routes: require a signed-in admin or return a JSON error response.
+ */
+export async function requireAdminApi(): Promise<
+  { user: User } | NextResponse
+> {
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userIsAdmin = await isAdmin(user.id);
+  if (!userIsAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return { user };

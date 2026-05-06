@@ -48,6 +48,11 @@ const TOOLS: {
     desc: 'Access & subscriptions.',
   },
   {
+    href: '/admin/leads',
+    title: 'leads',
+    desc: 'Apify growth / prospect rows.',
+  },
+  {
     href: '/admin/api-keys',
     title: 'api-keys',
     desc: 'Verification API tokens.',
