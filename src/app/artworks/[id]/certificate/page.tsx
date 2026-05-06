@@ -71,10 +71,13 @@ export default async function CertificatePage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
+  console.log('[v0] [Certificate] Page loading for artwork ID:', id);
+  
   const resolvedSearchParams = await searchParams;
   const showVerifyCta = resolvedSearchParams?.verify === '1';
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
+  console.log('[v0] [Certificate] User authenticated:', !!user, user?.id ? `(${user.id.slice(0, 8)}...)` : '');
 
   // Fetch artwork - allow public access for verified artworks
   // Authenticated users can also see their own artworks
@@ -173,8 +176,13 @@ export default async function CertificatePage({
   }
 
   if (error || !artwork) {
+    console.log('[v0] [Certificate] Redirecting to /artworks - error:', error?.message || 'No error', '| artwork found:', !!artwork);
+    if (error) {
+      console.log('[v0] [Certificate] Full error:', JSON.stringify(error, null, 2));
+    }
     redirect('/artworks');
   }
+  console.log('[v0] [Certificate] Artwork found:', artwork.id, artwork.title, '| status:', artwork.status, '| is_public:', artwork.is_public, '| account_id:', artwork.account_id?.slice(0, 8) + '...');
 
   // Check if the current user is the owner
   const isOwner = !!(user && artwork.account_id === user.id);

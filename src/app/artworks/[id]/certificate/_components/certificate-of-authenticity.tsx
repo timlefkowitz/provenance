@@ -248,6 +248,17 @@ export function CertificateOfAuthenticity({
   attachments?: ArtworkAttachmentRow[];
   valuation?: ProvenanceValuation | null;
 }) {
+  // Log when component mounts to confirm we reached this point
+  useEffect(() => {
+    console.log('[v0] [CertificateOfAuthenticity] Component mounted', {
+      artworkId: artwork.id,
+      title: artwork.title,
+      isOwner,
+      certificateType,
+      certificateStatus,
+    });
+  }, [artwork.id, artwork.title, isOwner, certificateType, certificateStatus]);
+
   const router = useRouter();
   const user = useCurrentUser();
   const [pending, startTransition] = useTransition();

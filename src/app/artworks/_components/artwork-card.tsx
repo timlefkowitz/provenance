@@ -100,8 +100,14 @@ export function ArtworkCard({
   };
 
   const handleArtworkClick = (e: React.MouseEvent) => {
+    console.log('[v0] [ArtworkCard] Click handler called', {
+      artworkId: artwork.id,
+      isAuthenticated,
+      targetHref: `/artworks/${artwork.id}/certificate`,
+    });
     if (!isAuthenticated) {
       e.preventDefault();
+      console.log('[v0] [ArtworkCard] Unauthenticated - showing sign-in dialog');
       setShowSignInDialog(true);
     }
   };
