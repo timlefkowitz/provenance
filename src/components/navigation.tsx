@@ -324,11 +324,14 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   size="sm"
                   className="bg-wine text-parchment hover:bg-wine/90 text-xs px-2"
                 >
-              Feedback
-            </Link>
+                  <Link href={pathsConfig.auth.signUp}>
+                    <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
-        </div>
-      )}
+        )}
     </nav>
   );
 }
