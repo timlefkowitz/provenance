@@ -531,10 +531,6 @@ export function buildEmailPreviewHtml(
       };
     }
     case 'artwork_featured': {
-      const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
-        ? PREVIEW_SAMPLE.siteUrl
-        : 'https://provenance.guru'
-      ).replace(/\/$/, '');
       const safeArtworkUrl = isSafeHttpUrl(PREVIEW_SAMPLE.artworkUrl)
         ? PREVIEW_SAMPLE.artworkUrl
         : 'https://provenance.guru';
