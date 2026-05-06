@@ -21,7 +21,7 @@ import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
 const desktopNavItemClass =
-  'inline-flex items-center rounded-md px-2 py-1 -mx-2 -my-1 text-ink hover:text-wine transition-colors font-serif focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment';
+  'inline-flex items-center rounded-md px-2 py-1 -mx-2 -my-1 text-ink hover:text-wine transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment';
 
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
@@ -77,7 +77,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   Toolbox
                   <ChevronDown className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="z-[200] font-serif">
+                <DropdownMenuContent align="start" className="z-[200]">
                   <DropdownMenuItem asChild>
                     <Link href="/grants" className="cursor-pointer">
                       Grants
@@ -131,7 +131,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             <Button
               asChild
               size="sm"
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              className="bg-wine text-parchment hover:bg-wine/90"
             >
               <Link href="/artworks/add">
                 <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
@@ -145,7 +145,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               asChild 
               variant="ghost" 
               size="sm"
-              className="text-ink hover:text-wine hover:bg-wine/10 font-serif"
+              className="text-ink hover:text-wine hover:bg-wine/10"
             >
               <Link href={pathsConfig.auth.signIn}>
                 <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
@@ -154,7 +154,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             <Button 
               asChild 
               size="sm"
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+              className="bg-wine text-parchment hover:bg-wine/90"
             >
               <Link href={pathsConfig.auth.signUp}>
                 <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
@@ -214,14 +214,14 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             
             <Link 
               href="/artworks" 
-              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
             </Link>
             <Link 
               href="/registry" 
-              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.registry" defaults="Artists" />
@@ -230,21 +230,21 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               <>
                 <Link 
                   href="/artworks/add" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Add Artwork
                 </Link>
                 <Link 
                   href="/artworks/my"
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Collection
                 </Link>
                 <Link 
                   href="/portal" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Portal
@@ -254,21 +254,21 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 </span>
                 <Link 
                   href="/grants" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10 cursor-pointer"
+                  className="text-ink hover:text-wine transition-colors py-2 pl-4 border-b border-wine/10 cursor-pointer"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Grants
                 </Link>
                 <Link 
                   href="/portal/or" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors py-2 pl-4 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   CRM
                 </Link>
                 <Link 
                   href="/operations" 
-                  className="text-ink hover:text-wine transition-colors font-serif py-2 pl-4 border-b border-wine/10"
+                  className="text-ink hover:text-wine transition-colors py-2 pl-4 border-b border-wine/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Operations
@@ -277,23 +277,53 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             )}
             <Link
               href="/blog"
-              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="marketing:blog" defaults="Blog" />
             </Link>
             <Link 
               href="/about" 
-              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.about" defaults="About" />
             </Link>
             <Link
               href="/feedback"
-              className="text-ink hover:text-wine transition-colors font-serif py-2 border-b border-wine/10"
+              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
               onClick={() => setMobileMenuOpen(false)}
             >
+              Feedback
+            </Link>
+          </div>
+        )}
+
+        {/* Mobile Auth Buttons (when menu is closed) */}
+        {!mobileMenuOpen && (
+          <div className="md:hidden flex shrink-0 items-center gap-2">
+            {user.data ? (
+              <>
+                <NotificationBadge />
+                <ProfileAccountDropdownContainer />
+              </>
+            ) : (
+              <>
+                <Button 
+                  asChild 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-ink hover:text-wine hover:bg-wine/10 text-xs px-2"
+                >
+                  <Link href={pathsConfig.auth.signIn}>
+                    <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
+                  </Link>
+                </Button>
+                <Button 
+                  asChild 
+                  size="sm"
+                  className="bg-wine text-parchment hover:bg-wine/90 text-xs px-2"
+                >
               Feedback
             </Link>
           </div>
