@@ -53,6 +53,11 @@ const TOOLS: {
     desc: 'Apify growth / prospect rows.',
   },
   {
+    href: '/admin/contacts',
+    title: 'contacts',
+    desc: 'Outreach list (manual + from leads).',
+  },
+  {
     href: '/admin/api-keys',
     title: 'api-keys',
     desc: 'Verification API tokens.',

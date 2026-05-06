@@ -1,8 +1,12 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@kit/ui/button';
+import { toast } from 'sonner';
+
+import { importLeadRowsToContacts } from '../../contacts/_actions/admin-contacts';
 
 type LeadRow = {
   title: string;
@@ -42,6 +46,8 @@ const TERMINAL_STATUSES = new Set([
 ]);
 
 export function AdminLeadsPanel() {
+  const router = useRouter();
+  const [importPending, setImportPending] = useState(false);
   const [runId, setRunId] = useState<string>('');
   const [data, setData] = useState<LeadsPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,6 +211,34 @@ export function AdminLeadsPanel() {
   const isRunning =
     !!data?.runStatus && !TERMINAL_STATUSES.has(data.runStatus);
 
+  async function onImportLeadsToContacts() {
+    const leads = visibleLeads;
+    if (leads.length === 0) return;
+    setImportPending(true);
+    console.log('[AdminLeadsPanel] import to contacts', { n: leads.length });
+    try {
+      const r = await importLeadRowsToContacts(
+        leads.map((l) => ({
+          title: l.title,
+          email: l.emails[0],
+          phone: l.phone,
+          url: l.url,
+          address: l.address,
+        })),
+      );
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success(
+        `Imported ${r.inserted} contact(s); skipped ${r.skipped} with no usable fields.`,
+      );
+      router.refresh();
+    } finally {
+      setImportPending(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* New search */}
@@ -296,15 +330,26 @@ export function AdminLeadsPanel() {
             ))}
           </select>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void load()}
-          disabled={loading}
-          className="font-mono text-[13px] border-[#1793d1]/40 text-[#67d4ff] hover:bg-[#1793d1]/15"
-        >
-          {loading ? 'loading…' : 'refresh'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={visibleLeads.length === 0 || importPending}
+            onClick={() => void onImportLeadsToContacts()}
+            className="font-mono text-[13px] border-emerald-500/30 text-emerald-200/90 hover:bg-emerald-500/10"
+          >
+            {importPending ? 'importing…' : 'add visible leads → contacts'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void load()}
+            disabled={loading}
+            className="font-mono text-[13px] border-[#1793d1]/40 text-[#67d4ff] hover:bg-[#1793d1]/15"
+          >
+            {loading ? 'loading…' : 'refresh'}
+          </Button>
+        </div>
       </div>
 
       {err && (
