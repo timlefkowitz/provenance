@@ -20,9 +20,10 @@ export default async function AdminEmailsPage() {
             Email templates
           </h1>
           <p className="text-ink/70 font-serif">
-            Edit transactional email copy (Markdown) and global colors. Requires the{' '}
-            <code className="text-sm">email_settings</code> and{' '}
-            <code className="text-sm">email_templates</code> migration applied in Supabase.
+            Edit transactional email copy (Markdown), pick one of three visual shells, and tune colors and masthead
+            text. Requires the <code className="text-sm">email_settings</code> and{' '}
+            <code className="text-sm">email_templates</code> migration applied in Supabase (including{' '}
+            <code className="text-sm">layout_preset</code>).
           </p>
         </div>
         <Button asChild variant="outline" className="border-wine text-wine">

@@ -1,13 +1,14 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import type { EmailTheme } from '~/lib/email-layout';
 import {
-  EMAIL_FONT_FAMILY,
+  EMAIL_FONT_FAMILY_FALLBACK,
+  type EmailTheme,
   buildBulletproofButtonTable,
   buildBulletproofSecondaryButtonTable,
   buildEmailHtml,
   escapeHtml,
   stripMarkdownLinkLineByHref,
 } from '~/lib/email-layout';
+import { getPresetThemeDefaults, mergeEmailSettingsIntoTheme } from '~/lib/email-layout-presets';
 import { renderMarkdownToEmailHtml } from '~/lib/email-markdown';
 import {
   DEFAULT_EMAIL_MARKDOWN,
@@ -16,18 +17,10 @@ import {
 } from '~/lib/email-defaults';
 import type { SummaryItem } from '~/lib/email-defaults';
 
-export const DEFAULT_EMAIL_THEME: EmailTheme = {
-  parchment: '#F5F1E8',
-  ink: '#111111',
-  wine: '#4A2F25',
-  inkSubtitle: '#2a2a2a',
-  inkMuted: '#555555',
-  mastheadTitle: 'PROVENANCE',
-  mastheadSubtitle: 'PRESERVING CULTURAL HERITAGE',
-  fontFamily: EMAIL_FONT_FAMILY,
-};
+export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('studio');
 
 type EmailSettingsRow = {
+  layout_preset?: string | null;
   parchment: string;
   ink: string;
   wine: string;
@@ -38,16 +31,7 @@ type EmailSettingsRow = {
 };
 
 function mapSettingsRow(row: EmailSettingsRow): EmailTheme {
-  return {
-    parchment: row.parchment || DEFAULT_EMAIL_THEME.parchment,
-    ink: row.ink || DEFAULT_EMAIL_THEME.ink,
-    wine: row.wine || DEFAULT_EMAIL_THEME.wine,
-    inkSubtitle: row.ink_subtitle || DEFAULT_EMAIL_THEME.inkSubtitle,
-    inkMuted: row.ink_muted || DEFAULT_EMAIL_THEME.inkMuted,
-    mastheadTitle: row.masthead_title || DEFAULT_EMAIL_THEME.mastheadTitle,
-    mastheadSubtitle: row.masthead_subtitle || DEFAULT_EMAIL_THEME.mastheadSubtitle,
-    fontFamily: EMAIL_FONT_FAMILY,
-  };
+  return mergeEmailSettingsIntoTheme(row);
 }
 
 export async function getResolvedEmailTheme(): Promise<EmailTheme> {
@@ -105,15 +89,15 @@ export async function getResolvedTemplateMarkdown(key: EmailTemplateKey): Promis
 
 function buildCertBlockHtml(theme: EmailTheme, certificateNumber: string): string {
   const safe = escapeHtml(certificateNumber);
-  const { wine, inkMuted, fontFamily } = theme;
+  const { wine, inkMuted, fontFamily, surfaceMuted } = theme;
   // Table-based layout so Outlook renders the left accent border correctly
   return `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0;border-collapse:collapse;">
   <tr>
-    <td width="3" bgcolor="${wine}" style="width:3px;background-color:${wine};font-size:1px;line-height:1px;">&nbsp;</td>
-    <td style="padding:22px 24px;background-color:#F0EBE1;">
-      <p style="margin:0 0 8px;font-family:${fontFamily};font-size:9px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:${inkMuted};">Certificate Number</p>
-      <p style="margin:0;font-family:ui-monospace,'Courier New',monospace;font-size:20px;font-weight:600;letter-spacing:0.07em;color:${wine};">${safe}</p>
+    <td width="4" bgcolor="${wine}" style="width:4px;background-color:${wine};font-size:1px;line-height:1px;">&nbsp;</td>
+    <td style="padding:22px 24px;background-color:${surfaceMuted};">
+      <p style="margin:0 0 8px;font-family:${fontFamily};font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:${inkMuted};">Certificate Number</p>
+      <p style="margin:0;font-family:ui-monospace,'Courier New',monospace;font-size:19px;font-weight:600;letter-spacing:0.08em;color:${wine};">${safe}</p>
     </td>
   </tr>
 </table>`.trim();
@@ -129,7 +113,7 @@ function buildItemsHtml(theme: EmailTheme, items: SummaryItem[]): string {
         : '';
       return `
   <tr>
-    <td style="padding:16px 0;border-bottom:1px solid #E8E3DB;">
+    <td style="padding:16px 0;border-bottom:1px solid ${theme.cardBorder};">
       <p style="margin:0;font-family:${fontFamily};font-size:16px;font-weight:600;color:${wine};">${t}</p>
       ${d}
     </td>
@@ -137,7 +121,7 @@ function buildItemsHtml(theme: EmailTheme, items: SummaryItem[]): string {
     })
     .join('');
   return `
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:4px 0 28px;border-collapse:collapse;border-top:1px solid #E8E3DB;color:${ink};">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:4px 0 28px;border-collapse:collapse;border-top:1px solid ${theme.cardBorder};color:${ink};">
   ${rows}
 </table>`.trim();
 }
@@ -403,6 +387,7 @@ const PREVIEW_SAMPLE = {
   updateBody:
     'Collectors can now earn verified badges when they complete certain steps. This helps artists trust inbound inquiries.',
   updateLinkLabel: 'Read the announcement',
+  featuredArtistName: 'Morgan Reyes',
 } as const;
 
 const PREVIEW_SUMMARY_ITEMS: SummaryItem[] = [
@@ -427,7 +412,8 @@ export function buildEmailPreviewHtml(
 ): { html: string; previewSubject: string } {
   const t: EmailTheme = {
     ...theme,
-    fontFamily: theme.fontFamily || EMAIL_FONT_FAMILY,
+    fontFamily: theme.fontFamily || EMAIL_FONT_FAMILY_FALLBACK,
+    fontFamilyHeading: theme.fontFamilyHeading || EMAIL_FONT_FAMILY_FALLBACK,
   };
 
   switch (key) {
@@ -541,6 +527,28 @@ export function buildEmailPreviewHtml(
       const inner = `<div>${renderMarkdownWithBulletCta(md, t, url, PREVIEW_SAMPLE.updateLinkLabel)}</div>`;
       return {
         html: buildEmailHtml(PREVIEW_SAMPLE.updateTitle, inner, t),
+        previewSubject: subject,
+      };
+    }
+    case 'artwork_featured': {
+      const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
+        ? PREVIEW_SAMPLE.siteUrl
+        : 'https://provenance.guru'
+      ).replace(/\/$/, '');
+      const safeArtworkUrl = isSafeHttpUrl(PREVIEW_SAMPLE.artworkUrl)
+        ? PREVIEW_SAMPLE.artworkUrl
+        : 'https://provenance.guru';
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        {
+          artistName: escapeHtml(PREVIEW_SAMPLE.featuredArtistName),
+          artworkTitle: escapeHtml(PREVIEW_SAMPLE.artworkTitle),
+        },
+        { artworkUrl: safeArtworkUrl },
+      );
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, safeArtworkUrl, 'View Your Artwork')}</div>`;
+      return {
+        html: buildEmailHtml('Your Artwork Has Been Featured', inner, t),
         previewSubject: subject,
       };
     }

@@ -14,6 +14,12 @@ import {
   type EmailTemplatesAdminPayload,
 } from '../_actions/email-templates-admin';
 import type { EmailTemplateKey } from '~/lib/email-defaults';
+import type { EmailLayoutPresetId } from '~/lib/email-layout';
+import {
+  EMAIL_LAYOUT_PRESET_IDS,
+  EMAIL_LAYOUT_PRESET_LABELS,
+  adminDraftDefaultsForPreset,
+} from '~/lib/email-layout-presets';
 
 const TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   welcome: 'Welcome',
@@ -37,15 +43,7 @@ const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
 Primary action links: keep one markdown line like [Your label](https://…) that matches the main URL we inject (e.g. Get Started → site/artworks/add). That line is replaced by a bulletproof button; if you change the URL or label, remove the old markdown line to avoid a duplicate text link.`;
 
 function serializeWorkspaceState(
-  theme: {
-    parchment: string;
-    ink: string;
-    wine: string;
-    ink_subtitle: string;
-    ink_muted: string;
-    masthead_title: string;
-    masthead_subtitle: string;
-  },
+  theme: EmailTemplatesAdminPayload['theme'],
   templates: EmailTemplatesAdminPayload['templates'],
 ) {
   return JSON.stringify({ theme, templates });
@@ -59,32 +57,11 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
   );
   const [activeKey, setActiveKey] = useState<EmailTemplateKey>(keys[0] ?? 'welcome');
 
-  const [theme, setTheme] = useState({
-    parchment: initial.theme.parchment,
-    ink: initial.theme.ink,
-    wine: initial.theme.wine,
-    ink_subtitle: initial.theme.inkSubtitle,
-    ink_muted: initial.theme.inkMuted,
-    masthead_title: initial.theme.mastheadTitle,
-    masthead_subtitle: initial.theme.mastheadSubtitle,
-  });
+  const [theme, setTheme] = useState<EmailTemplatesAdminPayload['theme']>(initial.theme);
 
   const [templates, setTemplates] = useState(initial.templates);
 
-  const savedBaselineRef = useRef(
-    serializeWorkspaceState(
-      {
-        parchment: initial.theme.parchment,
-        ink: initial.theme.ink,
-        wine: initial.theme.wine,
-        ink_subtitle: initial.theme.inkSubtitle,
-        ink_muted: initial.theme.inkMuted,
-        masthead_title: initial.theme.mastheadTitle,
-        masthead_subtitle: initial.theme.mastheadSubtitle,
-      },
-      initial.templates,
-    ),
-  );
+  const savedBaselineRef = useRef(serializeWorkspaceState(initial.theme, initial.templates));
 
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
@@ -114,15 +91,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
           template_key: activeKey,
           subject: t.subject,
           body_markdown: t.bodyMarkdown,
-          theme: {
-            parchment: theme.parchment,
-            ink: theme.ink,
-            wine: theme.wine,
-            ink_subtitle: theme.ink_subtitle,
-            ink_muted: theme.ink_muted,
-            masthead_title: theme.masthead_title,
-            masthead_subtitle: theme.masthead_subtitle,
-          },
+          theme,
         });
         if (seq !== previewSeq.current) {
           return;
@@ -225,15 +194,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
         template_key: activeKey,
         subject: t.subject,
         body_markdown: t.bodyMarkdown,
-        theme: {
-          parchment: theme.parchment,
-          ink: theme.ink,
-          wine: theme.wine,
-          ink_subtitle: theme.ink_subtitle,
-          ink_muted: theme.ink_muted,
-          masthead_title: theme.masthead_title,
-          masthead_subtitle: theme.masthead_subtitle,
-        },
+        theme,
       });
       if (res.ok) {
         toast.success('Test email sent — check your inbox.');
@@ -259,8 +220,36 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
           </span>
         </div>
         <p className="text-sm text-ink/70 font-serif">
-          Background and text colors apply to all transactional emails. Masthead appears at the top of every email.
+          Choose one of three art-platform shells below, then tweak the palette if needed.
+          Colors apply to headings, Markdown body copy, masthead, footer, and CTA pills.
         </p>
+        <div className="space-y-2 max-w-xl">
+          <Label htmlFor="layout_preset">Email shell design</Label>
+          <select
+            id="layout_preset"
+            className="mt-1 w-full border border-wine/40 rounded-md bg-parchment px-3 py-2.5 text-ink text-sm"
+            value={theme.layout_preset}
+            onChange={(e) => {
+              const id = e.target.value as EmailLayoutPresetId;
+              setTheme((s) => ({
+                layout_preset: id,
+                ...adminDraftDefaultsForPreset(id),
+                masthead_title: s.masthead_title,
+                masthead_subtitle: s.masthead_subtitle,
+              }));
+            }}
+          >
+            {EMAIL_LAYOUT_PRESET_IDS.map((id) => (
+              <option key={id} value={id}>
+                {EMAIL_LAYOUT_PRESET_LABELS[id]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink/55 leading-relaxed font-serif">
+            Switching resets color swatches to that shell’s palette; masthead wording is kept so you don’t lose
+            custom titles.
+          </p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [

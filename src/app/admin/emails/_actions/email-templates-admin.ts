@@ -6,17 +6,24 @@ import { isAdmin } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { sendTransactionalEmailStrict } from '~/lib/email';
-import { DEFAULT_EMAIL_THEME, buildEmailPreviewHtml } from '~/lib/email-templates-store';
+import { buildEmailPreviewHtml } from '~/lib/email-templates-store';
 import {
   DEFAULT_EMAIL_MARKDOWN,
   DEFAULT_EMAIL_SUBJECTS,
   type EmailTemplateKey,
 } from '~/lib/email-defaults';
+import type { AdminEmailThemeDraft } from '~/lib/email-layout-presets';
+import {
+  defaultAdminEmailThemeDraft,
+  normalizeEmailLayoutPreset,
+  resolveEmailThemeFromAdminDraft,
+} from '~/lib/email-layout-presets';
 import type { EmailTheme } from '~/lib/email-layout';
 
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 
 const settingsSchema = z.object({
+  layout_preset: z.enum(['studio', 'heritage', 'archive']),
   parchment: hexColor,
   ink: hexColor,
   wine: hexColor,
@@ -33,6 +40,7 @@ const templateSchema = z.object({
     'notification',
     'summary',
     'update',
+    'artwork_featured',
     'institution_thanks',
   ]),
   subject: z.string().min(1).max(500),
@@ -57,8 +65,25 @@ async function requireAdminUser() {
   return user;
 }
 
+function dbRowToDraft(row: Record<string, unknown>): AdminEmailThemeDraft {
+  const d = defaultAdminEmailThemeDraft();
+  return {
+    layout_preset: normalizeEmailLayoutPreset(row.layout_preset),
+    parchment: typeof row.parchment === 'string' && row.parchment ? row.parchment : d.parchment,
+    ink: typeof row.ink === 'string' && row.ink ? row.ink : d.ink,
+    wine: typeof row.wine === 'string' && row.wine ? row.wine : d.wine,
+    ink_subtitle: typeof row.ink_subtitle === 'string' && row.ink_subtitle ? row.ink_subtitle : d.ink_subtitle,
+    ink_muted: typeof row.ink_muted === 'string' && row.ink_muted ? row.ink_muted : d.ink_muted,
+    masthead_title: typeof row.masthead_title === 'string' && row.masthead_title ? row.masthead_title : d.masthead_title,
+    masthead_subtitle:
+      typeof row.masthead_subtitle === 'string' && row.masthead_subtitle
+        ? row.masthead_subtitle
+        : d.masthead_subtitle,
+  };
+}
+
 export type EmailTemplatesAdminPayload = {
-  theme: EmailTheme;
+  theme: AdminEmailThemeDraft;
   templates: Record<
     EmailTemplateKey,
     { subject: string; bodyMarkdown: string }
@@ -80,19 +105,7 @@ export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminP
     console.error('[Admin/emails] email_settings read failed', settingsErr);
   }
 
-  const theme: EmailTheme = settingsRow
-    ? {
-        parchment: settingsRow.parchment ?? DEFAULT_EMAIL_THEME.parchment,
-        ink: settingsRow.ink ?? DEFAULT_EMAIL_THEME.ink,
-        wine: settingsRow.wine ?? DEFAULT_EMAIL_THEME.wine,
-        inkSubtitle: settingsRow.ink_subtitle ?? DEFAULT_EMAIL_THEME.inkSubtitle,
-        inkMuted: settingsRow.ink_muted ?? DEFAULT_EMAIL_THEME.inkMuted,
-        mastheadTitle: settingsRow.masthead_title ?? DEFAULT_EMAIL_THEME.mastheadTitle,
-        mastheadSubtitle:
-          settingsRow.masthead_subtitle ?? DEFAULT_EMAIL_THEME.mastheadSubtitle,
-        fontFamily: DEFAULT_EMAIL_THEME.fontFamily,
-      }
-    : DEFAULT_EMAIL_THEME;
+  const theme: AdminEmailThemeDraft = settingsRow ? dbRowToDraft(settingsRow) : defaultAdminEmailThemeDraft();
 
   const { data: templateRows, error: tplErr } = await admin
     .from('email_templates')
@@ -124,6 +137,7 @@ export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminP
 }
 
 export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Promise<{ ok: boolean; error?: string }> {
+  console.log('[Admin/emails] saveEmailTheme started', input.layout_preset);
   try {
     await requireAdminUser();
     const parsed = settingsSchema.safeParse(input);
@@ -136,6 +150,7 @@ export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Pro
     const { data: existing } = await admin.from('email_settings').select('id').limit(1).maybeSingle();
 
     const payload = {
+      layout_preset: parsed.data.layout_preset,
       parchment: parsed.data.parchment,
       ink: parsed.data.ink,
       wine: parsed.data.wine,
@@ -185,19 +200,9 @@ export async function previewEmailTemplate(
       };
     }
 
-    const row = parsed.data.theme;
-    const theme: EmailTheme = {
-      parchment: row.parchment,
-      ink: row.ink,
-      wine: row.wine,
-      inkSubtitle: row.ink_subtitle,
-      inkMuted: row.ink_muted,
-      mastheadTitle: row.masthead_title,
-      mastheadSubtitle: row.masthead_subtitle,
-      fontFamily: DEFAULT_EMAIL_THEME.fontFamily,
-    };
+    const theme: EmailTheme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
 
-    console.log('[Admin/emails] previewEmailTemplate', parsed.data.template_key);
+    console.log('[Admin/emails] previewEmailTemplate', parsed.data.template_key, parsed.data.theme.layout_preset);
     const { html, previewSubject } = buildEmailPreviewHtml(
       parsed.data.template_key,
       theme,
@@ -234,17 +239,7 @@ export async function sendTestEmailTemplate(
       };
     }
 
-    const row = parsed.data.theme;
-    const theme: EmailTheme = {
-      parchment: row.parchment,
-      ink: row.ink,
-      wine: row.wine,
-      inkSubtitle: row.ink_subtitle,
-      inkMuted: row.ink_muted,
-      mastheadTitle: row.masthead_title,
-      mastheadSubtitle: row.masthead_subtitle,
-      fontFamily: DEFAULT_EMAIL_THEME.fontFamily,
-    };
+    const theme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
 
     const { html, previewSubject } = buildEmailPreviewHtml(
       parsed.data.template_key,

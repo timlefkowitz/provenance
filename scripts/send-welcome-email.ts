@@ -5,19 +5,10 @@
 import { Resend } from 'resend';
 import { DEFAULT_EMAIL_MARKDOWN, DEFAULT_EMAIL_SUBJECTS } from '../src/lib/email-defaults';
 import { renderMarkdownToEmailHtml } from '../src/lib/email-markdown';
-import { buildEmailHtml, escapeHtml, type EmailTheme } from '../src/lib/email-layout';
+import { buildEmailHtml, escapeHtml } from '../src/lib/email-layout';
+import { getPresetThemeDefaults } from '../src/lib/email-layout-presets';
 
-const EMAIL_THEME: EmailTheme = {
-  parchment: '#F5F1E8',
-  ink: '#111111',
-  wine: '#4A2F25',
-  inkSubtitle: '#2a2a2a',
-  inkMuted: '#555555',
-  mastheadTitle: 'PROVENANCE',
-  mastheadSubtitle: 'PRESERVING CULTURAL HERITAGE',
-  fontFamily:
-    '"Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-};
+const EMAIL_THEME = getPresetThemeDefaults('studio');
 
 function interpolateWelcome(md: string, displayName: string, siteUrl: string): string {
   let out = md;
