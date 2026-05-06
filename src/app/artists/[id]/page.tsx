@@ -259,6 +259,46 @@ export default async function ArtistProfilePage({
   }
   const exhibitions = allExhibitions.slice(0, 6);
 
+  // ── LATEST CERTIFICATE OF SHOW (galleries only) ──
+  // Featured at the top of the gallery profile so visitors immediately see
+  // the most recent show this gallery has issued a COS for. We match on
+  // gallery_profile_id (set when galleries publish exhibitions) and
+  // certificate_type = 'show'.
+  type LatestCos = {
+    id: string;
+    title: string;
+    artist_name: string | null;
+    image_url: string | null;
+    created_at: string;
+    certificate_number: string;
+    is_public: boolean | null;
+  } | null;
+  let latestCos: LatestCos = null;
+  if (isGallery && roleProfile?.id) {
+    let cosQuery = (client as any)
+      .from('artworks')
+      .select(
+        'id, title, artist_name, image_url, created_at, certificate_number, is_public, account_id',
+      )
+      .eq('certificate_type', 'show')
+      .eq('gallery_profile_id', roleProfile.id)
+      .eq('status', 'verified')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (!isOwner) {
+      cosQuery = cosQuery.eq('is_public', true);
+    }
+    const { data: cosRows, error: cosErr } = await cosQuery;
+    if (cosErr) {
+      console.error('[ArtistProfile] latest COS fetch failed', cosErr);
+    }
+    latestCos = (cosRows && cosRows[0]) ?? null;
+    console.log('[ArtistProfile] latest COS resolved', {
+      galleryProfileId: roleProfile.id,
+      hasLatestCos: Boolean(latestCos),
+    });
+  }
+
   // For galleries, fetch artworks from their exhibitions
   // For artists/collectors, fetch their own artworks
   let artworks = null;
@@ -561,6 +601,84 @@ export default async function ArtistProfilePage({
 
           {/* ── MAIN CONTENT ── */}
           <main className="min-w-0">
+
+            {/* Latest Certificate of Show (galleries only) */}
+            {isGallery && latestCos && (
+              <section className="mb-12">
+                <div className="flex items-baseline justify-between mb-4">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif">
+                    Latest Certificate of Show
+                  </p>
+                  <Link
+                    href={`/artworks/${latestCos.id}/certificate`}
+                    className="text-xs font-serif text-wine/70 hover:text-wine transition-colors"
+                  >
+                    View certificate →
+                  </Link>
+                </div>
+                <Link
+                  href={`/artworks/${latestCos.id}/certificate`}
+                  className="group block overflow-hidden rounded-xl border border-wine/15 bg-parchment hover:border-wine/40 hover:shadow-md transition-all"
+                  aria-label={`Latest Certificate of Show: ${latestCos.title}`}
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-[260px_1fr] gap-0">
+                    {/* Image */}
+                    <div className="relative bg-wine/5 aspect-[4/3] sm:aspect-auto sm:min-h-[200px]">
+                      {latestCos.image_url ? (
+                        <Image
+                          src={latestCos.image_url}
+                          alt={latestCos.title}
+                          fill
+                          className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                          unoptimized
+                          loading="eager"
+                          priority
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-wine/30 font-display">
+                          No image
+                        </div>
+                      )}
+                      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-wine text-parchment px-2.5 py-1 text-[10px] font-serif uppercase tracking-wider">
+                        COS
+                      </span>
+                    </div>
+                    {/* Body */}
+                    <div className="p-5 sm:p-6 flex flex-col justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight tracking-tight group-hover:text-wine transition-colors mb-2 break-words">
+                          {latestCos.title}
+                        </h3>
+                        {latestCos.artist_name && (
+                          <p className="font-serif text-sm text-ink/65 mb-3">
+                            {latestCos.artist_name}
+                          </p>
+                        )}
+                        <p className="font-serif text-xs text-ink/50">
+                          Certificate #{latestCos.certificate_number}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-xs text-ink/45 font-serif">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3 w-3 text-wine/40" />
+                          Issued{' '}
+                          {new Date(latestCos.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </span>
+                        {!latestCos.is_public && isOwner && (
+                          <span className="rounded-full border border-wine/20 bg-wine/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-wine/70">
+                            Private
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </section>
+            )}
 
             {/* Exhibitions (galleries + artists) */}
             {(isGallery || isArtistProfile) && exhibitions.length > 0 && (

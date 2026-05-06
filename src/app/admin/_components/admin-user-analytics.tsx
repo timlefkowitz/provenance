@@ -123,6 +123,7 @@ async function loadOnlineNow() {
   const admin = getSupabaseServerAdminClient();
   const cutoff = new Date(Date.now() - ONLINE_WINDOW_MINUTES * 60_000).toISOString();
 
+  // 1) Active users in the heartbeat window.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error, count } = await (admin as any)
     .from('user_presence')
@@ -135,14 +136,51 @@ async function loadOnlineNow() {
 
   if (error) {
     console.error('[AdminUserAnalytics] online query failed', error);
-    return { rows: [], total: 0 };
+    return {
+      rows: [],
+      total: 0,
+      totalEverSeen: 0,
+      lastEverSeenAt: null as string | null,
+      tableMissing: error.code === '42P01',
+    };
   }
+
+  // 2) Diagnostic counters so the panel can explain a "0 online" state.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: totalEverSeen, error: totalErr } = await (admin as any)
+    .from('user_presence')
+    .select('user_id', { count: 'exact', head: true });
+  if (totalErr) {
+    console.error('[AdminUserAnalytics] presence total count failed', totalErr);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: lastEverRows, error: lastErr } = await (admin as any)
+    .from('user_presence')
+    .select('last_seen_at')
+    .order('last_seen_at', { ascending: false })
+    .limit(1);
+  if (lastErr) {
+    console.error('[AdminUserAnalytics] presence latest row failed', lastErr);
+  }
+  const lastEverSeenAt =
+    (lastEverRows && lastEverRows[0]?.last_seen_at) || null;
+
+  console.log('[AdminUserAnalytics] online_now diagnostics', {
+    onlineWindowMinutes: ONLINE_WINDOW_MINUTES,
+    online: count ?? 0,
+    totalEverSeen: totalEverSeen ?? 0,
+    lastEverSeenAt,
+  });
 
   const ids = (data ?? []).map((r) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
   return {
     total: count ?? 0,
+    totalEverSeen: totalEverSeen ?? 0,
+    lastEverSeenAt,
+    tableMissing: false,
     rows: (data ?? []).map((r) => {
       const acc = accounts.get(r.user_id as string);
       return {
@@ -216,23 +254,100 @@ async function loadTopByActiveTime() {
 
 async function loadNewestAccounts() {
   const admin = getSupabaseServerAdminClient();
-  const { data, error } = await admin
-    .from('accounts')
-    .select('id, email, name, created_at')
-    .order('created_at', { ascending: false })
-    .limit(NEWEST_ACCOUNTS_LIMIT);
 
-  if (error) {
-    console.error('[AdminUserAnalytics] newest accounts query failed', error);
-    return [];
+  // Source of truth for "when did this user actually sign up" is
+  // `auth.users.created_at`. The `accounts` row sometimes gets
+  // updated/upserted later (gallery onboarding, profile creation),
+  // which made the previous `accounts.created_at` ordering unreliable.
+  // We pull both and use the earliest of the two timestamps.
+  const [{ data: accountsRows, error: accountsErr }, { data: authResp, error: authErr }] =
+    await Promise.all([
+      admin.from('accounts').select('id, email, name, created_at'),
+      admin.auth.admin.listUsers({ page: 1, perPage: 200 }),
+    ]);
+
+  if (accountsErr) {
+    console.error('[AdminUserAnalytics] newest accounts: accounts fetch failed', accountsErr);
+  }
+  if (authErr) {
+    console.error('[AdminUserAnalytics] newest accounts: listUsers failed', authErr);
   }
 
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    email: r.email as string | null,
-    name: r.name as string | null,
-    createdAt: r.created_at as string | null,
-  }));
+  // Build a map of authoritative auth.users.created_at by user id.
+  const authCreatedAtById = new Map<string, string>();
+  for (const u of authResp?.users ?? []) {
+    if (u.id && u.created_at) authCreatedAtById.set(u.id, u.created_at);
+  }
+
+  type Row = {
+    id: string;
+    email: string | null;
+    name: string | null;
+    createdAt: string | null;
+  };
+
+  const merged = new Map<string, Row>();
+
+  // Seed from auth.users — guarantees we don't miss a user who exists
+  // in auth but whose `accounts` row hasn't been written yet.
+  for (const u of authResp?.users ?? []) {
+    if (!u.id) continue;
+    merged.set(u.id, {
+      id: u.id,
+      email: u.email ?? null,
+      name:
+        ((u.user_metadata?.full_name as string | undefined) ??
+          (u.user_metadata?.name as string | undefined) ??
+          null) ||
+        null,
+      createdAt: u.created_at ?? null,
+    });
+  }
+
+  // Layer in `accounts` data — keep the EARLIEST timestamp between
+  // the two sources (so a later-updated `accounts.created_at` cannot
+  // bump a user up in the "newest" list).
+  for (const r of accountsRows ?? []) {
+    const id = r.id as string;
+    const accountsCreated = (r.created_at as string | null) ?? null;
+    const existing = merged.get(id);
+    const authCreated = authCreatedAtById.get(id) ?? null;
+
+    const candidates = [existing?.createdAt, authCreated, accountsCreated].filter(
+      (v): v is string => Boolean(v),
+    );
+    const earliest =
+      candidates.length === 0
+        ? null
+        : candidates.reduce((acc, cur) =>
+            new Date(cur).getTime() < new Date(acc).getTime() ? cur : acc,
+          );
+
+    merged.set(id, {
+      id,
+      email: (r.email as string | null) ?? existing?.email ?? null,
+      name: (r.name as string | null) ?? existing?.name ?? null,
+      createdAt: earliest,
+    });
+  }
+
+  const list = Array.from(merged.values())
+    .filter((r) => r.createdAt !== null)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt as string).getTime() -
+        new Date(a.createdAt as string).getTime(),
+    )
+    .slice(0, NEWEST_ACCOUNTS_LIMIT);
+
+  console.log('[AdminUserAnalytics] newest_accounts resolved', {
+    accountsRows: accountsRows?.length ?? 0,
+    authUsers: authResp?.users?.length ?? 0,
+    merged: merged.size,
+    returned: list.length,
+  });
+
+  return list;
 }
 
 async function loadStreakLeaders() {
@@ -376,6 +491,24 @@ export async function AdminUserAnalytics() {
                 <p className="font-mono text-3xl font-semibold tabular-nums text-slate-100">
                   {online.total.toLocaleString()}
                 </p>
+                {/* Diagnostic line so a "0 online" state is debuggable: */}
+                {online.total === 0 && (
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed text-slate-500">
+                    {online.totalEverSeen === 0 ? (
+                      <>
+                        no <code className="text-[#67d4ff]/80">user_presence</code> rows yet —
+                        heartbeat may not be firing. confirm migration{' '}
+                        <code className="text-[#67d4ff]/80">20260512000000_user_presence_and_heartbeat</code>{' '}
+                        and that signed-in tabs have stayed visible &gt; 1m.
+                      </>
+                    ) : (
+                      <>
+                        {online.totalEverSeen.toLocaleString()} total rows on file · last heartbeat{' '}
+                        {formatRelative(online.lastEverSeenAt)}
+                      </>
+                    )}
+                  </p>
+                )}
                 {online.rows.length > 0 && (
                   <ul className="mt-3 space-y-2">
                     {online.rows.map((u) => (
@@ -450,7 +583,7 @@ export async function AdminUserAnalytics() {
                   newest_accounts
                 </CardTitle>
                 <CardDescription className="font-mono text-[11px] text-slate-500">
-                  by accounts.created_at — {NEWEST_ACCOUNTS_LIMIT} latest
+                  earliest of auth.users / accounts created_at — {NEWEST_ACCOUNTS_LIMIT} latest
                 </CardDescription>
               </CardHeader>
               <CardContent>

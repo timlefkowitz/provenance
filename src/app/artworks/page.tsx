@@ -89,14 +89,25 @@ export default async function ArtworksPage({
   // -------------------------------------------------------
   // Fetch distinct mediums for filter dropdown
   // -------------------------------------------------------
+  // NOTE: This page is the public registry of works. We intentionally
+  // restrict it to Certificates of Authenticity (COA) so a collector's
+  // owned COS/COO certificates do not appear under their name as if
+  // they had created them. COS/COO live on /artworks/my and on the
+  // issuing artist's profile.
   let mediums: string[] = [];
   try {
     const baseMediumQuery = !user
-      ? db.from('artworks').select('medium').eq('status', 'verified').eq('is_public', true)
+      ? db
+          .from('artworks')
+          .select('medium')
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .eq('certificate_type', 'authenticity')
       : db
           .from('artworks')
           .select('medium')
           .eq('status', 'verified')
+          .eq('certificate_type', 'authenticity')
           .or(`is_public.eq.true,account_id.eq.${user.id}`);
     const { data: mediumRows } = await baseMediumQuery.not('medium', 'is', null);
     const set = new Set<string>();
@@ -121,13 +132,20 @@ export default async function ArtworksPage({
     const selectCols = `id, title, artist_name, image_url, created_at, certificate_number, account_id, medium, is_public, ${countCol}`;
 
     // Visibility filter: logged-in users see own + public; guests see public only.
+    // Restrict to COA — see note above.
     const buildQuery = (forCount: boolean) => {
       const base = db
         .from('artworks_with_favorites')
         .select(forCount ? '*' : selectCols, forCount ? { count: 'exact', head: true } : undefined);
       const visible = !user
-        ? base.eq('status', 'verified').eq('is_public', true)
-        : base.eq('status', 'verified').or(`is_public.eq.true,account_id.eq.${user.id}`);
+        ? base
+            .eq('status', 'verified')
+            .eq('is_public', true)
+            .eq('certificate_type', 'authenticity')
+        : base
+            .eq('status', 'verified')
+            .eq('certificate_type', 'authenticity')
+            .or(`is_public.eq.true,account_id.eq.${user.id}`);
       // For trending, only include artworks that have at least one recent favorite.
       const filtered = view === 'trending' ? visible.gt('trending_count', 0) : visible;
       return filtered;
@@ -165,6 +183,7 @@ export default async function ArtworksPage({
           .select(COLS)
           .eq('status', 'verified')
           .eq('is_public', true)
+          .eq('certificate_type', 'authenticity')
           .order('created_at', { ascending: false }),
         q,
         medium,
@@ -172,17 +191,22 @@ export default async function ArtworksPage({
       if (error) console.error('[Artworks] artist-view fetch failed', error);
       artworks = rows ?? [];
     } else {
+      // Logged-in: own COA works + everyone else's public COA works.
+      // COS / COO are intentionally excluded so an owner's COS/COO does
+      // not appear as a "work by them" in the By-Artist grouping.
       const ownData = db
         .from('artworks')
         .select(COLS)
         .eq('status', 'verified')
         .eq('account_id', user.id)
+        .eq('certificate_type', 'authenticity')
         .order('created_at', { ascending: false });
       const publicData = db
         .from('artworks')
         .select(COLS)
         .eq('status', 'verified')
         .eq('is_public', true)
+        .eq('certificate_type', 'authenticity')
         .neq('account_id', user.id)
         .order('created_at', { ascending: false });
 

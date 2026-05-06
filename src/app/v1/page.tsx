@@ -12,7 +12,9 @@ export default async function Home() {
   const { data: { user } } = await client.auth.getUser();
 
   if (user) {
-    redirect('/portal');
+    // Authenticated default landing was changed from `/portal` → `/artworks`.
+    console.log('[Home/v1] authenticated user → /artworks', { userId: user.id });
+    redirect('/artworks');
   }
 
   // Get featured entry (read-only, safe)

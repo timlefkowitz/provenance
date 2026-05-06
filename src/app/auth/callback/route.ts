@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
   const client = getSupabaseServerClient();
 
   const { nextPath } = await service.exchangeCodeForSession(request, {
-    redirectPath: '/portal', // Redirect authenticated users to portal
+    // Default post-sign-in destination — moved from `/portal` to `/artworks`
+    // so users land directly in their collection.
+    redirectPath: '/artworks',
   });
 
   // Track whether this is a brand-new account so we can signal GTM on the client.
