@@ -164,41 +164,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
         )}
       </div>
 
-        {/* Mobile Auth Buttons (when menu is closed) */}
-        {!mobileMenuOpen && (
-          <div className="md:hidden flex shrink-0 items-center gap-2">
-            {user.data ? (
-              <>
-                <NotificationBadge />
-                <ProfileAccountDropdownContainer />
-              </>
-            ) : (
-              <>
-                <Button 
-                  asChild 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-ink hover:text-wine hover:bg-wine/10 font-serif text-xs px-2"
-                >
-                  <Link href={pathsConfig.auth.signIn}>
-                    <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
-                  </Link>
-                </Button>
-                <Button 
-                  asChild 
-                  size="sm"
-                  className="bg-wine text-parchment hover:bg-wine/90 font-serif text-xs px-2"
-                >
-                  <Link href={pathsConfig.auth.signUp}>
-                    <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-[90]">
@@ -297,41 +262,8 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               Feedback
             </Link>
           </div>
-        )}
-
-        {/* Mobile Auth Buttons (when menu is closed) */}
-        {!mobileMenuOpen && (
-          <div className="md:hidden flex shrink-0 items-center gap-2">
-            {user.data ? (
-              <>
-                <NotificationBadge />
-                <ProfileAccountDropdownContainer />
-              </>
-            ) : (
-              <>
-                <Button 
-                  asChild 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-ink hover:text-wine hover:bg-wine/10 text-xs px-2"
-                >
-                  <Link href={pathsConfig.auth.signIn}>
-                    <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
-                  </Link>
-                </Button>
-                <Button 
-                  asChild 
-                  size="sm"
-                  className="bg-wine text-parchment hover:bg-wine/90 text-xs px-2"
-                >
-                  <Link href={pathsConfig.auth.signUp}>
-                    <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
-        )}
+        </div>
+      )}
     </nav>
   );
 }
