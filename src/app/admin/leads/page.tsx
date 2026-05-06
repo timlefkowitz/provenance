@@ -22,8 +22,8 @@ export default async function AdminLeadsPage() {
             leads
           </h1>
           <p className="mt-2 max-w-2xl font-mono text-sm leading-relaxed text-slate-500">
-            Pull prospect rows from your Apify Actors (defaults to Google Places for venue /
-            gallery discovery). Set <code className="text-slate-400">APIFY_API_TOKEN</code> and
+            Pull prospect rows from your Apify Actors (defaults to Google Maps Email Extractor).
+            Set <code className="text-slate-400">APIFY_API_TOKEN</code> and
             optionally <code className="text-slate-400">APIFY_LEADS_ACTOR_ID</code> in the
             environment.
           </p>

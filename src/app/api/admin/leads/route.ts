@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       console.log('[API/admin/leads] loaded leads', { count: leads.length, datasetId });
     } else {
       message =
-        'No finished run with a dataset yet. Open Apify Console, run your leads Actor (e.g. Google Places for galleries), then refresh.';
+        'No finished run with a dataset yet. Open Apify Console, run your Google Maps Email Extractor (or other leads Actor), then refresh.';
       console.log('[API/admin/leads] no dataset for actor', { actorId });
     }
 

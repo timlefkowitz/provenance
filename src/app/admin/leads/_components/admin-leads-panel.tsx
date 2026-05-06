@@ -65,7 +65,7 @@ export function AdminLeadsPanel() {
 
   const consoleHref = data?.actorId
     ? `https://console.apify.com/actors/${encodeURIComponent(data.actorId)}`
-    : 'https://console.apify.com/actors/compass~crawler-google-places';
+    : 'https://console.apify.com/actors/poidata~google-maps-email-extractor';
 
   return (
     <div className="space-y-6">
@@ -115,7 +115,9 @@ export function AdminLeadsPanel() {
             <span className="text-[#1793d1]/70">actor</span>{' '}
             <span className="text-slate-200">{data.actorId}</span>
             {data.actorId === data.defaultActorId && (
-              <span className="ml-2 text-slate-500">(default: Google Places)</span>
+              <span className="ml-2 text-slate-500">
+                (default: Google Maps Email Extractor)
+              </span>
             )}
           </p>
           <p className="mt-1">

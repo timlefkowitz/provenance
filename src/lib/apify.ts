@@ -5,8 +5,11 @@
 
 const APIFY_BASE = 'https://api.apify.com/v2';
 
-/** Google Places Actor — good for gallery / museum / art venue discovery runs in Apify Console. */
-export const DEFAULT_LEADS_ACTOR_ID = 'compass~crawler-google-places';
+/**
+ * Default “Google Maps Email Extractor” (Poidata) — Maps listings plus scraped site emails.
+ * Override with APIFY_LEADS_ACTOR_ID if you use another store Actor with the same name.
+ */
+export const DEFAULT_LEADS_ACTOR_ID = 'poidata~google-maps-email-extractor';
 
 export function getApifyToken(): string | undefined {
   const t = process.env.APIFY_API_TOKEN?.trim();
