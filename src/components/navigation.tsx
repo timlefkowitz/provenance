@@ -162,6 +162,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             </Button>
           </>
         )}
+        </div>
       </div>
 
       {/* Mobile Menu Dropdown */}
