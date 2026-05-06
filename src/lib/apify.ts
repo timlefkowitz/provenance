@@ -65,6 +65,59 @@ export async function apifyFetchJson<T>(
   return { ok: true, data: body as T };
 }
 
+export type StartRunInput = {
+  searchTerms: string[];
+  location?: string;
+  maxResults?: number;
+  language?: string;
+};
+
+/**
+ * Start an async Actor run with Google Maps Email Extractor–compatible input.
+ * Returns the run id and default dataset id immediately (status will be RUNNING).
+ */
+export async function startActorRun(
+  token: string,
+  actorId: string,
+  input: StartRunInput,
+): Promise<
+  | { ok: true; run: ApifyActorRunListItem }
+  | { ok: false; status?: number; message: string }
+> {
+  const body = {
+    searchStringsArray: input.searchTerms,
+    locationQuery: input.location || undefined,
+    maxCrawledPlacesPerSearch: input.maxResults ?? 25,
+    language: input.language || 'en',
+    // Email Extractor specific knobs (safe defaults for most plans).
+    maxPagesPerDomain: 5,
+    skipClosedPlaces: true,
+    scrapeContacts: true,
+  };
+
+  const path = `/acts/${encodeURIComponent(actorId)}/runs`;
+  const result = await apifyFetchJson<{ data: ApifyActorRunListItem }>(
+    path,
+    token,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!result.ok) {
+    console.error('[Apify] startActorRun failed', result.status, result.message);
+    return { ok: false, status: result.status, message: result.message };
+  }
+
+  const run = result.data.data;
+  if (!run?.id) {
+    return { ok: false, message: 'Unexpected start-run response' };
+  }
+  return { ok: true, run };
+}
+
 export async function getActorRun(
   token: string,
   runId: string,
@@ -154,6 +207,7 @@ export function normalizeLeadRow(row: Record<string, unknown>): {
   subtitle: string;
   url?: string;
   email?: string;
+  emails: string[];
   phone?: string;
   address?: string;
 } {
@@ -174,11 +228,27 @@ export function normalizeLeadRow(row: Record<string, unknown>): {
     str(row.domain) ||
     undefined;
 
-  const email =
-    str(row.email) ||
-    (Array.isArray(row.emails) && row.emails[0]
-      ? str(row.emails[0] as string)
-      : undefined);
+  // Collect every email we can find on the row (Email Extractor often nests them).
+  const emailSet = new Set<string>();
+  const pushEmail = (v: unknown) => {
+    const s = str(v);
+    if (s && /.+@.+\..+/.test(s)) emailSet.add(s.toLowerCase());
+  };
+
+  pushEmail(row.email);
+  if (Array.isArray(row.emails)) row.emails.forEach(pushEmail);
+  if (Array.isArray((row as { contactEmails?: unknown[] }).contactEmails)) {
+    (row as { contactEmails: unknown[] }).contactEmails.forEach(pushEmail);
+  }
+  if (Array.isArray((row as { contacts?: unknown[] }).contacts)) {
+    (row as { contacts: Array<Record<string, unknown>> }).contacts.forEach((c) => {
+      pushEmail(c?.email);
+      if (Array.isArray(c?.emails)) (c.emails as unknown[]).forEach(pushEmail);
+    });
+  }
+
+  const emails = Array.from(emailSet);
+  const email = emails[0];
 
   const phone =
     str(row.phone) ||
@@ -193,5 +263,5 @@ export function normalizeLeadRow(row: Record<string, unknown>): {
 
   const subtitle = [address, phone].filter(Boolean).join(' · ') || '';
 
-  return { title, subtitle, url, email, phone, address };
+  return { title, subtitle, url, email, emails, phone, address };
 }
