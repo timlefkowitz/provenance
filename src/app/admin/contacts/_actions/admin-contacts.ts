@@ -177,7 +177,7 @@ function strVal(v: unknown): string | undefined {
 }
 
 /** Map one object from pasted JSON (e.g. attorney / directory exports) into admin_contacts columns. */
-export function mapExternalDirectoryRow(raw: Record<string, unknown>): {
+function mapExternalDirectoryRow(raw: Record<string, unknown>): {
   display_name: string;
   email: string | null;
   phone: string | null;
