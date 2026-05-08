@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { JwtPayload } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text } from "next/font/google";
@@ -47,7 +47,31 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Provenance",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+// Viewport tuned for the latest mobile devices (iPhone 14/15/16 Pro Dynamic
+// Island, iPhone 16/16 Plus/16 Pro Max, Pixel 8/9 Pro, Galaxy S24/S25, foldables).
+// `viewportFit: "cover"` allows safe-area-inset-* env() values to take effect so
+// the sticky nav and bottom toolbar respect the notch and home indicator.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F1E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#111111" },
+  ],
 };
 
 // Ensure this layout is always rendered dynamically since we access headers/cookies

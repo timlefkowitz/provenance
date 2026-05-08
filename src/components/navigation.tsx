@@ -35,7 +35,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   }
 
   return (
-    <nav className="relative z-[100] flex items-center justify-between px-4 sm:px-6 py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 shadow-sm">
+    <nav className="relative z-[100] flex items-center justify-between gap-3 px-4 sm:px-6 pl-safe pr-safe py-3 sm:py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 shadow-sm">
       <div className="flex items-center gap-8 min-w-0">
         <Link 
           href="/" 
@@ -109,52 +109,50 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
         </div>
       </div>
 
-      {/* Mobile Menu Button — shrink-0 so avatar/notifications never collapse under flex squeeze */}
-      <div className="flex shrink-0 items-center gap-3">
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 text-wine hover:text-wine/80 transition-colors"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Menu className="h-6 w-6" />
-          )}
-        </button>
-
-        {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex shrink-0 items-center gap-3">
+      {/*
+        Right-side cluster.
+        IMPORTANT: NotificationBadge and the user avatar/dropdown remain visible
+        at every breakpoint — only the secondary "Add Artwork" CTA and the
+        marketing sign-in/up buttons collapse behind the hamburger on mobile.
+        This way users on iPhone 16 Pro Max / Pixel 9 Pro can still reach
+        notifications and account actions with one tap.
+      */}
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         {user.data ? (
           <>
+            {/* Notifications — always visible */}
             <NotificationBadge />
+
+            {/* Add Artwork — desktop / tablet only; mobile users use the hamburger menu */}
             <Button
               asChild
               size="sm"
-              className="bg-wine text-parchment hover:bg-wine/90"
+              className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
             >
               <Link href="/artworks/add">
                 <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
               </Link>
             </Button>
+
+            {/* User dropdown — always visible */}
             <ProfileAccountDropdownContainer />
           </>
         ) : (
           <>
-            <Button 
-              asChild 
-              variant="ghost" 
+            <Button
+              asChild
+              variant="ghost"
               size="sm"
-              className="text-ink hover:text-wine hover:bg-wine/10"
+              className="hidden md:inline-flex text-ink hover:text-wine hover:bg-wine/10"
             >
               <Link href={pathsConfig.auth.signIn}>
                 <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
               </Link>
             </Button>
-            <Button 
-              asChild 
+            <Button
+              asChild
               size="sm"
-              className="bg-wine text-parchment hover:bg-wine/90"
+              className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
             >
               <Link href={pathsConfig.auth.signUp}>
                 <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
@@ -162,12 +160,25 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             </Button>
           </>
         )}
-        </div>
+
+        {/* Mobile hamburger — last so it stays at the right edge */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden -mr-1 p-2 text-wine hover:text-wine/80 transition-colors touch-manipulation"
+          aria-label="Toggle menu"
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </button>
       </div>
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-[90]">
+        <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-[90] pb-safe">
           <div className="flex flex-col px-6 py-4 gap-4">
             {/* When Gallery: show which gallery the user is using */}
             {user.data && (
@@ -262,6 +273,31 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             >
               Feedback
             </Link>
+
+            {/* Sign-in / Sign-up CTAs for unauthenticated mobile users */}
+            {!user.data && (
+              <div className="flex flex-col gap-2 pt-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full border-wine/30 text-ink hover:bg-wine/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Link href={pathsConfig.auth.signIn}>
+                    <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  className="w-full bg-wine text-parchment hover:bg-wine/90"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Link href={pathsConfig.auth.signUp}>
+                    <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

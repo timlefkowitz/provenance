@@ -23,6 +23,10 @@ import {
   type UnclaimedArtistProfileRow,
 } from './_components/unclaimed-artist-public-view';
 import { GalleryPublicLinks } from './_components/gallery-public-links';
+import {
+  GalleryThumbnailPicker,
+  type EligibleThumbnailArtwork,
+} from './_components/gallery-thumbnail-picker';
 import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
@@ -259,6 +263,51 @@ export default async function ArtistProfilePage({
   }
   const exhibitions = allExhibitions.slice(0, 6);
 
+  // ── THUMBNAIL PICKER DATA (gallery owner only) ──
+  // For galleries viewing their own profile, fetch the verified, public COAs
+  // tied to this gallery profile so the owner can pick which artwork
+  // represents the gallery in the public /registry directory. Mirrors the
+  // exact eligibility rules enforced by setRegistryArtwork().
+  let galleryEligibleThumbnails: EligibleThumbnailArtwork[] = [];
+  let gallerySelectedThumbnailId: string | null = null;
+  if (isGallery && isOwner && roleProfile?.id) {
+    const [{ data: thumbRows, error: thumbErr }, { data: profileRow }] = await Promise.all([
+      (client as any)
+        .from('artworks')
+        .select('id, title, image_url, artist_name, created_at')
+        .eq('gallery_profile_id', roleProfile.id)
+        .eq('status', 'verified')
+        .eq('is_public', true)
+        .eq('certificate_type', 'authenticity')
+        .not('image_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(48),
+      (client as any)
+        .from('user_profiles')
+        .select('registry_artwork_id')
+        .eq('id', roleProfile.id)
+        .maybeSingle(),
+    ]);
+
+    if (thumbErr) {
+      console.error('[ArtistProfile] gallery thumbnail eligibility query failed', thumbErr);
+    }
+
+    galleryEligibleThumbnails = (thumbRows || []).map((row: any) => ({
+      id: row.id as string,
+      title: (row.title as string) || 'Untitled',
+      image_url: (row.image_url as string | null) ?? null,
+      artist_name: (row.artist_name as string | null) ?? null,
+    }));
+    gallerySelectedThumbnailId = (profileRow?.registry_artwork_id as string | null) ?? null;
+
+    console.log('[ArtistProfile] gallery thumbnail picker data resolved', {
+      galleryProfileId: roleProfile.id,
+      eligibleCount: galleryEligibleThumbnails.length,
+      hasSelection: Boolean(gallerySelectedThumbnailId),
+    });
+  }
+
   // ── LATEST CERTIFICATE OF SHOW (galleries only) ──
   // Featured at the top of the gallery profile so visitors immediately see
   // the most recent show this gallery has issued a COS for. We match on
@@ -352,7 +401,8 @@ export default async function ArtistProfilePage({
     Boolean(bio) ||
     galleries.length > 0 ||
     newsPublications.length > 0 ||
-    (isGallery && isOwner && roleProfile?.id);
+    (isGallery && isOwner && roleProfile?.id) ||
+    (isGallery && isOwner && galleryEligibleThumbnails.length > 0);
 
   const exhibitionDetailHref = (exhibitionId: string) => {
     if (isGallery) {
@@ -585,6 +635,19 @@ export default async function ArtistProfilePage({
                       </li>
                     ))}
                   </ul>
+                </section>
+              )}
+
+              {isGallery && isOwner && roleProfile?.id && (
+                <section className="border-t border-wine/10 pt-8">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
+                    Directory thumbnail
+                  </p>
+                  <GalleryThumbnailPicker
+                    galleryProfileId={roleProfile.id}
+                    artworks={galleryEligibleThumbnails}
+                    initialSelectedId={gallerySelectedThumbnailId}
+                  />
                 </section>
               )}
 

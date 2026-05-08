@@ -73,6 +73,21 @@
   margin: 1rem 0;
 }
 
+/* ── Safe-area utilities for mobile devices (iPhone 14-16 Pro/Pro Max Dynamic
+   Island, Pixel, Galaxy, etc.) — use pt-safe, pb-safe, pl-safe, pr-safe ── */
+@utility pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+@utility pl-safe {
+  padding-left: max(env(safe-area-inset-left), 0px);
+}
+@utility pr-safe {
+  padding-right: max(env(safe-area-inset-right), 0px);
+}
+
 /* Print styles for artwork tags */
 @media print {
   @page {
