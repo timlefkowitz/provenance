@@ -42,6 +42,11 @@ export default async function PortalPage() {
     .eq('id', user.id)
     .single();
 
+  // Derive role early — needed for both the graph visibility block and later UI decisions
+  const userRole = (account?.public_data as any)?.role;
+  const isArtist = userRole === USER_ROLES.ARTIST;
+  const isGallery = userRole === USER_ROLES.GALLERY;
+
   // Gallery profiles this user can act as (owned or as a team member)
   const galleryProfiles = await getUserGalleryProfiles(user.id);
   const galleryOwnerIds = Array.from(
@@ -98,30 +103,25 @@ export default async function PortalPage() {
     recentArtworks = recentRes.data ?? null;
   }
 
-  // Check for graph visibility: artworks owned (uploaded unsold + acquired) and artworks produced as artist
-  let ownsArtworksCount = 0;
+  // Graph visibility:
+  // Portfolio card  → user has any uploaded artworks (artworksCount already covers this)
+  //                   OR has acquired artworks via a sale
+  // Market cap card → user is an artist AND has artworks (either as account owner or
+  //                   via artist_account_id — computeArtistMarketCapSeries handles both)
+  const ownsArtworksCount = artworksCount ?? 0;
   let producedCount = 0;
-  try {
-    const admin = getSupabaseServerAdminClient() as any;
-    const [uploadedUnsoldRes, acquiredRes, producedRes] = await Promise.all([
-      admin
+  if (isArtist) {
+    try {
+      const admin = getSupabaseServerAdminClient() as any;
+      const { count: producedRes } = await admin
         .from('artworks')
         .select('*', { count: 'exact', head: true })
-        .eq('account_id', user.id)
-        .eq('is_sold', false),
-      admin
-        .from('artworks')
-        .select('*', { count: 'exact', head: true })
-        .eq('sold_to_account_id', user.id),
-      admin
-        .from('artworks')
-        .select('*', { count: 'exact', head: true })
-        .eq('artist_account_id', user.id),
-    ]);
-    ownsArtworksCount = (uploadedUnsoldRes.count ?? 0) + (acquiredRes.count ?? 0);
-    producedCount = producedRes.count ?? 0;
-  } catch {
-    // Graph cards will show empty state
+        .or(`artist_account_id.eq.${user.id},account_id.eq.${user.id}`);
+      producedCount = producedRes ?? 0;
+    } catch {
+      // Fall back to artworksCount so the card still renders for artists
+      producedCount = artworksCount ?? 0;
+    }
   }
 
   // Get users they're following
@@ -218,13 +218,8 @@ export default async function PortalPage() {
 
   const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
 
-  const userRole = (account?.public_data as any)?.role;
-  const isGallery = userRole === USER_ROLES.GALLERY;
-
   // Get provenance update requests for artworks owned by this user
   const provenanceUpdateRequests = await getProvenanceUpdateRequestsForOwner();
-
-  const isArtist = userRole === USER_ROLES.ARTIST;
   let leadsCount = 0;
   if (isArtist) {
     try {

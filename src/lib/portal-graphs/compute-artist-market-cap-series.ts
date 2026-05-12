@@ -20,16 +20,34 @@ export async function computeArtistMarketCapSeries(
   const admin = getSupabaseServerAdminClient() as any;
 
   try {
-    const { data: artworksRaw, error: artworksErr } = await admin
-      .from('artworks')
-      .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value')
-      .eq('artist_account_id', artistAccountId);
+    // Fetch artworks where the user is the credited artist OR the uploader (account owner).
+    // Many artists upload their own work without setting artist_account_id on each piece,
+    // so we union both sets and de-duplicate by id.
+    const [byArtistId, byAccountId] = await Promise.all([
+      admin
+        .from('artworks')
+        .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value')
+        .eq('artist_account_id', artistAccountId),
+      admin
+        .from('artworks')
+        .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value')
+        .eq('account_id', artistAccountId),
+    ]);
 
-    if (artworksErr) {
-      console.error('[PortalGraphs] computeArtistMarketCapSeries artworks fetch failed', artworksErr);
+    if (byArtistId.error) {
+      console.error('[PortalGraphs] computeArtistMarketCapSeries artist_account_id fetch failed', byArtistId.error);
+    }
+    if (byAccountId.error) {
+      console.error('[PortalGraphs] computeArtistMarketCapSeries account_id fetch failed', byAccountId.error);
     }
 
-    const artworks = (artworksRaw ?? []) as Array<
+    // De-duplicate — a work may appear in both result sets
+    const artworkMap = new Map<string, any>();
+    for (const row of [...(byArtistId.data ?? []), ...(byAccountId.data ?? [])]) {
+      if (!artworkMap.has(row.id)) artworkMap.set(row.id, row);
+    }
+
+    const artworks = Array.from(artworkMap.values()) as Array<
       ArtworkValueRow & { created_at: string; is_sold: boolean; sold_to_account_id: string | null }
     >;
 
