@@ -17,6 +17,8 @@ import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users }
 import { USER_ROLES } from '~/lib/user-roles';
 import { getLeadsForArtist } from './or/_actions/leads';
 import { NewUserConversionTracker } from './_components/new-user-conversion-tracker';
+import { PortfolioValueCard } from './_components/portfolio-value-card';
+import { ArtistMarketCapCard } from './_components/artist-market-cap-card';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -94,6 +96,32 @@ export default async function PortalPage() {
     ]);
     artworksCount = countRes.count ?? null;
     recentArtworks = recentRes.data ?? null;
+  }
+
+  // Check for graph visibility: artworks owned (uploaded unsold + acquired) and artworks produced as artist
+  let ownsArtworksCount = 0;
+  let producedCount = 0;
+  try {
+    const admin = getSupabaseServerAdminClient() as any;
+    const [uploadedUnsoldRes, acquiredRes, producedRes] = await Promise.all([
+      admin
+        .from('artworks')
+        .select('*', { count: 'exact', head: true })
+        .eq('account_id', user.id)
+        .eq('is_sold', false),
+      admin
+        .from('artworks')
+        .select('*', { count: 'exact', head: true })
+        .eq('sold_to_account_id', user.id),
+      admin
+        .from('artworks')
+        .select('*', { count: 'exact', head: true })
+        .eq('artist_account_id', user.id),
+    ]);
+    ownsArtworksCount = (uploadedUnsoldRes.count ?? 0) + (acquiredRes.count ?? 0);
+    producedCount = producedRes.count ?? 0;
+  } catch {
+    // Graph cards will show empty state
   }
 
   // Get users they're following
@@ -373,6 +401,14 @@ export default async function PortalPage() {
           </Card>
         )}
       </div>
+
+      {/* Portfolio Value + Artist Market Cap graphs */}
+      {(ownsArtworksCount > 0 || producedCount > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {ownsArtworksCount > 0 && <PortfolioValueCard userId={user.id} />}
+          {producedCount > 0 && <ArtistMarketCapCard artistAccountId={user.id} />}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Favorites */}
