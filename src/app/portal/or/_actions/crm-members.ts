@@ -42,12 +42,16 @@ export async function getCrmOwnerContext(): Promise<{
   }
 
   // Check for CRM membership
-  const { data: membership } = await (client as any)
+  const { data: membership, error: membershipErr } = await (client as any)
     .from('crm_members')
     .select('artist_user_id')
     .eq('member_user_id', user.id)
     .limit(1)
     .maybeSingle();
+
+  if (membershipErr) {
+    console.error('[CrmMembers] getCrmOwnerContext: membership lookup failed', membershipErr);
+  }
 
   if (membership?.artist_user_id) {
     console.log('[CrmMembers] getCrmOwnerContext: user is team member of', membership.artist_user_id);
