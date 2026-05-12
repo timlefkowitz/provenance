@@ -103,27 +103,6 @@ export default async function PortalPage() {
     recentArtworks = recentRes.data ?? null;
   }
 
-  // Graph visibility:
-  // Portfolio card  → user has any uploaded artworks (artworksCount already covers this)
-  //                   OR has acquired artworks via a sale
-  // Market cap card → user is an artist AND has artworks (either as account owner or
-  //                   via artist_account_id — computeArtistMarketCapSeries handles both)
-  const ownsArtworksCount = artworksCount ?? 0;
-  let producedCount = 0;
-  if (isArtist) {
-    try {
-      const admin = getSupabaseServerAdminClient() as any;
-      const { count: producedRes } = await admin
-        .from('artworks')
-        .select('*', { count: 'exact', head: true })
-        .or(`artist_account_id.eq.${user.id},account_id.eq.${user.id}`);
-      producedCount = producedRes ?? 0;
-    } catch {
-      // Fall back to artworksCount so the card still renders for artists
-      producedCount = artworksCount ?? 0;
-    }
-  }
-
   // Get users they're following
   const { data: followingData } = await (client as any)
     .from('user_follows')
@@ -397,13 +376,11 @@ export default async function PortalPage() {
         )}
       </div>
 
-      {/* Portfolio Value + Artist Market Cap graphs */}
-      {(ownsArtworksCount > 0 || producedCount > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {ownsArtworksCount > 0 && <PortfolioValueCard userId={user.id} />}
-          {producedCount > 0 && <ArtistMarketCapCard artistAccountId={user.id} />}
-        </div>
-      )}
+      {/* Portfolio Value + Artist Market Cap graphs — always shown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <PortfolioValueCard userId={user.id} />
+        <ArtistMarketCapCard artistAccountId={user.id} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Favorites */}

@@ -50,15 +50,18 @@ export async function ArtistMarketCapCard({ artistAccountId }: ArtistMarketCapCa
       <Card className="border-wine/20 bg-parchment/60">
         <CardHeader>
           <CardTitle className="font-display text-xl text-wine">Your Market Cap</CardTitle>
-          <p className="text-xs text-ink/50 font-serif">Total body of work</p>
+          <p className="text-xs text-ink/50 font-serif">Total value of your body of work</p>
         </CardHeader>
         <CardContent className="text-center py-8">
           <Palette className="h-10 w-10 text-wine/20 mx-auto mb-3" />
-          <p className="text-ink/60 font-serif text-sm mb-4">
-            No valued artworks in your body of work yet
+          <p className="text-ink/60 font-serif text-sm mb-2">
+            Your market cap isn't calculated yet.
+          </p>
+          <p className="text-ink/40 font-serif text-xs mb-4">
+            Add your works and enter a value when creating certificates — your market cap will grow as valuations accumulate.
           </p>
           <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm">
-            <Link href="/artworks/add">Add Artwork →</Link>
+            <Link href="/artworks/add">Add Your First Work →</Link>
           </Button>
         </CardContent>
       </Card>
@@ -74,7 +77,7 @@ export async function ArtistMarketCapCard({ artistAccountId }: ArtistMarketCapCa
           <div>
             <CardTitle className="font-display text-xl text-wine mb-1">Your Market Cap</CardTitle>
             <p className="text-xs text-ink/50 font-serif">
-              {data.workCount} {data.workCount === 1 ? 'work' : 'works'} produced &middot; last 12 months
+              {data.workCount} {data.workCount === 1 ? 'work' : 'works'} in body of work &middot; last 12 months
             </p>
           </div>
           <DeltaPill current={data.total_cents} previous={previousValue} />

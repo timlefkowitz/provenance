@@ -50,15 +50,18 @@ export async function PortfolioValueCard({ userId }: PortfolioValueCardProps) {
       <Card className="border-wine/20 bg-parchment/60">
         <CardHeader>
           <CardTitle className="font-display text-xl text-wine">Your Portfolio Value</CardTitle>
-          <p className="text-xs text-ink/50 font-serif">Collector overview</p>
+          <p className="text-xs text-ink/50 font-serif">Your authenticated &amp; owned works</p>
         </CardHeader>
         <CardContent className="text-center py-8">
           <ImageIcon className="h-10 w-10 text-wine/20 mx-auto mb-3" />
-          <p className="text-ink/60 font-serif text-sm mb-4">
-            No valued artworks in your collection yet
+          <p className="text-ink/60 font-serif text-sm mb-2">
+            No valued works in your collection yet.
+          </p>
+          <p className="text-ink/40 font-serif text-xs mb-4">
+            Enter a value when creating a certificate, or request a formal valuation, to see your portfolio grow here.
           </p>
           <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm">
-            <Link href="/artworks/my">View My Collection</Link>
+            <Link href="/artworks/add">Add an Artwork →</Link>
           </Button>
         </CardContent>
       </Card>
@@ -74,7 +77,7 @@ export async function PortfolioValueCard({ userId }: PortfolioValueCardProps) {
           <div>
             <CardTitle className="font-display text-xl text-wine mb-1">Your Portfolio Value</CardTitle>
             <p className="text-xs text-ink/50 font-serif">
-              {data.workCount} {data.workCount === 1 ? 'artwork' : 'artworks'} in collection &middot; last 12 months
+              {data.workCount} {data.workCount === 1 ? 'work' : 'works'} &middot; authenticated &amp; owned &middot; last 12 months
             </p>
           </div>
           <DeltaPill current={data.total_cents} previous={previousValue} />
