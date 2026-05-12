@@ -63,7 +63,7 @@ export async function ArtistMarketCapCard({ artistAccountId }: ArtistMarketCapCa
             <p className="text-ink/40 font-serif text-xs mb-4">
               Add your works and enter a value when creating certificates — your market cap will grow as valuations accumulate.
             </p>
-            <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm" onClick={(e) => e.stopPropagation()}>
+            <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm">
               <Link href="/artworks/add">Add Your First Work →</Link>
             </Button>
           </CardContent>

@@ -63,7 +63,7 @@ export async function PortfolioValueCard({ userId }: PortfolioValueCardProps) {
             <p className="text-ink/40 font-serif text-xs mb-4">
               Enter a value when creating a certificate, or request a formal valuation, to see your collection grow here.
             </p>
-            <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm" onClick={(e) => e.stopPropagation()}>
+            <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm">
               <Link href="/artworks/add">Add an Artwork →</Link>
             </Button>
           </CardContent>
