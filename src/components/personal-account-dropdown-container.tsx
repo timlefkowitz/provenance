@@ -136,24 +136,99 @@ export function ProfileAccountDropdownContainer(props: {
       });
   }, [userId, client]);
 
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  // Extended type to track which profiles come from gallery team membership
+  type ProfileWithSource = UserProfile & {
+    _isTeamProfile?: boolean;
+    _teamRole?: 'owner' | 'admin' | 'member';
+  };
+
+  const [profiles, setProfiles] = useState<ProfileWithSource[]>([]);
 
   useEffect(() => {
     if (!userId) return;
-    console.log('[ProfileDropdown] Fetching user profiles');
-    client
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[ProfileDropdown] Error fetching profiles', error);
-          return;
+    let cancelled = false;
+
+    console.log('[ProfileDropdown] Fetching user profiles + team memberships');
+
+    void (async () => {
+      try {
+        // 1. Own profiles
+        const { data: ownData, error: ownError } = await client
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+
+        if (ownError) {
+          console.error('[ProfileDropdown] Error fetching own profiles', ownError);
         }
-        setProfiles((data || []) as UserProfile[]);
-      });
+
+        const ownProfiles: ProfileWithSource[] = ((ownData || []) as UserProfile[]).map((p) => ({
+          ...p,
+          _isTeamProfile: false,
+        }));
+
+        // 2. Gallery team memberships
+        const { data: memberRows, error: memberError } = await (client as any)
+          .from('gallery_members')
+          .select('gallery_profile_id, role')
+          .eq('user_id', userId);
+
+        if (memberError) {
+          console.error('[ProfileDropdown] Error fetching gallery memberships', memberError);
+        }
+
+        const memberProfileIds: string[] = (memberRows || []).map(
+          (r: { gallery_profile_id: string; role: string }) => r.gallery_profile_id,
+        );
+
+        const teamRoleMap = new Map<string, 'owner' | 'admin' | 'member'>();
+        for (const r of memberRows || []) {
+          teamRoleMap.set(r.gallery_profile_id, r.role as 'owner' | 'admin' | 'member');
+        }
+
+        let teamProfiles: ProfileWithSource[] = [];
+
+        if (memberProfileIds.length > 0) {
+          const { data: teamData, error: teamError } = await (client as any)
+            .from('user_profiles')
+            .select('*')
+            .in('id', memberProfileIds)
+            .eq('is_active', true);
+
+          if (teamError) {
+            console.error('[ProfileDropdown] Error fetching team gallery profiles', teamError);
+          }
+
+          const ownIds = new Set(ownProfiles.map((p) => p.id));
+          teamProfiles = ((teamData || []) as UserProfile[])
+            .filter((p) => !ownIds.has(p.id)) // dedupe: skip profiles already owned by this user
+            .map((p) => ({
+              ...p,
+              _isTeamProfile: true,
+              _teamRole: teamRoleMap.get(p.id),
+            }));
+        }
+
+        if (cancelled) return;
+
+        const merged = [...ownProfiles, ...teamProfiles];
+        console.log('[ProfileDropdown] Profiles loaded', {
+          own: ownProfiles.length,
+          team: teamProfiles.length,
+          total: merged.length,
+        });
+        setProfiles(merged);
+      } catch (err) {
+        if (cancelled) return;
+        console.error('[ProfileDropdown] Unexpected error fetching profiles', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId, client]);
 
   const setSelectedProfileAndNavigate = useCallback(
@@ -328,12 +403,17 @@ export function ProfileAccountDropdownContainer(props: {
                           close();
                         }}
                       >
-                        <User className="h-4" />
-                        <span className="truncate">
-                          {profile.name}
-                          <span className="ml-2 text-xs text-muted-foreground">
+                        <User className="h-4 shrink-0" />
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate">
+                          <span className="truncate">{profile.name}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">
                             {getRoleLabel(profile.role)}
                           </span>
+                          {profile._isTeamProfile && (
+                            <span className="shrink-0 rounded bg-wine/10 px-1 py-0.5 text-[10px] font-medium leading-none text-wine">
+                              Team
+                            </span>
+                          )}
                         </span>
                       </Link>
                       {(profile.role === USER_ROLES.GALLERY ||

@@ -34,7 +34,8 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
     }
   }, []);
 
-  // Fetch all user profiles without React Query to avoid QueryClient mismatch in shell components.
+  // Fetch all user profiles (own + gallery team memberships) without React Query
+  // to avoid QueryClient mismatch in shell components.
   useEffect(() => {
     if (!user?.sub) {
       setProfiles([]);
@@ -42,26 +43,65 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
     }
 
     let cancelled = false;
-    console.log('[ProfileSwitcher] Fetching user profiles');
+    const userId = user.sub;
+    console.log('[ProfileSwitcher] Fetching user profiles + team memberships');
+
     void (async () => {
       try {
-        const { data, error } = await client
+        // 1. Own profiles
+        const { data: ownData, error: ownError } = await client
           .from('user_profiles')
           .select('*')
-          .eq('user_id', user.sub)
+          .eq('user_id', userId)
           .eq('is_active', true)
           .order('created_at', { ascending: true });
 
-        if (cancelled) return;
-
-        if (error) {
-          console.error('[ProfileSwitcher] Error fetching profiles', error);
-          setProfiles([]);
-          return;
+        if (ownError) {
+          console.error('[ProfileSwitcher] Error fetching own profiles', ownError);
         }
 
-        console.log('[ProfileSwitcher] User profiles loaded');
-        setProfiles((data || []) as UserProfile[]);
+        const ownProfiles = (ownData || []) as UserProfile[];
+
+        // 2. Gallery team memberships
+        const { data: memberRows, error: memberError } = await (client as any)
+          .from('gallery_members')
+          .select('gallery_profile_id')
+          .eq('user_id', userId);
+
+        if (memberError) {
+          console.error('[ProfileSwitcher] Error fetching gallery memberships', memberError);
+        }
+
+        const memberProfileIds: string[] = (memberRows || []).map(
+          (r: { gallery_profile_id: string }) => r.gallery_profile_id,
+        );
+
+        let teamProfiles: UserProfile[] = [];
+
+        if (memberProfileIds.length > 0) {
+          const { data: teamData, error: teamError } = await (client as any)
+            .from('user_profiles')
+            .select('*')
+            .in('id', memberProfileIds)
+            .eq('is_active', true);
+
+          if (teamError) {
+            console.error('[ProfileSwitcher] Error fetching team gallery profiles', teamError);
+          }
+
+          const ownIds = new Set(ownProfiles.map((p) => p.id));
+          teamProfiles = ((teamData || []) as UserProfile[]).filter((p) => !ownIds.has(p.id));
+        }
+
+        if (cancelled) return;
+
+        const merged = [...ownProfiles, ...teamProfiles];
+        console.log('[ProfileSwitcher] Profiles loaded', {
+          own: ownProfiles.length,
+          team: teamProfiles.length,
+          total: merged.length,
+        });
+        setProfiles(merged);
       } catch (error) {
         if (cancelled) return;
         console.error('[ProfileSwitcher] Unexpected fetch error', error);
