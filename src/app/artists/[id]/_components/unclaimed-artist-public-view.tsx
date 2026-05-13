@@ -4,7 +4,7 @@ import {
   ArtworkCard,
   type ArtworkCardArtwork,
 } from '~/app/artworks/_components/artwork-card';
-import { Calendar, MapPin, Newspaper } from 'lucide-react';
+import { Calendar, MapPin, Newspaper, FileText } from 'lucide-react';
 import { SocialLinkItem } from './social-link-item';
 
 export type UnclaimedArtistProfileRow = {
@@ -18,6 +18,8 @@ export type UnclaimedArtistProfileRow = {
   links: string[] | null;
   galleries: string[] | null;
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[] | null;
+  /** Present when the registry profile has an uploaded CV */
+  artist_cv_json?: unknown | null;
 };
 
 export type ExhibitionSummary = {
@@ -48,6 +50,7 @@ export function UnclaimedArtistPublicView({
   const links = profile.links || [];
   const galleries = profile.galleries || [];
   const newsPublications = profile.news_publications || [];
+  const hasCv = Boolean(profile.artist_cv_json);
 
   const hasSidebarContent =
     Boolean(bio) || galleries.length > 0 || newsPublications.length > 0;
@@ -105,6 +108,17 @@ export function UnclaimedArtistPublicView({
                   {links.map((link) => (
                     <SocialLinkItem key={link} url={link} />
                   ))}
+                </div>
+              )}
+              {hasCv && (
+                <div className="mt-4">
+                  <Link
+                    href={`/artists/${profile.id}/cv`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-wine/20 bg-wine/5 px-3 py-1.5 text-xs font-serif text-wine hover:bg-wine/10 transition-colors"
+                  >
+                    <FileText className="h-3 w-3" />
+                    CV
+                  </Link>
                 </div>
               )}
             </div>

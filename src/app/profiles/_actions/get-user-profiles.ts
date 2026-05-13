@@ -27,6 +27,7 @@ export type UserProfile = {
   // Artist CV (grants feature)
   artist_cv_json?: unknown;
   artist_cv_file_url?: string | null;
+  artist_cv_file_path?: string | null;
   artist_cv_uploaded_at?: string | null;
 };
 

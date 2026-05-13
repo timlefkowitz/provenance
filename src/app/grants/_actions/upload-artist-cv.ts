@@ -106,6 +106,7 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
     .update({
       artist_cv_json: cvJson,
       artist_cv_file_url: fileUrl,
+      artist_cv_file_path: fileName,
       artist_cv_uploaded_at: new Date().toISOString(),
     })
     .eq('id', artistProfile.id)

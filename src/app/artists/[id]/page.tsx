@@ -15,7 +15,7 @@ import {
   getUserProfileById,
   accountHasActiveGalleryProfile,
 } from '../../profiles/_actions/get-user-profiles';
-import { Calendar, MapPin, Newspaper } from 'lucide-react';
+import { Calendar, MapPin, Newspaper, FileText } from 'lucide-react';
 import { AccountSettingsButton } from '~/components/account-settings-button';
 import {
   UnclaimedArtistPublicView,
@@ -97,7 +97,7 @@ export default async function ArtistProfilePage({
     const { data: profileRow } = await sb
       .from('user_profiles')
       .select(
-        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active',
+        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active, artist_cv_json',
       )
       .eq('id', id)
       .eq('role', USER_ROLES.ARTIST)
@@ -404,6 +404,14 @@ export default async function ArtistProfilePage({
     (isGallery && isOwner && roleProfile?.id) ||
     (isGallery && isOwner && galleryEligibleThumbnails.length > 0);
 
+  // CV button data — artists only (not galleries)
+  const hasCv = isArtistProfile && Boolean(roleProfile?.artist_cv_json);
+  const cvHref = (() => {
+    const base = `/artists/${id}/cv`;
+    if (requestedProfileId && roleProfile?.id) return `${base}?profileId=${roleProfile.id}`;
+    return base;
+  })();
+
   const exhibitionDetailHref = (exhibitionId: string) => {
     if (isGallery) {
       return `/exhibitions/${exhibitionId}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`;
@@ -546,22 +554,46 @@ export default async function ArtistProfilePage({
                         {publishedSiteUrl ? 'Manage Website' : 'Create Website'}
                       </Link>
                     </Button>
+                    {isArtistProfile && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="font-serif border-wine/30 hover:bg-wine/10"
+                      >
+                        <Link href={cvHref}>
+                          <FileText className="h-3.5 w-3.5 mr-1.5" />
+                          {hasCv ? 'View CV' : 'Upload CV'}
+                        </Link>
+                      </Button>
+                    )}
                     <AccountSettingsButton />
                   </div>
                 )}
 
-                {/* Public: "Website" badge when site is live (visible to all visitors) */}
-                {!isOwner && publishedSiteUrl && (
-                  <div className="shrink-0">
-                    <a
-                      href={publishedSiteUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-wine/20 bg-wine/5 px-3 py-1.5 text-xs font-serif text-wine hover:bg-wine/10 transition-colors"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Website
-                    </a>
+                {/* Public badges: Website + CV (visitors) */}
+                {!isOwner && (publishedSiteUrl || hasCv) && (
+                  <div className="shrink-0 flex flex-wrap gap-2">
+                    {publishedSiteUrl && (
+                      <a
+                        href={publishedSiteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-wine/20 bg-wine/5 px-3 py-1.5 text-xs font-serif text-wine hover:bg-wine/10 transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Website
+                      </a>
+                    )}
+                    {hasCv && (
+                      <Link
+                        href={cvHref}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-wine/20 bg-wine/5 px-3 py-1.5 text-xs font-serif text-wine hover:bg-wine/10 transition-colors"
+                      >
+                        <FileText className="h-3 w-3" />
+                        CV
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
