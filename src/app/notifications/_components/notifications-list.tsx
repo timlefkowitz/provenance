@@ -11,6 +11,7 @@ import {
   FileText,
   UserPlus,
   ScrollText,
+  Users,
 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { markNotificationAsRead } from '~/lib/notifications';
@@ -103,6 +104,8 @@ export function NotificationsList({
       case 'artist_profile_claim_approved':
       case 'artist_profile_claim_rejected':
         return <UserPlus className="h-5 w-5" />;
+      case 'gallery_team_invite':
+        return <Users className="h-5 w-5" />;
       case 'message':
         return <MessageSquare className="h-5 w-5" />;
       case 'provenance_service_request':
@@ -135,6 +138,8 @@ export function NotificationsList({
         return 'text-notify-warning';
       case 'provenance_updated':
         return 'text-notify-info';
+      case 'gallery_team_invite':
+        return 'text-wine';
       default:
         return 'text-ink';
     }
@@ -331,6 +336,18 @@ export function NotificationsList({
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
                           View Claims
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'gallery_team_invite' && (
+                      <Link href="/portal">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          Go to Portal
                         </Button>
                       </Link>
                     )}

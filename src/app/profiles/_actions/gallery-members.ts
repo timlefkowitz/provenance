@@ -331,16 +331,23 @@ export async function inviteGalleryMember(
       return { success: false, error: insertError.message };
     }
 
+    console.log('[Notifications] creating gallery_team_invite notification', {
+      userId: invitedUser.id,
+      galleryProfileId,
+      role,
+    });
     // Send notification to invited user
     try {
       await createNotification({
         userId: invitedUser.id,
-        type: 'message',
-        title: 'Gallery Invitation',
-        message: `You have been added as a ${role} to the gallery "${profile.name}".`,
+        type: 'gallery_team_invite',
+        title: `You were added to ${profile.name}`,
+        message: `You have been added as a ${role} to the gallery "${profile.name}". Switch to Gallery mode to manage exhibitions and certificates.`,
+        metadata: { galleryProfileId, role, galleryName: profile.name },
       });
+      console.log('[Notifications] gallery_team_invite created', { userId: invitedUser.id, galleryProfileId });
     } catch (notifError) {
-      console.error('Error creating notification:', notifError);
+      console.error('[Notifications] Error creating gallery_team_invite notification:', notifError);
       // Don't fail the invitation if notification fails
     }
 

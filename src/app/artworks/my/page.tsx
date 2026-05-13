@@ -3,7 +3,8 @@ import { Images } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
-import { getUserRole, type UserRole } from '~/lib/user-roles';
+import { getUserGalleryProfiles } from '~/app/artworks/add/_actions/get-user-gallery-profiles';
+import { getUserRole, getCertificateTypeForRole, type UserRole } from '~/lib/user-roles';
 import { readPerspective, perspectiveToOwnerRole } from '~/lib/read-perspective';
 import { buildModeEntityDisplayNames } from '~/lib/mode-entity-display-names';
 import { SpreadsheetEditForm } from '../edit-provenance/_components/spreadsheet-edit-form';
@@ -60,24 +61,90 @@ export default async function MyArtworksPage({
        edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
        image_url, created_at, is_sold, display_order, certificate_type, status`;
 
+  // Determine the certificate type that matches the active perspective so the
+  // collection only shows relevant cert types (COA for artists, COO for
+  // collectors, COS for gallery/institution team members).
+  const certFilter = getCertificateTypeForRole(activeRole);
+
+  const isGalleryMode =
+    activeRole === 'gallery' || activeRole === 'institution';
+
+  // In gallery/institution mode we show the gallery team's COS artworks
+  // (filtered by gallery_profile_id). Load all gallery profiles the user
+  // is part of (owned + team memberships via getUserGalleryProfiles).
+  const galleryProfiles = isGalleryMode
+    ? await getUserGalleryProfiles(user.id)
+    : [];
+
+  const galleryProfileIds = galleryProfiles.map((p) => p.id);
+
+  console.log('[Collection] fetch params', {
+    activeRole,
+    certFilter,
+    isGalleryMode,
+    galleryProfileCount: galleryProfileIds.length,
+    galleryProfileIds,
+  });
+
   // Fetch artworks + user profiles in parallel so the early-return path also
   // has entity names available for the New Exhibition dialog.
-  const [artworksResult, userProfiles] = await Promise.all([
-    client
+  let artworksResult: { data: Record<string, unknown>[] | null; error: unknown } = { data: null, error: null };
+
+  if (isGalleryMode && galleryProfileIds.length > 0) {
+    // Gallery / institution mode: fetch COS rows across all gallery profiles
+    // the user belongs to (owned + team). account_id is NOT filtered because
+    // different team members post under their own account_id.
+    const { data, error } = await (client as any)
+      .from('artworks')
+      .select(artworkCollectionSelect)
+      .in('gallery_profile_id', galleryProfileIds)
+      .eq('status', 'verified')
+      .eq('certificate_type', certFilter)
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false });
+    artworksResult = { data: data ?? [], error };
+  } else {
+    // Artist / collector mode (or gallery mode with no profiles yet): fetch
+    // by account_id filtered to the cert type matching the perspective.
+    const { data, error } = await (client as any)
       .from('artworks')
       .select(artworkCollectionSelect)
       .eq('account_id', user.id)
       .eq('status', 'verified')
+      .eq('certificate_type', certFilter)
       .order('display_order', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false }),
-    getUserProfiles(user.id),
-  ]);
+      .order('created_at', { ascending: false });
+    artworksResult = { data: data ?? [], error };
+  }
+
+  if (artworksResult.error) {
+    console.error('[Collection] artworks fetch failed', artworksResult.error);
+  }
+
+  const userProfiles = await getUserProfiles(user.id);
+
+  // Gallery team account IDs — used to find exhibitions owned by any of the
+  // team's gallery accounts so draft showroom listings surface correctly.
+  const galleryAccountIds = [
+    ...new Set(
+      galleryProfiles
+        .map((p) => p.user_id)
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  ];
+
+  // Exhibitions we need to scan for draft artwork rows:
+  // • personal exhibitions (gallery_id = user.id)
+  // • team gallery exhibitions (gallery_id IN galleryAccountIds)
+  const exhibitionOwnerIds = isGalleryMode
+    ? [...new Set([user.id, ...galleryAccountIds])]
+    : [user.id];
 
   /** Draft listings linked to shows you own (`exhibition_artworks` → exhibitions.gallery_id). */
-  const { data: ownedExhibitions } = await client
+  const { data: ownedExhibitions } = await (client as any)
     .from('exhibitions')
     .select('id')
-    .eq('gallery_id', user.id);
+    .in('gallery_id', exhibitionOwnerIds);
 
   const ownedExhibitionIds = (ownedExhibitions ?? []).map((e: { id: string }) => e.id).filter(Boolean);
   let draftRowsForShows: Record<string, unknown>[] = [];
@@ -97,12 +164,22 @@ export default async function MyArtworksPage({
     ] as string[];
 
     if (showArtworkIds.length > 0) {
-      const { data: drafts } = await client
+      // For draft rows in gallery mode, match by gallery_profile_id; for
+      // personal modes, match by account_id.
+      let draftQuery = (client as any)
         .from('artworks')
         .select(artworkCollectionSelect)
         .in('id', showArtworkIds)
-        .eq('account_id', user.id)
+        .eq('certificate_type', certFilter)
         .eq('status', 'draft');
+
+      if (isGalleryMode && galleryProfileIds.length > 0) {
+        draftQuery = draftQuery.in('gallery_profile_id', galleryProfileIds);
+      } else {
+        draftQuery = draftQuery.eq('account_id', user.id);
+      }
+
+      const { data: drafts } = await draftQuery;
       draftRowsForShows = (drafts ?? []) as Record<string, unknown>[];
     }
   }
@@ -129,10 +206,13 @@ export default async function MyArtworksPage({
   });
 
   // Per-role display names for New Exhibition "Creating as" (profile → account → email).
+  // Pass team gallery profiles so the entity name shows "Flight" even when
+  // the user doesn't own a gallery profile themselves.
   const modeEntityNames = buildModeEntityDisplayNames(
     userProfiles,
     accountRow?.name ?? null,
     user.email ?? null,
+    galleryProfiles,
   );
 
   if (!artworks || artworks.length === 0) {
@@ -207,13 +287,25 @@ export default async function MyArtworksPage({
   const receiverName = bestProfile?.name ?? user.email ?? 'Unknown';
 
   // When the user is in gallery or institution mode, use the active profile's
-  // name for the catalog cover instead of the raw account name (username).
+  // name for the catalog cover. If the user has no owned gallery profile,
+  // fall back to the first team gallery profile name (e.g. "Flight").
   const activeProfileForMode =
-    activeRole === 'gallery' || activeRole === 'institution'
+    isGalleryMode
       ? (userProfiles.find((p) => p.role === activeRole && p.is_active) ?? null)
       : null;
+  const teamGalleryName = isGalleryMode && !activeProfileForMode
+    ? (galleryProfiles[0]?.name ?? null)
+    : null;
   const catalogGalleryName =
-    activeProfileForMode?.name ?? accountRow?.name ?? undefined;
+    activeProfileForMode?.name ?? teamGalleryName ?? accountRow?.name ?? undefined;
+
+  console.log('[Collection] artwork count and gallery context', {
+    artworkCount: artworks.length,
+    certFilter,
+    isGalleryMode,
+    catalogGalleryName,
+    galleryProfileIds: galleryProfileIds.length,
+  });
 
   let linkableExhibitions = await getUserExhibitions(user.id, {
     forCollectionManagement: true,

@@ -75,9 +75,12 @@ export async function getUserExhibitions(
     galleryAccountIds.add(userId);
   }
 
-  // Gallery team members: exhibitions belong to the gallery account (for Add Artwork / API only).
-  // Skip when editing personal collection so unrelated gallery shows do not appear.
-  if (!forCollectionManagement) {
+  // Gallery team members: exhibitions belong to the gallery account.
+  // Include them in the collection picker when the user is in gallery mode
+  // (ownerRole === 'gallery') so they can link artworks to team shows.
+  // Still exclude them in artist/collector mode (forCollectionManagement but
+  // no ownerRole) so personal collections are not flooded with unrelated shows.
+  if (!forCollectionManagement || ownerRole === 'gallery') {
     const { data: memberships } = await (client as any)
       .from('gallery_members')
       .select('gallery_profile_id')

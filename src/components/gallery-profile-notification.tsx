@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { X, Building2 } from 'lucide-react';
+import { X, Building2, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import { getPerspective } from './perspective-switcher';
@@ -10,9 +10,15 @@ import { USER_ROLES } from '~/lib/user-roles';
 
 const DISMISSED_KEY = 'gallery_profile_notification_dismissed';
 
+type GalleryStatus =
+  | { state: 'idle' }
+  | { state: 'hasProfile' }
+  | { state: 'teamMember'; teamGalleryName: string | null }
+  | { state: 'noProfile' };
+
 export function GalleryProfileNotification() {
   const [isVisible, setIsVisible] = useState(false);
-  const [hasGalleryProfile, setHasGalleryProfile] = useState<boolean | null>(null);
+  const [galleryStatus, setGalleryStatus] = useState<GalleryStatus>({ state: 'idle' });
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -25,7 +31,7 @@ export function GalleryProfileNotification() {
       const dismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
       if (dismissed) {
         setIsVisible(false);
-        setHasGalleryProfile(null);
+        setGalleryStatus({ state: 'idle' });
         return;
       }
 
@@ -42,33 +48,42 @@ export function GalleryProfileNotification() {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data: { hasProfile: boolean; isTeamMember: boolean; teamGalleryName: string | null } =
+            await response.json();
           if (cancelled) return;
 
-          setHasGalleryProfile(data.hasProfile);
-          const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
-          if (!stillDismissed) {
-            setIsVisible(!data.hasProfile);
+          console.log('[GalleryProfileNotification] state', data);
+
+          if (data.hasProfile) {
+            // Owned profile — no banner needed
+            setGalleryStatus({ state: 'hasProfile' });
+            setIsVisible(false);
+            return;
           }
+
+          const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
+          if (stillDismissed) return;
+
+          if (data.isTeamMember) {
+            setGalleryStatus({ state: 'teamMember', teamGalleryName: data.teamGalleryName });
+          } else {
+            setGalleryStatus({ state: 'noProfile' });
+          }
+          setIsVisible(true);
         }
       } catch (error) {
         if (cancelled) return;
-        console.error(
-          '[GalleryProfileNotification] Error checking gallery profile',
-          error,
-        );
+        console.error('[GalleryProfileNotification] Error checking gallery profile', error);
         const stillDismissed = localStorage.getItem(DISMISSED_KEY) === 'true';
         if (!stillDismissed) {
+          setGalleryStatus({ state: 'noProfile' });
           setIsVisible(true);
         }
       }
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (
-        event.key === DISMISSED_KEY ||
-        event.key === 'user_perspective'
-      ) {
+      if (event.key === DISMISSED_KEY || event.key === 'user_perspective') {
         void syncNotificationVisibility();
       }
     };
@@ -79,64 +94,61 @@ export function GalleryProfileNotification() {
 
     void syncNotificationVisibility();
     window.addEventListener('storage', handleStorage);
-    window.addEventListener(
-      'user_perspective_changed',
-      handlePerspectiveChanged as EventListener,
-    );
+    window.addEventListener('user_perspective_changed', handlePerspectiveChanged as EventListener);
 
     return () => {
       cancelled = true;
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener(
-        'user_perspective_changed',
-        handlePerspectiveChanged as EventListener,
-      );
+      window.removeEventListener('user_perspective_changed', handlePerspectiveChanged as EventListener);
     };
   }, []);
 
   const handleDismiss = () => {
     if (typeof window !== 'undefined') {
-      // Permanently dismiss - store in localStorage
       localStorage.setItem(DISMISSED_KEY, 'true');
       setIsVisible(false);
-      // Also clear any pending state
-      setHasGalleryProfile(null);
+      setGalleryStatus({ state: 'idle' });
     }
   };
 
-  if (!isVisible) {
+  if (!isVisible || galleryStatus.state === 'idle' || galleryStatus.state === 'hasProfile') {
     return null;
   }
 
-  const profileLink = hasGalleryProfile 
-    ? '/profiles' // Link to profiles page to edit
-    : '/profiles/new?role=gallery'; // Link to create gallery profile
+  const isTeamMember = galleryStatus.state === 'teamMember';
+  const teamName =
+    galleryStatus.state === 'teamMember' ? galleryStatus.teamGalleryName : null;
 
   return (
-    <Alert 
-      variant="info" 
+    <Alert
+      variant="info"
       className="sticky top-[73px] left-0 right-0 z-40 rounded-none border-x-0 border-t border-b border-wine/30 bg-wine/10 shadow-sm"
     >
       <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
-          <Building2 className="h-5 w-5 text-wine flex-shrink-0" />
+          {isTeamMember ? (
+            <Users className="h-5 w-5 text-wine flex-shrink-0" />
+          ) : (
+            <Building2 className="h-5 w-5 text-wine flex-shrink-0" />
+          )}
           <AlertDescription className="text-ink font-serif text-sm">
-            {hasGalleryProfile ? (
+            {isTeamMember ? (
               <>
-                Complete your gallery setup by{' '}
-                <Link 
-                  href={profileLink}
+                {teamName
+                  ? `You're on the ${teamName} team.`
+                  : "You're on a gallery team."}{' '}
+                <Link
+                  href="/portal"
                   className="text-wine hover:text-wine/80 underline font-semibold"
                 >
-                  editing your gallery profile
+                  Go to your portal to manage →
                 </Link>
-                .
               </>
             ) : (
               <>
                 Create your gallery profile to showcase your exhibitions and connect with artists.{' '}
-                <Link 
-                  href={profileLink}
+                <Link
+                  href="/profiles/new?role=gallery"
                   className="text-wine hover:text-wine/80 underline font-semibold"
                 >
                   Create Gallery Profile →
@@ -158,4 +170,3 @@ export function GalleryProfileNotification() {
     </Alert>
   );
 }
-

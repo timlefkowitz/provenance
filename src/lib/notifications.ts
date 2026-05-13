@@ -41,7 +41,8 @@ export type NotificationType =
   | 'inventory_location_counterparty_linked'
   | 'vendor_counterparty_linked'
   | 'trial_expiring'
-  | 'subscription_payment_failed';
+  | 'subscription_payment_failed'
+  | 'gallery_team_invite';
 
 export interface CreateNotificationParams {
   userId: string;
