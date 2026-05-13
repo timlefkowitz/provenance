@@ -2,7 +2,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { valueAt, type ArtworkValueRow, type ValuationRow, type ValueResult } from './value-waterfall';
 
-const COLLECTION_CERT_TYPES = ['authenticity', 'ownership'];
+const COLLECTION_CERT_TYPES = ['ownership'];
 
 const SELECT_COLS =
   'id, title, artist_name, image_url, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, account_id, artist_account_id, certificate_type, value';
@@ -133,6 +133,40 @@ export async function loadCollectionBreakdown(userId: string): Promise<Breakdown
 }
 
 /**
+ * Return the current per-artwork breakdown for a gallery's roster,
+ * sorted by value descending. No certificate_type filter.
+ */
+export async function loadGalleryBreakdown(galleryProfileIds: string[]): Promise<BreakdownRow[]> {
+  console.log('[PortalGraphs] loadGalleryBreakdown started', { galleryProfileIds });
+
+  if (!galleryProfileIds.length) return [];
+
+  const admin = getSupabaseServerAdminClient() as any;
+
+  try {
+    const { data, error } = await admin
+      .from('artworks')
+      .select(SELECT_COLS)
+      .in('gallery_profile_id', galleryProfileIds);
+
+    if (error) console.error('[PortalGraphs] loadGalleryBreakdown fetch failed', error);
+
+    const artworks = (data ?? []) as RawArtworkRow[];
+    const valuationMap = await fetchValuationMap(admin, artworks.map((a) => a.id));
+
+    const rows = artworks
+      .map((a) => toBreakdownRow(a, valuationMap.get(a.id) ?? []))
+      .sort((a, b) => b.current_value.value_cents - a.current_value.value_cents);
+
+    console.log('[PortalGraphs] loadGalleryBreakdown complete', { count: rows.length });
+    return rows;
+  } catch (err) {
+    console.error('[PortalGraphs] loadGalleryBreakdown failed', err);
+    return [];
+  }
+}
+
+/**
  * Return the current per-artwork breakdown for an artist's body of work,
  * sorted by value descending.
  */
@@ -143,8 +177,8 @@ export async function loadArtistBreakdown(artistAccountId: string): Promise<Brea
 
   try {
     const [byArtistId, byAccountId] = await Promise.all([
-      admin.from('artworks').select(SELECT_COLS).eq('artist_account_id', artistAccountId),
-      admin.from('artworks').select(SELECT_COLS).eq('account_id', artistAccountId),
+      admin.from('artworks').select(SELECT_COLS).eq('artist_account_id', artistAccountId).eq('certificate_type', 'authenticity'),
+      admin.from('artworks').select(SELECT_COLS).eq('account_id', artistAccountId).eq('certificate_type', 'authenticity'),
     ]);
 
     if (byArtistId.error) console.error('[PortalGraphs] loadArtistBreakdown byArtistId failed', byArtistId.error);

@@ -3,53 +3,45 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import type { PortfolioSeries, PortfolioPoint } from './types';
 import { valueAt, type ArtworkValueRow, type ValuationRow } from './value-waterfall';
 
+const EMPTY_SERIES: PortfolioSeries = {
+  series: [],
+  total_cents: 0,
+  low_cents: 0,
+  high_cents: 0,
+  workCount: 0,
+  valuationCoverage: 0,
+};
+
 /**
- * Return a 12-month "market cap" time series for an artist.
+ * Return a 12-month "market cap" time series for a gallery.
  *
- * "Body of work" at a given month-end means all artworks where
- * artist_account_id = artistAccountId AND created_at <= t.
- *
- * Market cap = sum of best available value estimate per artwork.
+ * "Roster" = all artworks where gallery_profile_id is in the given list.
+ * No certificate_type filter — covers COA, COO, show, and any future types.
  */
-export async function computeArtistMarketCapSeries(
-  artistAccountId: string,
+export async function computeGalleryMarketCapSeries(
+  galleryProfileIds: string[],
   monthsBack = 12,
 ): Promise<PortfolioSeries> {
-  console.log('[PortalGraphs] computeArtistMarketCapSeries started', { artistAccountId, monthsBack });
+  console.log('[PortalGraphs] computeGalleryMarketCapSeries started', { galleryProfileIds, monthsBack });
+
+  if (!galleryProfileIds.length) {
+    console.log('[PortalGraphs] computeGalleryMarketCapSeries short-circuit — no gallery profiles');
+    return EMPTY_SERIES;
+  }
 
   const admin = getSupabaseServerAdminClient() as any;
 
   try {
-    // Fetch artworks where the user is the credited artist OR the uploader (account owner).
-    // Many artists upload their own work without setting artist_account_id on each piece,
-    // so we union both sets and de-duplicate by id.
-    const [byArtistId, byAccountId] = await Promise.all([
-      admin
-        .from('artworks')
-        .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value, certificate_type')
-        .eq('artist_account_id', artistAccountId)
-        .eq('certificate_type', 'authenticity'),
-      admin
-        .from('artworks')
-        .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value, certificate_type')
-        .eq('account_id', artistAccountId)
-        .eq('certificate_type', 'authenticity'),
-    ]);
+    const { data: artworkRows, error: artworkErr } = await admin
+      .from('artworks')
+      .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value')
+      .in('gallery_profile_id', galleryProfileIds);
 
-    if (byArtistId.error) {
-      console.error('[PortalGraphs] computeArtistMarketCapSeries artist_account_id fetch failed', byArtistId.error);
-    }
-    if (byAccountId.error) {
-      console.error('[PortalGraphs] computeArtistMarketCapSeries account_id fetch failed', byAccountId.error);
+    if (artworkErr) {
+      console.error('[PortalGraphs] computeGalleryMarketCapSeries artwork fetch failed', artworkErr);
     }
 
-    // De-duplicate — a work may appear in both result sets
-    const artworkMap = new Map<string, any>();
-    for (const row of [...(byArtistId.data ?? []), ...(byAccountId.data ?? [])]) {
-      if (!artworkMap.has(row.id)) artworkMap.set(row.id, row);
-    }
-
-    const artworks = Array.from(artworkMap.values()) as Array<
+    const artworks = (artworkRows ?? []) as Array<
       ArtworkValueRow & { created_at: string; is_sold: boolean; sold_to_account_id: string | null }
     >;
 
@@ -64,13 +56,11 @@ export async function computeArtistMarketCapSeries(
         .order('generated_at', { ascending: false });
 
       if (valErr) {
-        console.error('[PortalGraphs] computeArtistMarketCapSeries valuation fetch failed', valErr);
+        console.error('[PortalGraphs] computeGalleryMarketCapSeries valuation fetch failed', valErr);
       }
 
       for (const v of (valRows ?? []) as ValuationRow[]) {
-        if (!valuationsByArtwork.has(v.artwork_id)) {
-          valuationsByArtwork.set(v.artwork_id, []);
-        }
+        if (!valuationsByArtwork.has(v.artwork_id)) valuationsByArtwork.set(v.artwork_id, []);
         valuationsByArtwork.get(v.artwork_id)!.push(v);
       }
     }
@@ -100,12 +90,7 @@ export async function computeArtistMarketCapSeries(
       }
 
       const monthLabel = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-01`;
-      return {
-        month: monthLabel,
-        value_cents: totalValue,
-        low_cents: totalLow,
-        high_cents: totalHigh,
-      };
+      return { month: monthLabel, value_cents: totalValue, low_cents: totalLow, high_cents: totalHigh };
     });
 
     // Current snapshot
@@ -141,8 +126,8 @@ export async function computeArtistMarketCapSeries(
       valuationCoverage,
     };
 
-    console.log('[PortalGraphs] computeArtistMarketCapSeries complete', {
-      artistAccountId,
+    console.log('[PortalGraphs] computeGalleryMarketCapSeries complete', {
+      galleryProfileIds,
       total: currentTotal,
       points: series.length,
       workCount,
@@ -151,14 +136,7 @@ export async function computeArtistMarketCapSeries(
 
     return result;
   } catch (err) {
-    console.error('[PortalGraphs] computeArtistMarketCapSeries failed', err);
-    return {
-      series: [],
-      total_cents: 0,
-      low_cents: 0,
-      high_cents: 0,
-      workCount: 0,
-      valuationCoverage: 0,
-    };
+    console.error('[PortalGraphs] computeGalleryMarketCapSeries failed', err);
+    return EMPTY_SERIES;
   }
 }

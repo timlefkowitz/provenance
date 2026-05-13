@@ -1,15 +1,16 @@
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Building2, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
-import { computePortfolioSeries } from '~/lib/portal-graphs/compute-portfolio-series';
+import { computeGalleryMarketCapSeries } from '~/lib/portal-graphs/compute-gallery-market-cap-series';
 import { formatMoney } from '~/lib/portal-graphs/types';
 import { ValueLineChart } from './value-line-chart';
 
-const DETAIL_HREF = '/portal/market-cap/collection';
+const DETAIL_HREF = '/portal/market-cap/gallery';
 
-interface PortfolioValueCardProps {
-  userId: string;
+interface GalleryMarketCapCardProps {
+  galleryProfileIds: string[];
+  galleryName?: string | null;
 }
 
 function DeltaPill({ current, previous }: { current: number; previous: number }) {
@@ -40,17 +41,19 @@ function DeltaPill({ current, previous }: { current: number; previous: number })
   );
 }
 
-export async function PortfolioValueCard({ userId }: PortfolioValueCardProps) {
-  const data = await computePortfolioSeries(userId);
+export async function GalleryMarketCapCard({ galleryProfileIds, galleryName }: GalleryMarketCapCardProps) {
+  console.log('[GalleryMarketCapCard] rendering', { galleryProfileIds, galleryName });
 
-  const previousPoint = data.series[0];
-  const previousValue = previousPoint?.value_cents ?? 0;
+  const data = await computeGalleryMarketCapSeries(galleryProfileIds);
 
   if (data.workCount === 0 || data.total_cents === 0) {
     return null;
   }
 
+  const previousPoint = data.series[0];
+  const previousValue = previousPoint?.value_cents ?? 0;
   const hasBand = data.low_cents !== data.total_cents || data.high_cents !== data.total_cents;
+  const title = galleryName ? `${galleryName} Market Cap` : 'Your Gallery Market Cap';
 
   return (
     <Link href={DETAIL_HREF} className="group block">
@@ -59,11 +62,12 @@ export async function PortfolioValueCard({ userId }: PortfolioValueCardProps) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle className="font-display text-xl text-wine mb-1 flex items-center gap-1">
-                Your Collection Market Cap
+                <Building2 className="h-4 w-4 text-wine/60" />
+                {title}
                 <ChevronRight className="h-4 w-4 text-wine/40 group-hover:text-wine transition-colors" />
               </CardTitle>
               <p className="text-xs text-ink/50 font-serif">
-                {data.workCount} {data.workCount === 1 ? 'work' : 'works'} &middot; owned (COO) &middot; last 12 months
+                {data.workCount} {data.workCount === 1 ? 'work' : 'works'} on gallery roster &middot; last 12 months
               </p>
             </div>
             <DeltaPill current={data.total_cents} previous={previousValue} />

@@ -19,6 +19,7 @@ import { getLeadsForArtist } from './or/_actions/leads';
 import { NewUserConversionTracker } from './_components/new-user-conversion-tracker';
 import { PortfolioValueCard } from './_components/portfolio-value-card';
 import { ArtistMarketCapCard } from './_components/artist-market-cap-card';
+import { GalleryMarketCapCard } from './_components/gallery-market-cap-card';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -61,6 +62,12 @@ export default async function PortalPage() {
   // as the primary "Your Artworks" accounts in the Portal.
   const primaryAccountIds =
     galleryOwnerIds.length > 0 ? galleryOwnerIds : [user.id];
+
+  // Gallery profile ids for the Gallery Market Cap card
+  const galleryProfileIds = (galleryProfiles || [])
+    .map((p: any) => p.id)
+    .filter((id: unknown): id is string => typeof id === 'string');
+  const firstGalleryName: string | null = (galleryProfiles?.[0] as any)?.name ?? null;
 
   // Get user's artworks count and recent artworks
   // Uses admin client so "Your Artworks" shows correctly for gallery owners and team members.
@@ -376,10 +383,11 @@ export default async function PortalPage() {
         )}
       </div>
 
-      {/* Portfolio Value + Artist Market Cap graphs — always shown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <PortfolioValueCard userId={user.id} />
+      {/* Market cap cards — each hides itself when no qualifying works exist */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         <ArtistMarketCapCard artistAccountId={user.id} />
+        <PortfolioValueCard userId={user.id} />
+        <GalleryMarketCapCard galleryProfileIds={galleryProfileIds} galleryName={firstGalleryName} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

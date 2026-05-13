@@ -41,11 +41,16 @@ export interface ValueResult {
   };
 }
 
-/** Parse a free-text declared value like "$5,000" or "5000" into cents */
+/** Parse a free-text declared value like "$5,000" or "5000" or "5,000.50" into cents */
 function parseDeclaredValueCents(raw: string | null | undefined): number {
   if (!raw) return 0;
-  const numeric = Number((raw.match(/[0-9.]+/) ?? ['0'])[0]);
-  return Number.isFinite(numeric) ? Math.round(numeric * 100) : 0;
+  // Strip currency symbols, spaces, and thousands-separator commas before parsing
+  const cleaned = raw.replace(/[$€£¥\s]/g, '').replace(/,(?=\d{3}(?:[.,]|$))/g, '');
+  const match = cleaned.match(/-?\d+(?:[.,]\d+)?/);
+  if (!match) return 0;
+  // Normalise decimal separator to '.'
+  const numeric = Number(match[0].replace(',', '.'));
+  return Number.isFinite(numeric) && numeric > 0 ? Math.round(numeric * 100) : 0;
 }
 
 function formatDateShort(iso: string): string {

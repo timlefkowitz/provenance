@@ -7,7 +7,7 @@ import { valueAt, type ArtworkValueRow, type ValuationRow } from './value-waterf
  * Certificate types that represent genuine collection ownership.
  * 'show' (gallery exhibition certificates) is intentionally excluded.
  */
-const COLLECTION_CERT_TYPES = ['authenticity', 'ownership'];
+const COLLECTION_CERT_TYPES = ['ownership'];
 
 const SELECT_COLS =
   'id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, account_id, artist_account_id, certificate_type, value';

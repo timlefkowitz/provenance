@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus, Palette, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { Button } from '@kit/ui/button';
 
 import { computeArtistMarketCapSeries } from '~/lib/portal-graphs/compute-artist-market-cap-series';
 import { formatMoney } from '~/lib/portal-graphs/types';
@@ -48,28 +47,7 @@ export async function ArtistMarketCapCard({ artistAccountId }: ArtistMarketCapCa
   const previousValue = previousPoint?.value_cents ?? 0;
 
   if (data.workCount === 0 || data.total_cents === 0) {
-    return (
-      <Link href={DETAIL_HREF} className="group block">
-        <Card className="border-wine/20 bg-parchment/60 transition-colors group-hover:bg-parchment/80 group-hover:border-wine/40">
-          <CardHeader>
-            <CardTitle className="font-display text-xl text-wine">Your Artist Market Cap</CardTitle>
-            <p className="text-xs text-ink/50 font-serif">Total value of your body of work</p>
-          </CardHeader>
-          <CardContent className="text-center py-8">
-            <Palette className="h-10 w-10 text-wine/20 mx-auto mb-3" />
-            <p className="text-ink/60 font-serif text-sm mb-2">
-              Your market cap isn&apos;t calculated yet.
-            </p>
-            <p className="text-ink/40 font-serif text-xs mb-4">
-              Add your works and enter a value when creating certificates — your market cap will grow as valuations accumulate.
-            </p>
-            <Button asChild variant="outline" className="font-serif border-wine/30 hover:bg-wine/10 text-sm">
-              <Link href="/artworks/add">Add Your First Work →</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </Link>
-    );
+    return null;
   }
 
   const hasBand = data.low_cents !== data.total_cents || data.high_cents !== data.total_cents;
@@ -85,7 +63,7 @@ export async function ArtistMarketCapCard({ artistAccountId }: ArtistMarketCapCa
                 <ChevronRight className="h-4 w-4 text-wine/40 group-hover:text-wine transition-colors" />
               </CardTitle>
               <p className="text-xs text-ink/50 font-serif">
-                {data.workCount} {data.workCount === 1 ? 'work' : 'works'} in body of work &middot; last 12 months
+                {data.workCount} {data.workCount === 1 ? 'work' : 'works'} in body of work &middot; COA &middot; last 12 months
               </p>
             </div>
             <DeltaPill current={data.total_cents} previous={previousValue} />
