@@ -370,7 +370,7 @@ export default async function ArtistProfilePage({
       )
       .eq('status', 'verified')
       .order('created_at', { ascending: false })
-      .limit(12);
+      .limit(96);
 
     if (userRole === USER_ROLES.ARTIST) {
       const orParts: string[] = [`artist_account_id.eq.${account.id}`];
@@ -384,6 +384,7 @@ export default async function ArtistProfilePage({
       console.log('[ArtistProfile] artist works filter applied', {
         accountId: account.id,
         hasRoleProfile: Boolean(roleProfile?.id),
+        roleProfileId: roleProfile?.id ?? null,
       });
     } else {
       artworksQuery = artworksQuery.eq('account_id', account.id);
@@ -393,7 +394,14 @@ export default async function ArtistProfilePage({
       artworksQuery = artworksQuery.eq('is_public', true);
     }
 
-    const { data: artworksData } = await artworksQuery;
+    const { data: artworksData, error: artworksErr } = await artworksQuery;
+    if (artworksErr) console.error('[ArtistProfile] artworks fetch failed', artworksErr);
+    console.log('[ArtistProfile] artworks fetched', {
+      accountId: account.id,
+      userRole,
+      isOwner,
+      count: artworksData?.length ?? 0,
+    });
     artworks = artworksData;
   }
 

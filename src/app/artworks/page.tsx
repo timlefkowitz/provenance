@@ -247,6 +247,13 @@ export default async function ArtworksPage({
 
     totalGroups = allGroups.length;
     artistGroups = allGroups.slice(groupOffset, groupOffset + GROUPS_PER_PAGE);
+    console.log('[Artworks] by-artist grouped view', {
+      rawArtworkCount: artworks.length,
+      totalGroups,
+      page,
+      groupsOnPage: artistGroups.length,
+      searchQuery: q || null,
+    });
   }
 
   // -------------------------------------------------------
@@ -318,9 +325,17 @@ export default async function ArtworksPage({
             <div className="space-y-10">
               {artistGroups.map((group) => (
                 <section key={group.account_id}>
-                  <h2 className="font-display text-lg font-semibold text-wine mb-3 border-b border-wine/15 pb-1">
-                    {group.artist_name ?? 'Unknown Artist'}
-                  </h2>
+                  <div className="flex items-baseline justify-between mb-3 border-b border-wine/15 pb-1 gap-4">
+                    <h2 className="font-display text-lg font-semibold text-wine">
+                      {group.artist_name ?? 'Unknown Artist'}
+                    </h2>
+                    <Link
+                      href={`/artists/${group.account_id}`}
+                      className="shrink-0 text-xs font-serif text-wine/60 hover:text-wine transition-colors"
+                    >
+                      View all works →
+                    </Link>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {group.artworks.map((artwork) => (
                       <ArtworkCard
