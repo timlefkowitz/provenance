@@ -153,7 +153,7 @@ export default async function MarketCapBreakdownPage({ params }: PageProps) {
                 <BreakdownRowComponent
                   key={row.artwork_id}
                   row={row}
-                  artworkHref={`/artworks/${row.artwork_id}`}
+                  artworkHref={`/artworks/${row.artwork_id}/certificate`}
                 />
               ))}
             </div>
