@@ -22,6 +22,15 @@ const INTERNAL_PACKAGES = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: true,
+  /** Bundled server routes must resolve the ffmpeg-static native binary at runtime */
+  serverExternalPackages: ['ffmpeg-static'],
+  /**
+   * Ensure the ffmpeg binary is copied into the traced server bundle on Vercel.
+   * See https://github.com/vercel-labs/ffmpeg-on-vercel and Next.js output file tracing.
+   */
+  outputFileTracingIncludes: {
+    '/api/admin/audio/denoise': ['./node_modules/ffmpeg-static/**/*'],
+  },
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
   images: {

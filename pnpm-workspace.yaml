@@ -6,5 +6,6 @@ packages:
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
+  - ffmpeg-static
   - supabase
 

@@ -63,6 +63,11 @@ const TOOLS: {
     desc: 'Verification API tokens.',
   },
   {
+    href: '/admin/audio',
+    title: 'audio',
+    desc: 'Voice Memo denoise (upload → clean m4a).',
+  },
+  {
     href: '/admin/queued-artworks',
     title: 'queued',
     desc: 'Homepage feature pool.',
