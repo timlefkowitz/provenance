@@ -19,7 +19,6 @@ const STATIC_PATHS = [
   '/lp/gallery',
   '/lp/institution',
   '/lp/provenance-service',
-  '/pitch',
   '/investors',
 ] as const;
 

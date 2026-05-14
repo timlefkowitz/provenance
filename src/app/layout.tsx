@@ -18,6 +18,7 @@ import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
 import { TrialBanner } from "~/components/trial-banner";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
+import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
 import { cn } from "@kit/ui/utils";
 
 const cinzel = Cinzel({
@@ -42,6 +43,7 @@ const caslon = Libre_Caslon_Text({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getPublicSiteOrigin()),
   title: "Provenance | A Journal of Art, Objects & Their Histories",
   description: "Verified provenance entries and immutable historical timelines on Avalanche.",
   icons: {

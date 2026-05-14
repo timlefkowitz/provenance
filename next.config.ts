@@ -51,6 +51,17 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: true },
 
   /**
+   * `/sitemap` (no extension) returns an HTML 404; Search Console treats that as an invalid sitemap.
+   * Send crawlers and mistaken submissions to the real XML route.
+   */
+  async redirects() {
+    return [
+      { source: '/sitemap', destination: '/sitemap.xml', permanent: true },
+      { source: '/sitemap/', destination: '/sitemap.xml', permanent: true },
+    ];
+  },
+
+  /**
    * After deploys/rollbacks, cached HTML pointing at old _next/static chunks causes
    * Server Action ID mismatches on /portal. Discourage caching the document shell.
    */
