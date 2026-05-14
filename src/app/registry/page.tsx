@@ -1,6 +1,6 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
 import { isPublicDirectoryGallery } from '~/config/public-registry-galleries';
 import { MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY } from '~/config/registry-directory-requirements';
 import { registryRowKey } from './_lib/registry-row-key';
@@ -158,7 +158,7 @@ export default async function RegistryPage() {
   });
 
   try {
-    // ── Gallery previews: COAs only, most-recent fallback ──────────────
+    // ── Gallery previews: COS / COO / COA (most recent with image fallback) ──────────────
     if (galleryProfileIds.length > 0) {
       const { data: galleryArtRows, error: gErr } = await (client as any)
         .from('artworks')
@@ -166,7 +166,7 @@ export default async function RegistryPage() {
         .in('gallery_profile_id', galleryProfileIds)
         .eq('status', 'verified')
         .eq('is_public', true)
-        .eq('certificate_type', 'authenticity')
+        .in('certificate_type', [...GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES])
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(2000);
@@ -202,7 +202,7 @@ export default async function RegistryPage() {
           .in('id', pickArtworkIds)
           .eq('status', 'verified')
           .eq('is_public', true)
-          .eq('certificate_type', 'authenticity')
+          .in('certificate_type', [...GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES])
           .not('image_url', 'is', null);
 
         for (const picked of pickedRows || []) {

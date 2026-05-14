@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
 import {
   getExhibitionsForGallery,
   getExhibitionsForArtistAccount,
@@ -264,10 +264,8 @@ export default async function ArtistProfilePage({
   const exhibitions = allExhibitions.slice(0, 6);
 
   // ── THUMBNAIL PICKER DATA (gallery owner only) ──
-  // For galleries viewing their own profile, fetch the verified, public COAs
-  // tied to this gallery profile so the owner can pick which artwork
-  // represents the gallery in the public /registry directory. Mirrors the
-  // exact eligibility rules enforced by setRegistryArtwork().
+  // Verified, public COS / COO / COA rows tied to this gallery profile so the owner
+  // can pick what appears on /registry. Mirrors setRegistryArtwork().
   let galleryEligibleThumbnails: EligibleThumbnailArtwork[] = [];
   let gallerySelectedThumbnailId: string | null = null;
   if (isGallery && isOwner && roleProfile?.id) {
@@ -278,7 +276,7 @@ export default async function ArtistProfilePage({
         .eq('gallery_profile_id', roleProfile.id)
         .eq('status', 'verified')
         .eq('is_public', true)
-        .eq('certificate_type', 'authenticity')
+        .in('certificate_type', [...GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES])
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(48),

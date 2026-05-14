@@ -3,6 +3,11 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
+import {
+  CERTIFICATE_TYPES,
+  certificateEligibleForRegistryPhoto,
+  USER_ROLES,
+} from '~/lib/user-roles';
 
 type SetRegistryArtworkArgs = {
   artworkId: string;
@@ -16,7 +21,8 @@ type ActionResult = { success: true } | { success: false; error: string };
  * Pin an artwork as the registry preview thumbnail for the calling user's
  * artist profile, or for a specific gallery profile they manage.
  *
- * The artwork must be verified, public, and have certificate_type='authenticity'.
+ * The artwork must be verified and public. Artists may pin a COA; galleries may pin
+ * a COS, COO, or COA tied to the gallery profile.
  * Gallery mode requires the caller to be an owner/admin of the given gallery profile.
  */
 export async function setRegistryArtwork(args: SetRegistryArtworkArgs): Promise<ActionResult> {
@@ -35,7 +41,7 @@ export async function setRegistryArtwork(args: SetRegistryArtworkArgs): Promise<
     return { success: false, error: 'Not authenticated' };
   }
 
-  // Validate the artwork: must be a verified, public COA
+  // Validate artwork: verified, public, eligible certificate type for mode
   const { data: artwork, error: artworkError } = await (client as any)
     .from('artworks')
     .select('id, account_id, artist_account_id, gallery_profile_id, status, is_public, certificate_type')
@@ -55,7 +61,15 @@ export async function setRegistryArtwork(args: SetRegistryArtworkArgs): Promise<
     return { success: false, error: 'Artwork must be public' };
   }
 
-  if (artwork.certificate_type !== 'authenticity') {
+  if (args.mode === 'gallery') {
+    if (!certificateEligibleForRegistryPhoto(USER_ROLES.GALLERY, artwork.certificate_type)) {
+      return {
+        success: false,
+        error:
+          'Only a verified public Certificate of Show, Ownership, or Authenticity tied to this gallery can be used as the registry photo',
+      };
+    }
+  } else if (artwork.certificate_type !== CERTIFICATE_TYPES.AUTHENTICITY) {
     return { success: false, error: 'Only Certificates of Authenticity can be used as a registry photo' };
   }
 

@@ -64,6 +64,30 @@ export const CERTIFICATE_TYPES = {
 
 export type CertificateType = typeof CERTIFICATE_TYPES[keyof typeof CERTIFICATE_TYPES];
 
+/**
+ * Certificate types a verified, public artwork may use for a gallery profile's /registry thumbnail
+ * (COS, COO, or COA when tied to that profile via gallery_profile_id).
+ */
+export const GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES: readonly CertificateType[] = [
+  CERTIFICATE_TYPES.SHOW,
+  CERTIFICATE_TYPES.OWNERSHIP,
+  CERTIFICATE_TYPES.AUTHENTICITY,
+];
+
+/**
+ * Whether Collection / gallery profile UI may offer pinning this artwork for /registry (artist → COA only).
+ */
+export function certificateEligibleForRegistryPhoto(
+  mode: typeof USER_ROLES.ARTIST | typeof USER_ROLES.GALLERY,
+  certificateType: string | null | undefined,
+): boolean {
+  if (!certificateType) return false;
+  if (mode === USER_ROLES.GALLERY) {
+    return (GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES as readonly string[]).includes(certificateType);
+  }
+  return certificateType === CERTIFICATE_TYPES.AUTHENTICITY;
+}
+
 export function getCertificateTypeForRole(role: UserRole | null): CertificateType {
   if (role === USER_ROLES.GALLERY) return CERTIFICATE_TYPES.SHOW;
   if (role === USER_ROLES.INSTITUTION) return CERTIFICATE_TYPES.SHOW;

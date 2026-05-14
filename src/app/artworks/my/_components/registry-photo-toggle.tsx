@@ -21,7 +21,7 @@ type Props = {
  * When selected: wine star → clicking clears the registry photo.
  * When unselected: ghost star → clicking sets this artwork as the registry photo.
  *
- * Only rendered for COA artworks where the user has the right mode/profile.
+ * Only rendered for artworks eligible as /registry thumbnails in the active mode (COA for artists; COS / COO / COA for galleries).
  */
 export function RegistryPhotoToggle({
   artworkId,

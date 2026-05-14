@@ -20,7 +20,7 @@ export type EligibleThumbnailArtwork = {
 type Props = {
   /** The gallery's user_profiles.id (NOT the account id). */
   galleryProfileId: string;
-  /** Verified, public, COA artworks tied to this gallery profile. */
+  /** Verified, public COS / COO / COA artworks tied to this gallery profile. */
   artworks: EligibleThumbnailArtwork[];
   /** Currently selected registry_artwork_id, or null if none. */
   initialSelectedId: string | null;
@@ -28,8 +28,8 @@ type Props = {
 
 /**
  * Inline thumbnail picker for a gallery owner viewing their own /artists/[id]
- * profile (when role=gallery). Lets them choose which Certificate of
- * Authenticity is featured as the gallery's image in the public registry,
+ * profile (when role=gallery). Lets them choose which Certificate of Show,
+ * Ownership, or Authenticity is featured as the gallery's image on /registry,
  * without leaving the profile page.
  *
  * Uses the same server actions as the Collection Management star toggle so
@@ -48,9 +48,9 @@ export function GalleryThumbnailPicker({
     return (
       <div className="rounded-lg border border-dashed border-wine/20 bg-parchment/40 px-4 py-5 text-center">
         <p className="font-serif text-xs text-ink/55 leading-relaxed">
-          Once you publish a verified, public Certificate of Authenticity under
-          this gallery, you&apos;ll be able to pick it here as your directory
-          thumbnail.
+          Once you publish a verified, public Certificate of Show,
+          Ownership, or Authenticity under this gallery, you&apos;ll be able to
+          pick it here as your directory thumbnail on /registry.
         </p>
       </div>
     );
@@ -100,8 +100,9 @@ export function GalleryThumbnailPicker({
   return (
     <div className="space-y-3">
       <p className="font-serif text-xs text-ink/55 leading-relaxed">
-        Pick the Certificate of Authenticity that represents your gallery on
-        the public registry. Tap a thumbnail to make it the cover image.
+        Pick which certificate represents your gallery on the public registry
+        (/registry): Show, Ownership, or Authenticity. Tap a thumbnail to make it
+        the cover image.
       </p>
 
       {/* Horizontal scroller — Apple-style edge-to-edge thumbnail rail */}

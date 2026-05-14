@@ -53,7 +53,11 @@ import { publishExhibitionListing } from '~/app/exhibitions/_actions/publish-exh
 import { markArtworkSold } from '~/app/artworks/[id]/_actions/mark-artwork-sold';
 import { SoldToPicker, type SoldToValue } from './sold-to-picker';
 import { RequestValuationRow } from './request-valuation-row';
-import type { UserRole } from '~/lib/user-roles';
+import {
+  certificateEligibleForRegistryPhoto,
+  USER_ROLES,
+  type UserRole,
+} from '~/lib/user-roles';
 
 type LinkableExhibition = {
   id: string;
@@ -1264,9 +1268,23 @@ export function SpreadsheetEditForm({
             <div className="flex gap-3 py-1">
               {filteredArtworks.map((artwork) => {
                 const isSelected = selectedArtworkIds.has(artwork.id);
-                const isCoa = artwork.certificate_type === 'authenticity';
                 const scopeKey = getActiveScopeKey();
-                const isRegistryPhoto = isCoa && !!scopeKey && getActiveRegistryArtworkId() === artwork.id;
+                const canPinRegistryThumbnail =
+                  senderRole === USER_ROLES.ARTIST
+                    ? certificateEligibleForRegistryPhoto(
+                        USER_ROLES.ARTIST,
+                        artwork.certificate_type,
+                      )
+                    : senderRole === USER_ROLES.GALLERY
+                      ? certificateEligibleForRegistryPhoto(
+                          USER_ROLES.GALLERY,
+                          artwork.certificate_type,
+                        )
+                      : false;
+                const isRegistryPhoto =
+                  canPinRegistryThumbnail &&
+                  !!scopeKey &&
+                  getActiveRegistryArtworkId() === artwork.id;
                 return (
                   <div key={artwork.id} className="group snap-start shrink-0 w-[min(9.25rem,calc(50vw-1.75rem))] sm:w-[132px]">
                     <button
@@ -1321,7 +1339,7 @@ export function SpreadsheetEditForm({
                             #{artwork.display_order}
                           </div>
                         ) : null}
-                        {canSetRegistryPhoto && isCoa && scopeKey && (
+                        {canSetRegistryPhoto && canPinRegistryThumbnail && scopeKey && (
                           <RegistryPhotoToggle
                             artworkId={artwork.id}
                             mode={senderRole as 'artist' | 'gallery'}
@@ -1528,9 +1546,23 @@ export function SpreadsheetEditForm({
 
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                           {(() => {
-                            const isCoa = artwork.certificate_type === 'authenticity';
                             const scopeKey = getActiveScopeKey();
-                            const isPanelRegistryPhoto = isCoa && !!scopeKey && getActiveRegistryArtworkId() === artwork.id;
+                            const canPinRegistryThumbnail =
+                              senderRole === USER_ROLES.ARTIST
+                                ? certificateEligibleForRegistryPhoto(
+                                    USER_ROLES.ARTIST,
+                                    artwork.certificate_type,
+                                  )
+                                : senderRole === USER_ROLES.GALLERY
+                                  ? certificateEligibleForRegistryPhoto(
+                                      USER_ROLES.GALLERY,
+                                      artwork.certificate_type,
+                                    )
+                                  : false;
+                            const isPanelRegistryPhoto =
+                              canPinRegistryThumbnail &&
+                              !!scopeKey &&
+                              getActiveRegistryArtworkId() === artwork.id;
                             return (
                               <div className="group mx-auto sm:mx-0 flex-shrink-0">
                                 {artwork.image_url ? (
@@ -1545,7 +1577,7 @@ export function SpreadsheetEditForm({
                                       className="object-cover"
                                       sizes="(max-width:640px) 90vw, 80px"
                                     />
-                                    {canSetRegistryPhoto && isCoa && scopeKey && (
+                                    {canSetRegistryPhoto && canPinRegistryThumbnail && scopeKey && (
                                       <RegistryPhotoToggle
                                         artworkId={artwork.id}
                                         mode={senderRole as 'artist' | 'gallery'}
