@@ -54,6 +54,106 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
+/**
+ * Gallery directory preview: up to 5 pinned certificate images.
+ * Artists/collectors use a single hero image only (`listPreviewUrls` is null for them).
+ */
+function GalleryDirectoryCertificateMosaic({
+  urls,
+  name,
+  hoveredKey,
+}: {
+  urls: string[];
+  name: string;
+  hoveredKey: string | null;
+}) {
+  const n = urls.length;
+  if (n < 2) return null;
+
+  const cellFrame =
+    'relative min-h-0 ring-1 ring-inset ring-wine/[0.07] bg-wine/[0.03]';
+
+  if (n === 5) {
+    return (
+      <div
+        className="absolute inset-0 grid grid-cols-6 grid-rows-2 gap-0.5 bg-wine/10"
+        role="img"
+        aria-label={`${name} — ${n} certificates selected for directory preview`}
+      >
+        {urls.map((url, i) => (
+          <div
+            key={`${url}-${i}`}
+            className={cn(
+              cellFrame,
+              i < 3 ? 'col-span-2 row-start-1' : 'col-span-3 row-start-2',
+            )}
+          >
+            <Image
+              src={url}
+              alt={`${name} — certificate ${i + 1} of ${n} in directory preview`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 33vw, 140px"
+              unoptimized
+              priority={!hoveredKey && i === 0}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (n === 4) {
+    return (
+      <div
+        className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5 bg-wine/10"
+        role="img"
+        aria-label={`${name} — ${n} certificates selected for directory preview`}
+      >
+        {urls.map((url, i) => (
+          <div key={`${url}-${i}`} className={cellFrame}>
+            <Image
+              src={url}
+              alt={`${name} — certificate ${i + 1} of ${n} in directory preview`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 50vw, 210px"
+              unoptimized
+              priority={!hoveredKey && i === 0}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // 2 or 3 URLs: two-column stack; last odd tile spans full width (classic "hero + strip")
+  return (
+    <div
+      className="absolute inset-0 grid grid-cols-2 gap-0.5 bg-wine/10"
+      role="img"
+      aria-label={`${name} — ${n} certificates selected for directory preview`}
+    >
+      {urls.map((url, i) => {
+        const isLastOdd = i === urls.length - 1 && urls.length % 2 === 1;
+        return (
+          <div key={`${url}-${i}`} className={cn(cellFrame, isLastOdd && 'col-span-2')}>
+            <Image
+              src={url}
+              alt={`${name} — certificate ${i + 1} of ${n} in directory preview`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 50vw, 210px"
+              unoptimized
+              priority={!hoveredKey && i === 0}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function RegistryContent({ accounts, artworkCounts }: RegistryContentProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [profilePreviewHover, setProfilePreviewHover] = useState(false);
@@ -185,28 +285,11 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
               onMouseLeave={() => setProfilePreviewHover(false)}
             >
               {previewMosaicUrls ? (
-                <div className="absolute inset-0 grid grid-cols-2 gap-0.5 bg-wine/10">
-                  {previewMosaicUrls.map((url, i) => {
-                    const isLastOdd =
-                      i === previewMosaicUrls.length - 1 && previewMosaicUrls.length % 2 === 1;
-                    return (
-                      <div
-                        key={`${url}-${i}`}
-                        className={cn('relative min-h-0', isLastOdd && 'col-span-2')}
-                      >
-                        <Image
-                          src={url}
-                          alt={`${previewAlt} — gallery pick ${i + 1}`}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 1024px) 50vw, 210px"
-                          unoptimized
-                          priority={!hoveredKey && i === 0}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+                <GalleryDirectoryCertificateMosaic
+                  urls={previewMosaicUrls}
+                  name={previewAlt}
+                  hoveredKey={hoveredKey}
+                />
               ) : previewUrl ? (
                 previewIsArtwork || !profilePreviewHover ? (
                   <Image
