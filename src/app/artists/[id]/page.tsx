@@ -267,7 +267,7 @@ export default async function ArtistProfilePage({
   // Verified, public COS / COO / COA rows tied to this gallery profile so the owner
   // can pick what appears on /registry. Mirrors setRegistryArtwork().
   let galleryEligibleThumbnails: EligibleThumbnailArtwork[] = [];
-  let gallerySelectedThumbnailId: string | null = null;
+  let gallerySelectedThumbnailIds: string[] = [];
   if (isGallery && isOwner && roleProfile?.id) {
     const [{ data: thumbRows, error: thumbErr }, { data: profileRow }] = await Promise.all([
       (client as any)
@@ -282,7 +282,7 @@ export default async function ArtistProfilePage({
         .limit(48),
       (client as any)
         .from('user_profiles')
-        .select('registry_artwork_id')
+        .select('registry_artwork_id, registry_artwork_ids')
         .eq('id', roleProfile.id)
         .maybeSingle(),
     ]);
@@ -297,12 +297,19 @@ export default async function ArtistProfilePage({
       image_url: (row.image_url as string | null) ?? null,
       artist_name: (row.artist_name as string | null) ?? null,
     }));
-    gallerySelectedThumbnailId = (profileRow?.registry_artwork_id as string | null) ?? null;
+
+    const fromArray = (profileRow?.registry_artwork_ids as string[] | null)?.filter(Boolean) ?? [];
+    gallerySelectedThumbnailIds =
+      fromArray.length > 0
+        ? fromArray
+        : profileRow?.registry_artwork_id
+          ? [profileRow.registry_artwork_id as string]
+          : [];
 
     console.log('[ArtistProfile] gallery thumbnail picker data resolved', {
       galleryProfileId: roleProfile.id,
       eligibleCount: galleryEligibleThumbnails.length,
-      hasSelection: Boolean(gallerySelectedThumbnailId),
+      selectionCount: gallerySelectedThumbnailIds.length,
     });
   }
 
@@ -679,12 +686,12 @@ export default async function ArtistProfilePage({
               {isGallery && isOwner && roleProfile?.id && (
                 <section className="border-t border-wine/10 pt-8">
                   <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
-                    Directory thumbnail
+                    Directory gallery
                   </p>
                   <GalleryThumbnailPicker
                     galleryProfileId={roleProfile.id}
                     artworks={galleryEligibleThumbnails}
-                    initialSelectedId={gallerySelectedThumbnailId}
+                    initialSelectedIds={gallerySelectedThumbnailIds}
                   />
                 </section>
               )}

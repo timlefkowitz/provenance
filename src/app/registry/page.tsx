@@ -20,11 +20,13 @@ type Account = {
   profileId?: string;
   profileSlug?: string | null;
   listPreviewUrl: string | null;
+  /** Gallery: ordered certificate images for directory mosaic (max 5). */
+  listPreviewUrls: string[] | null;
   /** True when preview image comes from public artwork, false when it is only the profile photo. */
   listPreviewUsesArtwork: boolean;
 };
 
-type AccountRow = Omit<Account, 'listPreviewUrl' | 'listPreviewUsesArtwork'>;
+type AccountRow = Omit<Account, 'listPreviewUrl' | 'listPreviewUrls' | 'listPreviewUsesArtwork'>;
 
 type PreviewCandidate = {
   rowKey: string;
@@ -49,10 +51,10 @@ export default async function RegistryPage() {
 
   const accountsList = accounts || [];
 
-  // Fetch gallery profiles — include registry_artwork_id so we can honor explicit picks
+  // Fetch gallery profiles — include registry picks so we can honor explicit selections
   const { data: galleryProfiles, error: profilesError } = await (client as any)
     .from('user_profiles')
-    .select('id, user_id, name, picture_url, role, created_at, slug, registry_artwork_id')
+    .select('id, user_id, name, picture_url, role, created_at, slug, registry_artwork_id, registry_artwork_ids')
     .eq('role', USER_ROLES.GALLERY)
     .eq('is_active', true)
     .order('name', { ascending: true })
@@ -152,6 +154,7 @@ export default async function RegistryPage() {
   }
 
   const previewByKey: Record<string, string | null> = {};
+  const previewUrlsByKey: Record<string, string[]> = {};
   const artworkPreviewKeys = new Set<string>();
   combinedList.forEach((a) => {
     previewByKey[registryRowKey(a)] = a.picture_url;
@@ -190,29 +193,50 @@ export default async function RegistryPage() {
         }
       }
 
-      // Override with user-selected registry artwork where set
-      const galleryRegistryPicks = listedGalleryProfiles.filter(
-        (p: any) => p.registry_artwork_id,
-      );
-      if (galleryRegistryPicks.length > 0) {
-        const pickArtworkIds = galleryRegistryPicks.map((p: any) => p.registry_artwork_id as string);
+      // Override with user-selected registry artwork(s): ordered list (max 5) or legacy single id
+      const pickIdsOrderedByProfile = new Map<string, string[]>();
+      for (const p of listedGalleryProfiles as any[]) {
+        const multi = (p.registry_artwork_ids as string[] | null)?.filter(Boolean) ?? [];
+        if (multi.length > 0) {
+          pickIdsOrderedByProfile.set(p.id as string, multi);
+        } else if (p.registry_artwork_id) {
+          pickIdsOrderedByProfile.set(p.id as string, [p.registry_artwork_id as string]);
+        }
+      }
+
+      const allPickIds = [...new Set([...pickIdsOrderedByProfile.values()].flat())];
+      if (allPickIds.length > 0) {
         const { data: pickedRows } = await (client as any)
           .from('artworks')
           .select('id, gallery_profile_id, image_url')
-          .in('id', pickArtworkIds)
+          .in('id', allPickIds)
           .eq('status', 'verified')
           .eq('is_public', true)
           .in('certificate_type', [...GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES])
           .not('image_url', 'is', null);
 
+        const rowByArtworkId: Record<string, { gallery_profile_id: string | null; image_url: string }> =
+          {};
         for (const picked of pickedRows || []) {
-          const gid = picked.gallery_profile_id as string | null;
-          if (!gid) continue;
-          const profile = combinedList.find((a) => a.profileId === gid);
-          if (!profile) continue;
-          const key = registryRowKey(profile);
-          if (picked.image_url) {
-            previewByKey[key] = picked.image_url as string;
+          rowByArtworkId[picked.id as string] = {
+            gallery_profile_id: picked.gallery_profile_id as string | null,
+            image_url: picked.image_url as string,
+          };
+        }
+
+        for (const [profileId, orderedIds] of pickIdsOrderedByProfile) {
+          const acc = combinedList.find((a) => a.profileId === profileId);
+          if (!acc) continue;
+          const key = registryRowKey(acc);
+          const urls: string[] = [];
+          for (const aid of orderedIds) {
+            const row = rowByArtworkId[aid];
+            if (!row?.image_url || row.gallery_profile_id !== profileId) continue;
+            urls.push(row.image_url);
+          }
+          if (urls.length > 0) {
+            previewUrlsByKey[key] = urls;
+            previewByKey[key] = urls[0] ?? null;
             artworkPreviewKeys.add(key);
           }
         }
@@ -330,9 +354,11 @@ export default async function RegistryPage() {
   const withPreview: Account[] = combinedList.map((a) => {
     const key = registryRowKey(a);
     const url = previewByKey[key] ?? a.picture_url;
+    const multi = previewUrlsByKey[key];
     return {
       ...a,
       listPreviewUrl: url,
+      listPreviewUrls: multi && multi.length > 1 ? multi : null,
       listPreviewUsesArtwork: artworkPreviewKeys.has(key),
     };
   });

@@ -18,6 +18,7 @@ export type RegistryAccount = {
   profileId?: string;
   profileSlug?: string | null;
   listPreviewUrl: string | null;
+  listPreviewUrls: string[] | null;
   listPreviewUsesArtwork: boolean;
 };
 
@@ -96,6 +97,10 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
   }, []);
 
   const previewUrl = activeAccount?.listPreviewUrl;
+  const previewMosaicUrls =
+    activeAccount?.listPreviewUrls && activeAccount.listPreviewUrls.length > 1
+      ? activeAccount.listPreviewUrls
+      : null;
   const previewAlt = activeAccount?.name ?? 'Directory preview';
   const previewIsArtwork = activeAccount?.listPreviewUsesArtwork ?? false;
 
@@ -179,7 +184,30 @@ export function RegistryContent({ accounts, artworkCounts }: RegistryContentProp
               }}
               onMouseLeave={() => setProfilePreviewHover(false)}
             >
-              {previewUrl ? (
+              {previewMosaicUrls ? (
+                <div className="absolute inset-0 grid grid-cols-2 gap-0.5 bg-wine/10">
+                  {previewMosaicUrls.map((url, i) => {
+                    const isLastOdd =
+                      i === previewMosaicUrls.length - 1 && previewMosaicUrls.length % 2 === 1;
+                    return (
+                      <div
+                        key={`${url}-${i}`}
+                        className={cn('relative min-h-0', isLastOdd && 'col-span-2')}
+                      >
+                        <Image
+                          src={url}
+                          alt={`${previewAlt} — gallery pick ${i + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 1024px) 50vw, 210px"
+                          unoptimized
+                          priority={!hoveredKey && i === 0}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : previewUrl ? (
                 previewIsArtwork || !profilePreviewHover ? (
                   <Image
                     src={previewUrl}

@@ -348,20 +348,29 @@ export default async function MyArtworksPage({
   const assignExhibitionId = assignExhibition?.id ?? null;
   const assignExhibitionTitle = assignExhibition?.title ?? null;
 
-  // Fetch user_profiles to know which artwork is pinned as the registry photo.
-  // We need both the artist profile and all gallery profiles so the UI can
-  // show the current selection per-mode.
+  // Fetch user_profiles for registry directory picks (artist: one COA; gallery: up to 5).
   const { data: profilesWithPick } = await (client as any)
     .from('user_profiles')
-    .select('id, role, registry_artwork_id')
+    .select('id, role, registry_artwork_id, registry_artwork_ids')
     .eq('user_id', user.id)
     .eq('is_active', true);
 
-  // Build a lookup: 'artist' → artworkId, galleryProfileId → artworkId
-  const registryArtworkIdByScope: Record<string, string | null> = {};
+  const registryArtworkIdsByScope: Record<string, string[]> = {};
   for (const prof of profilesWithPick || []) {
     const key = prof.role === 'artist' ? 'artist' : (prof.id as string);
-    registryArtworkIdByScope[key] = (prof.registry_artwork_id as string | null) ?? null;
+    if (prof.role === 'gallery') {
+      const multi = (prof.registry_artwork_ids as string[] | null)?.filter(Boolean) ?? [];
+      registryArtworkIdsByScope[key] =
+        multi.length > 0
+          ? multi
+          : prof.registry_artwork_id
+            ? [prof.registry_artwork_id as string]
+            : [];
+    } else {
+      registryArtworkIdsByScope[key] = prof.registry_artwork_id
+        ? [prof.registry_artwork_id as string]
+        : [];
+    }
   }
 
   const count = artworks.length;
@@ -409,7 +418,7 @@ export default async function MyArtworksPage({
           assignExhibitionTitle={assignExhibitionTitle}
           galleryName={catalogGalleryName}
           senderRole={activeRole}
-          registryArtworkIdByScope={registryArtworkIdByScope}
+          registryArtworkIdsByScope={registryArtworkIdsByScope}
         />
       </div>
     </div>

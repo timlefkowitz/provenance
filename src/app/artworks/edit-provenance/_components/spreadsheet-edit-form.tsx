@@ -530,7 +530,7 @@ export function SpreadsheetEditForm({
   galleryName,
   senderRole,
   galleryProfiles = [],
-  registryArtworkIdByScope = {},
+  registryArtworkIdsByScope = {},
 }: {
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
@@ -542,10 +542,10 @@ export function SpreadsheetEditForm({
   senderRole?: UserRole | null;
   galleryProfiles?: { id: string; name: string; role: string }[];
   /**
-   * Map of scope key → currently-selected registry artwork ID.
-   * Key is 'artist' for artist mode, or the gallery profile ID for gallery mode.
+   * Map of scope key → ordered registry artwork IDs for /registry directory preview.
+   * Key is 'artist' (0–1 COA) or a gallery profile id (0–5 COS/COO/COA).
    */
-  registryArtworkIdByScope?: Record<string, string | null>;
+  registryArtworkIdsByScope?: Record<string, string[]>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -556,10 +556,9 @@ export function SpreadsheetEditForm({
   const isAssignFlow = Boolean(assignExhibitionId);
 
   // ── Registry photo state ──────────────────────────────────────────
-  // Mirrors registryArtworkIdByScope but is updated optimistically when the
-  // user toggles the star so the UI reflects the change without a round-trip.
-  const [registrySelections, setRegistrySelections] = useState<Record<string, string | null>>(
-    registryArtworkIdByScope,
+  // Mirrors registryArtworkIdsByScope but is updated when the user toggles stars.
+  const [registrySelections, setRegistrySelections] = useState<Record<string, string[]>>(
+    () => ({ ...registryArtworkIdsByScope }),
   );
 
   /** Whether the current mode supports setting a registry photo. */
@@ -580,7 +579,7 @@ export function SpreadsheetEditForm({
       // ProfileSwitcher never renders (and never writes to localStorage) for
       // single-profile users, so getSelectedProfileId() returns null even
       // though there IS a valid profile.
-      const galleryKeys = Object.keys(registryArtworkIdByScope).filter(
+      const galleryKeys = Object.keys(registryArtworkIdsByScope).filter(
         (k) => k !== 'artist',
       );
       return galleryKeys[0] ?? null;
@@ -588,17 +587,17 @@ export function SpreadsheetEditForm({
     return null;
   }
 
-  /** The artwork currently pinned as the registry photo for the active scope. */
-  function getActiveRegistryArtworkId(): string | null {
+  /** Registry / directory artwork ids for the active scope (artist or gallery). */
+  function getActiveRegistryIds(): string[] {
     const key = getActiveScopeKey();
-    if (!key) return null;
-    return registrySelections[key] ?? null;
+    if (!key) return [];
+    return registrySelections[key] ?? [];
   }
 
-  const handleRegistryToggled = (artworkId: string | null) => {
+  const handleRegistrySelectionChange = (nextIds: string[]) => {
     const key = getActiveScopeKey();
     if (!key) return;
-    setRegistrySelections((prev) => ({ ...prev, [key]: artworkId }));
+    setRegistrySelections((prev) => ({ ...prev, [key]: nextIds }));
   };
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState(
     isAssignFlow ? '__unassigned__' : '__all__',
@@ -1284,7 +1283,7 @@ export function SpreadsheetEditForm({
                 const isRegistryPhoto =
                   canPinRegistryThumbnail &&
                   !!scopeKey &&
-                  getActiveRegistryArtworkId() === artwork.id;
+                  getActiveRegistryIds().includes(artwork.id);
                 return (
                   <div key={artwork.id} className="group snap-start shrink-0 w-[min(9.25rem,calc(50vw-1.75rem))] sm:w-[132px]">
                     <button
@@ -1345,7 +1344,10 @@ export function SpreadsheetEditForm({
                             mode={senderRole as 'artist' | 'gallery'}
                             galleryProfileId={senderRole === 'gallery' ? (scopeKey !== 'artist' ? scopeKey : undefined) : undefined}
                             isSelected={isRegistryPhoto}
-                            onToggled={handleRegistryToggled}
+                            gallerySelectedIds={
+                              senderRole === USER_ROLES.GALLERY ? getActiveRegistryIds() : undefined
+                            }
+                            onSelectionChange={handleRegistrySelectionChange}
                           />
                         )}
                       </div>
@@ -1562,7 +1564,7 @@ export function SpreadsheetEditForm({
                             const isPanelRegistryPhoto =
                               canPinRegistryThumbnail &&
                               !!scopeKey &&
-                              getActiveRegistryArtworkId() === artwork.id;
+                              getActiveRegistryIds().includes(artwork.id);
                             return (
                               <div className="group mx-auto sm:mx-0 flex-shrink-0">
                                 {artwork.image_url ? (
@@ -1583,7 +1585,12 @@ export function SpreadsheetEditForm({
                                         mode={senderRole as 'artist' | 'gallery'}
                                         galleryProfileId={senderRole === 'gallery' ? (scopeKey !== 'artist' ? scopeKey : undefined) : undefined}
                                         isSelected={isPanelRegistryPhoto}
-                                        onToggled={handleRegistryToggled}
+                                        gallerySelectedIds={
+                                          senderRole === USER_ROLES.GALLERY
+                                            ? getActiveRegistryIds()
+                                            : undefined
+                                        }
+                                        onSelectionChange={handleRegistrySelectionChange}
                                       />
                                     )}
                                   </div>

@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Star, Check } from 'lucide-react';
+import { Check, Plus } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 import {
-  setRegistryArtwork,
+  setGalleryDirectoryCertificates,
   clearRegistryArtwork,
 } from '~/app/artworks/_actions/set-registry-artwork';
+import { GALLERY_REGISTRY_THUMBNAIL_MAX } from '~/lib/user-roles';
 
 export type EligibleThumbnailArtwork = {
   id: string;
@@ -22,27 +23,25 @@ type Props = {
   galleryProfileId: string;
   /** Verified, public COS / COO / COA artworks tied to this gallery profile. */
   artworks: EligibleThumbnailArtwork[];
-  /** Currently selected registry_artwork_id, or null if none. */
-  initialSelectedId: string | null;
+  /** Ordered picks (max 5) for /registry directory mosaic. */
+  initialSelectedIds: string[];
 };
 
 /**
- * Inline thumbnail picker for a gallery owner viewing their own /artists/[id]
- * profile (when role=gallery). Lets them choose which Certificate of Show,
- * Ownership, or Authenticity is featured as the gallery's image on /registry,
- * without leaving the profile page.
- *
- * Uses the same server actions as the Collection Management star toggle so
- * state stays in sync across surfaces.
+ * Multi-select thumbnail rail for gallery owners: pin up to five certificates
+ * for the public /registry directory gallery preview.
  */
 export function GalleryThumbnailPicker({
   galleryProfileId,
   artworks,
-  initialSelectedId,
+  initialSelectedIds,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(initialSelectedIds);
+  }, [initialSelectedIds.join('|')]);
 
   if (artworks.length === 0) {
     return (
@@ -50,84 +49,91 @@ export function GalleryThumbnailPicker({
         <p className="font-serif text-xs text-ink/55 leading-relaxed">
           Once you publish a verified, public Certificate of Show,
           Ownership, or Authenticity under this gallery, you&apos;ll be able to
-          pick it here as your directory thumbnail on /registry.
+          choose up to {GALLERY_REGISTRY_THUMBNAIL_MAX} here for your directory
+          gallery on /registry.
         </p>
       </div>
     );
   }
 
-  const handleSelect = (artworkId: string) => {
-    if (pendingId) return;
+  const handleToggle = async (artworkId: string) => {
+    if (pending) return;
 
-    const isAlreadySelected = selectedId === artworkId;
-    const previousSelected = selectedId;
-    const nextSelected = isAlreadySelected ? null : artworkId;
+    const previous = selectedIds;
+    const position = previous.indexOf(artworkId);
+    let next: string[];
+    if (position >= 0) {
+      next = previous.filter((id) => id !== artworkId);
+    } else if (previous.length >= GALLERY_REGISTRY_THUMBNAIL_MAX) {
+      toast.error(
+        `You can pin at most ${GALLERY_REGISTRY_THUMBNAIL_MAX} certificates. Remove one to add another.`,
+      );
+      return;
+    } else {
+      next = [...previous, artworkId];
+    }
 
-    setSelectedId(nextSelected);
-    setPendingId(artworkId);
-
-    startTransition(async () => {
-      try {
-        const result = isAlreadySelected
+    setSelectedIds(next);
+    setPending(true);
+    try {
+      const result =
+        next.length === 0
           ? await clearRegistryArtwork({ mode: 'gallery', galleryProfileId })
-          : await setRegistryArtwork({
-              artworkId,
-              mode: 'gallery',
+          : await setGalleryDirectoryCertificates({
               galleryProfileId,
+              artworkIds: next,
             });
 
-        if (!result.success) {
-          setSelectedId(previousSelected);
-          toast.error(result.error || 'Could not update thumbnail.');
-          return;
-        }
-
-        toast.success(
-          isAlreadySelected
-            ? 'Directory thumbnail cleared.'
-            : 'Directory thumbnail updated. Your /registry listing will refresh shortly.',
-        );
-      } catch (err) {
-        console.error('[GalleryThumbnailPicker] update failed', err);
-        setSelectedId(previousSelected);
-        toast.error('Could not update thumbnail. Please try again.');
-      } finally {
-        setPendingId(null);
+      if (!result.success) {
+        setSelectedIds(previous);
+        toast.error(result.error || 'Could not update directory gallery.');
+        return;
       }
-    });
+
+      toast.success(
+        next.length === 0
+          ? 'Directory gallery cleared.'
+          : `Directory gallery updated (${next.length}/${GALLERY_REGISTRY_THUMBNAIL_MAX}). /registry will refresh shortly.`,
+      );
+    } catch (err) {
+      console.error('[GalleryThumbnailPicker] update failed', err);
+      setSelectedIds(previous);
+      toast.error('Could not update directory gallery. Please try again.');
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
     <div className="space-y-3">
       <p className="font-serif text-xs text-ink/55 leading-relaxed">
-        Pick which certificate represents your gallery on the public registry
-        (/registry): Show, Ownership, or Authenticity. Tap a thumbnail to make it
-        the cover image.
+        Choose up to {GALLERY_REGISTRY_THUMBNAIL_MAX} certificates (Show,
+        Ownership, or Authenticity) to represent your gallery on the public
+        registry. They appear together in the directory preview. Tap to add or
+        remove.
       </p>
 
-      {/* Horizontal scroller — Apple-style edge-to-edge thumbnail rail */}
       <div
         className="-mx-4 overflow-x-auto pb-2 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]"
-        role="radiogroup"
-        aria-label="Choose gallery directory thumbnail"
+        role="group"
+        aria-label="Choose gallery directory certificates"
       >
         <div className="flex gap-3 px-4 min-w-max">
           {artworks.map((artwork) => {
-            const isSelected = selectedId === artwork.id;
-            const isPending = pendingId === artwork.id;
+            const position = selectedIds.indexOf(artwork.id);
+            const isSelected = position >= 0;
 
             return (
               <button
                 key={artwork.id}
                 type="button"
-                role="radio"
-                aria-checked={isSelected}
-                disabled={isPending}
-                onClick={() => handleSelect(artwork.id)}
+                disabled={pending}
+                aria-pressed={isSelected}
+                onClick={() => void handleToggle(artwork.id)}
                 title={
                   isSelected
-                    ? `${artwork.title} — current directory thumbnail`
-                    : `Set ${artwork.title} as directory thumbnail`
+                    ? `${artwork.title} — #${position + 1} in directory gallery (tap to remove)`
+                    : `Add ${artwork.title} to directory gallery`
                 }
                 className={cn(
                   'group relative flex-shrink-0 overflow-hidden rounded-lg border bg-wine/5 transition-all',
@@ -136,7 +142,7 @@ export function GalleryThumbnailPicker({
                   isSelected
                     ? 'border-wine ring-2 ring-wine/40 shadow-md'
                     : 'border-wine/20 hover:border-wine/50 hover:shadow-sm',
-                  isPending && 'opacity-60 cursor-wait',
+                  pending && 'opacity-60 cursor-wait',
                 )}
               >
                 {artwork.image_url ? (
@@ -157,23 +163,17 @@ export function GalleryThumbnailPicker({
                   </div>
                 )}
 
-                {/* Selected state — wine pill with check */}
-                {isSelected && (
+                {isSelected ? (
                   <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-wine text-parchment px-1.5 py-0.5 text-[9px] font-serif tracking-wide shadow-sm">
-                    <Check className="h-2.5 w-2.5" aria-hidden />
-                    Cover
+                    <Check className="h-2.5 w-2.5" aria-hidden />#{position + 1}
                   </span>
-                )}
-
-                {/* Hover hint for unselected — only on devices that hover */}
-                {!isSelected && (
+                ) : (
                   <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-parchment/95 text-ink/70 px-1.5 py-0.5 text-[9px] font-serif tracking-wide opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                    <Star className="h-2.5 w-2.5" aria-hidden />
-                    Set cover
+                    <Plus className="h-2.5 w-2.5" aria-hidden />
+                    Add
                   </span>
                 )}
 
-                {/* Title gradient at bottom for context */}
                 <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent p-1.5 text-left">
                   <span className="block truncate font-serif text-[10px] text-parchment leading-tight">
                     {artwork.title}
