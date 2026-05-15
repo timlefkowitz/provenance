@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# vendored native binary (created by postinstall; do not commit)
+/vendor/
+
 # dependencies
 node_modules
 .pnp

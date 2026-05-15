@@ -25,11 +25,11 @@ const nextConfig: NextConfig = {
   /** Bundled server routes must resolve the ffmpeg-static native binary at runtime */
   serverExternalPackages: ['ffmpeg-static'],
   /**
-   * Ensure the ffmpeg binary is copied into the traced server bundle on Vercel.
-   * See https://github.com/vercel-labs/ffmpeg-on-vercel and Next.js output file tracing.
+   * Bundle the vendored FFmpeg copy (see scripts/ensure-ffmpeg-static.cjs). Tracing
+   * pnpm's symlinked node_modules path breaks Vercel packaging ("invalid deployment package").
    */
   outputFileTracingIncludes: {
-    '/api/admin/audio/denoise': ['./node_modules/ffmpeg-static/**/*'],
+    '/api/admin/audio/denoise': ['./vendor/**/*'],
   },
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
