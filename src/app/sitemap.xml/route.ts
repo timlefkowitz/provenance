@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getPublishedBlogSitemapEntries } from '~/lib/blog/posts';
+import { buildSitemapXml } from '~/lib/seo/sitemap-xml';
 import { getPublicSiteOrigin } from '~/lib/seo/public-site-origin';
 
 /** Public indexable routes for the root Next app (provenance.guru). */
@@ -26,38 +27,6 @@ const STATIC_PATHS = [
 export const revalidate = 60;
 
 export const runtime = 'nodejs';
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/** Google accepts date-only lastmod (YYYY-MM-DD WRT timezone nuances avoided vs fractional ISO strings). */
-function lastmodDay(d: Date, fallback: Date): string {
-  const t = d.getTime();
-  const base = Number.isNaN(t) ? fallback : d;
-  return base.toISOString().slice(0, 10);
-}
-
-function buildXml(entries: { loc: string; lastModified: Date }[]): string {
-  const chunks = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-  ];
-  const now = new Date();
-  for (const { loc, lastModified } of entries) {
-    chunks.push('<url>');
-    chunks.push(`<loc>${escapeXml(loc)}</loc>`);
-    chunks.push(`<lastmod>${lastmodDay(lastModified, now)}</lastmod>`);
-    chunks.push('</url>');
-  }
-  chunks.push('</urlset>');
-  return chunks.join('\n');
-}
 
 export async function GET() {
   console.log('[SEO/sitemap.xml] GET started');
@@ -93,7 +62,7 @@ export async function GET() {
     console.log('[SEO/sitemap.xml] returning', out.length, 'urls (fallback)');
   }
 
-  const xml = buildXml(out);
+  const xml = buildSitemapXml(out);
 
   return new NextResponse(xml, {
     headers: {

@@ -15,6 +15,7 @@
     "format": "prettier --check \"**/*.{js,cjs,mjs,ts,tsx,md,json}\"",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
+    "verify:seo": "bash scripts/verify-seo.sh",
     "build:planets": "pnpm --filter @provenance/collectibles --filter @provenance/realestate --filter @provenance/vehicles --filter @provenance/api build",
     "with-env": "dotenv -e ./.env.local --",
     "postinstall": "node scripts/ensure-ffmpeg-static.cjs"
