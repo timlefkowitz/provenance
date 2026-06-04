@@ -355,10 +355,6 @@ export async function buildOwnerInviteRows(
       continue;
     }
 
-    const claimKind = artwork.certificate_type === CERTIFICATE_TYPES.SHOW
-      ? 'owner_coownership_from_cos'
-      : 'owner_coownership_from_coa';
-    
     rows.push({
       source_artwork_id: artworkId,
       claim_kind: claimKind,
