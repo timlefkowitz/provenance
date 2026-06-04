@@ -16,7 +16,10 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "verify:seo": "bash scripts/verify-seo.sh",
-    "build:planets": "pnpm --filter @provenance/collectibles --filter @provenance/realestate --filter @provenance/vehicles --filter @provenance/api build",
+    "build:planets": "pnpm --filter @provenance/collectibles --filter @provenance/api build",
+    "build:planets:all": "pnpm --filter @provenance/collectibles --filter @provenance/realestate --filter @provenance/vehicles --filter @provenance/api build",
+    "dev:vehicles": "pnpm --filter @provenance/vehicles dev",
+    "dev:realestate": "pnpm --filter @provenance/realestate dev",
     "with-env": "dotenv -e ./.env.local --",
     "postinstall": "node scripts/ensure-ffmpeg-static.cjs"
   },

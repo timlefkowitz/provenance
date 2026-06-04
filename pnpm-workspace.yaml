@@ -3,6 +3,8 @@ packages:
   - makerkit/nextjs-saas-starter-kit-lite/tooling/*
   - packages/*
   - apps/*
+  - "!apps/realestate"
+  - "!apps/vehicles"
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
