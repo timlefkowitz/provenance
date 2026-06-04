@@ -11,8 +11,6 @@ import {
 } from '~/lib/user-roles';
 import type { ExhibitionPosterContext } from '../_helpers/gallery-posting-helpers';
 
-export type { ExhibitionPosterContext } from '../_helpers/gallery-posting-helpers';
-
 /**
  * Resolves poster role (from accounts.public_data), certificate type, and default profile row
  * for exhibition quick listings / publishing (mirror semantics of artwork batch create).
