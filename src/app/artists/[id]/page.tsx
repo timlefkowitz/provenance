@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -31,6 +32,13 @@ import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
 import { ExternalLink } from 'lucide-react';
+import {
+  getTemplateComponent,
+  isValidTemplateId,
+  type ArtistTemplateProps,
+  type TemplateId,
+} from './_components/artist-templates';
+import { TemplateSwitcher } from './_components/template-switcher';
 
 export const metadata = {
   title: 'Artist Profile | Provenance',
@@ -71,7 +79,7 @@ export default async function ArtistProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ role?: string; profileId?: string }>;
+  searchParams?: Promise<{ role?: string; profileId?: string; template?: string }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
@@ -437,8 +445,85 @@ export default async function ArtistProfilePage({
     return `/exhibitions/${exhibitionId}`;
   };
 
+  const requestedTemplate = resolvedSearchParams?.template;
+  const templateId: TemplateId | null =
+    isArtistProfile && isValidTemplateId(requestedTemplate) ? requestedTemplate : null;
+
+  if (isArtistProfile) {
+    console.log('[ArtistProfile] template resolved', {
+      accountId: account.id,
+      template: templateId,
+    });
+  }
+
+  const artistTemplateProps: ArtistTemplateProps | null = isArtistProfile
+    ? {
+        displayName,
+        medium: medium || null,
+        location: location || null,
+        bio: bio || null,
+        pictureUrl,
+        memberSince: account.created_at,
+        artworks: (artworks || []).map(
+          (a: {
+            id: string;
+            title: string;
+            image_url: string | null;
+            created_at: string;
+            certificate_number: string;
+          }) => ({
+            id: a.id,
+            title: a.title,
+            image_url: a.image_url,
+            created_at: a.created_at,
+            certificate_number: a.certificate_number,
+          }),
+        ),
+        exhibitions: exhibitions.map((ex) => ({
+          id: ex.id,
+          title: ex.title,
+          start_date: ex.start_date,
+          end_date: ex.end_date ?? null,
+          location: ex.location ?? null,
+        })),
+        press: newsPublications,
+        links,
+        website: website || null,
+        isOwner,
+        publishedSiteUrl,
+        hasCv,
+        cvHref,
+        streak: streak
+          ? {
+              currentStreakDays: streak.currentStreakDays,
+              longestStreakDays: streak.longestStreakDays,
+              starTier: streak.starTier,
+            }
+          : undefined,
+      }
+    : null;
+
+  const TemplateComponent =
+    templateId && artistTemplateProps ? getTemplateComponent(templateId) : null;
+
+  const artistTemplateSwitcher = isArtistProfile ? (
+    <Suspense fallback={null}>
+      <TemplateSwitcher current={templateId} />
+    </Suspense>
+  ) : null;
+
+  if (TemplateComponent && artistTemplateProps) {
+    return (
+      <>
+        <TemplateComponent {...artistTemplateProps} />
+        {artistTemplateSwitcher}
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-screen">
+    <>
+      <div className="min-h-screen">
       {/* ── HERO HEADER ─────────────────────────────────────────── */}
       <div className="border-b border-wine/15">
         <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14">
@@ -916,7 +1001,9 @@ export default async function ArtistProfilePage({
           </main>
         </div>
       </div>
-    </div>
+      </div>
+      {artistTemplateSwitcher}
+    </>
   );
 }
 

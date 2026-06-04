@@ -132,6 +132,11 @@ export function ExhibitionDetails({
                         {artwork.title}
                       </p>
                     )}
+                    {artwork.artist_name && (
+                      <p className="font-serif text-xs text-ink/60 leading-snug mt-0.5">
+                        {artwork.artist_name}
+                      </p>
+                    )}
                     {artwork.description && (
                       <p className="font-serif text-xs text-ink/50 leading-relaxed line-clamp-3 mt-1">
                         {artwork.description}

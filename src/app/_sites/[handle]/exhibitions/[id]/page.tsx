@@ -100,6 +100,9 @@ export default async function SiteExhibitionPage({
                     )}
                   </div>
                   <p className="text-xs font-medium" style={{ color: '#111' }}>{artwork.title}</p>
+                  {artwork.artist_name && (
+                    <p className="text-xs mt-0.5" style={{ color: '#666' }}>{artwork.artist_name}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -126,7 +129,7 @@ async function fetchExhibition(exhibitionId: string) {
     .from('exhibition_artworks')
     .select(`
       artworks!exhibition_artworks_artwork_id_fkey (
-        id, title, image_url
+        id, title, artist_name, image_url
       )
     `)
     .eq('exhibition_id', exhibitionId)

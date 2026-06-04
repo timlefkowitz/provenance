@@ -25,6 +25,7 @@ export type ExhibitionWithDetails = Exhibition & {
   artworks: Array<{
     id: string;
     title: string;
+    artist_name: string | null;
     description: string | null;
     image_url: string | null;
     dimensions: string | null;
@@ -208,6 +209,7 @@ export async function getExhibitionWithDetails(
       artworks!exhibition_artworks_artwork_id_fkey (
         id,
         title,
+        artist_name,
         description,
         image_url,
         status,
@@ -248,6 +250,7 @@ export async function getExhibitionWithDetails(
       return {
         id: a.id,
         title: a.title,
+        artist_name: a.artist_name ?? null,
         description: a.description ?? null,
         image_url: a.image_url,
         dimensions: a.dimensions ?? null,
