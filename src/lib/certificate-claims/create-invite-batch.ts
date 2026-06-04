@@ -309,7 +309,7 @@ export async function buildOwnerInviteRows(
   const normalizedEmail = normalizeInviteEmail(inviteeEmail);
 
   for (const artworkId of artworkIds) {
-    const { data: artwork, error: artError } = await (client as any)
+    const { data: artwork, error: artError } = await (adminClient as any)
       .from('artworks')
       .select('id, account_id, title, certificate_type')
       .eq('id', artworkId)

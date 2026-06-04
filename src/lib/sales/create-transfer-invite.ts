@@ -10,6 +10,8 @@ import { logger } from '~/lib/logger';
 export interface CreateArtworkTransferInviteParams {
   artworkId: string;
   sellerUserId: string;
+  /** The account_id on the artwork row — may differ from sellerUserId for gallery-owned artworks. */
+  sellerAccountId?: string | null;
   buyerEmail: string | null;
   buyerAccountId: string | null;
   workTitle: string;
@@ -64,6 +66,8 @@ export async function createArtworkTransferInvite(
   params: CreateArtworkTransferInviteParams,
 ): Promise<CreateArtworkTransferInviteResult> {
   const { artworkId, sellerUserId, buyerAccountId, workTitle } = params;
+  // Use sellerAccountId (the artwork's account_id) for ownership checks; fall back to sellerUserId.
+  const ownershipUserId = params.sellerAccountId ?? sellerUserId;
   let buyerEmail = params.buyerEmail;
 
   console.log('[Sales] createArtworkTransferInvite started', {
@@ -92,7 +96,7 @@ export async function createArtworkTransferInvite(
     const { rows, titles, errors: buildErrors } = await buildOwnerInviteRows(
       client,
       admin,
-      sellerUserId,
+      ownershipUserId,
       [artworkId],
       buyerEmail,
     );

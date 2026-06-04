@@ -184,6 +184,7 @@ export async function markArtworkSold(
         const inviteResult = await createArtworkTransferInvite({
           artworkId: input.artworkId,
           sellerUserId: user.id,
+          sellerAccountId: artwork.account_id as string,
           buyerEmail,
           buyerAccountId,
           workTitle: (artwork.title as string) || 'Untitled',
