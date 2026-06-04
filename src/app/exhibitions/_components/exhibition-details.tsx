@@ -125,7 +125,13 @@ export function ExhibitionDetails({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </Link>
 
-              {(artwork.title || artwork.description || isOwner || artwork.status === 'draft') && (
+              {(artwork.title ||
+                artwork.description ||
+                artwork.artist_name ||
+                artwork.dimensions ||
+                artwork.listPriceDisplay ||
+                isOwner ||
+                artwork.status === 'draft') && (
                 <div className="px-4 pt-3 pb-4 border-t border-wine/10">
                   <Link href={`/artworks/${artwork.id}/certificate`} className="block hover:bg-wine/[0.03] -mx-2 px-2 rounded-md transition-colors">
                     {artwork.title && (
@@ -142,9 +148,9 @@ export function ExhibitionDetails({
                       initialName={artwork.artist_name}
                     />
                   ) : (
-                    artwork.artist_name && (
+                    artwork.artist_name?.trim() && (
                       <p className="font-serif text-xs text-ink/60 leading-snug mt-0.5">
-                        {artwork.artist_name}
+                        {artwork.artist_name.trim()}
                       </p>
                     )
                   )}
@@ -298,15 +304,18 @@ function EditableArtistName({
 
   if (name.trim()) {
     return (
-      <button
-        type="button"
-        onClick={beginEdit}
-        className="group/artist flex items-center gap-1 mt-0.5 text-left"
-        title="Edit artist name"
-      >
-        <span className="font-serif text-xs text-ink/60 leading-snug">{name}</span>
-        <Pencil className="h-3 w-3 text-ink/25 opacity-0 group-hover/artist:opacity-100 transition-opacity" />
-      </button>
+      <div className="group/artist flex items-center gap-1 mt-0.5">
+        <p className="font-serif text-xs text-ink/60 leading-snug">{name}</p>
+        <button
+          type="button"
+          onClick={beginEdit}
+          className="text-ink/25 opacity-0 group-hover/artist:opacity-100 transition-opacity"
+          title="Edit artist name"
+          aria-label="Edit artist name"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      </div>
     );
   }
 

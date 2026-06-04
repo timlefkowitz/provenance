@@ -356,11 +356,42 @@ export async function updateProvenance(
     revalidatePath('/portal');
     revalidatePath('/notifications');
     
-    // Revalidate exhibition pages if exhibition was changed
-    if (provenance.exhibitionId !== undefined) {
-      // Revalidate all exhibitions (the specific one will be updated via the junction table)
-      revalidatePath('/exhibitions');
-      // Also revalidate the gallery profile page
+    const exhibitionDisplayFieldsChanged =
+      provenance.artist_name !== undefined ||
+      provenance.title !== undefined ||
+      provenance.dimensions !== undefined ||
+      provenance.exhibitionId !== undefined;
+
+    if (exhibitionDisplayFieldsChanged) {
+      try {
+        const { data: exhibitionLinks } = await (client as any)
+          .from('exhibition_artworks')
+          .select('exhibition_id')
+          .eq('artwork_id', artworkId);
+
+        const linkedExhibitionIds = Array.from(
+          new Set(
+            (exhibitionLinks || [])
+              .map((row: { exhibition_id?: string | null }) => row.exhibition_id)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        );
+
+        if (linkedExhibitionIds.length > 0) {
+          revalidatePath('/exhibitions');
+          for (const linkedExhibitionId of linkedExhibitionIds) {
+            revalidatePath(`/exhibitions/${linkedExhibitionId}`);
+          }
+        } else if (provenance.exhibitionId !== undefined) {
+          revalidatePath('/exhibitions');
+        }
+      } catch (revalidateErr) {
+        logger.error('update_provenance_exhibition_revalidate_failed', {
+          artworkId,
+          error: revalidateErr,
+        });
+      }
+
       if (artwork.account_id) {
         revalidatePath(`/artists/${artwork.account_id}`);
       }

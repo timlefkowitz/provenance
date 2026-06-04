@@ -171,6 +171,7 @@ export async function getExhibitionWithDetails(
   exhibitionId: string,
   options?: { viewerUserId?: string | null },
 ): Promise<ExhibitionWithDetails | null> {
+  console.log('[Exhibitions] getExhibitionWithDetails started', { exhibitionId });
   const client = getSupabaseServerClient();
 
   // Get exhibition
@@ -181,6 +182,7 @@ export async function getExhibitionWithDetails(
     .single();
 
   if (exhibitionError || !exhibition) {
+    console.error('[Exhibitions] getExhibitionWithDetails: exhibition not found', exhibitionError);
     return null;
   }
 
@@ -281,8 +283,11 @@ export async function getExhibitionWithDetails(
         typeof meta.exhibition_list_price === 'string' && meta.exhibition_list_price.trim()
           ? meta.exhibition_list_price.trim()
           : null;
+      const rawArtistName =
+        typeof a.artist_name === 'string' && a.artist_name.trim() ? a.artist_name.trim() : null;
       const resolvedArtistName =
-        a.artist_name ?? (a.artist_account_id ? (accountNameMap.get(a.artist_account_id) ?? null) : null);
+        rawArtistName ??
+        (a.artist_account_id ? (accountNameMap.get(a.artist_account_id) ?? null) : null);
       return {
         id: a.id,
         title: a.title,
@@ -294,6 +299,17 @@ export async function getExhibitionWithDetails(
         status: a.status,
       };
     });
+
+  const withArtistName = filteredArtworks.filter((a) => Boolean(a.artist_name?.trim())).length;
+  const missingArtistName = filteredArtworks.length - withArtistName;
+  console.log('[Exhibitions] getExhibitionWithDetails completed', {
+    exhibitionId,
+    linkedCount: (artworks || []).length,
+    visibleCount: filteredArtworks.length,
+    withArtistName,
+    missingArtistName,
+    canSeeDraftListings,
+  });
 
   return {
     ...exhibition,

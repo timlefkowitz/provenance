@@ -110,6 +110,7 @@ export async function updateExhibitionListing(params: {
 
   console.log('[Exhibitions] updateExhibitionListing success', { artworkId });
 
+  revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);
   revalidatePath(`/artworks/${artworkId}`);
   revalidatePath(`/artworks/${artworkId}/certificate`);

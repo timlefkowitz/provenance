@@ -13,6 +13,8 @@ export const metadata = {
   title: 'Exhibition | Provenance',
 };
 
+export const dynamic = 'force-dynamic';
+
 function getStatus(startDate: string, endDate: string | null): 'upcoming' | 'ongoing' | 'past' {
   const now = new Date();
   const start = new Date(startDate);

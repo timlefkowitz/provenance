@@ -39,6 +39,7 @@ export async function addArtworkToExhibition(exhibitionId: string, artworkId: st
   }
 
   revalidatePath('/exhibitions');
+  revalidatePath(`/exhibitions/${exhibitionId}`);
   revalidatePath(`/artists/${user.id}`);
 
   return { success: true };
@@ -76,6 +77,7 @@ export async function removeArtworkFromExhibition(exhibitionId: string, artworkI
   }
 
   revalidatePath('/exhibitions');
+  revalidatePath(`/exhibitions/${exhibitionId}`);
   revalidatePath(`/artists/${user.id}`);
 
   return { success: true };
