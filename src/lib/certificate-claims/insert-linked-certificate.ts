@@ -29,9 +29,20 @@ export async function generateCertificateNumber(client: SupabaseClient): Promise
 }
 
 /**
- * Collector's Certificate of Ownership linked to an artist's COA (artist keeps COA).
+ * Collector's Certificate of Ownership linked to source certificate (COA or COS).
  */
 export async function insertLinkedCertificateOfOwnershipFromCoa(
+  adminClient: SupabaseClient,
+  source: SourceArtworkRow,
+  params: { ownerAccountId: string; createdByUserId: string },
+): Promise<{ id: string }> {
+  return insertLinkedCertificateOfOwnership(adminClient, source, params);
+}
+
+/**
+ * Collector's Certificate of Ownership linked to source certificate (COA or COS).
+ */
+export async function insertLinkedCertificateOfOwnership(
   adminClient: SupabaseClient,
   source: SourceArtworkRow,
   params: { ownerAccountId: string; createdByUserId: string },

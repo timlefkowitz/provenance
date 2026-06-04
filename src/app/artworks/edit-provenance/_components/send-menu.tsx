@@ -45,7 +45,11 @@ function isEnabled(
         senderRole === USER_ROLES.COLLECTOR
       );
     case 'collector':
-      return senderRole === USER_ROLES.ARTIST;
+      return (
+        senderRole === USER_ROLES.ARTIST ||
+        senderRole === USER_ROLES.GALLERY ||
+        senderRole === USER_ROLES.INSTITUTION
+      );
     case 'gallery':
     case 'institution':
       return senderRole === USER_ROLES.ARTIST;
@@ -63,7 +67,7 @@ function disabledTitle(
     case 'artist':
       return `${roleLabel} account can't send artist invites — switch to a gallery, institution or collector account`;
     case 'collector':
-      return `Only artists can invite collectors (${roleLabel} accounts can't send this)`;
+      return `${roleLabel} account can't send collector invites — switch to an artist, gallery or institution account`;
     case 'gallery':
     case 'institution':
       return `Only artists can invite galleries or institutions (${roleLabel} accounts can't send this)`;

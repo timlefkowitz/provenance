@@ -325,19 +325,26 @@ export async function buildOwnerInviteRows(
       continue;
     }
 
-    if (artwork.certificate_type !== CERTIFICATE_TYPES.AUTHENTICITY) {
+    if (
+      artwork.certificate_type !== CERTIFICATE_TYPES.AUTHENTICITY &&
+      artwork.certificate_type !== CERTIFICATE_TYPES.SHOW
+    ) {
       errors.push(
-        `"${artwork.title}": only a Certificate of Authenticity can invite a linked Certificate of Ownership`,
+        `"${artwork.title}": only a Certificate of Authenticity or Certificate of Show can invite a linked Certificate of Ownership`,
       );
       continue;
     }
 
+    const claimKind = artwork.certificate_type === CERTIFICATE_TYPES.SHOW
+      ? 'owner_coownership_from_cos'
+      : 'owner_coownership_from_coa';
+    
     const { data: existingOpen } = await (adminClient as any)
       .from('certificate_claim_invites')
       .select('id')
       .eq('source_artwork_id', artworkId)
       .eq('invitee_email', normalizedEmail)
-      .eq('claim_kind', 'owner_coownership_from_coa')
+      .eq('claim_kind', claimKind)
       .in('status', ['pending', 'pending_owner_approval', 'sent'])
       .maybeSingle();
 
@@ -348,9 +355,13 @@ export async function buildOwnerInviteRows(
       continue;
     }
 
+    const claimKind = artwork.certificate_type === CERTIFICATE_TYPES.SHOW
+      ? 'owner_coownership_from_cos'
+      : 'owner_coownership_from_coa';
+    
     rows.push({
       source_artwork_id: artworkId,
-      claim_kind: 'owner_coownership_from_coa',
+      claim_kind: claimKind,
       provenance_update_request_id: null,
     });
     titles.push((artwork.title as string) || 'Untitled');

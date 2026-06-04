@@ -102,7 +102,7 @@ async function processInvitesAfterAuth(
     }
   }
 
-  if (kind === 'owner_coownership_from_coa') {
+  if (kind === 'owner_coownership_from_coa' || kind === 'owner_coownership_from_cos') {
     return processOwnerBatch(client, adminClient, user, sorted);
   }
 
@@ -138,7 +138,10 @@ async function processOwnerBatch(
       return { success: false, error: 'Could not load source certificate' };
     }
 
-    if (sourceArtwork.certificate_type !== CERTIFICATE_TYPES.AUTHENTICITY) {
+    if (
+      sourceArtwork.certificate_type !== CERTIFICATE_TYPES.AUTHENTICITY &&
+      sourceArtwork.certificate_type !== CERTIFICATE_TYPES.SHOW
+    ) {
       return { success: false, error: 'Invalid source certificate for this claim' };
     }
 
