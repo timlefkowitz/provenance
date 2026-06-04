@@ -52,7 +52,12 @@ function isEnabled(
       );
     case 'gallery':
     case 'institution':
-      return senderRole === USER_ROLES.ARTIST;
+      return (
+        senderRole === USER_ROLES.ARTIST ||
+        senderRole === USER_ROLES.GALLERY ||
+        senderRole === USER_ROLES.INSTITUTION ||
+        senderRole === USER_ROLES.COLLECTOR
+      );
     default:
       return false;
   }
@@ -70,7 +75,7 @@ function disabledTitle(
       return `${roleLabel} account can't send collector invites — switch to an artist, gallery or institution account`;
     case 'gallery':
     case 'institution':
-      return `Only artists can invite galleries or institutions (${roleLabel} accounts can't send this)`;
+      return 'Not available for your account type';
     default:
       return 'Not available for your account type';
   }

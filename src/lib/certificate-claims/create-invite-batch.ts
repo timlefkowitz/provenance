@@ -368,11 +368,14 @@ export async function buildOwnerInviteRows(
 
 /**
  * Build gallery CoS invite rows from artist CoAs.
+ * @param allowedGalleryProfileIds - Gallery profile IDs the caller manages (via gallery_members).
+ *   Artworks linked to these profiles are treated as authorized even if account_id differs.
  */
 export async function buildGalleryCoSInviteRows(
   adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
   userId: string,
   artworkIds: string[],
+  allowedGalleryProfileIds: string[] = [],
 ): Promise<{
   rows: InviteRowInput[];
   titles: string[];
@@ -382,9 +385,11 @@ export async function buildGalleryCoSInviteRows(
   const titles: string[] = [];
   const errors: string[] = [];
 
+  const allowedProfileSet = new Set(allowedGalleryProfileIds);
+
   const { data: artworks, error: artworksError } = await (adminClient as any)
     .from('artworks')
-    .select('id, title, artist_name, certificate_type, account_id')
+    .select('id, title, artist_name, certificate_type, account_id, gallery_profile_id')
     .in('id', artworkIds);
 
   if (artworksError || !artworks?.length) {
@@ -400,8 +405,12 @@ export async function buildGalleryCoSInviteRows(
     title: string | null;
     certificate_type: string | null;
     account_id: string;
+    gallery_profile_id: string | null;
   }>) {
-    if (artwork.account_id !== userId) {
+    const isOwner = artwork.account_id === userId;
+    const isGalleryMember =
+      artwork.gallery_profile_id != null && allowedProfileSet.has(artwork.gallery_profile_id);
+    if (!isOwner && !isGalleryMember) {
       errors.push(`"${artwork.title ?? artwork.id}": not owned by you`);
       continue;
     }

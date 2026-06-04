@@ -45,10 +45,29 @@ export async function batchSendGalleryCoSInvites(
   }
 
   const adminClient = getSupabaseServerAdminClient();
+
+  // Collect all gallery profile IDs this user belongs to so we can authorize
+  // artworks posted by any team member under those gallery profiles.
+  let allowedGalleryProfileIds: string[] = [];
+  try {
+    const { data: memberRows } = await (adminClient as any)
+      .from('gallery_members')
+      .select('gallery_profile_id')
+      .eq('user_id', user.id);
+    if (memberRows?.length) {
+      allowedGalleryProfileIds = (memberRows as { gallery_profile_id: string }[]).map(
+        (r) => r.gallery_profile_id,
+      );
+    }
+  } catch (err) {
+    console.error('[Collection] batchSendGalleryCoSInvites gallery_members lookup failed', err);
+  }
+
   const { rows, titles, errors: buildErrors } = await buildGalleryCoSInviteRows(
     adminClient,
     user.id,
     artworkIds,
+    allowedGalleryProfileIds,
   );
   const errors: string[] = [...buildErrors];
 
