@@ -221,8 +221,14 @@ export async function getExhibitionWithDetails(
     .eq('exhibition_id', exhibitionId); // Explicitly filter by this exhibition's ID
 
   if (artworksError) {
-    console.error('Error fetching exhibition artworks:', artworksError);
+    console.error('[Exhibitions] getExhibitionWithDetails: artworks fetch failed', artworksError);
   }
+
+  console.log('[Exhibitions] raw artwork artist_names', (artworks || []).slice(0, 10).map((ea: any) => ({
+    id: ea.artworks?.id,
+    title: ea.artworks?.title,
+    artist_name: ea.artworks?.artist_name,
+  })));
 
   // Double-check: filter out any artworks that don't belong to this exhibition
   // (defensive programming in case of data inconsistency)
