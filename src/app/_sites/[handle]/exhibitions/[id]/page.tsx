@@ -103,6 +103,9 @@ export default async function SiteExhibitionPage({
                   {artwork.artist_name && (
                     <p className="text-xs mt-0.5" style={{ color: '#666' }}>{artwork.artist_name}</p>
                   )}
+                  {artwork.dimensions && (
+                    <p className="text-xs mt-0.5" style={{ color: '#777' }}>{artwork.dimensions}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -129,15 +132,79 @@ async function fetchExhibition(exhibitionId: string) {
     .from('exhibition_artworks')
     .select(`
       artworks!exhibition_artworks_artwork_id_fkey (
-        id, title, artist_name, image_url
+        id, title, artist_name, artist_account_id, artist_profile_id, account_id, image_url, dimensions
       )
     `)
     .eq('exhibition_id', exhibitionId)
     .limit(24);
 
-  const artworks = (artworkLinks ?? [])
+  const linkedArtworks = (artworkLinks ?? [])
     .map((r: any) => r.artworks)
     .filter(Boolean);
+
+  const missingAccountIds = Array.from(
+    new Set(
+      linkedArtworks
+        .filter((a: any) => !a.artist_name && a.artist_account_id)
+        .map((a: any) => a.artist_account_id as string),
+    ),
+  );
+  const missingProfileIds = Array.from(
+    new Set(
+      linkedArtworks
+        .filter((a: any) => !a.artist_name && !a.artist_account_id && a.artist_profile_id)
+        .map((a: any) => a.artist_profile_id as string),
+    ),
+  );
+
+  const accountNameById = new Map<string, string>();
+  const profileNameById = new Map<string, string>();
+
+  if (missingAccountIds.length > 0) {
+    console.log('[Sites] fetchExhibition resolving artist names from accounts', {
+      count: missingAccountIds.length,
+      exhibitionId,
+    });
+    const { data: accountRows, error: accountError } = await sb
+      .from('accounts')
+      .select('id, name')
+      .in('id', missingAccountIds);
+    if (accountError) {
+      console.error('[Sites] fetchExhibition accounts lookup failed', accountError);
+    }
+    for (const row of accountRows ?? []) {
+      if (row.id && row.name) accountNameById.set(row.id, row.name);
+    }
+  }
+
+  if (missingProfileIds.length > 0) {
+    console.log('[Sites] fetchExhibition resolving artist names from profiles', {
+      count: missingProfileIds.length,
+      exhibitionId,
+    });
+    const { data: profileRows, error: profileError } = await sb
+      .from('user_profiles')
+      .select('id, name')
+      .in('id', missingProfileIds);
+    if (profileError) {
+      console.error('[Sites] fetchExhibition profile lookup failed', profileError);
+    }
+    for (const row of profileRows ?? []) {
+      if (row.id && row.name) profileNameById.set(row.id, row.name);
+    }
+  }
+
+  const artworks = linkedArtworks.map((artwork: any) => {
+    const resolvedArtistName =
+      artwork.artist_name
+      ?? (artwork.artist_account_id ? (accountNameById.get(artwork.artist_account_id) ?? null) : null)
+      ?? (artwork.artist_profile_id ? (profileNameById.get(artwork.artist_profile_id) ?? null) : null);
+
+    return {
+      ...artwork,
+      artist_name: resolvedArtistName,
+    };
+  });
 
   return { ...ex, artworks };
 }
