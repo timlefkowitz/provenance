@@ -210,6 +210,7 @@ export async function getExhibitionWithDetails(
         id,
         title,
         artist_name,
+        artist_account_id,
         description,
         image_url,
         status,
@@ -228,7 +229,34 @@ export async function getExhibitionWithDetails(
     id: ea.artworks?.id,
     title: ea.artworks?.title,
     artist_name: ea.artworks?.artist_name,
+    artist_account_id: ea.artworks?.artist_account_id,
   })));
+
+  // Resolve artist names from linked accounts when artist_name is null
+  const missingNameAccountIds = Array.from(
+    new Set(
+      (artworks || [])
+        .map((ea: any) => ea.artworks)
+        .filter((a: any) => a && !a.artist_name && a.artist_account_id)
+        .map((a: any) => a.artist_account_id as string),
+    ),
+  );
+
+  const accountNameMap = new Map<string, string>();
+  if (missingNameAccountIds.length > 0) {
+    console.log('[Exhibitions] resolving artist names from accounts', { count: missingNameAccountIds.length });
+    const { data: accountRows, error: accountErr } = await (client as any)
+      .from('accounts')
+      .select('id, name')
+      .in('id', missingNameAccountIds);
+    if (accountErr) {
+      console.error('[Exhibitions] failed to resolve artist account names', accountErr);
+    }
+    for (const row of accountRows || []) {
+      if (row.id && row.name) accountNameMap.set(row.id, row.name);
+    }
+    console.log('[Exhibitions] resolved artist account names', { resolved: accountNameMap.size });
+  }
 
   // Double-check: filter out any artworks that don't belong to this exhibition
   // (defensive programming in case of data inconsistency)
@@ -253,10 +281,12 @@ export async function getExhibitionWithDetails(
         typeof meta.exhibition_list_price === 'string' && meta.exhibition_list_price.trim()
           ? meta.exhibition_list_price.trim()
           : null;
+      const resolvedArtistName =
+        a.artist_name ?? (a.artist_account_id ? (accountNameMap.get(a.artist_account_id) ?? null) : null);
       return {
         id: a.id,
         title: a.title,
-        artist_name: a.artist_name ?? null,
+        artist_name: resolvedArtistName,
         description: a.description ?? null,
         image_url: a.image_url,
         dimensions: a.dimensions ?? null,
