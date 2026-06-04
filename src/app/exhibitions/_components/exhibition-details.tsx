@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, X, Image as ImageIcon, Search, ListPlus, Trash2, Camera, Upload, Loader2 } from 'lucide-react';
+import { Plus, X, Image as ImageIcon, Search, ListPlus, Trash2, Camera, Upload, Loader2, Pencil } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -24,6 +24,7 @@ import {
 } from '../_actions/manage-exhibition-artworks';
 import { createQuickExhibitionListings } from '../_actions/create-exhibition-listings';
 import { publishExhibitionListing } from '../_actions/publish-exhibition-listing';
+import { updateExhibitionListing } from '../_actions/update-exhibition-listing';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 
 export function ExhibitionDetails({
@@ -132,17 +133,32 @@ export function ExhibitionDetails({
                         {artwork.title}
                       </p>
                     )}
-                    {artwork.artist_name && (
+                  </Link>
+
+                  {isOwner && artwork.status === 'draft' ? (
+                    <EditableArtistName
+                      exhibitionId={exhibition.id}
+                      artworkId={artwork.id}
+                      initialName={artwork.artist_name}
+                    />
+                  ) : (
+                    artwork.artist_name && (
                       <p className="font-serif text-xs text-ink/60 leading-snug mt-0.5">
                         {artwork.artist_name}
                       </p>
-                    )}
-                    {artwork.description && (
+                    )
+                  )}
+
+                  {artwork.description && (
+                    <Link
+                      href={`/artworks/${artwork.id}/certificate`}
+                      className="block hover:bg-wine/[0.03] -mx-2 px-2 rounded-md transition-colors"
+                    >
                       <p className="font-serif text-xs text-ink/50 leading-relaxed line-clamp-3 mt-1">
                         {artwork.description}
                       </p>
-                    )}
-                  </Link>
+                    </Link>
+                  )}
 
                   {(artwork.listPriceDisplay || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-serif text-ink/45">
@@ -190,6 +206,119 @@ export function ExhibitionDetails({
         </div>
       )}
     </div>
+  );
+}
+
+function EditableArtistName({
+  exhibitionId,
+  artworkId,
+  initialName,
+}: {
+  exhibitionId: string;
+  artworkId: string;
+  initialName: string | null;
+}) {
+  const router = useRouter();
+  const [name, setName] = useState(initialName ?? '');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(initialName ?? '');
+  const [savePending, startSave] = useTransition();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setName(initialName ?? '');
+  }, [initialName]);
+
+  const beginEdit = () => {
+    setDraft(name);
+    setEditing(true);
+    queueMicrotask(() => inputRef.current?.focus());
+  };
+
+  const save = () => {
+    const next = draft.trim();
+    if (next === (name ?? '').trim()) {
+      setEditing(false);
+      return;
+    }
+    startSave(async () => {
+      console.log('[ExhibitionDetails] updateExhibitionListing artist', { artworkId });
+      try {
+        const result = await updateExhibitionListing({
+          exhibitionId,
+          artworkId,
+          artistName: next,
+        });
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+        setName(next);
+        setEditing(false);
+        router.refresh();
+      } catch (e: unknown) {
+        console.error('[ExhibitionDetails] update artist failed', e);
+        toast.error(e instanceof Error ? e.message : 'Failed to update artist');
+      }
+    });
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 mt-1">
+        <Input
+          ref={inputRef}
+          value={draft}
+          disabled={savePending}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              save();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+          placeholder="Artist name"
+          className="h-7 text-xs font-serif"
+        />
+        <Button
+          type="button"
+          size="sm"
+          className="h-7 px-2 font-serif text-xs bg-wine text-parchment hover:bg-wine/90"
+          disabled={savePending}
+          onClick={save}
+        >
+          {savePending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+        </Button>
+      </div>
+    );
+  }
+
+  if (name.trim()) {
+    return (
+      <button
+        type="button"
+        onClick={beginEdit}
+        className="group/artist flex items-center gap-1 mt-0.5 text-left"
+        title="Edit artist name"
+      >
+        <span className="font-serif text-xs text-ink/60 leading-snug">{name}</span>
+        <Pencil className="h-3 w-3 text-ink/25 opacity-0 group-hover/artist:opacity-100 transition-opacity" />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={beginEdit}
+      className="flex items-center gap-1 mt-0.5 text-amber-800/80 hover:text-wine transition-colors"
+    >
+      <Plus className="h-3 w-3" />
+      <span className="font-serif text-xs italic">Add artist name</span>
+    </button>
   );
 }
 
