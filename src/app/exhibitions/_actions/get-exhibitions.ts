@@ -202,45 +202,65 @@ export async function getExhibitionWithDetails(
   const viewerId = options?.viewerUserId ?? null;
   const canSeeDraftListings = !!viewerId && viewerId === exhibition.gallery_id;
 
-  // Get artworks - fetch ONLY artworks linked to this specific exhibition
-  const { data: artworks, error: artworksError } = await (client as any)
+  // Get artwork links, then fetch rows directly (more reliable than nested join for all fields)
+  const { data: artworkLinks, error: linksError } = await (client as any)
     .from('exhibition_artworks')
-    .select(`
-      artwork_id,
-      exhibition_id,
-      artworks!exhibition_artworks_artwork_id_fkey (
+    .select('artwork_id, exhibition_id')
+    .eq('exhibition_id', exhibitionId);
+
+  if (linksError) {
+    console.error('[Exhibitions] getExhibitionWithDetails: artwork links fetch failed', linksError);
+  }
+
+  const linkedArtworkIds = (artworkLinks || []).map((l: { artwork_id: string }) => l.artwork_id).filter(Boolean);
+  const linkOrder = new Map<string, number>(linkedArtworkIds.map((id: string, i: number) => [id, i]));
+
+  let rawArtworkRows: Array<Record<string, unknown>> = [];
+  if (linkedArtworkIds.length > 0) {
+    const { data: rows, error: artworksError } = await (client as any)
+      .from('artworks')
+      .select(`
         id,
         title,
         artist_name,
         artist_account_id,
+        artist_profile_id,
         description,
         image_url,
         status,
         is_public,
         dimensions,
         metadata
-      )
-    `)
-    .eq('exhibition_id', exhibitionId); // Explicitly filter by this exhibition's ID
+      `)
+      .in('id', linkedArtworkIds);
 
-  if (artworksError) {
-    console.error('[Exhibitions] getExhibitionWithDetails: artworks fetch failed', artworksError);
+    if (artworksError) {
+      console.error('[Exhibitions] getExhibitionWithDetails: artworks fetch failed', artworksError);
+    }
+    rawArtworkRows = rows || [];
   }
 
-  console.log('[Exhibitions] raw artwork artist_names', (artworks || []).slice(0, 10).map((ea: any) => ({
-    id: ea.artworks?.id,
-    title: ea.artworks?.title,
-    artist_name: ea.artworks?.artist_name,
-    artist_account_id: ea.artworks?.artist_account_id,
+  console.log('[Exhibitions] raw artwork artist_names', rawArtworkRows.slice(0, 10).map((a) => ({
+    id: a.id,
+    title: a.title,
+    artist_name: a.artist_name,
+    artist_account_id: a.artist_account_id,
+    artist_profile_id: a.artist_profile_id,
   })));
 
-  // Resolve artist names from linked accounts when artist_name is null
+  // Resolve artist names from linked accounts / profiles when artist_name is empty
   const missingNameAccountIds = Array.from(
     new Set(
-      (artworks || [])
-        .map((ea: any) => ea.artworks)
-        .filter((a: any) => a && !a.artist_name && a.artist_account_id)
-        .map((a: any) => a.artist_account_id as string),
+      rawArtworkRows
+        .filter((a) => !String(a.artist_name ?? '').trim() && a.artist_account_id)
+        .map((a) => a.artist_account_id as string),
+    ),
+  );
+  const missingNameProfileIds = Array.from(
+    new Set(
+      rawArtworkRows
+        .filter((a) => !String(a.artist_name ?? '').trim() && a.artist_profile_id)
+        .map((a) => a.artist_profile_id as string),
     ),
   );
 
@@ -260,23 +280,30 @@ export async function getExhibitionWithDetails(
     console.log('[Exhibitions] resolved artist account names', { resolved: accountNameMap.size });
   }
 
-  // Double-check: filter out any artworks that don't belong to this exhibition
-  // (defensive programming in case of data inconsistency)
-  const filteredArtworks = (artworks || [])
-    .filter((ea: any) => {
-      // Ensure the exhibition_id matches (should always be true due to query, but double-check)
-      if (ea.exhibition_id !== exhibitionId) {
-        console.warn(`Artwork ${ea.artwork_id} has mismatched exhibition_id: ${ea.exhibition_id} vs ${exhibitionId}`);
-        return false;
-      }
-      const row = ea.artworks;
-      if (!row) return false;
+  const profileNameMap = new Map<string, string>();
+  if (missingNameProfileIds.length > 0) {
+    console.log('[Exhibitions] resolving artist names from profiles', { count: missingNameProfileIds.length });
+    const { data: profileRows, error: profileErr } = await (client as any)
+      .from('user_profiles')
+      .select('id, name')
+      .in('id', missingNameProfileIds);
+    if (profileErr) {
+      console.error('[Exhibitions] failed to resolve artist profile names', profileErr);
+    }
+    for (const row of profileRows || []) {
+      if (row.id && row.name) profileNameMap.set(row.id, row.name);
+    }
+    console.log('[Exhibitions] resolved artist profile names', { resolved: profileNameMap.size });
+  }
+
+  const filteredArtworks = rawArtworkRows
+    .filter((row) => {
       if (row.status === 'verified') return true;
       if (canSeeDraftListings && row.status === 'draft') return true;
       return false;
     })
-    .map((ea: any) => {
-      const a = ea.artworks;
+    .sort((a, b) => (linkOrder.get(a.id as string) ?? 0) - (linkOrder.get(b.id as string) ?? 0))
+    .map((a) => {
       const meta =
         a.metadata && typeof a.metadata === 'object' ? (a.metadata as Record<string, unknown>) : {};
       const listPrice =
@@ -287,16 +314,17 @@ export async function getExhibitionWithDetails(
         typeof a.artist_name === 'string' && a.artist_name.trim() ? a.artist_name.trim() : null;
       const resolvedArtistName =
         rawArtistName ??
-        (a.artist_account_id ? (accountNameMap.get(a.artist_account_id) ?? null) : null);
+        (a.artist_account_id ? (accountNameMap.get(a.artist_account_id as string) ?? null) : null) ??
+        (a.artist_profile_id ? (profileNameMap.get(a.artist_profile_id as string) ?? null) : null);
       return {
-        id: a.id,
-        title: a.title,
+        id: a.id as string,
+        title: a.title as string,
         artist_name: resolvedArtistName,
-        description: a.description ?? null,
-        image_url: a.image_url,
-        dimensions: a.dimensions ?? null,
+        description: (a.description as string | null) ?? null,
+        image_url: a.image_url as string | null,
+        dimensions: (a.dimensions as string | null) ?? null,
         listPriceDisplay: listPrice,
-        status: a.status,
+        status: a.status as string,
       };
     });
 
@@ -304,7 +332,7 @@ export async function getExhibitionWithDetails(
   const missingArtistName = filteredArtworks.length - withArtistName;
   console.log('[Exhibitions] getExhibitionWithDetails completed', {
     exhibitionId,
-    linkedCount: (artworks || []).length,
+    linkedCount: linkedArtworkIds.length,
     visibleCount: filteredArtworks.length,
     withArtistName,
     missingArtistName,

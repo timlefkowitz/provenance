@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Plus, X, Image as ImageIcon, Search, ListPlus, Trash2, Camera, Upload, Loader2, Pencil } from 'lucide-react';
@@ -37,6 +37,19 @@ export function ExhibitionDetails({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [artistSearch, setArtistSearch] = useState('');
+
+  const hasDraftListings = exhibition.artworks.some((a) => a.status === 'draft');
+
+  const visibleArtworks = useMemo(() => {
+    const q = artistSearch.trim().toLowerCase();
+    if (!q) return exhibition.artworks;
+    return exhibition.artworks.filter((artwork) => {
+      const artist = artwork.artist_name?.trim().toLowerCase() ?? '';
+      const title = artwork.title?.trim().toLowerCase() ?? '';
+      return artist.includes(q) || title.includes(q);
+    });
+  }, [artistSearch, exhibition.artworks]);
 
   const handleAddArtwork = async (artworkId: string) => {
     startTransition(async () => {
@@ -100,8 +113,31 @@ export function ExhibitionDetails({
       )}
 
       {exhibition.artworks.length > 0 && (
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 md:gap-5 space-y-0">
-          {exhibition.artworks.map((artwork) => (
+        <>
+          {isOwner && hasDraftListings && (
+            <div className="mb-6 max-w-sm">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
+                <Input
+                  value={artistSearch}
+                  onChange={(e) => setArtistSearch(e.target.value)}
+                  placeholder="Search by artist name…"
+                  className="pl-9 font-serif"
+                  aria-label="Search exhibition listings by artist name"
+                />
+              </div>
+              {artistSearch.trim() && (
+                <p className="mt-2 text-[11px] font-serif text-ink/45">
+                  {visibleArtworks.length === 0
+                    ? 'No works match that artist.'
+                    : `${visibleArtworks.length} work${visibleArtworks.length === 1 ? '' : 's'} shown`}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 md:gap-5 space-y-0">
+          {visibleArtworks.map((artwork) => (
             <div
               key={artwork.id}
               className="group relative break-inside-avoid mb-4 md:mb-5 rounded-lg bg-parchment/60 overflow-hidden"
@@ -147,13 +183,11 @@ export function ExhibitionDetails({
                       artworkId={artwork.id}
                       initialName={artwork.artist_name}
                     />
-                  ) : (
-                    artwork.artist_name?.trim() && (
-                      <p className="font-serif text-xs text-ink/60 leading-snug mt-0.5">
-                        {artwork.artist_name.trim()}
-                      </p>
-                    )
-                  )}
+                  ) : artwork.artist_name?.trim() ? (
+                    <p className="font-serif text-sm text-ink/65 leading-snug mt-0.5">
+                      {artwork.artist_name.trim()}
+                    </p>
+                  ) : null}
 
                   {artwork.description && (
                     <Link
@@ -209,7 +243,8 @@ export function ExhibitionDetails({
               )}
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -305,7 +340,7 @@ function EditableArtistName({
   if (name.trim()) {
     return (
       <div className="group/artist flex items-center gap-1 mt-0.5">
-        <p className="font-serif text-xs text-ink/60 leading-snug">{name}</p>
+        <p className="font-serif text-sm text-ink/65 leading-snug">{name}</p>
         <button
           type="button"
           onClick={beginEdit}
