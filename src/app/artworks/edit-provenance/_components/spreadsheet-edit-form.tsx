@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
+  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   Loader2,
   Sparkles,
   Tag,
+  Upload,
   X,
 } from 'lucide-react';
 import { PrintMenu } from './print-menu';
@@ -49,6 +51,7 @@ import {
 import { cn } from '@kit/ui/utils';
 import { toast } from '@kit/ui/sonner';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
+import { updateArtworkImage } from '../_actions/update-artwork-image';
 import { publishExhibitionListing } from '~/app/exhibitions/_actions/publish-exhibition-listing';
 import { markArtworkSold } from '~/app/artworks/[id]/_actions/mark-artwork-sold';
 import { SoldToPicker, type SoldToValue } from './sold-to-picker';
@@ -550,6 +553,9 @@ export function SpreadsheetEditForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [publishingArtworkId, setPublishingArtworkId] = useState<string | null>(null);
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+  const imageUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const imageCameraRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [previewArtworkId, setPreviewArtworkId] = useState<string | null>(null);
@@ -947,6 +953,31 @@ export function SpreadsheetEditForm({
     } finally {
       setPublishingArtworkId(null);
     }
+  };
+
+  const handleArtworkImageSelected = (artworkId: string, file: File | null) => {
+    if (!file || file.size === 0) return;
+    if (uploadingImageId) return;
+
+    setUploadingImageId(artworkId);
+    startTransition(async () => {
+      try {
+        const fd = new FormData();
+        fd.append('image', file);
+        const res = await updateArtworkImage(artworkId, fd);
+        if (!res.success) {
+          toast.error(res.error ?? 'Failed to upload photo');
+          return;
+        }
+        toast.success('Photo updated');
+        router.refresh();
+      } catch (e: unknown) {
+        console.error('[Collection] image upload failed', e);
+        toast.error(e instanceof Error ? e.message : 'Failed to upload photo');
+      } finally {
+        setUploadingImageId(null);
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1565,13 +1596,43 @@ export function SpreadsheetEditForm({
                               canPinRegistryThumbnail &&
                               !!scopeKey &&
                               getActiveRegistryIds().includes(artwork.id);
+                            const isUploadingImage = uploadingImageId === artwork.id;
                             return (
-                              <div className="group mx-auto sm:mx-0 flex-shrink-0">
+                              <div className="group/image mx-auto sm:mx-0 flex-shrink-0 space-y-2">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  ref={(el) => {
+                                    imageUploadRefs.current[artwork.id] = el;
+                                  }}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0] ?? null;
+                                    handleArtworkImageSelected(artwork.id, f);
+                                    e.target.value = '';
+                                  }}
+                                />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  className="hidden"
+                                  ref={(el) => {
+                                    imageCameraRefs.current[artwork.id] = el;
+                                  }}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0] ?? null;
+                                    handleArtworkImageSelected(artwork.id, f);
+                                    e.target.value = '';
+                                  }}
+                                />
                                 {artwork.image_url ? (
-                                  <div className={cn(
-                                    'relative w-full max-w-[11rem] aspect-square sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto rounded-xl sm:rounded-lg overflow-hidden border border-wine/20 shadow-sm',
-                                    isPanelRegistryPhoto && 'ring-2 ring-wine/40',
-                                  )}>
+                                  <div
+                                    className={cn(
+                                      'relative w-full max-w-[11rem] aspect-square sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto rounded-xl sm:rounded-lg overflow-hidden border border-wine/20 shadow-sm',
+                                      isPanelRegistryPhoto && 'ring-2 ring-wine/40',
+                                    )}
+                                  >
                                     <Image
                                       src={artwork.image_url}
                                       alt={data.title || artwork.title}
@@ -1579,11 +1640,22 @@ export function SpreadsheetEditForm({
                                       className="object-cover"
                                       sizes="(max-width:640px) 90vw, 80px"
                                     />
+                                    {isUploadingImage && (
+                                      <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+                                        <Loader2 className="h-6 w-6 text-white animate-spin" aria-hidden />
+                                      </div>
+                                    )}
                                     {canSetRegistryPhoto && canPinRegistryThumbnail && scopeKey && (
                                       <RegistryPhotoToggle
                                         artworkId={artwork.id}
                                         mode={senderRole as 'artist' | 'gallery'}
-                                        galleryProfileId={senderRole === 'gallery' ? (scopeKey !== 'artist' ? scopeKey : undefined) : undefined}
+                                        galleryProfileId={
+                                          senderRole === 'gallery'
+                                            ? scopeKey !== 'artist'
+                                              ? scopeKey
+                                              : undefined
+                                            : undefined
+                                        }
                                         isSelected={isPanelRegistryPhoto}
                                         gallerySelectedIds={
                                           senderRole === USER_ROLES.GALLERY
@@ -1593,10 +1665,50 @@ export function SpreadsheetEditForm({
                                         onSelectionChange={handleRegistrySelectionChange}
                                       />
                                     )}
+                                    <button
+                                      type="button"
+                                      disabled={isUploadingImage || pending}
+                                      onClick={() => imageUploadRefs.current[artwork.id]?.click()}
+                                      className="absolute inset-x-0 bottom-0 py-1.5 bg-black/55 text-white text-[10px] font-serif opacity-0 group-hover/image:opacity-100 transition-opacity disabled:cursor-not-allowed"
+                                    >
+                                      Change photo
+                                    </button>
                                   </div>
                                 ) : (
-                                  <div className="w-full max-w-[11rem] aspect-square sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg border border-wine/20 bg-ink/5 flex items-center justify-center">
-                                    <span className="text-ink/30 text-xs font-serif">No image</span>
+                                  <div className="w-full max-w-[11rem] aspect-square sm:max-w-none sm:w-20 sm:h-20 sm:aspect-auto flex-shrink-0 rounded-xl sm:rounded-lg border border-dashed border-wine/25 bg-ink/5 flex flex-col items-center justify-center gap-2 p-2 relative">
+                                    {isUploadingImage ? (
+                                      <Loader2 className="h-6 w-6 text-wine/60 animate-spin" aria-hidden />
+                                    ) : (
+                                      <>
+                                        <span className="text-ink/30 text-xs font-serif text-center">
+                                          No image
+                                        </span>
+                                        <div className="flex flex-col gap-1.5 w-full max-w-[9rem]">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={pending}
+                                            className="font-serif text-[10px] h-7 border-wine/25 px-2"
+                                            onClick={() => imageUploadRefs.current[artwork.id]?.click()}
+                                          >
+                                            <Upload className="h-3 w-3 mr-1" />
+                                            Upload
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={pending}
+                                            className="font-serif text-[10px] h-7 border-wine/25 px-2"
+                                            onClick={() => imageCameraRefs.current[artwork.id]?.click()}
+                                          >
+                                            <Camera className="h-3 w-3 mr-1" />
+                                            Take photo
+                                          </Button>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 )}
                               </div>
