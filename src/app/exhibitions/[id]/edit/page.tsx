@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionWithDetails } from '../../_actions/get-exhibitions';
+import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { ExhibitionForm } from '../../_components/exhibition-form';
 
 export const metadata = {
@@ -46,9 +47,7 @@ export default async function EditExhibitionPage({
   // Get exhibition with details
   const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user.id });
 
-  // Any authenticated user who owns the exhibition (gallery_id = user.id) can edit it,
-  // regardless of which role mode they used when creating it.
-  if (!exhibition || exhibition.gallery_id !== user.id) {
+  if (!exhibition || !(await canManageExhibition(user.id, exhibition.gallery_id))) {
     redirect('/exhibitions');
   }
 

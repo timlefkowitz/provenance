@@ -92,7 +92,31 @@ export function ExhibitionDetails({
   return (
     <div>
       {isOwner && (
-        <div className="flex justify-end mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+          <div className="w-full sm:max-w-sm">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
+              <Input
+                value={artistSearch}
+                onChange={(e) => setArtistSearch(e.target.value)}
+                placeholder="Search by artist name or title…"
+                className="pl-9 font-serif"
+                aria-label="Search exhibition listings by artist name or title"
+                disabled={exhibition.artworks.length === 0}
+              />
+            </div>
+            {exhibition.artworks.length === 0 ? (
+              <p className="mt-2 text-[11px] font-serif text-ink/45">
+                Add listings below, then filter them here.
+              </p>
+            ) : artistSearch.trim() ? (
+              <p className="mt-2 text-[11px] font-serif text-ink/45">
+                {visibleArtworks.length === 0
+                  ? 'No works match that search.'
+                  : `${visibleArtworks.length} work${visibleArtworks.length === 1 ? '' : 's'} shown`}
+              </p>
+            ) : null}
+          </div>
           <AddArtworkDialog
             exhibitionId={exhibition.id}
             onAdd={handleAddArtwork}
@@ -112,28 +136,6 @@ export function ExhibitionDetails({
 
       {exhibition.artworks.length > 0 && (
         <>
-          {isOwner && (
-            <div className="mb-6 max-w-sm">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
-                <Input
-                  value={artistSearch}
-                  onChange={(e) => setArtistSearch(e.target.value)}
-                  placeholder="Search by artist name or title…"
-                  className="pl-9 font-serif"
-                  aria-label="Search exhibition listings by artist name or title"
-                />
-              </div>
-              {artistSearch.trim() && (
-                <p className="mt-2 text-[11px] font-serif text-ink/45">
-                  {visibleArtworks.length === 0
-                    ? 'No works match that search.'
-                    : `${visibleArtworks.length} work${visibleArtworks.length === 1 ? '' : 's'} shown`}
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 md:gap-5 space-y-0">
           {visibleArtworks.map((artwork) => (
             <div

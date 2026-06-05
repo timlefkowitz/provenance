@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 
 export type Exhibition = {
   id: string;
@@ -200,7 +201,8 @@ export async function getExhibitionWithDetails(
     .eq('exhibition_id', exhibitionId);
 
   const viewerId = options?.viewerUserId ?? null;
-  const canSeeDraftListings = !!viewerId && viewerId === exhibition.gallery_id;
+  const canSeeDraftListings =
+    !!viewerId && (await canManageExhibition(viewerId, exhibition.gallery_id));
 
   // Get artwork links, then fetch rows directly (more reliable than nested join for all fields)
   const { data: artworkLinks, error: linksError } = await (client as any)

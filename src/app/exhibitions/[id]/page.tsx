@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
+import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
 import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
@@ -57,7 +58,8 @@ export default async function ExhibitionPage({
   const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user?.id ?? null });
   if (!exhibition) redirect('/exhibitions');
 
-  const isOwner = user?.id === exhibition.gallery_id;
+  const isOwner =
+    !!user && (await canManageExhibition(user.id, exhibition.gallery_id));
 
   // Resolve back link
   let backLink = '/exhibitions';
