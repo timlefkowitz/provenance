@@ -39,8 +39,6 @@ export function ExhibitionDetails({
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [artistSearch, setArtistSearch] = useState('');
 
-  const hasDraftListings = exhibition.artworks.some((a) => a.status === 'draft');
-
   const visibleArtworks = useMemo(() => {
     const q = artistSearch.trim().toLowerCase();
     if (!q) return exhibition.artworks;
@@ -114,22 +112,22 @@ export function ExhibitionDetails({
 
       {exhibition.artworks.length > 0 && (
         <>
-          {isOwner && hasDraftListings && (
+          {isOwner && (
             <div className="mb-6 max-w-sm">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
                 <Input
                   value={artistSearch}
                   onChange={(e) => setArtistSearch(e.target.value)}
-                  placeholder="Search by artist name…"
+                  placeholder="Search by artist name or title…"
                   className="pl-9 font-serif"
-                  aria-label="Search exhibition listings by artist name"
+                  aria-label="Search exhibition listings by artist name or title"
                 />
               </div>
               {artistSearch.trim() && (
                 <p className="mt-2 text-[11px] font-serif text-ink/45">
                   {visibleArtworks.length === 0
-                    ? 'No works match that artist.'
+                    ? 'No works match that search.'
                     : `${visibleArtworks.length} work${visibleArtworks.length === 1 ? '' : 's'} shown`}
                 </p>
               )}
@@ -457,7 +455,7 @@ function AddArtworkDialog({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [artworks, setArtworks] = useState<
-    Array<{ id: string; title: string; image_url: string | null }>
+    Array<{ id: string; title: string; image_url: string | null; artist_name: string | null }>
   >([]);
   const [loading, setLoading] = useState(false);
   const [manualRows, setManualRows] = useState<ManualRow[]>([emptyManualRow()]);
@@ -521,6 +519,7 @@ function AddArtworkDialog({
           id: string;
           title: string;
           image_url: string | null;
+          artist_name: string | null;
         }>;
         setArtworks(data.filter((a) => !existingArtworkIds.includes(a.id)));
       }
@@ -719,9 +718,16 @@ function AddArtworkDialog({
                         <ImageIcon className="h-4 w-4 text-wine/40" />
                       </div>
                     )}
-                    <span className="font-serif text-sm text-ink group-hover:text-wine transition-colors line-clamp-2">
-                      {artwork.title}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-serif text-sm text-ink group-hover:text-wine transition-colors line-clamp-2 block">
+                        {artwork.title}
+                      </span>
+                      {artwork.artist_name?.trim() && (
+                        <span className="font-serif text-xs text-ink/50 line-clamp-1 block mt-0.5">
+                          {artwork.artist_name.trim()}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))
               )}

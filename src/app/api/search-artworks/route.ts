@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   let artworksQuery = (client as any)
     .from('artworks')
-    .select('id, title, image_url, account_id, is_public, status')
+    .select('id, title, image_url, artist_name, account_id, is_public, status')
     .or(`title.ilike.%${q}%,artist_name.ilike.%${q}%`)
     .eq('status', 'verified')
     .limit(MAX_LIMIT);
@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
     id: artwork.id,
     title: artwork.title,
     image_url: artwork.image_url,
+    artist_name: artwork.artist_name,
   }));
 
   return NextResponse.json(results);
