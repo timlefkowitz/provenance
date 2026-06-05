@@ -110,10 +110,8 @@ export function NewExhibitionDialog({
         });
         setOpen(false);
 
-        // Redirect to the edit page so the user can fill in details
-        // (description, dates, location, image, curator, theme) before
-        // artworks or certificates are ready.
-        router.push(`/exhibitions/${result.exhibitionId}/edit`);
+        // Land on edit so metadata and draft artwork tools are in one place.
+        router.push(`/exhibitions/${result.exhibitionId}/edit#artworks`);
         router.refresh();
       } catch (e: any) {
         console.error('[Collection] NewExhibitionDialog failed', e);

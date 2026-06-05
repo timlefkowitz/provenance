@@ -200,6 +200,21 @@ export default async function ExhibitionPage({
 
       {/* ── ARTWORKS ──────────────────────────────────────────── */}
       <div className="container mx-auto px-4 max-w-6xl py-12 pb-24">
+        {isOwner && (
+          <div className="mb-8 rounded-xl border border-wine/15 bg-parchment/40 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm font-serif text-ink/65">
+              You are drafting this exhibition. Add listings, search works, and publish when ready.
+            </p>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="font-serif border-wine/25 text-wine shrink-0"
+            >
+              <Link href={`/exhibitions/${id}/edit#artworks`}>Full draft workspace</Link>
+            </Button>
+          </div>
+        )}
         {exhibition.artworks.length > 0 && (
           <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-8">
             Works in Exhibition · {exhibition.artworks.length}

@@ -71,12 +71,17 @@ export function ExhibitionForm({
         if (exhibition) {
           await updateExhibition(exhibition.id, formDataObj);
           toast.success('Exhibition updated successfully');
+          router.push(`/exhibitions/${exhibition.id}/edit#artworks`);
         } else {
-          await createExhibition(formDataObj);
-          toast.success('Exhibition created successfully');
+          const result = await createExhibition(formDataObj);
+          toast.success('Exhibition created. Add artworks below.');
+          if (result?.exhibitionId) {
+            router.push(`/exhibitions/${result.exhibitionId}/edit#artworks`);
+          } else {
+            router.push('/exhibitions');
+          }
         }
 
-        router.push('/exhibitions');
         router.refresh();
       } catch (e: any) {
         console.error('[ExhibitionForm] Error saving exhibition', e);
