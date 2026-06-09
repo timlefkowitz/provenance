@@ -38,16 +38,24 @@ export function ExhibitionDetails({
   const [pending, startTransition] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [artistSearch, setArtistSearch] = useState('');
+  const [filterNoImage, setFilterNoImage] = useState(false);
+
+  const noImageCount = useMemo(
+    () => exhibition.artworks.filter((a) => !a.image_url).length,
+    [exhibition.artworks],
+  );
 
   const visibleArtworks = useMemo(() => {
+    let list = exhibition.artworks;
+    if (filterNoImage) list = list.filter((a) => !a.image_url);
     const q = artistSearch.trim().toLowerCase();
-    if (!q) return exhibition.artworks;
-    return exhibition.artworks.filter((artwork) => {
+    if (!q) return list;
+    return list.filter((artwork) => {
       const artist = artwork.artist_name?.trim().toLowerCase() ?? '';
       const title = artwork.title?.trim().toLowerCase() ?? '';
       return artist.includes(q) || title.includes(q);
     });
-  }, [artistSearch, exhibition.artworks]);
+  }, [artistSearch, filterNoImage, exhibition.artworks]);
 
   const handleAddArtwork = async (artworkId: string) => {
     startTransition(async () => {
@@ -93,26 +101,47 @@ export function ExhibitionDetails({
     <div>
       {isOwner && (
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-          <div className="w-full sm:max-w-sm">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
-              <Input
-                value={artistSearch}
-                onChange={(e) => setArtistSearch(e.target.value)}
-                placeholder="Search by artist name or title…"
-                className="pl-9 font-serif"
-                aria-label="Search exhibition listings by artist name or title"
+          <div className="w-full sm:max-w-sm flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/35" />
+                <Input
+                  value={artistSearch}
+                  onChange={(e) => setArtistSearch(e.target.value)}
+                  placeholder="Search by artist name or title…"
+                  className="pl-9 font-serif"
+                  aria-label="Search exhibition listings by artist name or title"
+                  disabled={exhibition.artworks.length === 0}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterNoImage((v) => !v)}
                 disabled={exhibition.artworks.length === 0}
-              />
+                title={filterNoImage ? 'Show all artworks' : 'Show only artworks without a photo'}
+                className={`shrink-0 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-serif transition-colors ${
+                  filterNoImage
+                    ? 'border-wine bg-wine/10 text-wine'
+                    : 'border-wine/20 bg-transparent text-ink/50 hover:border-wine/40 hover:text-ink disabled:opacity-40'
+                }`}
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                No photo
+                {noImageCount > 0 && (
+                  <span className={`rounded-full px-1.5 py-0 text-[10px] font-medium ${filterNoImage ? 'bg-wine text-parchment' : 'bg-wine/10 text-wine'}`}>
+                    {noImageCount}
+                  </span>
+                )}
+              </button>
             </div>
             {exhibition.artworks.length === 0 ? (
-              <p className="mt-2 text-[11px] font-serif text-ink/45">
+              <p className="text-[11px] font-serif text-ink/45">
                 Add listings below, then filter them here.
               </p>
-            ) : artistSearch.trim() ? (
-              <p className="mt-2 text-[11px] font-serif text-ink/45">
+            ) : artistSearch.trim() || filterNoImage ? (
+              <p className="text-[11px] font-serif text-ink/45">
                 {visibleArtworks.length === 0
-                  ? 'No works match that search.'
+                  ? 'No works match.'
                   : `${visibleArtworks.length} work${visibleArtworks.length === 1 ? '' : 's'} shown`}
               </p>
             ) : null}
