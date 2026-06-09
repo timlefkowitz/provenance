@@ -12,10 +12,14 @@ export function FavoriteButton({
   currentUserId,
   /** When set (e.g. server-batched portal data), skip per-card isFavorited() on mount */
   initialFavorited,
+  variant = 'default',
+  showWhenSignedOut = false,
 }: {
   artworkId: string;
   currentUserId?: string;
   initialFavorited?: boolean;
+  variant?: 'default' | 'overlay';
+  showWhenSignedOut?: boolean;
 }) {
   const [favorited, setFavorited] = useState(() =>
     initialFavorited !== undefined ? initialFavorited : false,
@@ -86,29 +90,39 @@ export function FavoriteButton({
     });
   };
 
-  if (!currentUserId) {
+  if (!currentUserId && !showWhenSignedOut) {
     return null;
   }
+
+  const isOverlay = variant === 'overlay';
 
   return (
     <Button
       variant="ghost"
       size="sm"
-      className={`h-8 w-8 p-0 rounded-full transition-all ${
-        favorited 
-          ? 'text-wine hover:text-wine/80 bg-wine/10' 
-          : 'text-ink/50 hover:text-wine hover:bg-wine/5'
-      }`}
+      className={
+        isOverlay
+          ? `h-11 w-11 p-0 rounded-full transition-all shadow-sm ${
+              favorited
+                ? 'text-wine bg-parchment/90 hover:bg-parchment'
+                : 'text-parchment bg-black/25 hover:bg-black/35 backdrop-blur-sm'
+            }`
+          : `h-8 w-8 p-0 rounded-full transition-all ${
+              favorited
+                ? 'text-wine hover:text-wine/80 bg-wine/10'
+                : 'text-ink/50 hover:text-wine hover:bg-wine/5'
+            }`
+      }
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         handleToggle();
       }}
-      disabled={loading || pending}
+      disabled={!!currentUserId && (loading || pending)}
       title={favorited ? 'Remove from favorites' : 'Add to favorites'}
     >
-      <Heart 
-        className={`h-4 w-4 ${favorited ? 'fill-current' : ''}`} 
+      <Heart
+        className={`${isOverlay ? 'h-5 w-5' : 'h-4 w-4'} ${favorited ? 'fill-current' : ''}`}
       />
     </Button>
   );

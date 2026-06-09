@@ -71,21 +71,28 @@ export function FeedSlide({
             )}
           </Link>
 
+          {/* Favorite — top right on artwork, below floating search */}
+          <div className="absolute top-14 right-4 z-10">
+            <FavoriteButton
+              artworkId={artwork.id}
+              currentUserId={currentUserId}
+              variant="overlay"
+              showWhenSignedOut
+            />
+          </div>
+
           {/* Bottom overlay */}
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-8 pt-16 bg-gradient-to-t from-parchment/90 via-parchment/40 to-transparent pointer-events-none">
-            <div className="flex items-end justify-between gap-3 pointer-events-auto">
-              <div className="min-w-0">
-                <p className="font-display text-sm text-wine truncate">{artwork.title}</p>
-                {artwork.artist_name && (
-                  <p className="text-xs text-ink/60 font-serif truncate">
-                    {artwork.artist_name}
-                    {artwork.medium && (
-                      <span className="text-ink/40"> · {artwork.medium}</span>
-                    )}
-                  </p>
-                )}
-              </div>
-              <FavoriteButton artworkId={artwork.id} currentUserId={currentUserId} />
+            <div className="min-w-0 pointer-events-none">
+              <p className="font-display text-sm text-wine truncate">{artwork.title}</p>
+              {artwork.artist_name && (
+                <p className="text-xs text-ink/60 font-serif truncate">
+                  {artwork.artist_name}
+                  {artwork.medium && (
+                    <span className="text-ink/40"> · {artwork.medium}</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
