@@ -4,7 +4,15 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
-import { ChevronDown } from 'lucide-react';
+import {
+  Award,
+  ChevronDown,
+  ClipboardList,
+  GalleryVerticalEnd,
+  Globe,
+  Users,
+  Wrench,
+} from 'lucide-react';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
@@ -22,6 +30,43 @@ import { UsingGalleryLabel } from './using-gallery-label';
 
 const desktopNavItemClass =
   'inline-flex items-center rounded-md px-2 py-1 -mx-2 -my-1 text-ink hover:text-wine transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment';
+
+/**
+ * Toolbox entries shared between the desktop dropdown and the mobile menu.
+ * Each tool gets an icon + short description for the rich dropdown panel.
+ */
+const TOOLBOX_ITEMS = [
+  {
+    href: '/profile/site',
+    label: 'Website Editor',
+    description: 'Design, edit & publish your site',
+    icon: Globe,
+  },
+  {
+    href: '/exhibitions',
+    label: 'Exhibitions',
+    description: 'Plan and showcase your shows',
+    icon: GalleryVerticalEnd,
+  },
+  {
+    href: '/grants',
+    label: 'Grants',
+    description: 'Find funding & write applications',
+    icon: Award,
+  },
+  {
+    href: '/portal/or',
+    label: 'CRM',
+    description: 'Contacts, collectors & outreach',
+    icon: Users,
+  },
+  {
+    href: '/operations',
+    label: 'Operations',
+    description: 'Logistics, inventory & tasks',
+    icon: ClipboardList,
+  },
+] as const;
 
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
@@ -73,36 +118,49 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 Portal
               </Link>
               <DropdownMenu>
-                <DropdownMenuTrigger className={`${desktopNavItemClass} gap-1 font-medium data-[state=open]:text-wine`}>
+                <DropdownMenuTrigger
+                  className={`${desktopNavItemClass} group gap-1.5 font-medium data-[state=open]:text-wine`}
+                >
+                  <Wrench className="h-4 w-4 transition-transform duration-300 ease-out group-hover:-rotate-12 group-data-[state=open]:-rotate-[24deg] group-data-[state=open]:scale-110" />
                   Toolbox
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="z-[200]">
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile/site" className="cursor-pointer">
-                      My website
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/exhibitions" className="cursor-pointer">
-                      Exhibitions
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/grants" className="cursor-pointer">
-                      Grants
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/portal/or" className="cursor-pointer">
-                      CRM
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/operations" className="cursor-pointer">
-                      Operations
-                    </Link>
-                  </DropdownMenuItem>
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={10}
+                  className="toolbox-dropdown z-[200] w-72 p-1.5 rounded-xl border-wine/15 bg-parchment shadow-xl shadow-wine/10"
+                >
+                  <div className="px-3 pt-2 pb-1.5 flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-wine/60">
+                      Your studio toolbox
+                    </span>
+                    <span className="flex-1 h-px bg-wine/10" />
+                  </div>
+                  {TOOLBOX_ITEMS.map((item, i) => (
+                    <DropdownMenuItem
+                      key={item.href}
+                      asChild
+                      className="animate-toolbox-item rounded-lg p-0 focus:bg-wine/5"
+                      style={{ animationDelay: `${60 + i * 45}ms` }}
+                    >
+                      <Link
+                        href={item.href}
+                        className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25">
+                          <item.icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-ink leading-tight">
+                            {item.label}
+                          </span>
+                          <span className="block text-[11px] text-ink/50 leading-tight mt-0.5">
+                            {item.description}
+                          </span>
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -265,44 +323,50 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 >
                   Portal
                 </Link>
-                <span className="w-full text-center text-sm font-display text-wine/70 uppercase tracking-widest py-3">
-                  Toolbox
-                </span>
-                <Link
-                  href="/profile/site"
-                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  My website
-                </Link>
-                <Link
-                  href="/exhibitions"
-                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Exhibitions
-                </Link>
-                <Link
-                  href="/grants"
-                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Grants
-                </Link>
-                <Link
-                  href="/portal/or"
-                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  CRM
-                </Link>
-                <Link
-                  href="/operations"
-                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Operations
-                </Link>
+                <div className="w-full flex items-center gap-2.5 pt-4 pb-2 px-1">
+                  <span className="flex-1 h-px bg-wine/15" />
+                  <span className="inline-flex items-center gap-1.5 text-xs font-display text-wine/70 uppercase tracking-widest">
+                    <Wrench className="h-3.5 w-3.5" />
+                    Toolbox
+                  </span>
+                  <span className="flex-1 h-px bg-wine/15" />
+                </div>
+                <div className="w-full grid grid-cols-2 gap-2 pb-2">
+                  {TOOLBOX_ITEMS.map((item, i) => {
+                    const featured = i === 0;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`animate-toolbox-item rounded-xl border transition-colors touch-manipulation ${
+                          featured
+                            ? 'col-span-2 flex items-center gap-3 border-wine/30 bg-wine/5 px-4 py-3 hover:border-wine/50 active:bg-wine/10'
+                            : 'flex flex-col items-center gap-1.5 border-wine/15 bg-white/50 px-2 py-3.5 text-center hover:border-wine/40 hover:bg-wine/5 active:bg-wine/10'
+                        }`}
+                        style={{ animationDelay: `${i * 45}ms` }}
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine">
+                          <item.icon className="h-4 w-4" />
+                        </span>
+                        {featured ? (
+                          <span className="min-w-0 text-left">
+                            <span className="block text-sm font-serif font-semibold text-ink leading-tight">
+                              {item.label}
+                            </span>
+                            <span className="block text-[11px] font-serif text-ink/50 leading-tight mt-0.5">
+                              {item.description}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-xs font-serif font-semibold text-ink leading-tight">
+                            {item.label}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               </>
             )}
             <Link
