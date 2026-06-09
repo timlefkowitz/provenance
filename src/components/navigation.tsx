@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
@@ -168,11 +168,42 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           aria-label="Toggle menu"
           aria-expanded={mobileMenuOpen}
         >
-          {mobileMenuOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Menu className="h-6 w-6" />
-          )}
+          <svg
+            className="h-6 w-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+          >
+            <line
+              x1="3"
+              y1="6"
+              x2="21"
+              y2="6"
+              className={`transition-transform duration-300 origin-center ${
+                mobileMenuOpen ? 'translate-y-[6px] rotate-45' : ''
+              }`}
+            />
+            <line
+              x1="3"
+              y1="12"
+              x2="21"
+              y2="12"
+              className={`transition-all duration-300 origin-center ${
+                mobileMenuOpen ? 'opacity-0 scale-x-0' : ''
+              }`}
+            />
+            <line
+              x1="3"
+              y1="18"
+              x2="21"
+              y2="18"
+              className={`transition-transform duration-300 origin-center ${
+                mobileMenuOpen ? '-translate-y-[6px] -rotate-45' : ''
+              }`}
+            />
+          </svg>
         </button>
       </div>
 
