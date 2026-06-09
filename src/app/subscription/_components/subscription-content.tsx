@@ -38,7 +38,8 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
     'Grant list',
     'Open call list',
     'Residency list',
-    'Creator website (yourname.provenance.app)',
+    'Host your own website (yourname.provenance.app)',
+    'Sell your work directly from your site',
     '+ more',
   ],
   collector: [
@@ -46,7 +47,8 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
     'Collection management',
     'Appraiser tools',
     'Automatically get information on your artworks & artist',
-    'Creator website (yourname.provenance.app)',
+    'Host a website to showcase and sell from your collection',
+    'Sell works directly from your site',
     '+ more',
   ],
   gallery: [
@@ -54,7 +56,8 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
     'Exhibition toolset',
     'Artist publication collection',
     'Gallery grants',
-    'Creator website (yourname.provenance.app)',
+    'Host a gallery website to showcase and sell works',
+    'Sell works directly from your site',
     'and more',
   ],
 };

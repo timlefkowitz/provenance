@@ -80,6 +80,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   }
 
   return (
+    <>
     <nav className="relative z-[100] flex items-center justify-between gap-3 px-4 sm:px-6 pl-safe pr-safe py-3 sm:py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 shadow-sm">
       <div className="flex items-center gap-8 min-w-0">
         <Link 
@@ -275,7 +276,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
         </button>
       </div>
 
-      {/* Mobile fullscreen menu */}
+    </nav>
+
+      {/* Mobile fullscreen menu — must live OUTSIDE <nav> so that the nav's
+          backdrop-filter does not create a new containing block and break
+          position:fixed on iOS/Android. */}
       {mobileMenuOpen && (
         <div className="fixed inset-x-0 bottom-0 top-[var(--nav-h)] bg-parchment md:hidden z-[90] flex flex-col overflow-y-auto pb-safe">
           {user.data && (
@@ -417,7 +422,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           )}
         </div>
       )}
-    </nav>
+    </>
   );
 }
 

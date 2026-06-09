@@ -43,7 +43,8 @@ export default async function ProfileSitePage({
           Publish a beautiful, chromeless site at{' '}
           <span className="text-wine font-medium">yourname.provenance.guru</span> —
           populated automatically from your artworks, exhibitions, and press.
-          Included with every Provenance subscription.
+          Included with every Provenance subscription: host your own website and sell
+          your work directly from your site.
         </p>
         <Button asChild className="bg-wine text-parchment hover:bg-wine/90 font-serif">
           <Link href="/subscription">Unlock with a subscription</Link>

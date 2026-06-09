@@ -261,6 +261,7 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
         'Collector: $29.99/month or $299.90/year.',
         'Gallery: $99/month or $990/year.',
         'Yearly plans reflect approximately two months free compared to paying monthly for twelve months. Display prices are shown on the subscription page; the amount charged is confirmed at Stripe checkout.',
+        'Every paid plan includes a hosted website at yourname.provenance.app, populated from your profile and artworks, where you can showcase and sell your work.',
         'Certificates and many core features remain free. Paid subscriptions unlock Toolbox features such as Grants, Open Calls, CRM, and Operations tools, as described on the site.',
       ],
     },
