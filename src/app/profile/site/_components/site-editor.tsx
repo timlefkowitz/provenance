@@ -717,21 +717,28 @@ export function SiteEditor({
               <p className="text-[11px] text-ink/50 font-serif mb-2 uppercase tracking-widest">
                 Accent
               </p>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-3 sm:gap-2.5">
                 {SITE_ACCENTS.map((a) => (
                   <button
                     key={a.key}
                     type="button"
                     onClick={() => { setTheme((prev) => ({ ...prev, accent: a.key })); markUnsaved(); }}
-                    title={a.label}
+                    aria-label={`Accent color ${a.label}`}
+                    aria-pressed={theme.accent === a.key}
                     className={cn(
-                      'w-8 h-8 rounded-full border-2 transition-all',
-                      theme.accent === a.key
-                        ? 'border-ink scale-110'
-                        : 'border-transparent hover:scale-105',
+                      'flex flex-col items-center gap-1.5 transition-transform touch-manipulation min-w-[3.25rem]',
+                      theme.accent === a.key && 'scale-105',
                     )}
-                    style={{ background: a.value }}
-                  />
+                  >
+                    <div
+                      className={cn(
+                        'w-11 h-11 sm:w-9 sm:h-9 rounded-full border-2 transition-all',
+                        theme.accent === a.key ? 'border-ink' : 'border-wine/20',
+                      )}
+                      style={{ background: a.value }}
+                    />
+                    <span className="text-[10px] font-serif text-ink/60 leading-none">{a.label}</span>
+                  </button>
                 ))}
               </div>
             </div>

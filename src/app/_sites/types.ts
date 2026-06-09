@@ -219,6 +219,7 @@ export const SITE_ACCENTS: { key: string; label: string; value: string }[] = [
   { key: 'sand',    label: 'Sand',    value: '#8B7355' },
   { key: 'midnight',label: 'Midnight',value: '#1A1A2E' },
   { key: 'rose',    label: 'Rose',    value: '#8B4558' },
+  { key: 'copper',  label: 'Copper',  value: '#9C5C38' },
 ];
 
 /** Font pairing options */

@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from './_actions/get-exhibitions';
 import { ExhibitionsList } from './_components/exhibitions-list';
+import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 
 export const metadata = {
   title: 'Exhibitions | Provenance',
@@ -44,9 +45,10 @@ export default async function ExhibitionsPage() {
           </h1>
         </div>
       </div>
-      <div className="container mx-auto px-4 max-w-6xl py-10 pb-24">
+      <div className="container mx-auto px-4 max-w-6xl py-10 pb-12">
         <ExhibitionsList exhibitions={exhibitions} galleryId={user.id} />
       </div>
+      <SiteLegalFooter />
     </div>
   );
 }

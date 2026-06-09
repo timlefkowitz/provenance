@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSiteData } from './_data/get-site-data';
+import { resolveAccent } from '../_templates/palette';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,14 +81,6 @@ export default async function SiteLayout({
  * `var(--site-accent)` without coupling to Tailwind config.
  */
 function getSiteAccentCss(accentKey: string): React.CSSProperties {
-  const palette: Record<string, string> = {
-    wine:     '#4A2F25',
-    slate:    '#3D4B5C',
-    forest:   '#2D4A3E',
-    sand:     '#8B7355',
-    midnight: '#1A1A2E',
-    rose:     '#8B4558',
-  };
-  const value = palette[accentKey] ?? palette['wine'];
+  const value = resolveAccent(accentKey);
   return { '--site-accent': value } as React.CSSProperties;
 }

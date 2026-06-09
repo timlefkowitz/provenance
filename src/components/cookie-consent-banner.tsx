@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLegalModal } from '~/components/legal/legal-modal-context';
 import { gtmService } from '~/lib/gtm';
 
 const CONSENT_KEY = 'provenance_cookie_consent';
@@ -16,6 +17,7 @@ type StoredConsent = 'granted' | 'denied';
  * - Re-applies stored consent on every page load so GTM tags honour prior choice.
  */
 export function CookieConsentBanner() {
+  const { openLegalDocument } = useLegalModal();
   // 'unresolved' = we haven't yet read localStorage (avoids SSR / hydration flash)
   const [resolved, setResolved] = useState<StoredConsent | 'unresolved'>('unresolved');
 
@@ -63,12 +65,13 @@ export function CookieConsentBanner() {
           We use cookies to measure ad performance and improve your experience.
           By clicking <strong className="text-ink font-semibold">Accept</strong>, you
           consent to our use of advertising and analytics cookies.{' '}
-          <a
-            href="/about"
+          <button
+            type="button"
+            onClick={() => openLegalDocument('cookies')}
             className="text-wine underline underline-offset-2 hover:text-wine/80 transition-colors"
           >
             Learn more
-          </a>
+          </button>
           .
         </p>
 

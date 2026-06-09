@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getSiteConfig } from '../_actions/get-site-config';
 import { renderSiteTemplate } from '~/app/_sites/_templates/render-template';
+import { resolveAccent } from '~/app/_sites/_templates/palette';
 import type { SiteData } from '~/app/_sites/types';
 
 export const dynamic = 'force-dynamic';
@@ -152,11 +153,7 @@ export default async function SitePreviewPage({
     custom_domain: null,
   };
 
-  const accentMap: Record<string, string> = {
-    wine: '#4A2F25', slate: '#3D4B5C', forest: '#2D4A3E',
-    sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
-  };
-  const accentColor = accentMap[config.theme.accent] ?? '#4A2F25';
+  const accentColor = resolveAccent(config.theme.accent);
 
   return (
     <div className="relative">

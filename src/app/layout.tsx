@@ -14,6 +14,7 @@ import { GalleryProfileNotification } from "~/components/gallery-profile-notific
 import { ClientAnalytics } from "~/components/client-analytics";
 import { GoogleTagManager } from "~/components/google-tag-manager";
 import { CookieConsentBanner } from "~/components/cookie-consent-banner";
+import { LegalModalProvider } from "~/components/legal/legal-modal-context";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
 import { TrialBanner } from "~/components/trial-banner";
@@ -131,20 +132,22 @@ export default async function RootLayout({
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased overflow-x-hidden`}
       >
         <RootProviders lang={currentLang} theme={currentTheme}>
-          <OnboardingGuard>
-            <Navigation initialUser={initialUser} />
-            <TrialBanner />
-            <StreakActivityTracker />
-            <PresenceTracker />
-            <GalleryProfileNotification />
-            {children}
-            <RoleSelectionModal />
-          </OnboardingGuard>
+          <LegalModalProvider>
+            <OnboardingGuard>
+              <Navigation initialUser={initialUser} />
+              <TrialBanner />
+              <StreakActivityTracker />
+              <PresenceTracker />
+              <GalleryProfileNotification />
+              {children}
+              <RoleSelectionModal />
+            </OnboardingGuard>
+            <CookieConsentBanner />
+          </LegalModalProvider>
         </RootProviders>
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
         <Toaster position="bottom-center" />
         <ClientAnalytics />
-        <CookieConsentBanner />
       </body>
     </html>
   );

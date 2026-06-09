@@ -11,6 +11,7 @@ import {
   type SubscriptionInterval,
 } from '~/lib/stripe-config';
 import { getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 import { Loader2 } from 'lucide-react';
 
 type SubscriptionRow = {
@@ -364,6 +365,8 @@ export function SubscriptionContent({
           ← Back to Portal
         </Link>
       </p>
+
+      <SiteLegalFooter variant="subscription" className="mt-8 border-t-0" />
     </div>
   );
 }

@@ -79,6 +79,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-[200]">
                   <DropdownMenuItem asChild>
+                    <Link href="/profile/site" className="cursor-pointer">
+                      My website
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/exhibitions" className="cursor-pointer">
                       Exhibitions
                     </Link>
@@ -263,6 +268,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 <span className="w-full text-center text-sm font-display text-wine/70 uppercase tracking-widest py-3">
                   Toolbox
                 </span>
+                <Link
+                  href="/profile/site"
+                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My website
+                </Link>
                 <Link
                   href="/exhibitions"
                   className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"

@@ -1,15 +1,10 @@
 /** Shared accent + surface resolution for all site templates. */
 
+import { SITE_ACCENTS } from '../types';
+
 export function resolveAccent(key: string): string {
-  const map: Record<string, string> = {
-    wine: '#4A2F25',
-    slate: '#3D4B5C',
-    forest: '#2D4A3E',
-    sand: '#8B7355',
-    midnight: '#1A1A2E',
-    rose: '#8B4558',
-  };
-  return map[key] ?? '#4A2F25';
+  const found = SITE_ACCENTS.find((a) => a.key === key);
+  return found?.value ?? SITE_ACCENTS[0]?.value ?? '#4A2F25';
 }
 
 export function resolveSurface(key: string | null): { bg: string; ink: string } {

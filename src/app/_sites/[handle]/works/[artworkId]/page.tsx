@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSiteData } from '../../_data/get-site-data';
+import { resolveAccent } from '../../_templates/palette';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,10 +123,3 @@ async function fetchArtwork(artworkId: string) {
   return data ?? null;
 }
 
-function resolveAccent(key: string): string {
-  const map: Record<string, string> = {
-    wine: '#4A2F25', slate: '#3D4B5C', forest: '#2D4A3E',
-    sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
-  };
-  return map[key] ?? '#4A2F25';
-}

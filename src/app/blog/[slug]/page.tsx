@@ -14,6 +14,7 @@ import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 import { formatBlogDate } from '~/lib/blog/format-date';
 import { getPublishedPostBySlug } from '~/lib/blog/posts';
+import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 
 export const revalidate = 120;
 
@@ -219,6 +220,7 @@ async function BlogPostPage(props: PageProps) {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
+        <SiteLegalFooter className="border-t-0 pt-0" />
       </article>
     </>
   );

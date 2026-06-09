@@ -9,6 +9,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { formatBlogDate } from '~/lib/blog/format-date';
 import { getPublishedPosts } from '~/lib/blog/posts';
 import type { BlogPostListItem } from '~/lib/blog/posts';
+import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 
 export const revalidate = 120;
 
@@ -214,6 +215,7 @@ async function BlogIndexPage() {
           </div>
         )}
       </div>
+      <SiteLegalFooter />
     </main>
   );
 }

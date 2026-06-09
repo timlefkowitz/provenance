@@ -16,6 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { AboutReveal } from "@/components/about-reveal";
+import { SiteLegalFooter } from "~/components/legal/site-legal-footer";
 import { getAboutContent } from "../admin/about/_actions/about-content";
 
 export const metadata = {
@@ -336,15 +337,7 @@ export default async function AboutPage() {
         </AboutReveal>
       </div>
 
-      <footer className="border-t border-wine/10 px-6 py-12 text-center text-sm text-ink/50 sm:px-10">
-        <p>
-          © {new Date().getFullYear()} Provenance Platform.
-          {" · "}
-          <Link href="/" className="text-wine/80 underline-offset-4 hover:underline">
-            Home
-          </Link>
-        </p>
-      </footer>
+      <SiteLegalFooter />
     </main>
   );
 }
