@@ -20,6 +20,11 @@ import { toast } from '@kit/ui/sonner';
 import { editArtwork } from '../_actions/edit-artwork';
 import { addArtworkAttachment } from '../../_actions/add-artwork-attachment';
 import { deleteArtworkAttachment } from '../../_actions/delete-artwork-attachment';
+import {
+  isLikelyImageFile,
+  prepareImageForUpload,
+  MAX_UPLOAD_IMAGE_BYTES,
+} from '~/lib/client-image-upload';
 
 export type ArtworkAttachmentRow = {
   id: string;
@@ -59,11 +64,27 @@ export function UploadAttachmentsDialog({
 
   // ── Main image replacement ─────────────────────────────────────────────────
   const handleMainImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    console.log('[UploadAttachmentsDialog] replace main image', { artworkId, fileName: file.name });
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+    console.log('[UploadAttachmentsDialog] replace main image', {
+      artworkId,
+      fileName: rawFile.name,
+      size: rawFile.size,
+      type: rawFile.type,
+    });
     startTransition(async () => {
       try {
+        // iPhone photos are often HEIC and/or over Vercel's ~4.5MB server
+        // action body limit; convert and compress in the browser first.
+        const file = await prepareImageForUpload(rawFile);
+        if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
+          console.warn('[UploadAttachmentsDialog] main image too large after compression', {
+            fileName: file.name,
+            size: file.size,
+          });
+          toast.error('Photo is too large to upload. Please choose an image under 4 MB.');
+          return;
+        }
         const formData = new FormData();
         formData.append('image', file);
         const result = await editArtwork(artworkId, formData, isCreatorForEdit);
@@ -99,8 +120,23 @@ export function UploadAttachmentsDialog({
     console.log('[UploadAttachmentsDialog] confirm attachment', { artworkId, fileName: pendingFile.file.name, label: pendingFile.label, isPublic: pendingFile.isPublic });
     startTransition(async () => {
       try {
+        let fileToUpload = pendingFile.file;
+        // Convert/compress image attachments (e.g. iPhone HEIC photos) so the
+        // server action body stays under Vercel's ~4.5MB limit and the format
+        // passes server validation. PDFs are sent as-is.
+        if (isLikelyImageFile(fileToUpload)) {
+          fileToUpload = await prepareImageForUpload(fileToUpload);
+          if (fileToUpload.size > MAX_UPLOAD_IMAGE_BYTES) {
+            console.warn('[UploadAttachmentsDialog] attachment image too large after compression', {
+              fileName: fileToUpload.name,
+              size: fileToUpload.size,
+            });
+            toast.error('Photo is too large to upload. Please choose an image under 4 MB.');
+            return;
+          }
+        }
         const formData = new FormData();
-        formData.append('file', pendingFile.file);
+        formData.append('file', fileToUpload);
         formData.append('label', pendingFile.label.trim());
         formData.append('is_public', String(pendingFile.isPublic));
         const result = await addArtworkAttachment(artworkId, formData);
@@ -163,14 +199,14 @@ export function UploadAttachmentsDialog({
         <input
           ref={mainImageInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           className="hidden"
           onChange={handleMainImage}
         />
         <input
           ref={attachmentInputRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept="image/*,.heic,.heif,application/pdf"
           className="hidden"
           onChange={handlePickAttachment}
         />

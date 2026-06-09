@@ -24,6 +24,11 @@ import Image from 'next/image';
 import { X, Upload } from 'lucide-react';
 import { sendArtistClaimInvite } from '../_actions/send-artist-claim-invite';
 import { CERTIFICATE_TYPES, type CertificateType } from '~/lib/user-roles';
+import {
+  isLikelyImageFile,
+  prepareImageForUpload,
+  MAX_UPLOAD_IMAGE_BYTES,
+} from '~/lib/client-image-upload';
 
 type Exhibition = {
   id: string;
@@ -124,12 +129,32 @@ export function EditArtworkDialog({
     enabled: gallerySearchQuery.length >= 2 && open && userOwnsExhibition,
   });
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    if (!file.type.startsWith('image/')) {
+    console.log('[Certificates] EditArtworkDialog image selected', {
+      name: rawFile.name,
+      size: rawFile.size,
+      type: rawFile.type,
+    });
+
+    // iPhone photo-library picks often have an empty type or image/heic,
+    // so don't rely solely on file.type.
+    if (!isLikelyImageFile(rawFile)) {
       toast.error('Please select an image file');
+      return;
+    }
+
+    // iPhone photos are often HEIC and/or over Vercel's ~4.5MB server action
+    // body limit; convert and compress in the browser before sending.
+    const file = await prepareImageForUpload(rawFile);
+    if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
+      console.warn('[Certificates] EditArtworkDialog image too large after compression', {
+        name: file.name,
+        size: file.size,
+      });
+      toast.error('Photo is too large to upload. Please choose an image under 4 MB.');
       return;
     }
 
@@ -301,7 +326,7 @@ export function EditArtworkDialog({
                   ref={fileInputRef}
                   type="file"
                   id="image"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   onChange={handleImageSelect}
                   className="hidden"
                 />
