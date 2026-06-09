@@ -79,6 +79,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-[200]">
                   <DropdownMenuItem asChild>
+                    <Link href="/exhibitions" className="cursor-pointer">
+                      Exhibitions
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/grants" className="cursor-pointer">
                       Grants
                     </Link>
@@ -207,76 +212,81 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
         </button>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile fullscreen menu */}
       {mobileMenuOpen && (
-        <div className="absolute top-full left-0 right-0 bg-parchment border-b border-wine/20 shadow-lg md:hidden z-[90] pb-safe">
-          <div className="flex flex-col px-6 py-4 gap-4">
-            {/* When Gallery: show which gallery the user is using */}
-            {user.data && (
+        <div className="fixed inset-x-0 bottom-0 top-[var(--nav-h)] bg-parchment md:hidden z-[90] flex flex-col overflow-y-auto pb-safe">
+          {user.data && (
+            <div className="shrink-0 px-6 pt-4 flex flex-col items-center gap-2">
               <UsingGalleryLabel />
-            )}
-            {/* Profile Switcher (e.g. switch between multiple galleries) */}
-            {user.data && (
               <ProfileSwitcher compact />
-            )}
-            
-            <Link 
-              href="/artworks" 
-              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col items-center justify-center gap-1 px-6 py-8 w-full max-w-sm mx-auto">
+            <Link
+              href="/artworks"
+              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
             </Link>
-            <Link 
-              href="/registry" 
-              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+            <Link
+              href="/registry"
+              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.registry" defaults="Artists" />
             </Link>
             {user.data && (
               <>
-                <Link 
-                  href="/artworks/add" 
-                  className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+                <Link
+                  href="/artworks/add"
+                  className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Add Artwork
                 </Link>
-                <Link 
+                <Link
                   href="/artworks/my"
-                  className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+                  className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Collection
                 </Link>
-                <Link 
-                  href="/portal" 
-                  className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+                <Link
+                  href="/portal"
+                  className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Portal
                 </Link>
-                <span className="block py-2 border-b border-wine/10 text-wine/80 font-medium text-xs uppercase tracking-wider">
+                <span className="w-full text-center text-sm font-display text-wine/70 uppercase tracking-widest py-3">
                   Toolbox
                 </span>
-                <Link 
-                  href="/grants" 
-                  className="text-ink hover:text-wine transition-colors py-2 pl-4 border-b border-wine/10 cursor-pointer"
+                <Link
+                  href="/exhibitions"
+                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Exhibitions
+                </Link>
+                <Link
+                  href="/grants"
+                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Grants
                 </Link>
-                <Link 
-                  href="/portal/or" 
-                  className="text-ink hover:text-wine transition-colors py-2 pl-4 border-b border-wine/10"
+                <Link
+                  href="/portal/or"
+                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   CRM
                 </Link>
-                <Link 
-                  href="/operations" 
-                  className="text-ink hover:text-wine transition-colors py-2 pl-4 border-b border-wine/10"
+                <Link
+                  href="/operations"
+                  className="w-full text-center text-base font-serif text-ink/80 hover:text-wine transition-colors py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Operations
@@ -285,51 +295,50 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             )}
             <Link
               href="/blog"
-              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="marketing:blog" defaults="Blog" />
             </Link>
-            <Link 
-              href="/about" 
-              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+            <Link
+              href="/about"
+              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.about" defaults="About" />
             </Link>
             <Link
               href="/feedback"
-              className="text-ink hover:text-wine transition-colors py-2 border-b border-wine/10"
+              className="w-full text-center text-base font-serif text-ink/70 hover:text-wine transition-colors py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Feedback
             </Link>
-
-            {/* Sign-in / Sign-up CTAs for unauthenticated mobile users */}
-            {!user.data && (
-              <div className="flex flex-col gap-2 pt-2">
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full border-wine/30 text-ink hover:bg-wine/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Link href={pathsConfig.auth.signIn}>
-                    <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  className="w-full bg-wine text-parchment hover:bg-wine/90"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Link href={pathsConfig.auth.signUp}>
-                    <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
-                  </Link>
-                </Button>
-              </div>
-            )}
           </div>
+
+          {!user.data && (
+            <div className="shrink-0 px-6 pb-8 flex flex-col gap-2 max-w-xs mx-auto w-full">
+              <Button
+                asChild
+                variant="outline"
+                className="w-full border-wine/30 text-ink hover:bg-wine/10"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Link href={pathsConfig.auth.signIn}>
+                  <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                className="w-full bg-wine text-parchment hover:bg-wine/90"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Link href={pathsConfig.auth.signUp}>
+                  <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </nav>
