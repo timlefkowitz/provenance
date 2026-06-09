@@ -2,7 +2,130 @@
  * Shared types for the creator-site feature (_sites segment).
  */
 
-export type TemplateId = 'editorial' | 'studio' | 'atelier';
+export type TemplateId =
+  | 'editorial'
+  | 'studio'
+  | 'atelier'
+  | 'whitecube'
+  | 'vitrine'
+  | 'salon'
+  | 'pavilion'
+  | 'folio'
+  | 'index'
+  | 'concrete'
+  | 'lightbox'
+  | 'noir';
+
+export type TemplateCategory = 'original' | 'museum' | 'minimal' | 'photography';
+
+export type SiteTemplateMeta = {
+  id: TemplateId;
+  name: string;
+  description: string;
+  bestFor: string;
+  category: TemplateCategory;
+};
+
+export const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
+  original: 'Classics',
+  museum: 'Museum',
+  minimal: 'Minimal',
+  photography: 'Photography',
+};
+
+export const TEMPLATE_CATEGORY_ORDER: TemplateCategory[] = [
+  'original',
+  'museum',
+  'minimal',
+  'photography',
+];
+
+export const SITE_TEMPLATES: SiteTemplateMeta[] = [
+  {
+    id: 'editorial',
+    name: 'Editorial',
+    description: 'Magazine-style. Large hero, serif typography.',
+    bestFor: 'Galleries & institutions',
+    category: 'original',
+  },
+  {
+    id: 'studio',
+    name: 'Studio',
+    description: 'Minimalist grid. Artwork-first, clean and fast.',
+    bestFor: 'Artists',
+    category: 'original',
+  },
+  {
+    id: 'atelier',
+    name: 'Atelier',
+    description: 'Single-page narrative scroll. Story-driven.',
+    bestFor: 'Collectors & curators',
+    category: 'original',
+  },
+  {
+    id: 'whitecube',
+    name: 'Whitecube',
+    description: 'White-cube gallery. Vast whitespace, one work per wall.',
+    bestFor: 'Contemporary artists',
+    category: 'museum',
+  },
+  {
+    id: 'vitrine',
+    name: 'Vitrine',
+    description: 'Dark exhibition hall. Spotlit works with didactic panels.',
+    bestFor: 'Sculpture & installation',
+    category: 'museum',
+  },
+  {
+    id: 'salon',
+    name: 'Salon',
+    description: 'Salon hang. Dense masonry wall of varied sizes.',
+    bestFor: 'Painters & mixed media',
+    category: 'museum',
+  },
+  {
+    id: 'pavilion',
+    name: 'Pavilion',
+    description: 'Biennale poster typography. Exhibitions take center stage.',
+    bestFor: 'Galleries & fairs',
+    category: 'museum',
+  },
+  {
+    id: 'folio',
+    name: 'Folio',
+    description: 'Narrow centered column. One work after another, book-like.',
+    bestFor: 'Printmakers & illustrators',
+    category: 'minimal',
+  },
+  {
+    id: 'index',
+    name: 'Index',
+    description: 'Swiss archive. Strict table of works, almost no decoration.',
+    bestFor: 'Archives & estates',
+    category: 'minimal',
+  },
+  {
+    id: 'concrete',
+    name: 'Concrete',
+    description: 'Brutalist grid. Hairline borders, uniform square crops.',
+    bestFor: 'Bold visual artists',
+    category: 'minimal',
+  },
+  {
+    id: 'lightbox',
+    name: 'Lightbox',
+    description: 'Edge-to-edge photo grid. One column on mobile, tiled on desktop.',
+    bestFor: 'Photographers',
+    category: 'photography',
+  },
+  {
+    id: 'noir',
+    name: 'Noir',
+    description: 'Darkroom portfolio. Full-bleed frames on pure black.',
+    bestFor: 'Photographers',
+    category: 'photography',
+  },
+];
 
 export type SiteTheme = {
   /** Tailwind color key or hex. Constrained to the palette in SITE_ACCENTS. */

@@ -11,12 +11,13 @@ import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
+import { resolveAccent, resolveSurface } from './palette';
 
 export function EditorialTemplate({ site }: { site: SiteData }) {
   // Prefer the dedicated hero image; fall back to most recent artwork, then profile picture
   const heroBg = site.hero_image_url ?? site.artworks[0]?.image_url ?? site.picture_url ?? null;
   const accentColor = resolveAccent(site.theme.accent);
-  const surface = resolveSurface(site.surface_color);
+  const surface = resolveSurface(site.surface_color ?? 'parchment');
 
   return (
     <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
@@ -230,24 +231,4 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
       )}
     </div>
   );
-}
-
-function resolveAccent(key: string): string {
-  const map: Record<string, string> = {
-    wine: '#4A2F25', slate: '#3D4B5C', forest: '#2D4A3E',
-    sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
-  };
-  return map[key] ?? '#4A2F25';
-}
-
-function resolveSurface(key: string | null): { bg: string; ink: string } {
-  const map: Record<string, { bg: string; ink: string }> = {
-    parchment: { bg: '#F5F1E8', ink: '#111111' },
-    cream:     { bg: '#FAF7F0', ink: '#1A1A1A' },
-    white:     { bg: '#FFFFFF', ink: '#111111' },
-    slate:     { bg: '#F1F4F7', ink: '#0F1419' },
-    charcoal:  { bg: '#1A1A1A', ink: '#F5F5F5' },
-    ink:       { bg: '#0F0F12', ink: '#F0EBE0' },
-  };
-  return map[key ?? 'parchment'] ?? map.parchment;
 }

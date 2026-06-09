@@ -9,10 +9,11 @@ import type { SiteData } from '../types';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
+import { resolveAccent, resolveSurface } from './palette';
 
 export function AtelierTemplate({ site }: { site: SiteData }) {
   const accentColor = resolveAccent(site.theme.accent);
-  const surface = resolveSurface(site.surface_color);
+  const surface = resolveSurface(site.surface_color ?? 'parchment');
   // Featured works: up to 6, in a 2-column staggered layout
   const featuredWorks = site.artworks.slice(0, 6);
   // Hero background priority: explicit hero → first artwork
@@ -255,24 +256,4 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
       )}
     </div>
   );
-}
-
-function resolveAccent(key: string): string {
-  const map: Record<string, string> = {
-    wine: '#4A2F25', slate: '#3D4B5C', forest: '#2D4A3E',
-    sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
-  };
-  return map[key] ?? '#4A2F25';
-}
-
-function resolveSurface(key: string | null): { bg: string; ink: string } {
-  const map: Record<string, { bg: string; ink: string }> = {
-    parchment: { bg: '#F5F1E8', ink: '#1A1A1A' },
-    cream:     { bg: '#FAF7F0', ink: '#1A1A1A' },
-    white:     { bg: '#FFFFFF', ink: '#111111' },
-    slate:     { bg: '#F1F4F7', ink: '#0F1419' },
-    charcoal:  { bg: '#1A1A1A', ink: '#F5F5F5' },
-    ink:       { bg: '#0F0F12', ink: '#F0EBE0' },
-  };
-  return map[key ?? 'parchment'] ?? map.parchment;
 }

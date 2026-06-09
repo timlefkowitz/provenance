@@ -28,6 +28,7 @@ import {
   DEFAULT_ARTWORK_FILTERS,
   CERTIFICATE_TYPE_LABELS,
 } from '~/app/_sites/types';
+import { TemplatePicker } from './template-picker';
 import type { ManageableProfile } from '../_actions/get-manageable-profiles';
 import type { SiteConfig } from '../_actions/get-site-config';
 import { upsertSiteAction } from '../_actions/upsert-site';
@@ -36,29 +37,6 @@ import { validateHandleAction } from '../_actions/validate-handle';
 import { uploadSiteImage } from '../_actions/upload-site-image';
 import { transferHandleAction } from '../_actions/transfer-handle';
 import { deleteSiteAction } from '../_actions/delete-site';
-
-type Template = { id: TemplateId; name: string; description: string; bestFor: string };
-
-const TEMPLATES: Template[] = [
-  {
-    id: 'editorial',
-    name: 'Editorial',
-    description: 'Magazine-style. Large hero, serif typography.',
-    bestFor: 'Galleries & institutions',
-  },
-  {
-    id: 'studio',
-    name: 'Studio',
-    description: 'Minimalist grid. Artwork-first, clean and fast.',
-    bestFor: 'Artists',
-  },
-  {
-    id: 'atelier',
-    name: 'Atelier',
-    description: 'Single-page narrative scroll. Story-driven.',
-    bestFor: 'Collectors & curators',
-  },
-];
 
 const CERT_TYPE_KEYS: CertificateTypeKey[] = ['authenticity', 'ownership', 'show'];
 
@@ -692,31 +670,13 @@ export function SiteEditor({
         {/* ── TEMPLATE ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-3">Template</h2>
-          <div className="space-y-2.5">
-            {TEMPLATES.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => { setTemplateId(t.id); markUnsaved(); }}
-                className={cn(
-                  'w-full text-left rounded-lg border px-4 py-3 transition-all',
-                  templateId === t.id
-                    ? 'border-wine bg-wine/5 shadow-sm'
-                    : 'border-wine/15 hover:border-wine/30',
-                )}
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-display font-semibold text-ink text-sm">{t.name}</p>
-                  <p className="text-[10px] uppercase tracking-widest text-wine/60 font-serif">
-                    {t.bestFor}
-                  </p>
-                </div>
-                <p className="text-xs text-ink/60 font-serif leading-relaxed mt-1">
-                  {t.description}
-                </p>
-              </button>
-            ))}
-          </div>
+          <TemplatePicker
+            selectedId={templateId}
+            onSelect={(id) => {
+              setTemplateId(id);
+              markUnsaved();
+            }}
+          />
         </section>
 
         {/* ── COLORS ── */}

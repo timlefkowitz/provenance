@@ -10,18 +10,17 @@ import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
+import { resolveAccent, resolveSurface, borderColor, mutedText } from './palette';
 
 export function StudioTemplate({ site }: { site: SiteData }) {
   const accentColor = resolveAccent(site.theme.accent);
   const surface = resolveSurface(site.surface_color);
-  const isDarkSurface = ['charcoal', 'ink'].includes(site.surface_color ?? '');
-
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: surface.ink, background: surface.bg }}>
 
       {/* ── HERO BANNER (optional) ── */}
       {site.hero_image_url && (
-        <div className="relative w-full h-48 md:h-72 overflow-hidden border-b" style={{ borderColor: isDarkSurface ? '#333' : '#e4e4e4' }}>
+        <div className="relative w-full h-48 md:h-72 overflow-hidden border-b" style={{ borderColor: borderColor(site.surface_color) }}>
           <Image
             src={site.hero_image_url}
             alt={site.name}
@@ -34,7 +33,7 @@ export function StudioTemplate({ site }: { site: SiteData }) {
       )}
 
       {/* ── HEADER ── */}
-      <header className="border-b" style={{ borderColor: isDarkSurface ? '#333' : '#e4e4e4' }}>
+      <header className="border-b" style={{ borderColor: borderColor(site.surface_color) }}>
         <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             {site.picture_url && (
@@ -61,11 +60,11 @@ export function StudioTemplate({ site }: { site: SiteData }) {
                 </h1>
               )}
               {site.tagline ? (
-                <p className="text-xs mt-0.5" style={{ color: isDarkSurface ? 'rgba(255,255,255,0.6)' : '#888' }}>
+                <p className="text-xs mt-0.5" style={{ color: mutedText(site.surface_color) }}>
                   {site.tagline}
                 </p>
               ) : (site.medium || site.location) ? (
-                <p className="text-xs mt-0.5" style={{ color: isDarkSurface ? 'rgba(255,255,255,0.6)' : '#888' }}>
+                <p className="text-xs mt-0.5" style={{ color: mutedText(site.surface_color) }}>
                   {[site.medium, site.location].filter(Boolean).join(' · ')}
                 </p>
               ) : null}
@@ -175,24 +174,4 @@ export function StudioTemplate({ site }: { site: SiteData }) {
       )}
     </div>
   );
-}
-
-function resolveAccent(key: string): string {
-  const map: Record<string, string> = {
-    wine: '#4A2F25', slate: '#3D4B5C', forest: '#2D4A3E',
-    sand: '#8B7355', midnight: '#1A1A2E', rose: '#8B4558',
-  };
-  return map[key] ?? '#4A2F25';
-}
-
-function resolveSurface(key: string | null): { bg: string; ink: string } {
-  const map: Record<string, { bg: string; ink: string }> = {
-    parchment: { bg: '#F5F1E8', ink: '#111111' },
-    cream:     { bg: '#FAF7F0', ink: '#1A1A1A' },
-    white:     { bg: '#FFFFFF', ink: '#111111' },
-    slate:     { bg: '#F1F4F7', ink: '#0F1419' },
-    charcoal:  { bg: '#1A1A1A', ink: '#F5F5F5' },
-    ink:       { bg: '#0F0F12', ink: '#F0EBE0' },
-  };
-  return map[key ?? 'white'] ?? map.white;
 }

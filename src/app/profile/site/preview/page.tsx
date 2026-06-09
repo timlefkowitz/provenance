@@ -3,9 +3,7 @@ import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getSiteConfig } from '../_actions/get-site-config';
-import { EditorialTemplate } from '~/app/_sites/_templates/editorial';
-import { StudioTemplate } from '~/app/_sites/_templates/studio';
-import { AtelierTemplate } from '~/app/_sites/_templates/atelier';
+import { renderSiteTemplate } from '~/app/_sites/_templates/render-template';
 import type { SiteData } from '~/app/_sites/types';
 
 export const dynamic = 'force-dynamic';
@@ -160,11 +158,6 @@ export default async function SitePreviewPage({
   };
   const accentColor = accentMap[config.theme.accent] ?? '#4A2F25';
 
-  const TemplateComponent =
-    config.templateId === 'editorial' ? EditorialTemplate :
-    config.templateId === 'atelier' ? AtelierTemplate :
-    StudioTemplate;
-
   return (
     <div className="relative">
       <style>{`:root { --site-accent: ${accentColor}; }`}</style>
@@ -227,7 +220,7 @@ export default async function SitePreviewPage({
       )}
 
       <div style={{ paddingTop: embedMode ? 0 : '40px' }}>
-        <TemplateComponent site={siteData} />
+        {renderSiteTemplate(siteData)}
       </div>
     </div>
   );
