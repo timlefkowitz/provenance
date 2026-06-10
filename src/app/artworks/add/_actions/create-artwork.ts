@@ -74,7 +74,18 @@ export async function createArtwork(formData: FormData, userId: string) {
     const userRole = getUserRole(account?.public_data as Record<string, any>);
     const certificateType = getCertificateTypeForRole(userRole);
     const isCollectorOrGallery = userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY;
-    const certificateStatus = isCollectorOrGallery ? 'pending_artist_claim' : 'verified';
+    const certificateStatus =
+      userRole === USER_ROLES.COLLECTOR
+        ? 'verified'
+        : isCollectorOrGallery
+          ? 'pending_artist_claim'
+          : 'verified';
+    if (userRole === USER_ROLES.COLLECTOR) {
+      console.log('[Certificates] createArtwork issuing verified COO for collector', {
+        userId,
+        title,
+      });
+    }
     let artistAccountId: string | null = null;
     if (isCollectorOrGallery && artistName) {
       try {

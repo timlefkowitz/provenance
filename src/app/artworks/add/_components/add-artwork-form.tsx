@@ -282,18 +282,23 @@ export function AddArtworkForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isPublicTouchedRef = useRef(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ batch: number; totalBatches: number } | null>(null);
   const [primaryTitle, setPrimaryTitle] = useState('');
   const [localExhibitions, setLocalExhibitions] = useState<UserExhibition[]>(exhibitions);
+
+  const defaultIsPublicForRole = (role: UserRole | null | undefined) =>
+    role !== USER_ROLES.COLLECTOR;
+
   const [formData, setFormData] = useState({
     description: '',
     artistName: defaultArtistName,
     medium: defaultMedium,
     creationDate: '',
-    isPublic: true, // Default to public
+    isPublic: defaultIsPublicForRole(userRole),
     exhibitionId: '',
     galleryProfileId: '',
     // Provenance (mirrors the fields available on the edit provenance page)
@@ -313,6 +318,16 @@ export function AddArtworkForm({
     soldByIsPublic: false,
     sourceCoaCertificateNumber: '',
   });
+
+  // Sync default privacy when perspective changes unless the user manually toggled it
+  useEffect(() => {
+    if (!isPublicTouchedRef.current) {
+      setFormData((prev) => ({
+        ...prev,
+        isPublic: defaultIsPublicForRole(userRole),
+      }));
+    }
+  }, [userRole]);
 
   // Update local exhibitions when prop changes
   useEffect(() => {
@@ -1339,16 +1354,21 @@ export function AddArtworkForm({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="isPublic" className="text-base font-serif">
-              Make artworks public
+              {userRole === USER_ROLES.COLLECTOR ? 'Make items public' : 'Make artworks public'}
             </Label>
             <p className="text-sm text-ink/60 font-serif">
-              Public artworks are visible to everyone. Private artworks are only visible to you.
+              {userRole === USER_ROLES.COLLECTOR
+                ? 'Your collection items are private by default — only you can see them unless you make them public.'
+                : 'Public artworks are visible to everyone. Private artworks are only visible to you.'}
             </p>
           </div>
           <Switch
             id="isPublic"
             checked={formData.isPublic}
-            onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+            onCheckedChange={(checked) => {
+              isPublicTouchedRef.current = true;
+              setFormData({ ...formData, isPublic: checked });
+            }}
           />
         </div>
       </div>

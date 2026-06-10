@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Link as LinkIcon, FileText } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Link as LinkIcon, FileText, Lock } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -102,6 +102,7 @@ export type Artwork = {
   owned_by_is_public: boolean | null;
   sold_by: string | null;
   sold_by_is_public: boolean | null;
+  is_public?: boolean | null;
   metadata?: {
     certificate_location?: {
       latitude?: number;
@@ -829,6 +830,18 @@ export function CertificateOfAuthenticity({
           </Button>
         </div>
       </div>
+
+      {/* Private certificate indicator — owner only */}
+      {isOwner && artwork.is_public === false && (
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-4xl mb-4">
+          <div className="flex items-center gap-2 bg-ink/5 border border-ink/15 rounded-lg p-4 text-ink/80">
+            <Lock className="h-5 w-5 shrink-0" aria-hidden />
+            <p className="font-serif text-sm sm:text-base">
+              Private — only you can see this certificate
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Verify certificate banner – shown when owner arrives from notification */}
       {isOwner && showVerifyCta && (

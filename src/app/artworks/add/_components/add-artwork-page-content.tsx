@@ -64,9 +64,9 @@ export function AddArtworkPageContent({
         };
       case USER_ROLES.COLLECTOR:
         return {
-          title: 'Add Artwork to Your Collection',
-          description: 'Upload artwork from your collection. The certificate will need to be claimed by the artist before it can be verified.',
-          info: 'You are adding artwork as a Collector. The artist will need to claim the certificate before it can be verified.',
+          title: 'Add to Your Collection',
+          description: 'Upload photos of items you own and receive a verified Certificate of Ownership immediately. Items are private by default.',
+          info: 'You are adding as a Collector. A Certificate of Ownership is issued right away. If you name an artist, they can optionally claim the certificate later.',
         };
       default:
         return {

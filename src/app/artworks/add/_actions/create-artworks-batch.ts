@@ -211,13 +211,34 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
         // Certificate type by poster: gallery → Certificate of Show, collector → Certificate of Ownership, artist → Certificate of Authenticity
         const certificateType = getCertificateTypeForRole(effectiveRole);
-        // If collector or gallery, certificate needs artist claim
-        // If artist, certificate is verified immediately
         let certificateStatus = 'verified';
         let artistAccountId: string | null = null;
         let artistProfileId: string | null = null;
 
-        if (effectiveRole === USER_ROLES.COLLECTOR || effectiveRole === USER_ROLES.GALLERY) {
+        if (effectiveRole === USER_ROLES.COLLECTOR) {
+          // Collectors receive a verified COO immediately; artist claim is optional later
+          certificateStatus = 'verified';
+          console.log('[Certificates] createArtworksBatch issuing verified COO for collector', {
+            userId,
+            title: title.trim(),
+          });
+          if (artistName?.trim()) {
+            const ensured = await ensureArtistProfileForCertificate({
+              artistName: artistName.trim(),
+              posterAccountId: userId,
+              medium,
+              posterRole: effectiveRole,
+            });
+            artistAccountId = ensured.artistAccountId;
+            artistProfileId = ensured.artistProfileId;
+            if (!ensured.artistAccountId && !ensured.artistProfileId) {
+              logger.info('create_artworks_batch_artist_profile_unresolved', {
+                userId,
+                artistName: artistName.trim(),
+              });
+            }
+          }
+        } else if (effectiveRole === USER_ROLES.GALLERY) {
           certificateStatus = 'pending_artist_claim';
           if (artistName?.trim()) {
             const ensured = await ensureArtistProfileForCertificate({
@@ -455,14 +476,21 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             }
           }
           
-          // Create notification for artist if collector/gallery posted
-          if (certificateStatus === 'pending_artist_claim' && artistAccountId) {
+          // Notify artist when a collector lists them (optional claim) or gallery posts (required claim)
+          const shouldNotifyArtist =
+            !!artistAccountId &&
+            (effectiveRole === USER_ROLES.COLLECTOR || certificateStatus === 'pending_artist_claim');
+          if (shouldNotifyArtist) {
             try {
+              const notificationMessage =
+                effectiveRole === USER_ROLES.COLLECTOR
+                  ? `${accountName || 'A collector'} has added "${title.trim()}" to their collection and listed you as the artist. You can optionally claim this certificate.`
+                  : `${accountName || 'A gallery'} has posted an artwork "${title.trim()}" and is requesting you to claim the certificate.`;
               await createNotification({
                 userId: artistAccountId,
                 type: 'certificate_claim_request',
                 title: `Certificate Claim Request: ${title.trim()}`,
-                message: `${accountName || 'A collector'} has posted an artwork "${title.trim()}" and is requesting you to claim the certificate.`,
+                message: notificationMessage,
                 artworkId: artwork.id,
                 relatedUserId: userId,
                 metadata: {

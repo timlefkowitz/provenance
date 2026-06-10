@@ -11,6 +11,7 @@ import {
   ChevronsUpDown,
   Eye,
   Loader2,
+  Lock,
   Sparkles,
   Tag,
   Upload,
@@ -1348,6 +1349,19 @@ export function SpreadsheetEditForm({
                           <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-wine text-parchment flex items-center justify-center">
                             <Check className="w-3.5 h-3.5" />
                           </div>
+                        ) : null}
+                        {artwork.is_public === false ? (
+                          <span
+                            className={cn(
+                              'absolute rounded px-1.5 py-0.5 bg-ink/70 text-[9px] font-serif text-parchment uppercase tracking-wide flex items-center gap-0.5',
+                              isSelected ? 'bottom-1 right-1' : 'top-1 right-1',
+                            )}
+                            title="Private — only you can see this item"
+                            aria-label="Private"
+                          >
+                            <Lock className="h-2.5 w-2.5" aria-hidden />
+                            Private
+                          </span>
                         ) : null}
                         {(artworkData[artwork.id]?.is_sold || artwork.is_sold) ? (
                           <span
