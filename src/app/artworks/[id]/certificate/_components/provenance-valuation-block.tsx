@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Sparkles, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, TrendingUp, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Switch } from '@kit/ui/switch';
@@ -65,6 +65,43 @@ function formatMoney(cents: number | null | undefined, currency = 'USD'): string
   } catch {
     return `${currency} ${(cents / 100).toLocaleString()}`;
   }
+}
+
+interface WebResearchData {
+  articles?: Array<{ title: string; url: string; source?: string | null; year?: string | null }>;
+  auction_signals?: Array<{
+    description: string;
+    price_range?: string | null;
+    house?: string | null;
+    year?: string | null;
+    url?: string | null;
+  }>;
+  museum_mentions?: Array<{
+    institution: string;
+    context?: string | null;
+    url?: string | null;
+  }>;
+  representation?: string[];
+  recognition?: string[];
+  summary?: string | null;
+}
+
+function getWebResearch(marketSignals: Record<string, unknown> | null | undefined): WebResearchData | null {
+  const raw = marketSignals?.web_research;
+  if (!raw || typeof raw !== 'object') return null;
+  return raw as WebResearchData;
+}
+
+function hasWebResearchSignals(webResearch: WebResearchData | null): boolean {
+  if (!webResearch) return false;
+  return (
+    (webResearch.articles?.length ?? 0) > 0 ||
+    (webResearch.auction_signals?.length ?? 0) > 0 ||
+    (webResearch.museum_mentions?.length ?? 0) > 0 ||
+    (webResearch.representation?.length ?? 0) > 0 ||
+    (webResearch.recognition?.length ?? 0) > 0 ||
+    !!webResearch.summary
+  );
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -157,6 +194,9 @@ export function ProvenanceValuationBlock({
       ? `${formatMoney(current.confidence_low_cents)} – ${formatMoney(current.confidence_high_cents)}`
       : null;
 
+  const webResearch = getWebResearch(current?.market_signals ?? null);
+  const includesWebResearch = hasWebResearchSignals(webResearch);
+
   return (
     <section
       className={cn(
@@ -186,6 +226,7 @@ export function ProvenanceValuationBlock({
             <p className="text-[10px] text-ink/40 font-serif mt-0.5">
               Generated {formatDate(current.generated_at)}
               {current.llm_model ? ` · LLM reasoning: ${current.llm_model}` : ' · deterministic'}
+              {includesWebResearch ? ' · Includes web research' : ''}
             </p>
           ) : null}
         </div>
@@ -275,6 +316,9 @@ export function ProvenanceValuationBlock({
                   },
                 ]}
               />
+              {includesWebResearch && webResearch ? (
+                <ExternalResearchSection webResearch={webResearch} />
+              ) : null}
             </div>
           ) : null}
 
@@ -357,6 +401,100 @@ function BreakdownSection({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function ExternalResearchSection({ webResearch }: { webResearch: WebResearchData }) {
+  return (
+    <div className="rounded-md border border-wine/15 bg-parchment/80 p-3 sm:col-span-2">
+      <p className="text-[10px] uppercase tracking-wide text-ink/50 font-serif flex items-center gap-1.5">
+        <Globe className="h-3 w-3" />
+        External research
+      </p>
+
+      {webResearch.summary ? (
+        <p className="mt-2 text-xs text-ink/75 leading-snug">{webResearch.summary}</p>
+      ) : null}
+
+      {webResearch.articles && webResearch.articles.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-[10px] uppercase tracking-wide text-ink/45 font-serif">Press & articles</p>
+          <ul className="mt-1 space-y-1.5">
+            {webResearch.articles.map((article) => (
+              <li key={article.url}>
+                <a
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-wine underline underline-offset-2 hover:text-wine/80"
+                >
+                  {article.title}
+                </a>
+                <span className="text-ink/50">
+                  {article.source ? ` · ${article.source}` : ''}
+                  {article.year ? ` · ${article.year}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {webResearch.museum_mentions && webResearch.museum_mentions.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-[10px] uppercase tracking-wide text-ink/45 font-serif">Museums</p>
+          <ul className="mt-1 space-y-1">
+            {webResearch.museum_mentions.map((mention) => (
+              <li key={`${mention.institution}-${mention.context ?? ''}`} className="text-ink/75">
+                {mention.url ? (
+                  <a
+                    href={mention.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-wine underline underline-offset-2"
+                  >
+                    {mention.institution}
+                  </a>
+                ) : (
+                  mention.institution
+                )}
+                {mention.context ? ` — ${mention.context}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {webResearch.auction_signals && webResearch.auction_signals.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-[10px] uppercase tracking-wide text-ink/45 font-serif">Auction signals</p>
+          <ul className="mt-1 space-y-1">
+            {webResearch.auction_signals.map((signal) => (
+              <li key={`${signal.description}-${signal.year ?? ''}`} className="text-ink/75">
+                {signal.description}
+                {signal.price_range ? ` · ${signal.price_range}` : ''}
+                {signal.house ? ` · ${signal.house}` : ''}
+                {signal.year ? ` · ${signal.year}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {(webResearch.representation?.length ?? 0) > 0 ? (
+        <p className="mt-3 text-xs text-ink/70">
+          <span className="text-ink/50">Representation: </span>
+          {webResearch.representation!.join(', ')}
+        </p>
+      ) : null}
+
+      {(webResearch.recognition?.length ?? 0) > 0 ? (
+        <p className="mt-2 text-xs text-ink/70">
+          <span className="text-ink/50">Recognition: </span>
+          {webResearch.recognition!.join(', ')}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   VALUATION_ENGINE_VERSION,
 } from '~/lib/valuation/compute-valuation-inputs';
 import { runLlmValuationPass } from '~/lib/valuation/llm-valuation-pass';
+import { runWebResearchPass } from '~/lib/valuation/web-research-pass';
 import { logger } from '~/lib/logger';
 
 const RATE_LIMIT_MS = 5 * 60 * 1000;
@@ -20,6 +21,7 @@ export interface RequestValuationResult {
   error?: string;
   valuationId?: string;
   llmUsed?: boolean;
+  webResearchUsed?: boolean;
 }
 
 export async function requestProvenanceValuation(
@@ -80,12 +82,36 @@ export async function requestProvenanceValuation(
       };
     }
 
-    const inputs = await computeValuationInputs(artworkId);
+    const { inputs, error: inputsError } = await computeValuationInputs(artworkId);
     if (!inputs) {
-      return { success: false, error: 'Could not compute valuation inputs' };
+      return {
+        success: false,
+        error: inputsError || 'Could not compute valuation inputs',
+      };
     }
 
-    const llmResult = await runLlmValuationPass(inputs);
+    const webResearch = await runWebResearchPass({
+      artistName: inputs.artist_name,
+      artworkTitle: inputs.artwork_title,
+      medium: inputs.medium,
+    });
+
+    const inputsWithResearch = {
+      ...inputs,
+      market_signals: {
+        ...inputs.market_signals,
+        web_research: webResearch,
+      },
+    };
+
+    const webResearchUsed =
+      webResearch.error === null &&
+      (webResearch.articles.length > 0 ||
+        webResearch.auction_signals.length > 0 ||
+        webResearch.museum_mentions.length > 0 ||
+        !!webResearch.summary);
+
+    const llmResult = await runLlmValuationPass(inputsWithResearch);
 
     const { data: inserted, error: insertError } = await (admin as any)
       .from('artwork_valuations')
@@ -95,18 +121,18 @@ export async function requestProvenanceValuation(
         engine_version: VALUATION_ENGINE_VERSION,
         llm_model: llmResult.model,
 
-        medium: inputs.medium,
-        condition: inputs.condition,
-        rarity_index: inputs.rarity_index,
-        former_owners_count: inputs.former_owners_count,
-        notable_collectors_count: inputs.notable_collectors_count,
-        museum_count: inputs.museum_count,
-        artist_market_cap_cents: inputs.artist_market_cap_cents,
-        auction_history_summary: inputs.auction_history_summary,
-        museum_presence_count: inputs.museum_presence_count,
-        exhibition_count: inputs.exhibition_count,
-        scholarly_citations_count: inputs.scholarly_citations_count,
-        market_signals: inputs.market_signals,
+        medium: inputsWithResearch.medium,
+        condition: inputsWithResearch.condition,
+        rarity_index: inputsWithResearch.rarity_index,
+        former_owners_count: inputsWithResearch.former_owners_count,
+        notable_collectors_count: inputsWithResearch.notable_collectors_count,
+        museum_count: inputsWithResearch.museum_count,
+        artist_market_cap_cents: inputsWithResearch.artist_market_cap_cents,
+        auction_history_summary: inputsWithResearch.auction_history_summary,
+        museum_presence_count: inputsWithResearch.museum_presence_count,
+        exhibition_count: inputsWithResearch.exhibition_count,
+        scholarly_citations_count: inputsWithResearch.scholarly_citations_count,
+        market_signals: inputsWithResearch.market_signals,
 
         estimated_value_cents: llmResult.output.estimated_value_cents,
         confidence_low_cents: llmResult.output.confidence_low_cents,
@@ -133,12 +159,14 @@ export async function requestProvenanceValuation(
       artworkId,
       valuationId: inserted?.id,
       llmUsed: !!llmResult.model,
+      webResearchUsed,
     });
 
     return {
       success: true,
       valuationId: inserted?.id as string | undefined,
       llmUsed: !!llmResult.model,
+      webResearchUsed,
     };
   } catch (err) {
     console.error('[Valuation] requestProvenanceValuation failed', err);

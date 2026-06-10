@@ -4,8 +4,15 @@ import { logger } from '~/lib/logger';
 
 export const VALUATION_ENGINE_VERSION = 'v1';
 
+export interface ComputeValuationInputsResult {
+  inputs: ValuationInputs | null;
+  error: string | null;
+}
+
 export interface ValuationInputs {
   artwork_id: string;
+  artwork_title: string | null;
+  artist_name: string | null;
 
   medium: string | null;
   condition: string | null;
@@ -36,6 +43,7 @@ export interface ValuationInputs {
     }>;
     same_medium_count: number;
     avg_comparable_cents: number;
+    web_research?: Record<string, unknown> | null;
   };
 
   deterministic_output: {
@@ -60,7 +68,9 @@ function countLines(text: string | null | undefined): number {
     .filter(Boolean).length;
 }
 
-export async function computeValuationInputs(artworkId: string): Promise<ValuationInputs | null> {
+export async function computeValuationInputs(
+  artworkId: string,
+): Promise<ComputeValuationInputsResult> {
   console.log('[Valuation] computeValuationInputs started', { artworkId });
 
   const admin = getSupabaseServerAdminClient();
@@ -69,14 +79,21 @@ export async function computeValuationInputs(artworkId: string): Promise<Valuati
     const { data: artwork, error: artworkError } = await (admin as any)
       .from('artworks')
       .select(
-        'id, account_id, artist_account_id, medium, condition, former_owners, auction_history, exhibition_history, historic_context, celebrity_notes, edition, value',
+        'id, title, artist_name, account_id, artist_account_id, medium, former_owners, auction_history, exhibition_history, historic_context, celebrity_notes, edition, value',
       )
       .eq('id', artworkId)
       .maybeSingle();
 
-    if (artworkError || !artwork) {
+    if (artworkError) {
+      const message =
+        artworkError.message || 'Failed to load artwork for valuation';
       console.error('[Valuation] artwork fetch failed', artworkError);
-      return null;
+      return { inputs: null, error: message };
+    }
+
+    if (!artwork) {
+      console.error('[Valuation] artwork not found', { artworkId });
+      return { inputs: null, error: 'Artwork not found' };
     }
 
     const artistId = (artwork.artist_account_id as string | null) ?? null;
@@ -222,8 +239,10 @@ export async function computeValuationInputs(artworkId: string): Promise<Valuati
 
     const inputs: ValuationInputs = {
       artwork_id: artworkId,
+      artwork_title: (artwork.title as string | null) ?? null,
+      artist_name: (artwork.artist_name as string | null) ?? null,
       medium: (artwork.medium as string | null) ?? null,
-      condition: (artwork.condition as string | null) ?? null,
+      condition: null,
       rarity_index: rarityIndex,
 
       former_owners_count: formerOwnersCount,
@@ -269,10 +288,11 @@ export async function computeValuationInputs(artworkId: string): Promise<Valuati
       estimatedValue,
     });
 
-    return inputs;
+    return { inputs, error: null };
   } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to compute valuation inputs';
     console.error('[Valuation] computeValuationInputs failed', err);
     logger.error('compute_valuation_inputs_failed', { artworkId, error: err });
-    return null;
+    return { inputs: null, error: message };
   }
 }
