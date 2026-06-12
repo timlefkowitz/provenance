@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getFeaturedEntry } from "./admin/_actions/get-featured-entry";
@@ -44,8 +45,24 @@ export default async function Home() {
       <V2LandingContent featuredEntry={featuredEntry ?? null} platformStats={platformStats} />
 
       {/* Footer */}
-      <footer className="w-full text-center text-sm text-ink/50 font-landing py-12 border-t border-wine/10">
+      <footer className="w-full text-center text-sm text-ink/50 font-landing py-12 border-t border-wine/10 px-6">
         <p>&copy; {new Date().getFullYear()} Provenance Platform. Patent Pending.</p>
+        <nav
+          className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.18em]"
+          aria-label="Legal"
+        >
+          <Link href="/privacy-policy" className="text-wine/70 hover:text-wine transition-colors">
+            Privacy Policy
+          </Link>
+          <span className="text-ink/25" aria-hidden>·</span>
+          <Link href="/terms-of-service" className="text-wine/70 hover:text-wine transition-colors">
+            Terms of Service
+          </Link>
+          <span className="text-ink/25" aria-hidden>·</span>
+          <Link href="/cookie-policy" className="text-wine/70 hover:text-wine transition-colors">
+            Cookie Policy
+          </Link>
+        </nav>
       </footer>
     </main>
   );

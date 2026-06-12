@@ -1,7 +1,9 @@
 'use client';
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import type { LegalDocumentId } from '~/lib/legal/legal.config';
+import { getLegalDocumentPath } from '~/lib/legal/legal.config';
 import { getLegalDocument } from '~/lib/legal/legal-documents';
 import {
   Dialog,
@@ -45,6 +47,15 @@ export function LegalModalProvider({ children }: { children: ReactNode }) {
                 </DialogTitle>
               </DialogHeader>
               <LegalDocumentBody document={document} />
+              <p className="mt-6 pt-4 border-t border-wine/10 text-xs font-serif text-ink/50">
+                <Link
+                  href={getLegalDocumentPath(document.id)}
+                  className="text-wine/80 hover:text-wine underline-offset-4 hover:underline"
+                  onClick={closeLegalDocument}
+                >
+                  View full page ↗
+                </Link>
+              </p>
             </>
           )}
         </DialogContent>

@@ -21,6 +21,10 @@ const STATIC_PATHS = [
   '/lp/institution',
   '/lp/provenance-service',
   '/investors',
+  '/privacy-policy',
+  '/terms-of-service',
+  '/cookie-policy',
+  '/billing-terms',
 ] as const;
 
 /** Seconds — ISR-style freshness without tying crawlers to the MetadataRoute pipeline. */
