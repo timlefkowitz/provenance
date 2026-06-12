@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSiteData, getRootDomain } from './_data/get-site-data';
 import { resolveAccent } from '../_templates/palette';
+import { SiteFontStyles } from '../_components/site-font-styles';
 import {
   ProvenanceSiteBar,
   PoweredByProvenanceFooter,
@@ -59,6 +60,7 @@ export default async function SiteLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="canonical" href={canonicalUrl} />
+        <SiteFontStyles fontPairingKey={site.theme.font_pairing} />
       </head>
       <body
         className="antialiased overflow-x-hidden"

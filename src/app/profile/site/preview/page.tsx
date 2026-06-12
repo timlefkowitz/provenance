@@ -5,12 +5,18 @@ import { getActiveSubscription } from '~/lib/subscription';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getSiteConfig } from '../_actions/get-site-config';
 import { renderSiteTemplate } from '~/app/_sites/_templates/render-template';
-import { resolveAccent } from '~/app/_sites/_templates/palette';
+import {
+  resolveAccent,
+  isValidSurfaceKey,
+  isValidFontPairingKey,
+} from '~/app/_sites/_templates/palette';
+import { SiteFontStyles } from '~/app/_sites/_components/site-font-styles';
 import {
   ProvenanceSiteBar,
   PoweredByProvenanceFooter,
 } from '~/app/_sites/_components/provenance-site-bar';
-import type { SiteData } from '~/app/_sites/types';
+import type { SiteData, TemplateId } from '~/app/_sites/types';
+import { SITE_TEMPLATES } from '~/app/_sites/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,11 +26,23 @@ export const dynamic = 'force-dynamic';
  * Query params:
  *   profileId — required, the user_profiles id whose site to preview
  *   embed=1   — render without the floating preview banner (used inside the editor iframe)
+ *   template  — optional design override (unsaved editor state)
+ *   accent    — optional accent override (preset key or #hex)
+ *   surface   — optional surface override
+ *   font      — optional font_pairing override
  */
 export default async function SitePreviewPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ profileId?: string; embed?: string }>;
+  searchParams?: Promise<{
+    profileId?: string;
+    embed?: string;
+    template?: string;
+    accent?: string;
+    surface?: string;
+    font?: string;
+    v?: string;
+  }>;
 }) {
   const params = (await searchParams) ?? {};
   const profileId = params.profileId;
@@ -64,6 +82,34 @@ export default async function SitePreviewPage({
   if (!config?.handle) {
     return <PreviewEmptyState handleMissing embed={embedMode} />;
   }
+
+  const validTemplateIds = new Set(SITE_TEMPLATES.map((t) => t.id));
+  const templateOverride =
+    params.template && validTemplateIds.has(params.template as TemplateId)
+      ? (params.template as TemplateId)
+      : null;
+  const accentOverride = params.accent?.trim() || null;
+  const surfaceOverride =
+    params.surface && isValidSurfaceKey(params.surface) ? params.surface : null;
+  const fontOverride =
+    params.font && isValidFontPairingKey(params.font) ? params.font : null;
+
+  const effectiveTemplateId = templateOverride ?? config.templateId;
+  const effectiveAccent = accentOverride ?? config.theme.accent;
+  const effectiveSurface = surfaceOverride ?? config.surfaceColor;
+  const effectiveFontPairing = fontOverride ?? config.theme.font_pairing;
+  const effectiveTheme = {
+    ...config.theme,
+    accent: effectiveAccent,
+    font_pairing: effectiveFontPairing,
+  };
+
+  console.log('[SitePreview] design overrides', {
+    templateOverride,
+    accentOverride,
+    surfaceOverride,
+    fontOverride,
+  });
 
   // Build artworks query, applying certificate-type filter.
   //
@@ -124,14 +170,16 @@ export default async function SitePreviewPage({
 
   const siteData: SiteData = {
     handle: config.handle,
-    template_id: config.templateId,
-    theme: config.theme,
+    template_id: effectiveTemplateId,
+    theme: effectiveTheme,
     sections: config.sections,
     cta: config.cta,
     published_at: config.publishedAt,
     hero_image_url: config.heroImageUrl,
     tagline: config.tagline,
     name: profile.name,
+    display_name: config.displayName,
+    logo_image_url: config.logoImageUrl,
     bio: config.aboutOverride ?? profile.bio ?? null,
     location: profile.location ?? null,
     website: profile.website ?? null,
@@ -157,15 +205,16 @@ export default async function SitePreviewPage({
     press: config.sections.press
       ? ((profile.news_publications as SiteData['press']) ?? [])
       : [],
-    surface_color: config.surfaceColor,
+    surface_color: effectiveSurface,
     custom_domain: config.customDomainVerifiedAt ? config.customDomain : null,
     is_white_label: isWhiteLabel,
   };
 
-  const accentColor = resolveAccent(config.theme.accent);
+  const accentColor = resolveAccent(effectiveAccent);
 
   return (
     <div className="relative">
+      <SiteFontStyles fontPairingKey={effectiveFontPairing} />
       <style>{`:root { --site-accent: ${accentColor}; }`}</style>
 
       {!embedMode && (
@@ -184,7 +233,7 @@ export default async function SitePreviewPage({
               className="text-xs"
               style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'system-ui, sans-serif' }}
             >
-              {profile.name} · {config.templateId} · {config.handle}.{config.siteDomain}
+              {profile.name} · {effectiveTemplateId} · {config.handle}.{config.siteDomain}
             </span>
           </div>
           <div className="flex items-center gap-3">

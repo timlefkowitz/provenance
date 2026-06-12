@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Globe, Lock, Loader2, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import {
+  Globe,
+  Lock,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Trash2,
+  ChevronDown,
+  Search,
+  ShoppingCart,
+} from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -12,6 +23,22 @@ import {
   pollCustomDomainVerification,
 } from '../_actions/attach-custom-domain';
 import { removeCustomDomainAction } from '../_actions/remove-custom-domain';
+import { searchDomainAvailabilityAction } from '../_actions/search-domain-availability';
+
+type DomainSearchResult = {
+  tld: string;
+  domain: string;
+  available: boolean;
+  definitive: boolean;
+  priceUsdCents: number | null;
+  renewalPriceUsdCents: number | null;
+  periodYears: number | null;
+};
+
+function formatUsdFromCents(cents: number | null): string {
+  if (cents == null) return '—';
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
 type Props = {
   profileId: string;
@@ -28,6 +55,8 @@ export function CustomDomainCard({
   customDomainVerifiedAt: initialVerifiedAt,
   onDomainChange,
 }: Props) {
+  const searchParams = useSearchParams();
+
   const [domainInput, setDomainInput] = useState('');
   const [customDomain, setCustomDomain] = useState(initialDomain);
   const [verifiedAt, setVerifiedAt] = useState(initialVerifiedAt);
@@ -35,8 +64,23 @@ export function CustomDomainCard({
   const [checking, startCheck] = useTransition();
   const [removing, startRemove] = useTransition();
 
+  const [buySectionOpen, setBuySectionOpen] = useState(false);
+  const [searchLabel, setSearchLabel] = useState('');
+  const [searchResults, setSearchResults] = useState<DomainSearchResult[]>([]);
+  const [searching, startSearch] = useTransition();
+  const [buyingDomain, setBuyingDomain] = useState<string | null>(null);
+
   const isVerified = Boolean(verifiedAt);
   const isPending = Boolean(customDomain && !verifiedAt);
+
+  useEffect(() => {
+    if (searchParams?.get('domain_purchased') === '1') {
+      toast.success('Domain purchased! It may take a few minutes to become live.');
+    }
+    if (searchParams?.get('domain_canceled') === '1') {
+      toast.info('Domain purchase canceled.');
+    }
+  }, [searchParams]);
 
   function handleAttach() {
     if (!domainInput.trim()) {
@@ -107,6 +151,69 @@ export function CustomDomainCard({
     });
   }
 
+  function handleSearchDomains() {
+    if (!searchLabel.trim()) {
+      toast.error('Enter a name to search.');
+      return;
+    }
+
+    startSearch(async () => {
+      console.log('[CustomDomainCard] search start', { label: searchLabel });
+      const result = await searchDomainAvailabilityAction(searchLabel);
+      if (!result.success) {
+        console.error('[CustomDomainCard] search failed', result.error);
+        toast.error(result.error);
+        return;
+      }
+      setSearchResults(result.results);
+      console.log('[CustomDomainCard] search success', {
+        count: result.results.length,
+        available: result.results.filter((r) => r.available).length,
+      });
+    });
+  }
+
+  async function handleBuyDomain(result: DomainSearchResult) {
+    if (!result.available || result.priceUsdCents == null) return;
+
+    setBuyingDomain(result.domain);
+    try {
+      console.log('[CustomDomainCard] buy start', {
+        profileId,
+        domain: result.domain,
+        priceUsdCents: result.priceUsdCents,
+      });
+
+      const res = await fetch('/api/stripe/create-domain-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId,
+          domain: result.domain,
+          priceUsdCents: result.priceUsdCents,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error('[CustomDomainCard] buy failed', data.error);
+        toast.error(data.error || 'Could not start checkout');
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error('Invalid checkout response');
+      }
+    } catch (err) {
+      console.error('[CustomDomainCard] buy error', err);
+      toast.error('Something went wrong starting checkout.');
+    } finally {
+      setBuyingDomain(null);
+    }
+  }
+
   if (!hasActiveSubscription) {
     return (
       <section className="rounded-xl border border-wine/15 bg-gradient-to-br from-wine/5 via-parchment/40 to-amber-50/30 p-5">
@@ -120,8 +227,8 @@ export function CustomDomainCard({
             </h2>
             <p className="text-xs text-ink/55 font-serif leading-relaxed mb-4">
               Connect your own domain (e.g.{' '}
-              <span className="font-medium text-ink">yourname.com</span>) and remove
-              Provenance branding from your site.
+              <span className="font-medium text-ink">yourname.com</span>) or buy one
+              directly — and remove Provenance branding from your site.
             </p>
             <Button
               asChild
@@ -143,8 +250,8 @@ export function CustomDomainCard({
         <h2 className="text-sm font-semibold text-ink font-serif">Custom domain</h2>
       </div>
       <p className="text-xs text-ink/50 font-serif mb-4">
-        Point your own domain to your Provenance site. Your site will be white-label
-        with no Provenance navbar or footer.
+        Connect a domain you already own, or search and buy one here. Your site will be
+        white-label with no Provenance navbar or footer.
       </p>
 
       {customDomain ? (
@@ -188,10 +295,6 @@ export function CustomDomainCard({
                   <span>cname.vercel-dns.com</span>
                 </div>
               </div>
-              <p className="text-[10px] text-ink/45 font-serif">
-                For apex domains (no www), your registrar may require an A record —
-                check Vercel&apos;s domain settings after connecting.
-              </p>
               <Button
                 type="button"
                 size="sm"
@@ -240,31 +343,142 @@ export function CustomDomainCard({
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={domainInput}
-              onChange={(e) => setDomainInput(e.target.value)}
-              placeholder="yourname.com"
-              className="font-serif flex-1"
-              disabled={attaching}
-            />
-            <Button
-              type="button"
-              onClick={handleAttach}
-              disabled={attaching || !domainInput.trim()}
-              className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0"
-            >
-              {attaching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Connect'
-              )}
-            </Button>
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <p className="text-[11px] uppercase tracking-widest text-ink/45 font-serif font-semibold">
+              Connect existing domain
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={domainInput}
+                onChange={(e) => setDomainInput(e.target.value)}
+                placeholder="yourname.com"
+                className="font-serif flex-1"
+                disabled={attaching}
+              />
+              <Button
+                type="button"
+                onClick={handleAttach}
+                disabled={attaching || !domainInput.trim()}
+                className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0"
+              >
+                {attaching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Connect'
+                )}
+              </Button>
+            </div>
           </div>
-          <p className="text-[10px] text-ink/45 font-serif">
-            You&apos;ll need access to your domain&apos;s DNS settings at your registrar.
-          </p>
+
+          <div className="border-t border-wine/10 pt-4">
+            <button
+              type="button"
+              onClick={() => setBuySectionOpen((o) => !o)}
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <span className="text-[11px] uppercase tracking-widest text-ink/45 font-serif font-semibold">
+                Don&apos;t have a domain yet?
+              </span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 text-ink/40 transition-transform',
+                  buySectionOpen && 'rotate-180',
+                )}
+              />
+            </button>
+
+            {buySectionOpen && (
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-ink/55 font-serif">
+                  Search for an available name and buy it through Provenance. DNS is
+                  configured automatically.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={searchLabel}
+                    onChange={(e) => setSearchLabel(e.target.value)}
+                    placeholder="janesmith"
+                    className="font-serif flex-1"
+                    disabled={searching}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSearchDomains();
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSearchDomains}
+                    disabled={searching || !searchLabel.trim()}
+                    className="font-serif shrink-0"
+                  >
+                    {searching ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Search className="h-3.5 w-3.5 mr-1.5" />
+                        Search
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {searching && (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="h-10 rounded-lg bg-wine/5 animate-pulse"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {!searching && searchResults.length > 0 && (
+                  <div className="rounded-lg border border-wine/10 overflow-hidden divide-y divide-wine/10">
+                    {searchResults.map((result) => (
+                      <div
+                        key={result.domain}
+                        className={cn(
+                          'flex items-center justify-between gap-3 px-3 py-2.5',
+                          !result.available && 'opacity-50 bg-ink/2',
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink font-serif truncate">
+                            {result.domain}
+                          </p>
+                          <p className="text-[10px] text-ink/50 font-serif">
+                            {result.available
+                              ? `${formatUsdFromCents(result.priceUsdCents)}/yr`
+                              : 'Unavailable'}
+                          </p>
+                        </div>
+                        {result.available && result.priceUsdCents != null ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleBuyDomain(result)}
+                            disabled={buyingDomain === result.domain}
+                            className="bg-wine text-parchment hover:bg-wine/90 font-serif shrink-0"
+                          >
+                            {buyingDomain === result.domain ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <>
+                                <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                                Buy
+                              </>
+                            )}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>

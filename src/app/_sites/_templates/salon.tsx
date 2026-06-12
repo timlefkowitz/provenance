@@ -26,7 +26,7 @@ export function SalonTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, Georgia, "Times New Roman", serif)', color: surface.ink, background: surface.bg }}>
       <header className="border-y-4 border-double" style={{ borderColor: accentColor }}>
         <div className="max-w-6xl mx-auto px-6 py-8 text-center">
           {site.logo_image_url ? (

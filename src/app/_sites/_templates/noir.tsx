@@ -15,7 +15,7 @@ export function NoirTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', background: '#000' }}>
+    <div style={{ fontFamily: 'var(--site-font-body, system-ui, -apple-system, sans-serif)', color: '#fff', background: '#000' }}>
       <header className="px-6 md:px-12 py-10 flex items-end justify-between border-b border-white/10">
         <div>
           <h1 className="text-sm uppercase tracking-[0.35em] text-white/70">{displayName}</h1>

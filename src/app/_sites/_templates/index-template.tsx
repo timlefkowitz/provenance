@@ -16,7 +16,7 @@ export function IndexTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, ui-monospace, "SF Mono", Menlo, monospace)', color: surface.ink, background: surface.bg }}>
       <header className="border-b px-6 py-5 flex items-center justify-between" style={{ borderColor: '#ddd' }}>
         <span className="text-xs uppercase tracking-[0.15em]">{displayName}</span>
         <nav className="flex items-center gap-4">

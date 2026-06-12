@@ -18,7 +18,7 @@ export function PavilionTemplate({ site }: { site: SiteData }) {
   const heroBg = site.hero_image_url ?? site.exhibitions[0]?.image_url ?? site.artworks[0]?.image_url;
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, system-ui, -apple-system, sans-serif)', color: surface.ink, background: surface.bg }}>
       <section className="relative min-h-[60vh] flex flex-col justify-end overflow-hidden" style={{ background: accentColor }}>
         {heroBg && (
           <div className="absolute inset-0">

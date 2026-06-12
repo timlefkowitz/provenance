@@ -20,7 +20,7 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
   const heroBg = site.hero_image_url ?? site.artworks[0]?.image_url ?? null;
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, Georgia, "Times New Roman", serif)', color: surface.ink, background: surface.bg }}>
 
       {/* ── HERO (full-viewport) ── */}
       <section

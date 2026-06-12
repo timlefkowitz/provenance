@@ -16,7 +16,7 @@ export function StudioTemplate({ site }: { site: SiteData }) {
   const accentColor = resolveAccent(site.theme.accent);
   const surface = resolveSurface(site.surface_color);
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, system-ui, -apple-system, sans-serif)', color: surface.ink, background: surface.bg }}>
 
       {/* ── HERO BANNER (optional) ── */}
       {site.hero_image_url && (

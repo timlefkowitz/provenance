@@ -13,7 +13,7 @@ export function LightboxTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#111', background: '#000' }}>
+    <div style={{ fontFamily: 'var(--site-font-body, system-ui, -apple-system, sans-serif)', color: '#111', background: '#000' }}>
       {/* Floating name overlay */}
       <div className="fixed top-0 inset-x-0 z-50 pointer-events-none">
         <div className="flex items-center justify-between px-4 py-3">

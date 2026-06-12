@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { fulfillDomainPurchase } from '~/lib/domain-purchase-fulfillment';
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -213,8 +214,22 @@ export async function POST(request: NextRequest) {
       }
 
       case 'checkout.session.completed': {
-        // Reconcile immediately so the success page never shows stale state.
         const session = event.data.object as Stripe.Checkout.Session;
+
+        if (session.metadata?.type === 'domain_purchase') {
+          console.log('[Sites] Webhook: domain purchase checkout completed', {
+            sessionId: session.id,
+            domain: session.metadata.domain,
+          });
+          const agreedByIp = process.env.GODADDY_CONSENT_IP ?? '0.0.0.0';
+          const result = await fulfillDomainPurchase(session.id, agreedByIp);
+          if (!result.ok) {
+            console.error('[Sites] Webhook: domain purchase fulfillment failed', result.error);
+          }
+          return NextResponse.json({ received: true, error: result.ok ? undefined : result.error });
+        }
+
+        // Reconcile subscription checkout immediately so the success page never shows stale state.
         if (session.mode !== 'subscription' || !session.subscription) {
           return NextResponse.json({ received: true });
         }

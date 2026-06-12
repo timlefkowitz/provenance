@@ -15,7 +15,7 @@ export function VitrineTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: '#e8e8e8', background: '#0a0a0a' }}>
+    <div style={{ fontFamily: 'var(--site-font-body, Georgia, "Times New Roman", serif)', color: '#e8e8e8', background: '#0a0a0a' }}>
       <header className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
           {site.logo_image_url ? (

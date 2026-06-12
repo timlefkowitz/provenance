@@ -16,7 +16,7 @@ export function FolioTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, Georgia, "Times New Roman", serif)', color: surface.ink, background: surface.bg }}>
       <header className="max-w-md mx-auto px-6 pt-16 pb-10 text-center">
         {site.logo_image_url ? (
           <img src={site.logo_image_url} alt={displayName} className="h-8 w-auto object-contain mx-auto mb-4" />

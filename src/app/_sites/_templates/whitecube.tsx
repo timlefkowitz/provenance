@@ -17,7 +17,7 @@ export function WhitecubeTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, Georgia, "Times New Roman", serif)', color: surface.ink, background: surface.bg }}>
       <header className="border-b" style={{ borderColor: '#e8e8e8' }}>
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <span className="text-xs uppercase tracking-[0.35em]" style={{ color: accentColor }}>

@@ -224,15 +224,71 @@ export const SITE_ACCENTS: { key: string; label: string; value: string }[] = [
   { key: 'copper',  label: 'Copper',  value: '#9C5C38' },
 ];
 
-/** Font pairing options */
-export const SITE_FONT_PAIRINGS: { key: string; label: string; description: string }[] = [
-  { key: 'editorial', label: 'Editorial', description: 'Serif headings + sans body' },
-  { key: 'modern',    label: 'Modern',    description: 'Clean sans throughout' },
+/** Font pairing options — applied via CSS vars on published/preview sites */
+export type SiteFontPairingMeta = {
+  key: string;
+  label: string;
+  description: string;
+  /** Google Font family names to load (empty = template default, no override) */
+  googleFamilies: string[];
+  heading: string | null;
+  body: string | null;
+};
+
+export const SITE_FONT_PAIRINGS: SiteFontPairingMeta[] = [
+  {
+    key: 'default',
+    label: 'Template default',
+    description: 'Each template’s built-in type',
+    googleFamilies: [],
+    heading: null,
+    body: null,
+  },
+  {
+    key: 'editorial',
+    label: 'Editorial',
+    description: 'Playfair Display + Source Sans 3',
+    googleFamilies: ['Playfair Display', 'Source Sans 3'],
+    heading: 'Playfair Display',
+    body: 'Source Sans 3',
+  },
+  {
+    key: 'modern',
+    label: 'Modern',
+    description: 'Inter throughout',
+    googleFamilies: ['Inter'],
+    heading: 'Inter',
+    body: 'Inter',
+  },
+  {
+    key: 'classic',
+    label: 'Classic',
+    description: 'Cormorant Garamond + Inter',
+    googleFamilies: ['Cormorant Garamond', 'Inter'],
+    heading: 'Cormorant Garamond',
+    body: 'Inter',
+  },
+  {
+    key: 'gallery',
+    label: 'Gallery',
+    description: 'Libre Baskerville + Karla',
+    googleFamilies: ['Libre Baskerville', 'Karla'],
+    heading: 'Libre Baskerville',
+    body: 'Karla',
+  },
+  {
+    key: 'archive',
+    label: 'Archive',
+    description: 'Space Mono + Inter',
+    googleFamilies: ['Space Mono', 'Inter'],
+    heading: 'Space Mono',
+    body: 'Inter',
+  },
 ];
 
 export const DEFAULT_THEME: SiteTheme = {
   accent: 'wine',
-  font_pairing: 'editorial',
+  font_pairing: 'default',
 };
 
 export const DEFAULT_SECTIONS: SiteSections = {

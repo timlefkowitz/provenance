@@ -17,7 +17,7 @@ export function ConcreteTemplate({ site }: { site: SiteData }) {
   const displayName = site.display_name ?? site.name;
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: surface.ink, background: surface.bg }}>
+    <div style={{ fontFamily: 'var(--site-font-body, system-ui, -apple-system, sans-serif)', color: surface.ink, background: surface.bg }}>
       <header className="border-b px-6 py-8" style={{ borderColor: '#111' }}>
         <h1 className="text-4xl md:text-6xl font-light lowercase tracking-tight leading-none">
           {displayName}

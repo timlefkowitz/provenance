@@ -20,7 +20,6 @@ import type {
   CertificateTypeKey,
 } from '~/app/_sites/types';
 import {
-  SITE_ACCENTS,
   SITE_FONT_PAIRINGS,
   SITE_SURFACES,
   DEFAULT_SECTIONS,
@@ -31,6 +30,8 @@ import {
 } from '~/app/_sites/types';
 import { TemplatePicker } from './template-picker';
 import { CustomDomainCard } from './custom-domain-card';
+import { AccentColorPicker } from './accent-color-picker';
+import { buildGoogleFontsUrl } from '~/app/_sites/_templates/palette';
 import type { ManageableProfile } from '../_actions/get-manageable-profiles';
 import type { SiteConfig } from '../_actions/get-site-config';
 import { upsertSiteAction } from '../_actions/upsert-site';
@@ -41,6 +42,15 @@ import { transferHandleAction } from '../_actions/transfer-handle';
 import { deleteSiteAction } from '../_actions/delete-site';
 
 const CERT_TYPE_KEYS: CertificateTypeKey[] = ['authenticity', 'ownership', 'show'];
+
+type EditorTab = 'branding' | 'design' | 'content' | 'address';
+
+const EDITOR_TABS: { id: EditorTab; label: string }[] = [
+  { id: 'branding', label: 'Branding' },
+  { id: 'design', label: 'Design' },
+  { id: 'content', label: 'Content' },
+  { id: 'address', label: 'Address & Domain' },
+];
 
 type Props = {
   profileId: string;
@@ -109,6 +119,10 @@ export function SiteEditor({
   const [publishedAt, setPublishedAt] = useState(initialConfig?.publishedAt ?? null);
   const [siteUrl, setSiteUrl] = useState(initialConfig?.siteUrl ?? null);
 
+  const [activeTab, setActiveTab] = useState<EditorTab>(
+    initialConfig?.handle ? 'branding' : 'address',
+  );
+
   // Persistent save status — shown in both the action bar and preview header
   const [saveStatus, setSaveStatus] = useState<
     'idle' | 'saving' | 'saved' | 'error'
@@ -123,6 +137,7 @@ export function SiteEditor({
   // Focus + scroll the handle input — works even when Input doesn't forward refs
   function focusHandleInput() {
     console.log('[SiteEditor] focusHandleInput');
+    setActiveTab('address');
     const section = document.getElementById('site-address');
     const input = section?.querySelector('input') as HTMLInputElement | null;
     console.log('[SiteEditor] focusHandleInput resolved', { section: !!section, input: !!input });
@@ -136,10 +151,23 @@ export function SiteEditor({
   }
 
   const isPublished = Boolean(publishedAt);
-  const previewSrc = useMemo(
-    () => `/profile/site/preview?profileId=${profileId}&embed=1&v=${previewKey}`,
-    [profileId, previewKey],
-  );
+  const previewSrc = useMemo(() => {
+    const params = new URLSearchParams({
+      profileId,
+      embed: '1',
+      v: String(previewKey),
+      template: templateId,
+      accent: theme.accent,
+      surface: surfaceColor,
+      font: theme.font_pairing,
+    });
+    return `/profile/site/preview?${params.toString()}`;
+  }, [profileId, previewKey, templateId, theme.accent, theme.font_pairing, surfaceColor]);
+
+  const editorFontsUrl = useMemo(() => {
+    const families = [...new Set(SITE_FONT_PAIRINGS.flatMap((fp) => fp.googleFamilies))];
+    return buildGoogleFontsUrl(families);
+  }, []);
 
   // ── Profile selector ──
   function handleSwitchProfile(newProfileId: string) {
@@ -194,6 +222,7 @@ export function SiteEditor({
         setTakenByOwnProfile(result.takenByOwnProfile);
         setSaveStatus('idle');
         setSaveError(null);
+        setActiveTab('address');
         // Scroll the conflict into view
         setTimeout(() => {
           document.getElementById('site-address')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -414,9 +443,12 @@ export function SiteEditor({
 
   return (
     <div className="grid lg:grid-cols-[minmax(0,520px)_1fr] gap-8">
+      {editorFontsUrl && (
+        <link rel="stylesheet" href={editorFontsUrl} />
+      )}
 
       {/* ─────────────── LEFT: CONTROLS ─────────────── */}
-      <div className="space-y-8 min-w-0">
+      <div className="space-y-6 min-w-0">
 
         {!hasActiveSubscription && (
           <div className="rounded-xl border border-wine/20 bg-gradient-to-br from-wine via-[#5c3a30] to-amber-900/80 p-5 text-parchment shadow-md">
@@ -465,100 +497,38 @@ export function SiteEditor({
           </p>
         </section>
 
-        {/* ── HANDLE ── */}
-        <section
-          id="site-address"
-          className={cn(
-            'rounded-xl transition-all',
-            !handle && 'border-2 border-wine/30 bg-wine/5 p-4 -mx-1',
-          )}
+        {/* ── TAB NAV ── */}
+        <nav
+          className="flex flex-wrap gap-1 border-b border-wine/15 pb-0"
+          aria-label="Site settings sections"
         >
-          <div className="flex items-center justify-between gap-3 mb-1">
-            <h2 className="text-sm font-semibold text-ink font-serif">Site address</h2>
-            {!handle && (
-              <span className="text-[10px] uppercase tracking-widest font-serif font-bold text-wine bg-wine/15 px-2 py-0.5 rounded-full">
-                Required
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-ink/50 font-serif mb-3">
-            Lowercase letters, numbers, and hyphens. Max 63 chars.
-          </p>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Input
-                value={handle}
-                onChange={(e) => {
-                  setHandle(e.target.value);
-                  setHandleOk(false);
-                  setHandleError(null);
-                  markUnsaved();
-                }}
-                onBlur={handleHandleBlur}
-                placeholder="your-name"
-                autoComplete="off"
-                className={cn(
-                  'font-serif pr-32 bg-white',
-                  handleError && 'border-red-400 focus-visible:ring-red-300',
-                  handleOk && 'border-green-500 focus-visible:ring-green-200',
-                  !handle && 'border-wine/40 focus-visible:ring-wine/30',
-                )}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink/35 font-serif pointer-events-none">
-                .{siteDomain}
-              </span>
-            </div>
-            {checkingHandle && (
-              <span className="text-xs text-ink/40 font-serif">Checking…</span>
-            )}
-            {handleOk && !checkingHandle && (
-              <span className="text-xs text-green-600 font-serif">Available</span>
-            )}
-          </div>
-        {handleError && !takenByOwnProfile && (
-          <p className="mt-1.5 text-xs text-red-600 font-serif">{handleError}</p>
-        )}
-        {takenByOwnProfile && (
-          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 space-y-2.5">
-            <div>
-              <p className="text-xs font-medium text-amber-900 font-serif">{handleError}</p>
-              <p className="text-[11px] text-amber-700 font-serif mt-0.5">
-                Choose how to free up this handle:
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleTransferClaim}
-                disabled={transferring || deletingConflict}
-                className="text-xs font-semibold font-serif px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
-              >
-                {transferring ? 'Transferring…' : 'Transfer site to this profile'}
-              </button>
-              <button
-                type="button"
-                onClick={handleRemoveConflict}
-                disabled={transferring || deletingConflict}
-                className="text-xs font-semibold font-serif px-3 py-1.5 rounded-md border border-amber-400 text-amber-800 hover:bg-amber-100 disabled:opacity-50 transition-colors"
-              >
-                {deletingConflict ? 'Removing…' : `Remove from "${takenByOwnProfile.profileName}" and start fresh`}
-              </button>
-            </div>
-            <p className="text-[10px] text-amber-600 font-serif">
-              Transfer keeps the existing config (theme, hero, published state).
-              Remove clears the old site entirely so you can configure from scratch here.
-            </p>
-          </div>
-        )}
-        </section>
+          {EDITOR_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'relative px-3 py-2 text-xs font-serif font-medium transition-colors rounded-t-md',
+                activeTab === tab.id
+                  ? 'text-ink bg-white border border-b-white border-wine/15 -mb-px z-10'
+                  : 'text-ink/50 hover:text-ink/80',
+              )}
+            >
+              {tab.label}
+              {tab.id === 'address' && !handle && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-wine"
+                  aria-label="Required"
+                />
+              )}
+            </button>
+          ))}
+        </nav>
 
-        <CustomDomainCard
-          profileId={profileId}
-          hasActiveSubscription={hasActiveSubscription}
-          customDomain={initialConfig?.customDomain ?? null}
-          customDomainVerifiedAt={initialConfig?.customDomainVerifiedAt ?? null}
-        />
-
+        <div className="space-y-8 pt-2">
+          {/* ── BRANDING TAB ── */}
+          {activeTab === 'branding' && (
+            <>
         {/* ── LOGO IMAGE ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-1">Logo image</h2>
@@ -706,7 +676,12 @@ export function SiteEditor({
             className="w-full px-3 py-2 text-sm font-serif rounded-md border border-wine/20 focus:border-wine focus:outline-none focus:ring-2 focus:ring-wine/20 bg-white/60 resize-y"
           />
         </section>
+            </>
+          )}
 
+          {/* ── DESIGN TAB ── */}
+          {activeTab === 'design' && (
+            <>
         {/* ── TEMPLATE ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-3">Template</h2>
@@ -757,30 +732,13 @@ export function SiteEditor({
               <p className="text-[11px] text-ink/50 font-serif mb-2 uppercase tracking-widest">
                 Accent
               </p>
-              <div className="flex flex-wrap gap-3 sm:gap-2.5">
-                {SITE_ACCENTS.map((a) => (
-                  <button
-                    key={a.key}
-                    type="button"
-                    onClick={() => { setTheme((prev) => ({ ...prev, accent: a.key })); markUnsaved(); }}
-                    aria-label={`Accent color ${a.label}`}
-                    aria-pressed={theme.accent === a.key}
-                    className={cn(
-                      'flex flex-col items-center gap-1.5 transition-transform touch-manipulation min-w-[3.25rem]',
-                      theme.accent === a.key && 'scale-105',
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'w-11 h-11 sm:w-9 sm:h-9 rounded-full border-2 transition-all',
-                        theme.accent === a.key ? 'border-ink' : 'border-wine/20',
-                      )}
-                      style={{ background: a.value }}
-                    />
-                    <span className="text-[10px] font-serif text-ink/60 leading-none">{a.label}</span>
-                  </button>
-                ))}
-              </div>
+              <AccentColorPicker
+                value={theme.accent}
+                onChange={(accent) => {
+                  setTheme((prev) => ({ ...prev, accent }));
+                  markUnsaved();
+                }}
+              />
             </div>
 
             <div>
@@ -792,15 +750,32 @@ export function SiteEditor({
                   <button
                     key={fp.key}
                     type="button"
-                    onClick={() => setTheme((prev) => ({ ...prev, font_pairing: fp.key }))}
+                    onClick={() => {
+                      setTheme((prev) => ({ ...prev, font_pairing: fp.key }));
+                      markUnsaved();
+                    }}
                     className={cn(
-                      'px-3 py-2 rounded-lg border text-xs transition-all font-serif',
+                      'px-3 py-2 rounded-lg border text-xs transition-all text-left min-w-[8.5rem]',
                       theme.font_pairing === fp.key
                         ? 'border-wine bg-wine/5 text-ink'
                         : 'border-wine/15 text-ink/60 hover:border-wine/30',
                     )}
+                    style={{
+                      fontFamily: fp.body
+                        ? `"${fp.body}", system-ui, sans-serif`
+                        : undefined,
+                    }}
                   >
-                    <span className="font-semibold block">{fp.label}</span>
+                    <span
+                      className="font-semibold block"
+                      style={{
+                        fontFamily: fp.heading
+                          ? `"${fp.heading}", Georgia, serif`
+                          : undefined,
+                      }}
+                    >
+                      {fp.label}
+                    </span>
                     <span className="text-[10px] text-ink/40">{fp.description}</span>
                   </button>
                 ))}
@@ -808,7 +783,12 @@ export function SiteEditor({
             </div>
           </div>
         </section>
+            </>
+          )}
 
+          {/* ── CONTENT TAB ── */}
+          {activeTab === 'content' && (
+            <>
         {/* ── CERTIFICATE TYPE FILTER ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-1">
@@ -892,6 +872,108 @@ export function SiteEditor({
             </div>
           )}
         </section>
+            </>
+          )}
+
+          {/* ── ADDRESS & DOMAIN TAB ── */}
+          {activeTab === 'address' && (
+            <>
+        {/* ── HANDLE ── */}
+        <section
+          id="site-address"
+          className={cn(
+            'rounded-xl transition-all',
+            !handle && 'border-2 border-wine/30 bg-wine/5 p-4 -mx-1',
+          )}
+        >
+          <div className="flex items-center justify-between gap-3 mb-1">
+            <h2 className="text-sm font-semibold text-ink font-serif">Site address</h2>
+            {!handle && (
+              <span className="text-[10px] uppercase tracking-widest font-serif font-bold text-wine bg-wine/15 px-2 py-0.5 rounded-full">
+                Required
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            Lowercase letters, numbers, and hyphens. Max 63 chars.
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                value={handle}
+                onChange={(e) => {
+                  setHandle(e.target.value);
+                  setHandleOk(false);
+                  setHandleError(null);
+                  markUnsaved();
+                }}
+                onBlur={handleHandleBlur}
+                placeholder="your-name"
+                autoComplete="off"
+                className={cn(
+                  'font-serif pr-32 bg-white',
+                  handleError && 'border-red-400 focus-visible:ring-red-300',
+                  handleOk && 'border-green-500 focus-visible:ring-green-200',
+                  !handle && 'border-wine/40 focus-visible:ring-wine/30',
+                )}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink/35 font-serif pointer-events-none">
+                .{siteDomain}
+              </span>
+            </div>
+            {checkingHandle && (
+              <span className="text-xs text-ink/40 font-serif">Checking…</span>
+            )}
+            {handleOk && !checkingHandle && (
+              <span className="text-xs text-green-600 font-serif">Available</span>
+            )}
+          </div>
+        {handleError && !takenByOwnProfile && (
+          <p className="mt-1.5 text-xs text-red-600 font-serif">{handleError}</p>
+        )}
+        {takenByOwnProfile && (
+          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 space-y-2.5">
+            <div>
+              <p className="text-xs font-medium text-amber-900 font-serif">{handleError}</p>
+              <p className="text-[11px] text-amber-700 font-serif mt-0.5">
+                Choose how to free up this handle:
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleTransferClaim}
+                disabled={transferring || deletingConflict}
+                className="text-xs font-semibold font-serif px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+              >
+                {transferring ? 'Transferring…' : 'Transfer site to this profile'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveConflict}
+                disabled={transferring || deletingConflict}
+                className="text-xs font-semibold font-serif px-3 py-1.5 rounded-md border border-amber-400 text-amber-800 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                {deletingConflict ? 'Removing…' : `Remove from "${takenByOwnProfile.profileName}" and start fresh`}
+              </button>
+            </div>
+            <p className="text-[10px] text-amber-600 font-serif">
+              Transfer keeps the existing config (theme, hero, published state).
+              Remove clears the old site entirely so you can configure from scratch here.
+            </p>
+          </div>
+        )}
+        </section>
+
+        <CustomDomainCard
+          profileId={profileId}
+          hasActiveSubscription={hasActiveSubscription}
+          customDomain={initialConfig?.customDomain ?? null}
+          customDomainVerifiedAt={initialConfig?.customDomainVerifiedAt ?? null}
+        />
+            </>
+          )}
+        </div>
 
       </div>
 
