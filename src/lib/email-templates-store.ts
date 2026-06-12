@@ -17,7 +17,7 @@ import {
 } from '~/lib/email-defaults';
 import type { SummaryItem } from '~/lib/email-defaults';
 
-export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('studio');
+export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('minimal');
 
 type EmailSettingsRow = {
   layout_preset?: string | null;
@@ -96,8 +96,8 @@ function buildCertBlockHtml(theme: EmailTheme, certificateNumber: string): strin
   <tr>
     <td width="4" bgcolor="${wine}" style="width:4px;background-color:${wine};font-size:1px;line-height:1px;">&nbsp;</td>
     <td style="padding:22px 24px;background-color:${surfaceMuted};">
-      <p style="margin:0 0 8px;font-family:${fontFamily};font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:${inkMuted};">Certificate Number</p>
-      <p style="margin:0;font-family:ui-monospace,'Courier New',monospace;font-size:19px;font-weight:600;letter-spacing:0.08em;color:${wine};">${safe}</p>
+      <p style="margin:0 0 8px;font-family:${fontFamily};font-size:11px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:${inkMuted};">Certificate number</p>
+      <p style="margin:0;font-family:ui-monospace,'Courier New',monospace;font-size:17px;font-weight:600;letter-spacing:0.04em;color:${wine};">${safe}</p>
     </td>
   </tr>
 </table>`.trim();

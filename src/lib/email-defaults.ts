@@ -10,57 +10,53 @@ export interface SummaryItem {
 }
 
 export const DEFAULT_EMAIL_SUBJECTS = {
-  welcome: 'Welcome to Provenance!',
+  welcome: 'Welcome to Provenance',
   certification: 'Your artwork "{{artworkTitle}}" has been certified',
   notification: 'Notification from Provenance',
   summary: 'Your Provenance activity summary',
   update: 'Update from Provenance',
-  artwork_featured: 'Congratulations – Your Work Has Been Queued for Our Landing Page!',
+  artwork_featured: 'Your work is queued for the Provenance landing page',
   institution_thanks: 'Thank you from Provenance',
 } as const;
 
 export const DEFAULT_EMAIL_MARKDOWN = {
-  welcome: `## Welcome to Provenance!
+  welcome: `## Welcome to Provenance
 
 Hi {{name}},
 
-Thank you for joining Provenance! We're excited to have you as part of our community of artists and collectors.
+Thanks for joining Provenance. You can document your work, issue certificates, and share provenance with collectors and institutions.
 
-With Provenance, you can:
+- Build and manage your artwork portfolio
+- Generate certificates of authenticity
+- Track provenance over time
+- Connect with collectors and artists
 
-- Create and manage your artwork portfolio
-- Generate digital certificates of authenticity
-- Track the provenance of your pieces
-- Connect with collectors and other artists
-
-[Get Started]({{siteUrl}}/artworks/add)
+[Get started]({{siteUrl}}/artworks/add)
 
 ---
 
-If you have any questions, feel free to reach out to us. We're here to help!
+Questions? Reply to this email — we're happy to help.
 
-Best regards,  
-The Provenance Team
+Best,  
+The Provenance team
 `,
 
-  certification: `## Your Artwork Has Been Certified! 🎨
+  certification: `## Your artwork has been certified
 
 Hi {{name}},
 
-Great news! Your artwork **"{{artworkTitle}}"** has been successfully uploaded and certified on Provenance.
+**"{{artworkTitle}}"** is now certified on Provenance.
 
 {{CERT_BLOCK}}
 
-Your digital certificate of authenticity has been generated and is now part of the permanent record on Provenance. This certificate helps establish the provenance and authenticity of your artwork.
+Your certificate is part of the permanent record on Provenance and can be shared with collectors, galleries, or anyone verifying authenticity.
 
-[View Your Artwork]({{artworkUrl}})
+[View artwork]({{artworkUrl}})
 
 ---
 
-You can share this certificate with collectors, galleries, or anyone interested in verifying the authenticity of your work.
-
-Best regards,  
-The Provenance Team
+Best,  
+The Provenance team
 `,
 
   notification: `## {{title}}
@@ -73,8 +69,8 @@ Hi {{name}},
 
 ---
 
-Best regards,  
-The Provenance Team
+Best,  
+The Provenance team
 `,
 
   summary: `## Your {{periodLabel}}
@@ -85,12 +81,12 @@ Here's what's been happening on Provenance:
 
 {{ITEMS}}
 
-[Open Portal]({{siteUrl}}/portal)
+[Open portal]({{siteUrl}}/portal)
 
 ---
 
-Best regards,  
-The Provenance Team
+Best,  
+The Provenance team
 `,
 
   update: `## {{title}}
@@ -103,77 +99,73 @@ Hi {{name}},
 
 ---
 
-Best regards,  
-The Provenance Team
+Best,  
+The Provenance team
 `,
 
-  artwork_featured: `## Congratulations – Your Work Has Been Queued for Our Landing Page!
+  artwork_featured: `## Your work is queued for our landing page
 
 Dear {{artistName}},
 
-We are thrilled to share some wonderful news: your artwork **"{{artworkTitle}}"** has been selected and is now queued to be featured on the Provenance landing page.
+**"{{artworkTitle}}"** has been selected and queued to appear on the Provenance landing page.
 
-Our team personally reviews every piece that appears on the homepage, and yours stood out for its exceptional quality and provenance story. This is a remarkable achievement and a testament to the work you bring to the platform.
+Our team reviews every featured work — yours stood out for quality and provenance.
 
-[View Your Artwork]({{artworkUrl}})
+[View artwork]({{artworkUrl}})
 
 ---
 
-Thank you for being a part of the Provenance community.
+Thank you for being part of Provenance.
 
-Warm regards,  
-**The Provenance Team**
+Best,  
+The Provenance team
 `,
 
-  institution_thanks: `## Provenance wants to thank you for taking the time with us.
+  institution_thanks: `## Thank you for your time
 
 Hi {{name}},
 
-We genuinely appreciate you exploring what Provenance is building for institutions. This email walks through everything the platform offers your team — from a unified certificate registry to the operations tools registrars use every day. We hope it is useful as you evaluate where Provenance fits alongside your existing workflows.
+We appreciate you exploring what Provenance offers institutions — from a unified certificate registry to the operations tools registrars use every day.
 
 ---
 
 ## One registry: authenticity, ownership, and intermediary in sync
 
-Certificates of authenticity, ownership, and intermediary share the same underlying record — so curatorial narrative, legal title, and market handoffs never drift into conflicting PDFs. Provenance transfers with a structured handoff: counterparties review the package and accept with one click to advance custody and visibility, instead of re-keying data across inboxes.
+Certificates of authenticity, ownership, and intermediary share the same underlying record — so curatorial narrative, legal title, and market handoffs stay aligned. Provenance transfers with a structured handoff: counterparties review the package and accept with one click.
 
-- **Certificate of authenticity** — Artist-anchored authenticity that travels with the object and stays aligned with curatorial files.
-- **Certificate of ownership** — Clear title and custodial context so acquisitions, donors, and deaccessions stay auditable.
-- **Certificate of intermediary** — Dealers, lenders, and registrars meet in the middle — documenting the handoff without fragmenting the record.
+- **Certificate of authenticity** — Artist-anchored authenticity that travels with the object.
+- **Certificate of ownership** — Clear title and custodial context for acquisitions and donors.
+- **Certificate of intermediary** — Dealers, lenders, and registrars document handoffs without fragmenting the record.
 
-**One-click accept for provenance transfers.** Bundle condition, certificates, and event history into a single transfer. The receiving institution or collector confirms in one action — preserving a defensible timeline for loans, acquisitions, and outgoing movement alike.
-
----
-
-## Built for registrars — not generic inventory software
-
-Most tools stop at object IDs and locations. Provenance couples collection management with certificates, events, and verification so the record you maintain inside the building matches what partners see outside it.
-
-- **Provenance-first, not spreadsheet-first** — Accession, location, and exhibition history stay tied to the same certificate graph your partners verify.
-- **One source of truth across departments** — Curatorial, registrar, and development views pull from shared records — fewer reconciliations before a loan or audit.
-- **Append-only events you can defend** — Custody changes and internal movements emit transparent records instead of silent edits buried in a TMS export.
-- **Built for public trust** — Verification-friendly certificates and APIs meet institutions where donors, boards, and traveling shows expect clarity.
+**One-click accept for provenance transfers.** Bundle condition, certificates, and event history into a single transfer. The receiving institution or collector confirms in one action.
 
 ---
 
-## From catalog to contracts — without leaving the collection record
+## Built for registrars
 
-- **Invoicing** — Create and send professional invoices directly from your collection. Track payments, generate PDFs, and keep your financial records alongside your art records.
-- **Artwork loan agreements** — Generate and manage loan agreements with a few clicks. Define terms, conditions, insurance requirements, and get digital signatures — all in one place.
-- **Artwork label maker** — Create print-ready labels for exhibitions and storage. Include artwork details, QR codes linking to certificates, and custom formatting for any display context.
-- **Exhibitions checklist** — Coordinate install, condition checks, lender requirements, and registrar sign-offs on one checklist tied to the exhibition record — so curatorial, prep, and front-of-house stay aligned from load-in through deinstall.
-- **Cataloging & provenance** — Full accessioning, provenance tracking, and location management. Record every detail — dimensions, medium, condition, exhibition history, and ownership chain.
-- **Team and staff linked accounts** — Link registrars, curators, and operations staff to your institution workspace with role-aware access — shared collection and certificate context, individual sign-ins, and clearer accountability than a single shared login.
+- **Provenance-first** — Accession, location, and exhibition history stay tied to the same certificate graph.
+- **One source of truth** — Curatorial, registrar, and development views pull from shared records.
+- **Append-only events** — Custody changes emit transparent records instead of silent edits.
+- **Built for public trust** — Verification-friendly certificates and APIs for partners.
+
+---
+
+## From catalog to contracts
+
+- **Invoicing** — Create and send invoices from your collection.
+- **Loan agreements** — Generate and manage loan agreements with digital signatures.
+- **Label maker** — Print-ready labels with QR codes linking to certificates.
+- **Exhibitions checklist** — Coordinate install, condition checks, and sign-offs.
+- **Cataloging & provenance** — Full accessioning, provenance tracking, and location management.
+- **Team accounts** — Role-aware access for registrars, curators, and operations staff.
 
 ---
 
 ## Early proof & previews
 
-We are shipping evidence as fast as we ship code — here is where the platform stands today:
-
-- **Event ledger** — Public read on asset_events for transparency; authenticated inserts only — no silent edits.
-- **Certificates table** — Unified certificate registry spanning art, collectibles, vehicles, and real property verticals.
-- **API surface** — Key management exists in-database; HTTP verification routes ship next on your timeline.
+- **Event ledger** — Public read on asset_events; authenticated inserts only.
+- **Certificates table** — Unified registry across art, collectibles, vehicles, and real property.
+- **API surface** — Key management in-database; HTTP verification routes on your timeline.
 
 ---
 
@@ -187,33 +179,31 @@ We are shipping evidence as fast as we ship code — here is where the platform 
 
 ## Frequently asked questions
 
-**How do certificates of authenticity, ownership, and intermediary work together?**  
-They share the same registry-backed record so authenticity, title, and handoff context stay aligned. Structured transfers let counterparties accept provenance updates in one action instead of reconciling separate PDFs.
+**How do certificates work together?**  
+They share the same registry-backed record so authenticity, title, and handoff context stay aligned.
 
-**What does append-only asset event logging give our registrar team?**  
-Each custody or movement change emits a transparent record with actor, payload, and timestamp — ideal for loans, cross-department accountability, and the traveling-exhibition paper trail boards expect.
+**What does append-only event logging give our team?**  
+Each custody or movement change emits a transparent record with actor, payload, and timestamp.
 
 **How mature is the HTTP verification API?**  
-API key storage, scopes, and rate limits exist in the database today; wire your preferred edge or service layer to expose partner endpoints when you are ready.
+API key storage, scopes, and rate limits exist today; wire your edge layer when ready.
 
 ---
 
 ## Built for boards, donors, and partner scrutiny
 
-Museums need more than a login page. Provenance pairs collection accountability with controls designed for institutional trust.
-
-- **Append-only event ledger** — Custody and movement changes record actor, timestamp, and payload — authenticated inserts only, so history cannot be silently overwritten.
-- **Scoped API keys** — Keys are stored with scopes and rate limits in mind, so partner verification and integrations expose only what your institution configures.
-- **Encryption in transit and at rest** — Industry-standard TLS protects traffic between browsers, apps, and our services; data at rest is encrypted within our cloud infrastructure.
-- **Role-aware team access** — Registrars, curators, and operations staff use individual accounts tied to your institution workspace — not a single shared login — so access stays accountable.
+- **Append-only event ledger** — History cannot be silently overwritten.
+- **Scoped API keys** — Partner verification exposes only what you configure.
+- **Encryption in transit and at rest** — TLS and encrypted storage.
+- **Role-aware team access** — Individual accounts tied to your institution workspace.
 
 ---
 
-## Bring certificates, collection ops, and provenance into one workflow
+## Next steps
 
-Subscribe to align your team on a registry-shaped record that scales from accessioning desks to partner verification APIs.
+Subscribe to align your team on a registry-shaped record that scales from accessioning to partner verification.
 
-Thank you again for your time. We would love to hear what you think — your feedback shapes what we build next.
+We would love your feedback — it shapes what we build next.
 
 [Share your feedback]({{feedbackUrl}})
 

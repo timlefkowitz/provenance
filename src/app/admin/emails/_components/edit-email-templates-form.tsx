@@ -14,12 +14,6 @@ import {
   type EmailTemplatesAdminPayload,
 } from '../_actions/email-templates-admin';
 import type { EmailTemplateKey } from '~/lib/email-defaults';
-import type { EmailLayoutPresetId } from '~/lib/email-layout';
-import {
-  EMAIL_LAYOUT_PRESET_IDS,
-  EMAIL_LAYOUT_PRESET_LABELS,
-  adminDraftDefaultsForPreset,
-} from '~/lib/email-layout-presets';
 
 const TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   welcome: 'Welcome',
@@ -159,9 +153,9 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
       const res = await saveEmailTheme(theme);
       if (res.ok) {
         savedBaselineRef.current = serializeWorkspaceState(theme, templates);
-        toast.success('Email theme saved');
+        toast.success('Email masthead saved');
       } else {
-        toast.error(res.error ?? 'Failed to save theme');
+        toast.error(res.error ?? 'Failed to save masthead');
       }
     });
   };
@@ -206,81 +200,24 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
 
   return (
     <div className="space-y-10">
-      <section className="border-4 border-double border-wine p-6 bg-parchment space-y-4">
+      <section className="border border-neutral-200 rounded-lg p-6 bg-white space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-2xl text-wine">Global theme & masthead</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">Masthead</h2>
           <span
             className={`text-xs font-medium uppercase tracking-wide px-2.5 py-1 rounded border ${
               isDirty
                 ? 'border-amber-700/50 text-amber-900 bg-amber-50/90'
-                : 'border-wine/25 text-ink/50 bg-parchment'
+                : 'border-neutral-200 text-neutral-500 bg-neutral-50'
             }`}
           >
             {isDirty ? 'Unsaved changes' : 'Saved'}
           </span>
         </div>
-        <p className="text-sm text-ink/70 font-serif">
-          Choose one of three art-platform shells below, then tweak the palette if needed.
-          Colors apply to headings, Markdown body copy, masthead, footer, and CTA pills.
+        <p className="text-sm text-neutral-600">
+          Wordmark and subtitle shown at the top of every email. Layout and colors use the minimal design system.
         </p>
-        <div className="space-y-2 max-w-xl">
-          <Label htmlFor="layout_preset">Email shell design</Label>
-          <select
-            id="layout_preset"
-            className="mt-1 w-full border border-wine/40 rounded-md bg-parchment px-3 py-2.5 text-ink text-sm"
-            value={theme.layout_preset}
-            onChange={(e) => {
-              const id = e.target.value as EmailLayoutPresetId;
-              setTheme((s) => ({
-                layout_preset: id,
-                ...adminDraftDefaultsForPreset(id),
-                masthead_title: s.masthead_title,
-                masthead_subtitle: s.masthead_subtitle,
-              }));
-            }}
-          >
-            {EMAIL_LAYOUT_PRESET_IDS.map((id) => (
-              <option key={id} value={id}>
-                {EMAIL_LAYOUT_PRESET_LABELS[id]}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-ink/55 leading-relaxed font-serif">
-            Switching resets color swatches to that shell’s palette; masthead wording is kept so you don’t lose
-            custom titles.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(
-            [
-              ['parchment', 'Page background'],
-              ['ink', 'Body text'],
-              ['wine', 'Headings & buttons'],
-              ['ink_subtitle', 'Masthead subtitle'],
-              ['ink_muted', 'Footer / muted text'],
-            ] as const
-          ).map(([key, label]) => (
-            <div key={key}>
-              <Label htmlFor={key}>{label}</Label>
-              <div className="mt-1 flex gap-2 items-center">
-                <Input
-                  id={key}
-                  type="color"
-                  className="h-10 w-14 p-1 cursor-pointer"
-                  value={theme[key]}
-                  onChange={(e) => setTheme((s) => ({ ...s, [key]: e.target.value }))}
-                />
-                <Input
-                  value={theme[key]}
-                  onChange={(e) => setTheme((s) => ({ ...s, [key]: e.target.value }))}
-                  className="font-mono text-sm"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
         <div>
-          <Label htmlFor="masthead_title">Masthead title</Label>
+          <Label htmlFor="masthead_title">Wordmark</Label>
           <Input
             id="masthead_title"
             className="mt-1"
@@ -289,7 +226,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
           />
         </div>
         <div>
-          <Label htmlFor="masthead_subtitle">Masthead subtitle</Label>
+          <Label htmlFor="masthead_subtitle">Subtitle</Label>
           <Input
             id="masthead_subtitle"
             className="mt-1"
@@ -297,20 +234,15 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
             onChange={(e) => setTheme((s) => ({ ...s, masthead_subtitle: e.target.value }))}
           />
         </div>
-        <Button
-          type="button"
-          onClick={saveTheme}
-          disabled={pending}
-          className="bg-wine text-parchment hover:bg-wine/90"
-        >
-          Save theme
+        <Button type="button" onClick={saveTheme} disabled={pending}>
+          Save masthead
         </Button>
       </section>
 
-      <section className="border-4 border-double border-wine p-6 bg-parchment space-y-6">
+      <section className="border border-neutral-200 rounded-lg p-6 bg-white space-y-6">
         <div>
-          <h2 className="font-display text-2xl text-wine">Email templates (Markdown)</h2>
-          <p className="text-sm text-ink/70 font-serif whitespace-pre-line mt-2">
+          <h2 className="text-xl font-semibold text-neutral-900">Email templates (Markdown)</h2>
+          <p className="text-sm text-neutral-600 whitespace-pre-line mt-2">
             {PLACEHOLDER_HELP}
           </p>
         </div>
@@ -321,7 +253,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
               <Label htmlFor="template_key">Template</Label>
               <select
                 id="template_key"
-                className="mt-1 w-full max-w-md border border-wine/40 rounded-md bg-parchment px-3 py-2 text-ink"
+                className="mt-1 w-full max-w-md border border-neutral-300 rounded-md bg-white px-3 py-2 text-neutral-900"
                 value={activeKey}
                 onChange={(e) => setActiveKey(e.target.value as EmailTemplateKey)}
               >
@@ -345,7 +277,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
                   }))
                 }
               />
-              <p className="text-xs text-ink/60 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 Notification & summary/update emails still receive the subject from the app when sent
                 programmatically; this subject is used for welcome/certification and as a default where
                 applicable.
@@ -366,18 +298,12 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
               />
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button
-                type="button"
-                onClick={saveTemplate}
-                disabled={pending}
-                className="bg-wine text-parchment hover:bg-wine/90"
-              >
+              <Button type="button" onClick={saveTemplate} disabled={pending}>
                 Save this template
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="border-wine text-wine"
                 onClick={refreshPreviewNow}
                 disabled={pending || previewLoading}
               >
@@ -386,7 +312,6 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
               <Button
                 type="button"
                 variant="outline"
-                className="border-wine text-wine"
                 onClick={sendTest}
                 disabled={pending || previewLoading}
               >
@@ -397,41 +322,41 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
 
           <aside className="lg:sticky lg:top-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-display text-lg text-wine">Live preview</h3>
+              <h3 className="text-lg font-semibold text-neutral-900">Live preview</h3>
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`text-[11px] font-medium uppercase tracking-wide px-2 py-0.5 rounded border ${
                     isDirty
                       ? 'border-amber-700/40 text-amber-900 bg-amber-50/80'
-                      : 'border-wine/20 text-ink/45 bg-parchment'
+                      : 'border-neutral-200 text-neutral-500 bg-neutral-50'
                   }`}
                 >
                   {isDirty ? 'Draft' : 'Saved'}
                 </span>
-                <span className="text-[11px] uppercase tracking-wide text-ink/50 font-serif">Sample data</span>
+                <span className="text-[11px] uppercase tracking-wide text-neutral-500">Sample data</span>
               </div>
             </div>
-            <p className="text-xs text-ink/60 font-serif leading-relaxed">
+            <p className="text-xs text-neutral-500 leading-relaxed">
               Placeholders are filled with example names, links, and lists so you can see the real layout.
               Client apps may still override some subject lines when sending.
             </p>
-            <div className="rounded-lg border border-wine/25 bg-white/60 shadow-sm overflow-hidden ring-1 ring-black/[0.04]">
-              <div className="border-b border-wine/15 bg-[#faf8f4] px-4 py-3 space-y-1.5 text-left">
-                <p className="text-[11px] text-ink/45 font-medium uppercase tracking-wider">Subject</p>
-                <p className="text-sm text-ink font-serif leading-snug line-clamp-3">
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 shadow-sm overflow-hidden">
+              <div className="border-b border-neutral-200 bg-white px-4 py-3 space-y-1.5 text-left">
+                <p className="text-[11px] text-neutral-400 font-medium uppercase tracking-wider">Subject</p>
+                <p className="text-sm text-neutral-900 leading-snug line-clamp-3">
                   {previewSubject ?? '—'}
                 </p>
               </div>
-              <div className="bg-[#e8e4dc] p-2 sm:p-3">
+              <div className="bg-neutral-100 p-2 sm:p-3">
                 {previewHtml ? (
                   <iframe
                     title="Email HTML preview"
-                    className="w-full min-h-[480px] rounded-md border border-wine/20 bg-parchment shadow-inner"
+                    className="w-full min-h-[480px] rounded-md border border-neutral-200 bg-white shadow-inner"
                     sandbox="allow-popups allow-popups-to-escape-sandbox"
                     srcDoc={previewHtml}
                   />
                 ) : (
-                  <div className="flex min-h-[280px] items-center justify-center rounded-md border border-dashed border-wine/30 bg-parchment/80 px-4 text-center text-sm text-ink/55 font-serif">
+                  <div className="flex min-h-[280px] items-center justify-center rounded-md border border-dashed border-neutral-300 bg-white px-4 text-center text-sm text-neutral-500">
                     {previewLoading ? 'Loading preview…' : 'Add Markdown to see preview.'}
                   </div>
                 )}

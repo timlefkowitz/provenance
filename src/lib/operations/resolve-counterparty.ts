@@ -1,5 +1,5 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { sendEmail } from '~/lib/email';
+import { sendNotificationEmail } from '~/lib/email';
 import type { NotificationType } from '~/lib/notifications';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -240,30 +240,22 @@ export async function resolveCounterparty(input: {
     const roleWording = roleLabelForEmail(input.role, input.recordKind);
     const signUpUrl = `${SITE_URL.replace(/\/$/, '')}/auth/sign-up`;
     const itemLabel = kindLabelForInvite(input.recordKind);
-    const html = `
-      <p>Hi,</p>
-      <p>${escapeHtml(ownerName)} added you as ${roleWording.replace(/^a |^an /, '')} for <strong>${escapeHtml(input.artworkTitle)}</strong> on Provenance.</p>
-      <p>Create an account to see ${itemLabel} and notifications in the app.</p>
-      <p><a href="${signUpUrl}" style="display:inline-block;padding:10px 16px;background:#2d1f3d;color:#fff;border-radius:6px;text-decoration:none">Join Provenance</a></p>
-      <p style="color:#666;font-size:12px">If you did not expect this, you can ignore this email.</p>
-    `;
-    await sendEmail({
-      to: emailNorm,
-      subject: "You've been added to a workflow on Provenance",
-      html,
-    });
+    const rolePlain = roleWording.replace(/^a |^an /, '');
+    await sendNotificationEmail(
+      emailNorm,
+      'there',
+      "You've been added to a workflow on Provenance",
+      {
+        title: "You've been added on Provenance",
+        body: `${ownerName} added you as ${rolePlain} for "${input.artworkTitle}". Create an account to see ${itemLabel} and notifications in the app. If you did not expect this, you can ignore this email.`,
+        ctaUrl: signUpUrl,
+        ctaLabel: 'Join Provenance',
+      },
+    );
     console.log('[Operations/resolveCounterparty] signup invite sent (no account)', emailNorm);
   }
 
   return { userId: null, status: 'invited' };
-}
-
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 type CounterpartyStatusKind =
@@ -417,20 +409,17 @@ export async function resolveVendorContact(input: {
   if (shouldSendInvite) {
     const ownerName = await getOwnerDisplayName(input.ownerAccountId, input.ownerDisplayName);
     const signUpUrl = `${SITE_URL.replace(/\/$/, '')}/auth/sign-up`;
-    const st = escapeHtml(input.serviceType);
-    const vn = escapeHtml(input.vendorName);
-    const html = `
-      <p>Hi,</p>
-      <p>${escapeHtml(ownerName)} added you as a <strong>${st}</strong> partner contact for <strong>${vn}</strong> on Provenance.</p>
-      <p>Create an account to see this vendor record and notifications in the app.</p>
-      <p><a href="${signUpUrl}" style="display:inline-block;padding:10px 16px;background:#2d1f3d;color:#fff;border-radius:6px;text-decoration:none">Join Provenance</a></p>
-      <p style="color:#666;font-size:12px">If you did not expect this, you can ignore this email.</p>
-    `;
-    await sendEmail({
-      to: emailNorm,
-      subject: "You've been added to a workflow on Provenance",
-      html,
-    });
+    await sendNotificationEmail(
+      emailNorm,
+      'there',
+      "You've been added to a workflow on Provenance",
+      {
+        title: "You've been added on Provenance",
+        body: `${ownerName} added you as a ${input.serviceType} partner contact for "${input.vendorName}" on Provenance. Create an account to see this vendor record and notifications in the app. If you did not expect this, you can ignore this email.`,
+        ctaUrl: signUpUrl,
+        ctaLabel: 'Join Provenance',
+      },
+    );
     console.log('[Operations/resolveVendorContact] signup invite sent (no account)', emailNorm);
   }
 

@@ -72,7 +72,7 @@ redirect_uri = ""
 url = ""
 
 [auth.email.template.invite]
-subject = "You are invited to Makerkit"
+subject = "You're invited to Provenance"
 content_path = "./supabase/templates/invite-user.html"
 
 [auth.email.template.confirmation]
@@ -88,7 +88,7 @@ subject = "Confirm your email change"
 content_path = "./supabase/templates/change-email-address.html"
 
 [auth.email.template.magic_link]
-subject = "Sign in to Makerkit"
+subject = "Sign in to Provenance"
 content_path = "./supabase/templates/magic-link.html"
 
 [analytics]
