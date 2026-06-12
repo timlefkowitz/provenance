@@ -32,9 +32,18 @@ function SignUpPage() {
     : '';
 
   return (
-    <>
+    <div className="flex flex-col gap-y-6">
+      <div className="flex flex-col gap-y-1 text-center">
+        <h2 className="text-xl font-semibold tracking-tight text-[#111111]">
+          Create your account
+        </h2>
+        <p className="text-sm" style={{ color: '#4A2F25', opacity: 0.7 }}>
+          Start documenting your artwork&apos;s story today
+        </p>
+      </div>
+
       {authConfig.providers.password && (
-        <CollapsibleSignUpSection label="Create an account">
+        <CollapsibleSignUpSection label="Sign up with email">
           <CustomEmailPasswordSignUpContainer
             emailRedirectTo={redirectUrl}
             displayTermsCheckbox={authConfig.displayTermsCheckbox}
@@ -57,14 +66,23 @@ function SignUpPage() {
         </>
       )}
 
-      <div className={'flex justify-center'}>
-        <Button asChild variant={'link'} size={'sm'}>
-          <Link href={pathsConfig.auth.signIn}>
-            <Trans i18nKey={'auth:alreadyHaveAnAccount'} />
-          </Link>
-        </Button>
+      <div className="flex justify-center pt-1">
+        <span className="text-sm" style={{ color: '#111111', opacity: 0.5 }}>
+          Already have an account?{' '}
+          <Button
+            asChild
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-sm font-medium"
+            style={{ color: '#4A2F25' }}
+          >
+            <Link href={pathsConfig.auth.signIn}>
+              <Trans i18nKey={'auth:alreadyHaveAnAccount'} defaults="Sign in" />
+            </Link>
+          </Button>
+        </span>
       </div>
-    </>
+    </div>
   );
 }
 

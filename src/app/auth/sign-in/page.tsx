@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { SignInMethodsContainer } from '@kit/auth/sign-in';
 import { Button } from '@kit/ui/button';
 import { Heading } from '@kit/ui/heading';
-import { Trans } from '@kit/ui/trans';
 
 import authConfig from '~/config/auth.config';
 import pathsConfig from '~/config/paths.config';
@@ -33,28 +32,28 @@ function SignInPage() {
   });
 
   return (
-    <div className={'flex flex-col gap-y-5'}>
-      <div className={'flex flex-col gap-y-1.5 text-center'}>
-        <Heading level={4} className={'tracking-tight'}>
-          <Trans i18nKey={'auth:signInHeading'} />
+    <div className={'flex flex-col gap-y-6'}>
+      <div className={'flex flex-col gap-y-1 text-center'}>
+        <Heading level={4} className={'tracking-tight text-[#111111]'}>
+          Welcome back
         </Heading>
 
-        <p className={'text-sm text-muted-foreground'}>
-          Welcome back. Pick how you&apos;d like to sign in.
+        <p className={'text-sm'} style={{ color: '#4A2F25', opacity: 0.7 }}>
+          Sign in to your Provenance account
         </p>
       </div>
 
       <SignInMethodsContainer paths={paths} providers={authConfig.providers} />
 
-      <div className={'flex justify-center'}>
-        <Button asChild variant={'link'} size={'sm'}>
-          <Link href={pathsConfig.auth.signUp}>
-            <Trans
-              i18nKey={'auth:doNotHaveAccountYet'}
-              defaults="Don't have an account? Sign up"
-            />
-          </Link>
-        </Button>
+      <div className={'flex justify-center pt-1'}>
+        <span className="text-sm" style={{ color: '#111111', opacity: 0.5 }}>
+          New to Provenance?{' '}
+          <Button asChild variant={'link'} size={'sm'} className="h-auto p-0 text-sm font-medium" style={{ color: '#4A2F25' }}>
+            <Link href={pathsConfig.auth.signUp}>
+              Create an account
+            </Link>
+          </Button>
+        </span>
       </div>
     </div>
   );
