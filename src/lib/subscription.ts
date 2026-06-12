@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 /**
  * Returns the current user's eligible subscription if any (any billing role).
@@ -25,6 +26,38 @@ export async function getActiveSubscription(userId: string): Promise<{
   const row = rows?.[0] ?? null;
   if (!row) return null;
   return row;
+}
+
+/**
+ * Server-side check for white-label website access (paid or trialing).
+ * Uses the admin client so public site renders can resolve the owner's plan
+ * without an authenticated session.
+ */
+export async function hasWhiteLabelWebsiteAccess(userId: string): Promise<boolean> {
+  console.log('[Sites] hasWhiteLabelWebsiteAccess', { userId });
+  try {
+    const admin = getSupabaseServerAdminClient();
+    const now = new Date().toISOString();
+    const { data: rows, error } = await (admin as any)
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .in('status', ['active', 'trialing'])
+      .or(`current_period_end.is.null,current_period_end.gte.${now}`)
+      .limit(1);
+
+    if (error) {
+      console.error('[Sites] hasWhiteLabelWebsiteAccess query failed', error);
+      return false;
+    }
+
+    const hasAccess = (rows?.length ?? 0) > 0;
+    console.log('[Sites] hasWhiteLabelWebsiteAccess resolved', { userId, hasAccess });
+    return hasAccess;
+  } catch (err) {
+    console.error('[Sites] hasWhiteLabelWebsiteAccess failed', err);
+    return false;
+  }
 }
 
 /**

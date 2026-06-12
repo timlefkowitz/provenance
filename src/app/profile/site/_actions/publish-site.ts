@@ -1,7 +1,6 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getActiveSubscription } from '~/lib/subscription';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
 export type PublishSiteResult =
@@ -10,7 +9,7 @@ export type PublishSiteResult =
 
 /**
  * Publish (or unpublish) a creator site.
- * Requires an active subscription.
+ * Free users can publish with Provenance branding; paid users get white-label.
  */
 export async function publishSiteAction(
   profileId: string,
@@ -23,12 +22,6 @@ export async function publishSiteAction(
   const { data: { user }, error: authErr } = await client.auth.getUser();
   if (authErr || !user) {
     return { success: false, error: 'Not authenticated' };
-  }
-
-  // Require active subscription to publish
-  const subscription = await getActiveSubscription(user.id);
-  if (!subscription) {
-    return { success: false, error: 'An active subscription is required to publish your site.' };
   }
 
   // Verify ownership OR gallery team management access

@@ -1,10 +1,15 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getActiveSubscription } from '~/lib/subscription';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getSiteConfig } from '../_actions/get-site-config';
 import { renderSiteTemplate } from '~/app/_sites/_templates/render-template';
 import { resolveAccent } from '~/app/_sites/_templates/palette';
+import {
+  ProvenanceSiteBar,
+  PoweredByProvenanceFooter,
+} from '~/app/_sites/_components/provenance-site-bar';
 import type { SiteData } from '~/app/_sites/types';
 
 export const dynamic = 'force-dynamic';
@@ -51,6 +56,9 @@ export default async function SitePreviewPage({
     hasAccess = await canManageGallery(user.id, profileId);
   }
   if (!hasAccess) redirect('/profile/site');
+
+  const subscription = await getActiveSubscription(user.id);
+  const isWhiteLabel = subscription !== null;
 
   const config = await getSiteConfig(profileId);
   if (!config?.handle) {
@@ -150,7 +158,8 @@ export default async function SitePreviewPage({
       ? ((profile.news_publications as SiteData['press']) ?? [])
       : [],
     surface_color: config.surfaceColor,
-    custom_domain: null,
+    custom_domain: config.customDomainVerifiedAt ? config.customDomain : null,
+    is_white_label: isWhiteLabel,
   };
 
   const accentColor = resolveAccent(config.theme.accent);
@@ -217,7 +226,9 @@ export default async function SitePreviewPage({
       )}
 
       <div style={{ paddingTop: embedMode ? 0 : '40px' }}>
+        {!isWhiteLabel && <ProvenanceSiteBar />}
         {renderSiteTemplate(siteData)}
+        {!isWhiteLabel && <PoweredByProvenanceFooter />}
       </div>
     </div>
   );

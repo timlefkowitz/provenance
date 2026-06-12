@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getActiveSubscription } from '~/lib/subscription';
 
 export type AttachDomainResult =
   | { success: true; verified: boolean; cnameTarget: string }
@@ -44,6 +45,14 @@ export async function attachCustomDomainAction(
   } = await client.auth.getUser();
   if (authErr || !user) {
     return { success: false, error: 'Not authenticated' };
+  }
+
+  const subscription = await getActiveSubscription(user.id);
+  if (!subscription) {
+    return {
+      success: false,
+      error: 'An active subscription is required to connect a custom domain.',
+    };
   }
 
   // Ownership check

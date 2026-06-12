@@ -209,6 +209,8 @@ export type SiteData = {
   surface_color: string | null;
   /** custom domain if verified */
   custom_domain: string | null;
+  /** When true, no Provenance navbar or powered-by footer (paid/trial) */
+  is_white_label: boolean;
 };
 
 /** Constrained accent color palette for site theming */

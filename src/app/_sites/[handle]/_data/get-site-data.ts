@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { hasWhiteLabelWebsiteAccess } from '~/lib/subscription';
 import type {
   SiteData,
   SiteTheme,
@@ -54,6 +55,8 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     console.error('[Sites] getSiteData user_profiles query failed', profileErr);
     return null;
   }
+
+  const isWhiteLabel = await hasWhiteLabelWebsiteAccess(profile.user_id);
 
   const sections: SiteSections = {
     ...DEFAULT_SECTIONS,
@@ -177,6 +180,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     artworks: artworks.length,
     exhibitions: exhibitions.length,
     press: press.length,
+    isWhiteLabel,
   });
 
   return {
@@ -201,7 +205,8 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     exhibitions,
     press,
     surface_color: siteRow.surface_color ?? null,
-    custom_domain: siteRow.custom_domain ?? null,
+    custom_domain: siteRow.custom_domain_verified_at ? (siteRow.custom_domain ?? null) : null,
+    is_white_label: isWhiteLabel,
   };
 }
 

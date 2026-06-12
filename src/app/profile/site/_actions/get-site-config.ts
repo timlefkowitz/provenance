@@ -35,6 +35,8 @@ export type SiteConfig = {
   siteUrl: string | null;
   /** Root hostname without www. (e.g. "provenance.guru") */
   siteDomain: string;
+  customDomain: string | null;
+  customDomainVerifiedAt: string | null;
 };
 
 /**
@@ -82,5 +84,7 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     publishedAt: data.published_at ?? null,
     siteUrl,
     siteDomain,
+    customDomain: data.custom_domain ?? null,
+    customDomainVerifiedAt: data.custom_domain_verified_at ?? null,
   };
 }

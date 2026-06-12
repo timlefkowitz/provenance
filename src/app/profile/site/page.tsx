@@ -28,30 +28,8 @@ export default async function ProfileSitePage({
     redirect('/auth/sign-in');
   }
 
-  // ── Subscription gate ──
   const subscription = await getActiveSubscription(user.id);
-  if (!subscription) {
-    return (
-      <div className="container mx-auto px-4 max-w-2xl py-16 text-center">
-        <p className="text-xs uppercase tracking-widest text-ink/40 font-serif mb-4">
-          Creator Website
-        </p>
-        <h1 className="text-3xl font-display font-bold text-ink mb-4">
-          Your own website, powered by Provenance
-        </h1>
-        <p className="text-ink/60 font-serif mb-8 leading-relaxed">
-          Publish a beautiful, chromeless site at{' '}
-          <span className="text-wine font-medium">yourname.provenance.guru</span> —
-          populated automatically from your artworks, exhibitions, and press.
-          Included with every Provenance subscription: host your own website and sell
-          your work directly from your site.
-        </p>
-        <Button asChild className="bg-wine text-parchment hover:bg-wine/90 font-serif">
-          <Link href="/subscription">Unlock with a subscription</Link>
-        </Button>
-      </div>
-    );
-  }
+  const hasActiveSubscription = subscription !== null;
 
   // ── Manageable profiles ──
   const manageableProfiles = await getManageableProfiles();
@@ -133,6 +111,7 @@ export default async function ProfileSitePage({
           manageableProfiles={manageableProfiles}
           initialConfig={existingConfig}
           siteDomain={existingConfig?.siteDomain ?? 'provenance.guru'}
+          hasActiveSubscription={hasActiveSubscription}
         />
       </div>
     </div>

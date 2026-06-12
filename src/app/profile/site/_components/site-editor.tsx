@@ -2,8 +2,9 @@
 
 import { useState, useTransition, useRef, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, Upload, X, RefreshCw, ChevronDown } from 'lucide-react';
+import { Eye, Upload, X, RefreshCw, ChevronDown, Sparkles } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -29,6 +30,7 @@ import {
   CERTIFICATE_TYPE_LABELS,
 } from '~/app/_sites/types';
 import { TemplatePicker } from './template-picker';
+import { CustomDomainCard } from './custom-domain-card';
 import type { ManageableProfile } from '../_actions/get-manageable-profiles';
 import type { SiteConfig } from '../_actions/get-site-config';
 import { upsertSiteAction } from '../_actions/upsert-site';
@@ -51,6 +53,7 @@ type Props = {
   };
   manageableProfiles: ManageableProfile[];
   initialConfig: SiteConfig | null;
+  hasActiveSubscription: boolean;
 };
 
 export function SiteEditor({
@@ -59,6 +62,7 @@ export function SiteEditor({
   profile,
   manageableProfiles,
   initialConfig,
+  hasActiveSubscription,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -414,6 +418,35 @@ export function SiteEditor({
       {/* ─────────────── LEFT: CONTROLS ─────────────── */}
       <div className="space-y-8 min-w-0">
 
+        {!hasActiveSubscription && (
+          <div className="rounded-xl border border-wine/20 bg-gradient-to-br from-wine via-[#5c3a30] to-amber-900/80 p-5 text-parchment shadow-md">
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-5 w-5 shrink-0 text-amber-200 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold font-serif mb-1">
+                  Upgrade for a professional site
+                </h2>
+                <p className="text-xs text-parchment/80 font-serif leading-relaxed mb-4">
+                  Free sites include a Provenance navbar and &ldquo;Powered by Provenance&rdquo;
+                  footer. Upgrade to remove branding and connect your own domain.
+                </p>
+                <ul className="text-[11px] text-parchment/75 font-serif space-y-1 mb-4 list-disc list-inside">
+                  <li>Remove the Provenance navbar from your site</li>
+                  <li>Connect a custom domain (yourname.com)</li>
+                  <li>Full white-label experience</li>
+                </ul>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-parchment text-wine hover:bg-parchment/90 font-serif font-semibold"
+                >
+                  <Link href="/subscription">Upgrade now</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── PROFILE SELECTOR ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-2">Powered by which profile</h2>
@@ -518,6 +551,13 @@ export function SiteEditor({
           </div>
         )}
         </section>
+
+        <CustomDomainCard
+          profileId={profileId}
+          hasActiveSubscription={hasActiveSubscription}
+          customDomain={initialConfig?.customDomain ?? null}
+          customDomainVerifiedAt={initialConfig?.customDomainVerifiedAt ?? null}
+        />
 
         {/* ── LOGO IMAGE ── */}
         <section>

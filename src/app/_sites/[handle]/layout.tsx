@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSiteData } from './_data/get-site-data';
+import { getSiteData, getRootDomain } from './_data/get-site-data';
 import { resolveAccent } from '../_templates/palette';
+import {
+  ProvenanceSiteBar,
+  PoweredByProvenanceFooter,
+} from '../_components/provenance-site-bar';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,30 +50,23 @@ export default async function SiteLayout({
   }
 
   const accentVar = getSiteAccentCss(site.theme.accent);
+  const rootDomain = getRootDomain();
+  const canonicalUrl = site.custom_domain
+    ? `https://${site.custom_domain}`
+    : `https://${handle}.${rootDomain}`;
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="canonical" href={`https://${handle}.provenance.app`} />
+        <link rel="canonical" href={canonicalUrl} />
       </head>
       <body
         className="antialiased overflow-x-hidden"
         style={accentVar}
       >
+        {!site.is_white_label && <ProvenanceSiteBar />}
         {children}
-
-        {/* Powered-by badge — tasteful footer attribution */}
-        <div className="py-4 text-center border-t border-black/5">
-          <a
-            href="https://provenance.app"
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-black/30 hover:text-black/50 transition-colors"
-            style={{ fontFamily: 'system-ui, sans-serif' }}
-          >
-            Made with Provenance
-          </a>
-        </div>
+        {!site.is_white_label && <PoweredByProvenanceFooter />}
       </body>
     </html>
   );

@@ -23,6 +23,61 @@ const MAIN_HOSTNAME = (() => {
   return h.startsWith('www.') ? h.slice(4) : h;
 })();
 
+/** Short-lived cache for custom-domain → handle lookups in middleware */
+const customDomainCache = new Map<string, { handle: string | null; expiresAt: number }>();
+const CUSTOM_DOMAIN_CACHE_TTL_MS = 60_000;
+
+/**
+ * Resolve a published site handle from a custom domain hostname.
+ * Uses Supabase REST with the anon key — published sites are publicly readable via RLS.
+ */
+async function lookupHandleByCustomDomain(hostname: string): Promise<string | null> {
+  const normalized = hostname.toLowerCase().replace(/^www\./, '');
+
+  const cached = customDomainCache.get(normalized);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.handle;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
+    console.error('[Sites] middleware custom domain lookup: missing Supabase env');
+    return null;
+  }
+
+  try {
+    const url = new URL(`${supabaseUrl}/rest/v1/profile_sites`);
+    url.searchParams.set('custom_domain', `eq.${normalized}`);
+    url.searchParams.set('published_at', 'not.is.null');
+    url.searchParams.set('select', 'handle');
+    url.searchParams.set('limit', '1');
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+    });
+
+    if (!res.ok) {
+      console.error('[Sites] middleware custom domain lookup failed', res.status);
+      return null;
+    }
+
+    const rows = (await res.json()) as { handle?: string }[];
+    const handle = rows[0]?.handle?.toLowerCase() ?? null;
+    customDomainCache.set(normalized, {
+      handle,
+      expiresAt: Date.now() + CUSTOM_DOMAIN_CACHE_TTL_MS,
+    });
+    return handle;
+  } catch (err) {
+    console.error('[Sites] middleware custom domain lookup error', err);
+    return null;
+  }
+}
+
 /**
  * Detect a creator-site subdomain request.
  * Returns the subdomain handle (e.g. "jane-doe") or null if this is a main-app request.
@@ -59,7 +114,17 @@ function getSiteHandle(request: NextRequest): string | null {
 }
 
 export async function middleware(request: NextRequest) {
-  const siteHandle = getSiteHandle(request);
+  const host = request.headers.get('host') || '';
+  const hostname = host.split(':')[0];
+  let siteHandle = getSiteHandle(request);
+
+  // ── Custom domain rewrite ─────────────────────────────────────────────────
+  if (!siteHandle && hostname && hostname !== MAIN_HOSTNAME && hostname !== `www.${MAIN_HOSTNAME}`) {
+    siteHandle = await lookupHandleByCustomDomain(hostname);
+    if (siteHandle) {
+      console.log('[Sites] middleware custom domain resolved', { hostname, siteHandle });
+    }
+  }
 
   // ── Creator-site subdomain rewrite ────────────────────────────────────────
   // Rewrite <handle>.provenance.app/path → /_sites/<handle>/path on the same
