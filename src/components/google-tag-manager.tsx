@@ -1,22 +1,28 @@
 import Script from 'next/script';
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 
 /**
- * Renders the Google Tag Manager loader plus the Consent Mode v2 defaults.
+ * Renders Google Tag Manager, Google Ads gtag, and Consent Mode v2 defaults.
  *
  * Mount order matters — the consent-defaults script uses `strategy="beforeInteractive"`
- * so it runs in the HTML head before any other script. The GTM container itself
- * uses `strategy="afterInteractive"` to avoid blocking page paint.
+ * so it runs in the HTML head before any other script. Tag loaders use
+ * `strategy="afterInteractive"` to avoid blocking page paint.
  *
- * Renders nothing when NEXT_PUBLIC_GTM_ID is not set (dev / CI environments).
+ * Renders nothing when neither NEXT_PUBLIC_GTM_ID nor NEXT_PUBLIC_GOOGLE_ADS_ID
+ * is set (dev / CI environments).
  */
 export function GoogleTagManager() {
-  if (!GTM_ID) return null;
+  if (!GTM_ID && !GOOGLE_ADS_ID) return null;
+
+  const adsConfigLine = GOOGLE_ADS_ID
+    ? `gtag('config', '${GOOGLE_ADS_ID}');`
+    : '';
 
   return (
     <>
-      {/* Consent Mode v2 defaults — must fire before GTM so all tags see denied state. */}
+      {/* Consent Mode v2 defaults — must fire before tags so all tags see denied state. */}
       <Script
         id="gtm-consent-defaults"
         strategy="beforeInteractive"
@@ -33,16 +39,27 @@ export function GoogleTagManager() {
               wait_for_update: 500
             });
             gtag('js', new Date());
+            ${adsConfigLine}
           `,
         }}
       />
 
+      {/* Google Ads gtag.js loader */}
+      {GOOGLE_ADS_ID ? (
+        <Script
+          id="google-ads-gtag"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
+          strategy="afterInteractive"
+        />
+      ) : null}
+
       {/* GTM container loader */}
-      <Script
-        id="gtm-loader"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+      {GTM_ID ? (
+        <Script
+          id="gtm-loader"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
             (function(w,d,s,l,i){
               w[l]=w[l]||[];
               w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
@@ -54,19 +71,22 @@ export function GoogleTagManager() {
               f.parentNode.insertBefore(j,f);
             })(window,document,'script','dataLayer','${GTM_ID}');
           `,
-        }}
-      />
+          }}
+        />
+      ) : null}
 
       {/* noscript fallback — place as first child of <body> via layout */}
-      <noscript>
-        <iframe
-          src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
-          height="0"
-          width="0"
-          style={{ display: 'none', visibility: 'hidden' }}
-          title="Google Tag Manager"
-        />
-      </noscript>
+      {GTM_ID ? (
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+            title="Google Tag Manager"
+          />
+        </noscript>
+      ) : null}
     </>
   );
 }
