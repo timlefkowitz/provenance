@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@kit/ui/button';
@@ -25,6 +25,357 @@ type SubmitExhibitionClientProps = {
   contextError: string | null;
 };
 
+type ArtworkEntry = {
+  id: string;
+  title: string;
+  description: string;
+  medium: string;
+  creationDate: string;
+  dimensions: string;
+  images: File[];
+  formerOwners: string;
+  auctionHistory: string;
+  exhibitionHistory: string;
+  historicContext: string;
+  celebrityNotes: string;
+  value: string;
+  edition: string;
+  productionLocation: string;
+  ownedBy: string;
+  soldBy: string;
+  showMore: boolean;
+};
+
+function createEntryId(): string {
+  return `artwork-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function emptyEntry(): ArtworkEntry {
+  return {
+    id: createEntryId(),
+    title: '',
+    description: '',
+    medium: '',
+    creationDate: '',
+    dimensions: '',
+    images: [],
+    formerOwners: '',
+    auctionHistory: '',
+    exhibitionHistory: '',
+    historicContext: '',
+    celebrityNotes: '',
+    value: '',
+    edition: '',
+    productionLocation: '',
+    ownedBy: '',
+    soldBy: '',
+    showMore: false,
+  };
+}
+
+function appendArtworkFields(formData: FormData, index: number, entry: ArtworkEntry) {
+  const prefix = `artwork_${index}_`;
+  formData.append(`${prefix}title`, entry.title.trim());
+  formData.append(`${prefix}description`, entry.description.trim());
+  formData.append(`${prefix}medium`, entry.medium.trim());
+  formData.append(`${prefix}creationDate`, entry.creationDate.trim());
+  formData.append(`${prefix}dimensions`, entry.dimensions.trim());
+  formData.append(`${prefix}formerOwners`, entry.formerOwners.trim());
+  formData.append(`${prefix}auctionHistory`, entry.auctionHistory.trim());
+  formData.append(`${prefix}exhibitionHistory`, entry.exhibitionHistory.trim());
+  formData.append(`${prefix}historicContext`, entry.historicContext.trim());
+  formData.append(`${prefix}celebrityNotes`, entry.celebrityNotes.trim());
+  formData.append(`${prefix}value`, entry.value.trim());
+  formData.append(`${prefix}edition`, entry.edition.trim());
+  formData.append(`${prefix}productionLocation`, entry.productionLocation.trim());
+  formData.append(`${prefix}ownedBy`, entry.ownedBy.trim());
+  formData.append(`${prefix}soldBy`, entry.soldBy.trim());
+
+  for (const file of entry.images) {
+    formData.append(`images_${index}`, file);
+  }
+}
+
+type ArtworkEntryCardProps = {
+  entry: ArtworkEntry;
+  index: number;
+  canRemove: boolean;
+  onUpdate: (id: string, patch: Partial<ArtworkEntry>) => void;
+  onRemove: (id: string) => void;
+  onAddImages: (id: string, files: File[]) => void;
+  onRemoveImage: (id: string, imageIndex: number) => void;
+};
+
+function ArtworkEntryCard({
+  entry,
+  index,
+  canRemove,
+  onUpdate,
+  onRemove,
+  onAddImages,
+  onRemoveImage,
+}: ArtworkEntryCardProps) {
+  const previewUrls = useMemo(
+    () => entry.images.map((file) => URL.createObjectURL(file)),
+    [entry.images],
+  );
+
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
+
+  return (
+    <div className="rounded-lg border border-wine/15 bg-parchment/30 p-5 space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-wine">
+          Artwork {index + 1}
+        </p>
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-ink/60 hover:text-wine"
+            onClick={() => onRemove(entry.id)}
+          >
+            Remove
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`title-${entry.id}`}>Artwork title *</Label>
+        <Input
+          id={`title-${entry.id}`}
+          value={entry.title}
+          onChange={(e) => onUpdate(entry.id, { title: e.target.value })}
+          placeholder="Untitled"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`images-${entry.id}`}>Artwork photos *</Label>
+        <Input
+          id={`images-${entry.id}`}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) {
+              onAddImages(entry.id, files);
+            }
+            e.target.value = '';
+          }}
+        />
+        <p className="text-ink/50 text-xs">
+          Add one or more photos. The first photo is the primary image on the certificate.
+        </p>
+        {previewUrls.length > 0 && (
+          <div className="flex flex-wrap gap-3 pt-1">
+            {previewUrls.map((url, imageIndex) => (
+              <div key={`${entry.id}-${imageIndex}`} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={`Preview ${imageIndex + 1}`}
+                  className="h-20 w-20 rounded-md border border-wine/10 object-cover"
+                />
+                {imageIndex === 0 && (
+                  <span className="absolute left-1 top-1 rounded bg-wine px-1.5 py-0.5 text-[10px] text-parchment">
+                    Primary
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-wine text-xs text-parchment"
+                  aria-label="Remove photo"
+                  onClick={() => onRemoveImage(entry.id, imageIndex)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`medium-${entry.id}`}>Medium</Label>
+        <Input
+          id={`medium-${entry.id}`}
+          value={entry.medium}
+          onChange={(e) => onUpdate(entry.id, { medium: e.target.value })}
+          placeholder="Oil on canvas"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`creationDate-${entry.id}`}>Creation date</Label>
+          <Input
+            id={`creationDate-${entry.id}`}
+            type="date"
+            value={entry.creationDate}
+            onChange={(e) =>
+              onUpdate(entry.id, { creationDate: e.target.value })
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`dimensions-${entry.id}`}>Dimensions</Label>
+          <Input
+            id={`dimensions-${entry.id}`}
+            value={entry.dimensions}
+            onChange={(e) =>
+              onUpdate(entry.id, { dimensions: e.target.value })
+            }
+            placeholder='24" × 36"'
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`description-${entry.id}`}>Description</Label>
+        <Textarea
+          id={`description-${entry.id}`}
+          value={entry.description}
+          onChange={(e) =>
+            onUpdate(entry.id, { description: e.target.value })
+          }
+          rows={3}
+          placeholder="Optional notes about the work"
+        />
+      </div>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="text-wine hover:text-wine/80 px-0"
+        onClick={() => onUpdate(entry.id, { showMore: !entry.showMore })}
+      >
+        {entry.showMore ? 'Hide extra details' : 'Add more details'}
+      </Button>
+
+      {entry.showMore && (
+        <div className="space-y-4 border-t border-wine/10 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor={`formerOwners-${entry.id}`}>Former owners</Label>
+            <Textarea
+              id={`formerOwners-${entry.id}`}
+              value={entry.formerOwners}
+              onChange={(e) =>
+                onUpdate(entry.id, { formerOwners: e.target.value })
+              }
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`auctionHistory-${entry.id}`}>Auction history</Label>
+            <Textarea
+              id={`auctionHistory-${entry.id}`}
+              value={entry.auctionHistory}
+              onChange={(e) =>
+                onUpdate(entry.id, { auctionHistory: e.target.value })
+              }
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`exhibitionHistory-${entry.id}`}>
+              Exhibition history / literature
+            </Label>
+            <Textarea
+              id={`exhibitionHistory-${entry.id}`}
+              value={entry.exhibitionHistory}
+              onChange={(e) =>
+                onUpdate(entry.id, { exhibitionHistory: e.target.value })
+              }
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`historicContext-${entry.id}`}>Historic context</Label>
+            <Textarea
+              id={`historicContext-${entry.id}`}
+              value={entry.historicContext}
+              onChange={(e) =>
+                onUpdate(entry.id, { historicContext: e.target.value })
+              }
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`celebrityNotes-${entry.id}`}>
+              Celebrity / notable ownership
+            </Label>
+            <Textarea
+              id={`celebrityNotes-${entry.id}`}
+              value={entry.celebrityNotes}
+              onChange={(e) =>
+                onUpdate(entry.id, { celebrityNotes: e.target.value })
+              }
+              rows={2}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`value-${entry.id}`}>Value</Label>
+              <Input
+                id={`value-${entry.id}`}
+                value={entry.value}
+                onChange={(e) => onUpdate(entry.id, { value: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`edition-${entry.id}`}>Edition</Label>
+              <Input
+                id={`edition-${entry.id}`}
+                value={entry.edition}
+                onChange={(e) => onUpdate(entry.id, { edition: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`productionLocation-${entry.id}`}>
+              Production location
+            </Label>
+            <Input
+              id={`productionLocation-${entry.id}`}
+              value={entry.productionLocation}
+              onChange={(e) =>
+                onUpdate(entry.id, { productionLocation: e.target.value })
+              }
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`ownedBy-${entry.id}`}>Owned by</Label>
+              <Input
+                id={`ownedBy-${entry.id}`}
+                value={entry.ownedBy}
+                onChange={(e) => onUpdate(entry.id, { ownedBy: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`soldBy-${entry.id}`}>Sold by</Label>
+              <Input
+                id={`soldBy-${entry.id}`}
+                value={entry.soldBy}
+                onChange={(e) => onUpdate(entry.id, { soldBy: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SubmitExhibitionClient({
   inviteContext,
   contextError,
@@ -39,14 +390,8 @@ export function SubmitExhibitionClient({
   >('loading');
   const [error, setError] = useState<string | null>(contextError);
   const [pending, startTransition] = useTransition();
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    medium: '',
-    creationDate: '',
-    dimensions: '',
-  });
+  const [entries, setEntries] = useState<ArtworkEntry[]>([emptyEntry()]);
+  const [submittedCount, setSubmittedCount] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,35 +438,84 @@ export function SubmitExhibitionClient({
   const nextPath = `/exhibitions/submit?token=${encodeURIComponent(token)}`;
   const signInHref = `${pathsConfig.auth.signIn}?next=${encodeURIComponent(nextPath)}`;
 
+  const updateEntry = (id: string, patch: Partial<ArtworkEntry>) => {
+    setEntries((prev) =>
+      prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+    );
+  };
+
+  const addEntry = () => {
+    setEntries((prev) => [...prev, emptyEntry()]);
+  };
+
+  const removeEntry = (id: string) => {
+    setEntries((prev) =>
+      prev.length <= 1 ? prev : prev.filter((entry) => entry.id !== id),
+    );
+  };
+
+  const addImages = (id: string, files: File[]) => {
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.id === id
+          ? { ...entry, images: [...entry.images, ...files] }
+          : entry,
+      ),
+    );
+  };
+
+  const removeImage = (id: string, imageIndex: number) => {
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.id === id
+          ? {
+              ...entry,
+              images: entry.images.filter((_, idx) => idx !== imageIndex),
+            }
+          : entry,
+      ),
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!imageFile) {
-      toast.error('Please add an artwork image');
-      return;
-    }
-
-    if (!form.title.trim()) {
-      toast.error('Title is required');
-      return;
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (!entry.title.trim()) {
+        toast.error(`Title is required for artwork ${i + 1}`);
+        return;
+      }
+      if (entry.images.length === 0) {
+        toast.error(`Add at least one photo for artwork ${i + 1}`);
+        return;
+      }
     }
 
     startTransition(async () => {
       const formData = new FormData();
-      formData.append('image', imageFile);
-      formData.append('title', form.title.trim());
-      formData.append('description', form.description.trim());
-      formData.append('medium', form.medium.trim());
-      formData.append('creationDate', form.creationDate.trim());
-      formData.append('dimensions', form.dimensions.trim());
+      formData.append('count', String(entries.length));
+
+      entries.forEach((entry, index) => {
+        appendArtworkFields(formData, index, entry);
+      });
 
       const result = await submitExhibitionArtwork(token, formData);
 
       if (result.success) {
+        setSubmittedCount(result.count);
         setAuthState('done');
-        toast.success('Artwork submitted successfully');
+        toast.success(
+          result.count === 1
+            ? 'Artwork submitted successfully'
+            : `${result.count} artworks submitted successfully`,
+        );
         setTimeout(() => {
-          router.replace(`/artworks/${result.artworkId}/certificate`);
+          if (result.count === 1) {
+            router.replace(`/artworks/${result.artworkId}/certificate`);
+          } else {
+            router.replace('/artworks/my');
+          }
         }, 1500);
         return;
       }
@@ -131,6 +525,15 @@ export function SubmitExhibitionClient({
       toast.error(result.error);
     });
   };
+
+  const submitLabel =
+    entries.length === 1
+      ? pending
+        ? 'Submitting…'
+        : 'Submit artwork & create COA'
+      : pending
+        ? 'Submitting…'
+        : `Submit ${entries.length} artworks & create COAs`;
 
   if (!token) {
     return (
@@ -179,10 +582,12 @@ export function SubmitExhibitionClient({
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center font-serif">
         <Heading level={4} className="text-wine mb-2">
-          Artwork submitted
+          {submittedCount === 1 ? 'Artwork submitted' : 'Artworks submitted'}
         </Heading>
         <p className="text-ink/80 mb-6">
-          Your Certificate of Authenticity has been created. Redirecting…
+          {submittedCount === 1
+            ? 'Your Certificate of Authenticity has been created. Redirecting…'
+            : `Your ${submittedCount} Certificates of Authenticity have been created. Redirecting…`}
         </p>
       </div>
     );
@@ -224,88 +629,40 @@ export function SubmitExhibitionClient({
           <p className="text-ink/60 text-sm">{inviteContext.galleryName}</p>
         )}
         <p className="text-ink/55 text-sm mt-4 max-w-md mx-auto">
-          Upload your artwork to receive a Certificate of Authenticity. The
-          gallery will automatically receive a linked Certificate of Show.
+          Upload your artworks to receive Certificates of Authenticity. The
+          gallery will automatically receive linked Certificates of Show.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5 font-serif">
-        <div className="space-y-2">
-          <Label htmlFor="title">Artwork title *</Label>
-          <Input
-            id="title"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Untitled"
-            required
+      <form onSubmit={handleSubmit} className="space-y-6 font-serif">
+        {entries.map((entry, index) => (
+          <ArtworkEntryCard
+            key={entry.id}
+            entry={entry}
+            index={index}
+            canRemove={entries.length > 1}
+            onUpdate={updateEntry}
+            onRemove={removeEntry}
+            onAddImages={addImages}
+            onRemoveImage={removeImage}
           />
-        </div>
+        ))}
 
-        <div className="space-y-2">
-          <Label htmlFor="image">Artwork image *</Label>
-          <Input
-            id="image"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="medium">Medium</Label>
-          <Input
-            id="medium"
-            value={form.medium}
-            onChange={(e) => setForm({ ...form, medium: e.target.value })}
-            placeholder="Oil on canvas"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="creationDate">Creation date</Label>
-            <Input
-              id="creationDate"
-              type="date"
-              value={form.creationDate}
-              onChange={(e) =>
-                setForm({ ...form, creationDate: e.target.value })
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dimensions">Dimensions</Label>
-            <Input
-              id="dimensions"
-              value={form.dimensions}
-              onChange={(e) =>
-                setForm({ ...form, dimensions: e.target.value })
-              }
-              placeholder='24" × 36"'
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={form.description}
-            onChange={(e) =>
-              setForm({ ...form, description: e.target.value })
-            }
-            rows={3}
-            placeholder="Optional notes about the work"
-          />
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-wine/20 text-wine hover:bg-wine/5"
+          onClick={addEntry}
+        >
+          Add another artwork
+        </Button>
 
         <Button
           type="submit"
           disabled={pending}
           className="w-full bg-wine text-parchment hover:bg-wine/90"
         >
-          {pending ? 'Submitting…' : 'Submit artwork & create COA'}
+          {submitLabel}
         </Button>
       </form>
     </div>

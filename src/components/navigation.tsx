@@ -82,7 +82,12 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
 
   // Investor pages have their own dedicated nav; hide the main nav there.
   // Preview mode renders templates full-screen with its own floating bar.
-  if (pathname?.startsWith('/investors') || pathname?.startsWith('/profile/site/preview')) {
+  // Docs has its own dark shell with sidebar navigation.
+  if (
+    pathname?.startsWith('/investors') ||
+    pathname?.startsWith('/profile/site/preview') ||
+    pathname?.startsWith('/docs')
+  ) {
     return null;
   }
 
@@ -181,6 +186,9 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             className={desktopNavItemClass}
           >
             <Trans i18nKey="common:navigation.about" defaults="About" />
+          </Link>
+          <Link href="/docs" className={desktopNavItemClass}>
+            Docs
           </Link>
         </div>
       </div>
@@ -394,6 +402,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.about" defaults="About" />
+            </Link>
+            <Link
+              href="/docs"
+              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Docs
             </Link>
             <Link
               href="/feedback"
