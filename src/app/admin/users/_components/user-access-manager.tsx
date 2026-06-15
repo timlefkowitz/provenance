@@ -238,9 +238,16 @@ export function UserAccessManager() {
             </div>
 
             <div className="rounded-lg border border-wine/20 p-4 space-y-4">
-              <h3 className="font-display text-sm font-semibold text-wine">
-                Grant free access
-              </h3>
+              <div>
+                <h3 className="font-display text-sm font-semibold text-wine">
+                  Grant free access
+                </h3>
+                <p className="mt-1 text-sm font-serif text-ink/70 leading-relaxed">
+                  Unlocks Toolbox features (Grants, Operations, Open Calls,
+                  Portal OR, and more) plus website builder premium: white-label
+                  branding removal and custom domains.
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="font-serif">Role</Label>

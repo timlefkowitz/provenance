@@ -19,7 +19,8 @@ export default async function AdminUsersPage() {
           </h1>
           <p className="text-ink/70 font-serif">
             Search by email and grant or revoke complimentary Toolbox access
-            (no Stripe charge).
+            and website builder premium (white-label branding and custom
+            domains), with no Stripe charge.
           </p>
         </div>
         <Button
