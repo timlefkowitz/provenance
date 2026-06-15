@@ -2,36 +2,19 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { resolveArtistUserId } from '~/lib/crm/owner';
 import {
   intelHasContent,
   normalizeIntel,
 } from './crm-intel';
 import { type ArtistLead, type CrmLeadIntel, type LeadStage } from './leads-constants';
 
-/**
- * Resolves the artist_user_id to use for CRM operations:
- * - If the current user has their own artist profile, returns their own id.
- * - If they are a crm_member for another artist, returns that artist's id.
- * - Falls back to the caller's own id (RLS will enforce access).
- */
-async function resolveArtistUserId(client: ReturnType<typeof getSupabaseServerClient>, userId: string): Promise<string> {
-  const { data: artistProfile } = await (client as any)
-    .from('user_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('role', 'artist')
-    .maybeSingle();
+const CRM_PATHS = ['/portal/or', '/portal/or/mailing-list'] as const;
 
-  if (artistProfile) return userId;
-
-  const { data: membership } = await (client as any)
-    .from('crm_members')
-    .select('artist_user_id')
-    .eq('member_user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  return membership?.artist_user_id ?? userId;
+function revalidateCrmPaths() {
+  for (const path of CRM_PATHS) {
+    revalidatePath(path);
+  }
 }
 
 const SELECT_FIELDS = `
@@ -41,6 +24,7 @@ const SELECT_FIELDS = `
   contact_email,
   contact_phone,
   notes,
+  is_lead,
   stage,
   artwork_id,
   estimated_value,
@@ -55,6 +39,7 @@ const SELECT_FIELDS = `
 function normalizeLeads(rows: any[]): ArtistLead[] {
   return rows.map((row) => ({
     ...row,
+    is_lead: row.is_lead !== false,
     artwork: Array.isArray(row.artwork) ? row.artwork[0] ?? null : row.artwork ?? null,
     intel: normalizeIntel(row.intel),
   }));
@@ -125,6 +110,7 @@ export async function createLead(input: {
     source:          input.source          || null,
     intel,
     stage: 'interested',
+    is_lead: true,
   });
 
   if (error) {
@@ -133,7 +119,82 @@ export async function createLead(input: {
   }
 
   console.log('[Leads] createLead success');
-  revalidatePath('/portal/or');
+  revalidateCrmPaths();
+  return { success: true };
+}
+
+export async function createContact(input: {
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  notes?: string | null;
+}) {
+  console.log('[Leads] createContact started', input);
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    console.error('[Leads] createContact: no user');
+    return { success: false, error: 'You must be logged in to add contacts.' };
+  }
+
+  const name = input.contact_name?.trim() || null;
+  const email = input.contact_email?.trim().toLowerCase() || null;
+  const phone = input.contact_phone?.trim() || null;
+
+  if (!name && !email) {
+    return { success: false, error: 'Enter a name or email address.' };
+  }
+
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
+  const { error } = await (client as any).from('artist_leads').insert({
+    artist_user_id: artistUserId,
+    contact_name: name,
+    contact_email: email,
+    contact_phone: phone,
+    notes: input.notes?.trim() || null,
+    source: 'mailing_list',
+    stage: 'interested',
+    is_lead: false,
+    intel: {},
+  });
+
+  if (error) {
+    console.error('[Leads] createContact failed', error);
+    return { success: false, error: error.message };
+  }
+
+  console.log('[Leads] createContact success');
+  revalidateCrmPaths();
+  return { success: true };
+}
+
+export async function promoteContactToLead(leadId: string) {
+  console.log('[Leads] promoteContactToLead', leadId);
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    console.error('[Leads] promoteContactToLead: no user');
+    return { success: false, error: 'You must be logged in.' };
+  }
+
+  const artistUserId = await resolveArtistUserId(client, user.id);
+
+  const { error } = await (client as any)
+    .from('artist_leads')
+    .update({ is_lead: true, updated_at: new Date().toISOString() })
+    .eq('id', leadId)
+    .eq('artist_user_id', artistUserId);
+
+  if (error) {
+    console.error('[Leads] promoteContactToLead failed', error);
+    return { success: false, error: error.message };
+  }
+
+  console.log('[Leads] promoteContactToLead success');
+  revalidateCrmPaths();
   return { success: true };
 }
 
@@ -161,7 +222,7 @@ export async function updateLeadStage(leadId: string, stage: LeadStage) {
   }
 
   console.log('[Leads] updateLeadStage success');
-  revalidatePath('/portal/or');
+  revalidateCrmPaths();
   return { success: true };
 }
 
@@ -220,7 +281,7 @@ export async function updateLead(
   }
 
   console.log('[Leads] updateLead success');
-  revalidatePath('/portal/or');
+  revalidateCrmPaths();
   return { success: true };
 }
 
@@ -248,6 +309,6 @@ export async function deleteLead(leadId: string) {
   }
 
   console.log('[Leads] deleteLead success');
-  revalidatePath('/portal/or');
+  revalidateCrmPaths();
   return { success: true };
 }

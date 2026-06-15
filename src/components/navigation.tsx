@@ -10,6 +10,7 @@ import {
   ClipboardList,
   GalleryVerticalEnd,
   Globe,
+  Mail,
   Users,
   Wrench,
 } from 'lucide-react';
@@ -59,6 +60,12 @@ const TOOLBOX_ITEMS = [
     label: 'CRM',
     description: 'Contacts, collectors & outreach',
     icon: Users,
+  },
+  {
+    href: '/portal/or/mailing-list',
+    label: 'Mailing List',
+    description: 'Contacts & email outreach',
+    icon: Mail,
   },
   {
     href: '/operations',

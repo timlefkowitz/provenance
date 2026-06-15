@@ -6,6 +6,7 @@ import { logger } from '~/lib/logger';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { generateClaimToken, hashClaimToken, normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import { sendOwnerCoownershipInviteEmail } from '~/lib/certificate-claims/send-certificate-invite-email';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_INVITES_PER_DAY = 20;
@@ -117,6 +118,13 @@ export async function createOwnerInviteFromCoa(
     }
 
     console.log('[Certificates] createOwnerInviteFromCoa success', { artworkId });
+    await captureCrmContacts(user.id, [
+      {
+        email: inviteeEmail,
+        source: 'certificate',
+        notes: `Certificate of ownership invite — ${artworkTitle}`,
+      },
+    ]);
     return { success: true };
   } catch (err) {
     console.error('[Certificates] createOwnerInviteFromCoa failed', err);

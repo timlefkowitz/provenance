@@ -6,6 +6,7 @@ import {
   commitCertificateInviteBatch,
 } from '~/lib/certificate-claims/create-invite-batch';
 import { logger } from '~/lib/logger';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 export interface CreateArtworkTransferInviteParams {
   artworkId: string;
@@ -14,6 +15,7 @@ export interface CreateArtworkTransferInviteParams {
   sellerAccountId?: string | null;
   buyerEmail: string | null;
   buyerAccountId: string | null;
+  buyerName?: string | null;
   workTitle: string;
 }
 
@@ -126,6 +128,17 @@ export async function createArtworkTransferInvite(
       sent: result.sent,
       errors: result.errors,
     });
+
+    if (result.sent > 0) {
+      await captureCrmContacts(sellerUserId, [
+        {
+          email: buyerEmail,
+          name: params.buyerName ?? null,
+          source: 'sale',
+          notes: `Certificate of ownership — ${workTitle}`,
+        },
+      ]);
+    }
 
     return {
       sent: result.sent,

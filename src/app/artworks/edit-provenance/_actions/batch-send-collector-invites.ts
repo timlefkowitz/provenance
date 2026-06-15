@@ -7,6 +7,7 @@ import {
   commitCertificateInviteBatch,
 } from '~/lib/certificate-claims/create-invite-batch';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 export type BatchSendCollectorInvitesResult = {
   sent: number;
@@ -71,6 +72,16 @@ export async function batchSendCollectorInvites(
     sent: result.sent,
     errorCount: errors.length,
   });
+
+  if (result.sent > 0) {
+    await captureCrmContacts(user.id, [
+      {
+        email: normalizedEmail,
+        source: 'certificate',
+        notes: `Batch certificate of ownership invite (${result.sent} work${result.sent === 1 ? '' : 's'})`,
+      },
+    ]);
+  }
 
   return { sent: result.sent, errors };
 }

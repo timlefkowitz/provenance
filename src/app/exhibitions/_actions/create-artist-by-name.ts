@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 /**
  * Create a new artist account by name
@@ -78,6 +79,10 @@ export async function createArtistByName(artistName: string) {
       console.error('Error creating artist account:', createError);
       return { error: 'Failed to create artist account', success: false };
     }
+
+    await captureCrmContacts(user.id, [
+      { name: newAccount.name, source: 'exhibition', notes: 'Participating artist' },
+    ]);
 
     return {
       success: true,

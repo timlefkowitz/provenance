@@ -9,8 +9,16 @@ export const LEAD_SOURCES = [
   { value: 'referral',    label: 'Referral' },
   { value: 'website',     label: 'Website' },
   { value: 'direct',      label: 'Direct' },
+  { value: 'certificate', label: 'Certificate' },
+  { value: 'exhibition',  label: 'Exhibition' },
+  { value: 'sale',        label: 'Sale' },
+  { value: 'mailing_list',label: 'Mailing List' },
   { value: 'other',       label: 'Other' },
 ] as const;
+
+export const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
+  LEAD_SOURCES.map((s) => [s.value, s.label]),
+);
 
 export type LeadSource = (typeof LEAD_SOURCES)[number]['value'];
 
@@ -41,6 +49,7 @@ export type ArtistLead = {
   contact_email: string | null;
   contact_phone: string | null;
   notes: string | null;
+  is_lead: boolean;
   stage: LeadStage;
   artwork_id: string | null;
   estimated_value: number | null;

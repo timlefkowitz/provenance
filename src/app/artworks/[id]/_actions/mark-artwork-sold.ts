@@ -7,6 +7,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 import { createArtworkTransferInvite } from '~/lib/sales/create-transfer-invite';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import { refreshEntityStatsForAccounts } from '~/lib/stats/refresh-entity-stats';
 import { logger } from '~/lib/logger';
 
@@ -187,6 +188,7 @@ export async function markArtworkSold(
           sellerAccountId: artwork.account_id as string,
           buyerEmail,
           buyerAccountId,
+          buyerName,
           workTitle: (artwork.title as string) || 'Untitled',
         });
         inviteToken = inviteResult.token ?? null;
@@ -197,6 +199,17 @@ export async function markArtworkSold(
           error: inviteErr,
         });
       }
+    }
+
+    if (buyerName || buyerEmail) {
+      await captureCrmContacts(user.id, [
+        {
+          name: buyerName,
+          email: buyerEmail,
+          source: 'sale',
+          notes: `Marked sold — ${(artwork.title as string) || 'Untitled'}`,
+        },
+      ]);
     }
 
     try {

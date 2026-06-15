@@ -4,6 +4,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 export type UpdateExhibitionListingResult =
   | { success: true }
@@ -109,6 +110,16 @@ export async function updateExhibitionListing(params: {
   }
 
   console.log('[Exhibitions] updateExhibitionListing success', { artworkId });
+
+  if (params.artistName?.trim()) {
+    await captureCrmContacts(user.id, [
+      {
+        name: params.artistName.trim(),
+        source: 'exhibition',
+        notes: 'Exhibition listing artist',
+      },
+    ]);
+  }
 
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
 
 export async function updateExhibition(exhibitionId: string, formData: FormData) {
   const client = getSupabaseServerClient();
@@ -140,6 +141,30 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
 
   revalidatePath('/exhibitions');
   revalidatePath(`/artists/${user.id}`);
+
+  const artistNames: string[] = [];
+  if (artistIdsJson !== null) {
+    try {
+      const artistIds = JSON.parse(artistIdsJson) as string[];
+      if (artistIds.length > 0) {
+        const { data: artistAccounts } = await client
+          .from('accounts')
+          .select('name')
+          .in('id', artistIds);
+        for (const acct of artistAccounts ?? []) {
+          if (acct.name) artistNames.push(acct.name);
+        }
+      }
+    } catch {
+      // ignore parse errors — exhibition was updated
+    }
+  }
+
+  await captureExhibitionContacts(user.id, {
+    curatorName: curator,
+    artistNames,
+    exhibitionTitle: title,
+  });
 
   return { success: true };
 }

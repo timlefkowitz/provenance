@@ -13,6 +13,7 @@ import {
   getExhibitionPosterContext,
 } from './gallery-posting-context';
 import { isEligibleForShowCertificate } from '../_helpers/gallery-posting-helpers';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 /** Client sends `items` JSON; optional `image_<key>` files in the same FormData. */
 export type QuickExhibitionListingInput = {
@@ -199,6 +200,17 @@ export async function createQuickExhibitionListings(
   console.log('[Exhibitions] createQuickExhibitionListings success', { created });
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);
+
+  await captureCrmContacts(
+    user.id,
+    cleaned
+      .filter((row) => row.artistName)
+      .map((row) => ({
+        name: row.artistName,
+        source: 'exhibition',
+        notes: `Exhibition listing — ${row.title}`,
+      })),
+  );
 
   return { success: true, created };
 }

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES, type UserRole } from '~/lib/user-roles';
+import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
 
 export async function createExhibition(formData: FormData) {
   console.log('[Exhibitions] createExhibition started');
@@ -130,6 +131,23 @@ export async function createExhibition(formData: FormData) {
 
   revalidatePath('/exhibitions');
   revalidatePath(`/artists/${user.id}`);
+
+  const artistNames: string[] = [];
+  if (artistIds.length > 0) {
+    const { data: artistAccounts } = await client
+      .from('accounts')
+      .select('name')
+      .in('id', artistIds);
+    for (const acct of artistAccounts ?? []) {
+      if (acct.name) artistNames.push(acct.name);
+    }
+  }
+
+  await captureExhibitionContacts(user.id, {
+    curatorName: curator,
+    artistNames,
+    exhibitionTitle: title,
+  });
 
   return { success: true, exhibitionId: exhibition.id };
 }

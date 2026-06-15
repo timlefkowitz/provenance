@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { LayoutGrid, BarChart3, BookUser } from 'lucide-react';
+import Link from 'next/link';
+import { LayoutGrid, BarChart3, BookUser, Mail } from 'lucide-react';
 import { LeadsKanban } from './leads-kanban';
 import { CrmAnalytics } from './crm-analytics';
 import { CrmContactsList } from './crm-contacts-list';
@@ -33,6 +34,11 @@ export function CrmWorkspace({
   const [tab, setTab] = useState<CrmTab>('crm');
   const [pendingOpenLeadId, setPendingOpenLeadId] = useState<string | null>(null);
 
+  const pipelineLeads = useMemo(
+    () => leads.filter((l) => l.is_lead !== false),
+    [leads],
+  );
+
   // Resolved stage labels (custom overrides merged with defaults) — shared across tabs
   const stageLabels = useMemo(
     () =>
@@ -54,8 +60,8 @@ export function CrmWorkspace({
     <>
       {/* ── Tab nav ── */}
       <div className="border-b border-wine/12">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <nav className="flex gap-1 py-1.5" role="tablist" aria-label="CRM sections">
+        <div className="container mx-auto px-4 max-w-7xl flex items-center justify-between gap-4">
+          <nav className="flex gap-1 py-1.5 flex-1" role="tablist" aria-label="CRM sections">
             {TABS.map((t) => {
               const Icon = t.icon;
               const isActive = tab === t.id;
@@ -98,6 +104,13 @@ export function CrmWorkspace({
               );
             })}
           </nav>
+          <Link
+            href="/portal/or/mailing-list"
+            className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-wine/15 bg-parchment/50 px-3 py-2 text-xs font-serif text-wine hover:bg-wine/6 transition-colors shrink-0"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Mailing List
+          </Link>
         </div>
       </div>
 
@@ -105,7 +118,7 @@ export function CrmWorkspace({
       <div className="container mx-auto px-4 max-w-7xl py-8 pb-24">
         {tab === 'crm' && (
           <LeadsKanban
-            leads={leads}
+            leads={pipelineLeads}
             setLeads={setLeads}
             pendingOpenLeadId={pendingOpenLeadId}
             onConsumedPendingOpen={onConsumedPendingOpen}
@@ -116,7 +129,7 @@ export function CrmWorkspace({
           />
         )}
         {tab === 'analytics' && (
-          <CrmAnalytics leads={leads} stageLabels={stageLabels} />
+          <CrmAnalytics leads={pipelineLeads} stageLabels={stageLabels} />
         )}
         {tab === 'contacts' && (
           <CrmContactsList

@@ -9,6 +9,7 @@ import {
   notifyCounterpartyStatusActive,
   resolveCounterparty,
 } from '~/lib/operations/resolve-counterparty';
+import { captureExhibitionPlanContacts } from '~/lib/crm/capture-exhibition-contacts';
 
 const planStatus = z.enum(['planning', 'confirmed', 'installed', 'closed', 'cancelled']);
 
@@ -237,6 +238,13 @@ export async function createExhibitionPlan(raw: z.infer<typeof createSchema>) {
     });
   }
   revalidatePath('/operations');
+  await captureExhibitionPlanContacts(user.id, {
+    lenderName: row.lender_name as string | null,
+    lenderEmail: row.lender_email as string | null,
+    curatorName: row.curator_name as string | null,
+    curatorEmail: row.curator_email as string | null,
+    exhibitionTitle: row.exhibition_title as string | null,
+  });
   return { success: true as const, id: data.id as string };
 }
 
@@ -361,6 +369,20 @@ export async function updateExhibitionPlan(raw: z.infer<typeof updateSchema>) {
   }
 
   revalidatePath('/operations');
+  await captureExhibitionPlanContacts(user.id, {
+    lenderName:
+      rest.lender_name !== undefined ? (rest.lender_name || null) : (p0.lender_name ?? null),
+    lenderEmail:
+      rest.lender_email !== undefined ? (rest.lender_email || null) : (p0.lender_email ?? null),
+    curatorName:
+      rest.curator_name !== undefined ? (rest.curator_name || null) : (p0.curator_name ?? null),
+    curatorEmail:
+      rest.curator_email !== undefined ? (rest.curator_email || null) : (p0.curator_email ?? null),
+    exhibitionTitle:
+      rest.exhibition_title !== undefined
+        ? (rest.exhibition_title || null)
+        : (p0.exhibition_title ?? null),
+  });
   return { success: true as const };
 }
 
