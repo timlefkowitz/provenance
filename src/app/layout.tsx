@@ -17,6 +17,7 @@ import { CookieConsentBanner } from "~/components/cookie-consent-banner";
 import { LegalModalProvider } from "~/components/legal/legal-modal-context";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
+import { UtmCapture } from "~/components/utm-capture";
 import { TrialBanner } from "~/components/trial-banner";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
@@ -138,6 +139,7 @@ export default async function RootLayout({
               <TrialBanner />
               <StreakActivityTracker />
               <PresenceTracker />
+              <UtmCapture />
               <GalleryProfileNotification />
               {children}
               <RoleSelectionModal />

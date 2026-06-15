@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Camera, X, Upload, MapPin } from 'lucide-react';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
 import type { UserRole } from '~/lib/user-roles';
+import { gtmService } from '~/lib/gtm';
 import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
@@ -269,6 +270,7 @@ export function AddArtworkForm({
   exhibitions = [],
   pastArtists = [],
   galleryProfiles = [],
+  hasExistingArtworks = false,
   onExhibitionsChange,
 }: { 
   userId: string;
@@ -278,6 +280,7 @@ export function AddArtworkForm({
   exhibitions?: UserExhibition[];
   pastArtists?: PastArtist[];
   galleryProfiles?: UserProfile[];
+  hasExistingArtworks?: boolean;
   onExhibitionsChange?: (exhibitions: UserExhibition[]) => void;
 }) {
   const router = useRouter();
@@ -653,6 +656,7 @@ export function AddArtworkForm({
           attemptedCount: imagePreviews.length,
           batchCount: chunks.length,
         });
+        gtmService.trackArtworkCreated(!hasExistingArtworks);
         if (allArtworkIds.length === 1) {
           router.push(`/artworks/${allArtworkIds[0]}/certificate`);
         } else {

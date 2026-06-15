@@ -17,6 +17,7 @@ import { Trans } from '@kit/ui/trans';
 
 import { updateUserRole } from '../_actions/update-user-role';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { gtmService } from '~/lib/gtm';
 
 const ROLES = [
   { value: USER_ROLES.COLLECTOR, label: getRoleLabel(USER_ROLES.COLLECTOR) },
@@ -41,6 +42,7 @@ export function OnboardingForm() {
     startTransition(async () => {
       try {
         await updateUserRole(role);
+        gtmService.trackOnboardingComplete(role);
         router.refresh();
         router.push('/');
       } catch (e) {

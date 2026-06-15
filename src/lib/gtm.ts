@@ -5,6 +5,18 @@ declare global {
   }
 }
 
+/** Read UTM cookie stored by UtmCapture without importing the component. */
+function readUtmCookie(): Record<string, string> {
+  if (typeof document === 'undefined') return {};
+  const match = document.cookie.match(/(?:^|; )pv_utm=([^;]*)/);
+  if (!match) return {};
+  try {
+    return JSON.parse(decodeURIComponent(match[1] ?? '')) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
 type ConsentState = 'granted' | 'denied';
 
 interface ConsentParams {
@@ -85,13 +97,15 @@ class GtmService {
   // ─── conversion events ──────────────────────────────────────────────────────
 
   trackSignup(): void {
-    console.log('[GTM] trackSignup');
-    this.push({ event: 'signup' });
+    const utm = readUtmCookie();
+    console.log('[GTM] trackSignup', utm);
+    this.push({ event: 'signup', ...utm });
   }
 
   trackTrialStarted(): void {
-    console.log('[GTM] trackTrialStarted');
-    this.push({ event: 'trial_started' });
+    const utm = readUtmCookie();
+    console.log('[GTM] trackTrialStarted', utm);
+    this.push({ event: 'trial_started', ...utm });
   }
 
   trackPurchase(params: PurchaseParams): void {
@@ -111,6 +125,18 @@ class GtmService {
         ],
       },
     });
+  }
+
+  trackOnboardingComplete(role: string): void {
+    const utm = readUtmCookie();
+    console.log('[GTM] trackOnboardingComplete', { role, ...utm });
+    this.push({ event: 'onboarding_complete', role, ...utm });
+  }
+
+  trackArtworkCreated(isFirst: boolean): void {
+    const utm = readUtmCookie();
+    console.log('[GTM] trackArtworkCreated', { isFirst, ...utm });
+    this.push({ event: 'artwork_created', is_first_artwork: isFirst, ...utm });
   }
 
   trackLead(): void {

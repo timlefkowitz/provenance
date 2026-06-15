@@ -20,6 +20,7 @@ export function AddArtworkPageContent({
   exhibitions: initialExhibitions,
   pastArtists,
   galleryProfiles,
+  hasExistingArtworks,
 }: {
   userId: string;
   defaultArtistName: string;
@@ -28,6 +29,7 @@ export function AddArtworkPageContent({
   exhibitions: UserExhibition[];
   pastArtists: PastArtist[];
   galleryProfiles: UserProfile[];
+  hasExistingArtworks: boolean;
 }) {
   const router = useRouter();
   const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
@@ -114,6 +116,7 @@ export function AddArtworkPageContent({
         exhibitions={exhibitions}
         pastArtists={pastArtists}
         galleryProfiles={galleryProfiles}
+        hasExistingArtworks={hasExistingArtworks}
         onExhibitionsChange={(updatedExhibitions) => {
           setExhibitions(updatedExhibitions);
         }}

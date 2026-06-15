@@ -40,6 +40,13 @@ export default async function AddArtworkPage() {
   // This allows users to post as a gallery profile even if their account role is artist/collector
   const galleryProfiles = await getUserGalleryProfiles(user.id);
 
+  // Determine if this user has previously created any artworks (for first-artwork GTM event)
+  const { count: artworkCount } = await client
+    .from('artworks')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', user.id);
+  const hasExistingArtworks = (artworkCount ?? 0) > 0;
+
   // Ensure past artists are in the registry as unclaimed profiles
   // This makes sure all past artists are available for claiming
   if (userRole === USER_ROLES.GALLERY && pastArtists.length > 0) {
@@ -67,6 +74,7 @@ export default async function AddArtworkPage() {
         exhibitions={exhibitions}
         pastArtists={pastArtists}
         galleryProfiles={galleryProfiles}
+        hasExistingArtworks={hasExistingArtworks}
       />
     </div>
   );

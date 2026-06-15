@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { DocsBreadcrumb, DocsPager } from '../_components/docs-pager';
-import { DocsMarkdown } from '../_components/docs-markdown';
-import { DocsToc } from '../_components/docs-toc';
-import { docsPageHeader } from '../_components/docs-tokens';
+import { DocsBreadcrumb, DocsPager } from '../../_components/docs-pager';
+import { DocsMarkdown } from '../../_components/docs-markdown';
+import { DocsToc } from '../../_components/docs-toc';
+import { docsPageHeader } from '../../_components/docs-tokens';
 import {
   getAdjacentDocs,
   getAllDocSlugs,
   getDocEntry,
-} from '../_lib/docs-manifest';
-import { getDoc } from '../_lib/load-doc';
+} from '../../_lib/docs-manifest';
+import { getDoc } from '../../_lib/load-doc';
 
 type PageProps = {
   params: Promise<{ slug: string[] }>;
