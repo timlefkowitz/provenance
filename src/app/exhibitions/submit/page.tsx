@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import { getExhibitionInviteContext } from '../_actions/manage-exhibition-invites';
 import { SubmitExhibitionClient } from './submit-exhibition-client';
 
+export const maxDuration = 60;
+
 type PageProps = {
   searchParams: Promise<{ token?: string }>;
 };

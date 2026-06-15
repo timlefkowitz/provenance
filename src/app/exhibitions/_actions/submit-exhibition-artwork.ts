@@ -19,7 +19,14 @@ import {
 } from '~/lib/artwork-storage';
 
 export type SubmitExhibitionArtworkResult =
-  | { success: true; artworkId: string; cosArtworkId: string; count: number }
+  | {
+      success: true;
+      artworkId: string;
+      cosArtworkId: string;
+      count: number;
+      finalized: boolean;
+      coaIds: string[];
+    }
   | { success: false; error: string };
 
 type InviteRow = {
@@ -33,6 +40,7 @@ type InviteRow = {
 };
 
 type ParsedArtworkInput = {
+  existingCoaId: string | null;
   title: string;
   description: string;
   medium: string;
@@ -51,6 +59,15 @@ type ParsedArtworkInput = {
   images: File[];
 };
 
+type BatchMeta = {
+  batchIndex: number;
+  totalBatches: number;
+  finalize: boolean;
+  totalArtworkCount: number;
+  sessionFirstCoaId: string;
+  sessionFirstCosId: string;
+};
+
 function sanitizeFileName(name: string): string {
   const base = name.split(/[/\\]/).pop() || 'file';
   return base.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'file';
@@ -58,6 +75,27 @@ function sanitizeFileName(name: string): string {
 
 function getTextField(formData: FormData, key: string): string {
   return (formData.get(key) as string | null)?.trim() ?? '';
+}
+
+function parseBatchMeta(formData: FormData): BatchMeta {
+  const batchIndexRaw = formData.get('batchIndex');
+  const totalBatchesRaw = formData.get('totalBatches');
+  const batchIndex = Number.parseInt(String(batchIndexRaw ?? '0'), 10);
+  const totalBatches = Number.parseInt(String(totalBatchesRaw ?? '1'), 10);
+  const finalize = formData.get('finalize')?.toString() !== 'false';
+  const totalArtworkCount = Number.parseInt(
+    String(formData.get('totalArtworkCount') ?? formData.get('count') ?? '0'),
+    10,
+  );
+
+  return {
+    batchIndex: Number.isFinite(batchIndex) ? batchIndex : 0,
+    totalBatches: Number.isFinite(totalBatches) && totalBatches > 0 ? totalBatches : 1,
+    finalize,
+    totalArtworkCount: Number.isFinite(totalArtworkCount) ? totalArtworkCount : 0,
+    sessionFirstCoaId: getTextField(formData, 'sessionFirstCoaId'),
+    sessionFirstCosId: getTextField(formData, 'sessionFirstCosId'),
+  };
 }
 
 function parseArtworkInputs(formData: FormData): ParsedArtworkInput[] | { error: string } {
@@ -72,20 +110,22 @@ function parseArtworkInputs(formData: FormData): ParsedArtworkInput[] | { error:
 
   for (let i = 0; i < count; i++) {
     const prefix = `artwork_${i}_`;
+    const existingCoaId = getTextField(formData, `${prefix}existingCoaId`) || null;
     const title = getTextField(formData, `${prefix}title`);
     const images = formData
       .getAll(`images_${i}`)
       .filter((item): item is File => item instanceof File && item.size > 0);
 
-    if (!title) {
-      return { error: `Title is required for artwork ${i + 1}` };
-    }
-
     if (images.length === 0) {
       return { error: `At least one photo is required for artwork ${i + 1}` };
     }
 
+    if (!existingCoaId && !title) {
+      return { error: `Title is required for artwork ${i + 1}` };
+    }
+
     artworks.push({
+      existingCoaId,
       title,
       description: getTextField(formData, `${prefix}description`),
       medium: getTextField(formData, `${prefix}medium`),
@@ -205,11 +245,44 @@ async function validateInvite(
   return { invite: invite as InviteRow };
 }
 
+async function verifyExistingCoa(
+  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  userId: string,
+  coaId: string,
+  exhibitionId: string,
+): Promise<boolean> {
+  const { data: artwork, error } = await (adminClient as any)
+    .from('artworks')
+    .select('id, account_id, metadata')
+    .eq('id', coaId)
+    .maybeSingle();
+
+  if (error || !artwork) {
+    console.error('[Exhibitions] existing COA lookup failed', error, { coaId });
+    return false;
+  }
+
+  if (artwork.account_id !== userId) {
+    return false;
+  }
+
+  const metadata = artwork.metadata as Record<string, unknown> | null;
+  return (
+    metadata?.submitted_via_exhibition_invite === true &&
+    metadata?.exhibition_id === exhibitionId
+  );
+}
+
 export async function submitExhibitionArtwork(
   token: string,
   formData: FormData,
 ): Promise<SubmitExhibitionArtworkResult> {
-  console.log('[Exhibitions] submitExhibitionArtwork started');
+  const batch = parseBatchMeta(formData);
+  console.log('[Exhibitions] submitExhibitionArtwork started', {
+    batchIndex: batch.batchIndex + 1,
+    totalBatches: batch.totalBatches,
+    finalize: batch.finalize,
+  });
 
   try {
     const client = getSupabaseServerClient();
@@ -235,6 +308,11 @@ export async function submitExhibitionArtwork(
     }
 
     const { invite } = validated;
+
+    if (invite.status === 'consumed' && !batch.finalize) {
+      return { success: false, error: 'This invitation has already been used' };
+    }
+
     const inviteeEmail = normalizeInviteEmail(invite.invitee_email);
     if (!emailsMatch(user.email, inviteeEmail)) {
       return {
@@ -249,7 +327,10 @@ export async function submitExhibitionArtwork(
     }
 
     const artworks = parsed;
-    console.log('[Exhibitions] submitExhibitionArtwork processing batch', {
+    console.log('[Exhibitions] submitExhibitionArtwork processing batch artworks', {
+      batchIndex: batch.batchIndex + 1,
+      totalBatches: batch.totalBatches,
+      finalize: batch.finalize,
       count: artworks.length,
     });
 
@@ -292,11 +373,51 @@ export async function submitExhibitionArtwork(
 
     const createdCoaIds: string[] = [];
     const createdCosIds: string[] = [];
-    let firstCoaId = '';
-    let firstCosId = '';
+    let batchFirstCoaId = '';
+    let batchFirstCosId = '';
 
     for (let index = 0; index < artworks.length; index++) {
       const artwork = artworks[index];
+
+      if (artwork.existingCoaId) {
+        const ok = await verifyExistingCoa(
+          adminClient,
+          user.id,
+          artwork.existingCoaId,
+          invite.exhibition_id,
+        );
+        if (!ok) {
+          return {
+            success: false,
+            error: 'Could not add photos to an existing artwork from this submission',
+          };
+        }
+
+        for (const extraImage of artwork.images) {
+          try {
+            await uploadExtraAttachment(
+              adminClient,
+              user.id,
+              artwork.existingCoaId,
+              extraImage,
+            );
+          } catch (attachmentErr) {
+            console.error('[Exhibitions] continuation attachment failed (non-fatal)', attachmentErr, {
+              coaId: artwork.existingCoaId,
+            });
+          }
+        }
+
+        createdCoaIds.push(artwork.existingCoaId);
+        if (!batchFirstCoaId) batchFirstCoaId = artwork.existingCoaId;
+
+        console.log('[Exhibitions] submitExhibitionArtwork photos added to existing COA', {
+          index,
+          coaId: artwork.existingCoaId,
+        });
+        continue;
+      }
+
       const [primaryImage, ...extraImages] = artwork.images;
 
       let imageUrl: string;
@@ -373,7 +494,7 @@ export async function submitExhibitionArtwork(
 
       const coaId = coaArtwork.id as string;
       createdCoaIds.push(coaId);
-      if (!firstCoaId) firstCoaId = coaId;
+      if (!batchFirstCoaId) batchFirstCoaId = coaId;
 
       await (adminClient as any).from('exhibition_artworks').insert({
         exhibition_id: invite.exhibition_id,
@@ -410,7 +531,7 @@ export async function submitExhibitionArtwork(
       }
 
       createdCosIds.push(cosArtworkId);
-      if (!firstCosId) firstCosId = cosArtworkId;
+      if (!batchFirstCosId) batchFirstCosId = cosArtworkId;
 
       await (adminClient as any).from('exhibition_artworks').insert({
         exhibition_id: invite.exhibition_id,
@@ -418,6 +539,7 @@ export async function submitExhibitionArtwork(
       });
 
       console.log('[Exhibitions] submitExhibitionArtwork artwork created', {
+        batchIndex: batch.batchIndex + 1,
         index,
         coaId,
         cosArtworkId,
@@ -435,47 +557,51 @@ export async function submitExhibitionArtwork(
       console.error('[Exhibitions] submitExhibitionArtwork artist link failed', artistLinkError);
     }
 
-    const now = new Date().toISOString();
-    await (adminClient as any)
-      .from('exhibition_artist_invites')
-      .update({
-        status: 'consumed',
-        consumed_at: now,
-        consumed_by: user.id,
-        result_artwork_id: firstCoaId,
-        result_cos_artwork_id: firstCosId,
-      })
-      .eq('id', invite.id);
+    const sessionFirstCoaId = batch.sessionFirstCoaId || batchFirstCoaId;
+    const sessionFirstCosId = batch.sessionFirstCosId || batchFirstCosId;
 
-    const count = artworks.length;
-    const notificationTitle =
-      count === 1
-        ? `Artwork submitted: ${artworks[0].title}`
-        : `${count} artworks submitted by ${artistName}`;
-    const notificationMessage =
-      count === 1
-        ? `${artistName} submitted "${artworks[0].title}" for "${exhibition.title}". A Certificate of Show has been linked to your exhibition.`
-        : `${artistName} submitted ${count} artworks for "${exhibition.title}". Certificates of Show have been linked to your exhibition.`;
+    if (batch.finalize) {
+      const now = new Date().toISOString();
+      await (adminClient as any)
+        .from('exhibition_artist_invites')
+        .update({
+          status: 'consumed',
+          consumed_at: now,
+          consumed_by: user.id,
+          result_artwork_id: sessionFirstCoaId,
+          result_cos_artwork_id: sessionFirstCosId,
+        })
+        .eq('id', invite.id);
 
-    try {
-      await createNotification({
-        userId: exhibition.gallery_id,
-        type: 'exhibition_artwork_submitted',
-        title: notificationTitle,
-        message: notificationMessage,
-        artworkId: firstCosId,
-        relatedUserId: user.id,
-        metadata: {
-          exhibition_id: invite.exhibition_id,
-          coa_artwork_id: firstCoaId,
-          cos_artwork_id: firstCosId,
-          artwork_count: count,
-          coa_artwork_ids: createdCoaIds,
-          cos_artwork_ids: createdCosIds,
-        },
-      });
-    } catch (notifyErr) {
-      console.error('[Exhibitions] submitExhibitionArtwork notify failed', notifyErr);
+      const totalCount =
+        batch.totalArtworkCount > 0 ? batch.totalArtworkCount : artworks.length;
+      const notificationTitle =
+        totalCount === 1
+          ? `Artwork submitted: ${artworks.find((a) => !a.existingCoaId)?.title ?? 'Artwork'}`
+          : `${totalCount} artworks submitted by ${artistName}`;
+      const notificationMessage =
+        totalCount === 1
+          ? `${artistName} submitted artwork for "${exhibition.title}". A Certificate of Show has been linked to your exhibition.`
+          : `${artistName} submitted ${totalCount} artworks for "${exhibition.title}". Certificates of Show have been linked to your exhibition.`;
+
+      try {
+        await createNotification({
+          userId: exhibition.gallery_id,
+          type: 'exhibition_artwork_submitted',
+          title: notificationTitle,
+          message: notificationMessage,
+          artworkId: sessionFirstCosId,
+          relatedUserId: user.id,
+          metadata: {
+            exhibition_id: invite.exhibition_id,
+            coa_artwork_id: sessionFirstCoaId,
+            cos_artwork_id: sessionFirstCosId,
+            artwork_count: totalCount,
+          },
+        });
+      } catch (notifyErr) {
+        console.error('[Exhibitions] submitExhibitionArtwork notify failed', notifyErr);
+      }
     }
 
     revalidatePath(`/exhibitions/${invite.exhibition_id}`);
@@ -484,20 +610,26 @@ export async function submitExhibitionArtwork(
 
     for (let i = 0; i < createdCoaIds.length; i++) {
       revalidatePath(`/artworks/${createdCoaIds[i]}/certificate`);
-      revalidatePath(`/artworks/${createdCosIds[i]}/certificate`);
+      if (createdCosIds[i]) {
+        revalidatePath(`/artworks/${createdCosIds[i]}/certificate`);
+      }
     }
 
-    console.log('[Exhibitions] submitExhibitionArtwork succeeded', {
-      count,
-      firstCoaId,
-      firstCosId,
+    console.log('[Exhibitions] submitExhibitionArtwork batch succeeded', {
+      batchIndex: batch.batchIndex + 1,
+      totalBatches: batch.totalBatches,
+      finalize: batch.finalize,
+      count: artworks.length,
+      sessionFirstCoaId,
     });
 
     return {
       success: true,
-      artworkId: firstCoaId,
-      cosArtworkId: firstCosId,
-      count,
+      artworkId: sessionFirstCoaId || batchFirstCoaId,
+      cosArtworkId: sessionFirstCosId || batchFirstCosId,
+      count: batch.totalArtworkCount > 0 ? batch.totalArtworkCount : artworks.length,
+      finalized: batch.finalize,
+      coaIds: createdCoaIds,
     };
   } catch (err) {
     console.error('[Exhibitions] submitExhibitionArtwork failed', err);

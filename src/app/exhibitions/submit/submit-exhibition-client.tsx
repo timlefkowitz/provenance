@@ -11,7 +11,14 @@ import { Heading } from '@kit/ui/heading';
 import { toast } from '@kit/ui/sonner';
 import pathsConfig from '~/config/paths.config';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import {
+  isLikelyImageFile,
+  MAX_UPLOAD_IMAGE_BYTES,
+  prepareImageForUpload,
+} from '~/lib/client-image-upload';
 import { submitExhibitionArtwork } from '../_actions/submit-exhibition-artwork';
+
+const MAX_BATCH_BYTES = 4 * 1024 * 1024;
 
 type InviteContext = {
   exhibitionTitle: string;
@@ -46,6 +53,11 @@ type ArtworkEntry = {
   showMore: boolean;
 };
 
+type FlatImageItem = {
+  entryId: string;
+  file: File;
+};
+
 function createEntryId(): string {
   return `artwork-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -73,7 +85,7 @@ function emptyEntry(): ArtworkEntry {
   };
 }
 
-function appendArtworkFields(formData: FormData, index: number, entry: ArtworkEntry) {
+function appendArtworkTextFields(formData: FormData, index: number, entry: ArtworkEntry) {
   const prefix = `artwork_${index}_`;
   formData.append(`${prefix}title`, entry.title.trim());
   formData.append(`${prefix}description`, entry.description.trim());
@@ -90,10 +102,97 @@ function appendArtworkFields(formData: FormData, index: number, entry: ArtworkEn
   formData.append(`${prefix}productionLocation`, entry.productionLocation.trim());
   formData.append(`${prefix}ownedBy`, entry.ownedBy.trim());
   formData.append(`${prefix}soldBy`, entry.soldBy.trim());
+}
 
-  for (const file of entry.images) {
-    formData.append(`images_${index}`, file);
+function buildImageChunks(flatImages: FlatImageItem[]): FlatImageItem[][] {
+  const chunks: FlatImageItem[][] = [];
+  let currentChunk: FlatImageItem[] = [];
+  let currentBytes = 0;
+
+  for (const item of flatImages) {
+    const size = item.file.size;
+    if (size > MAX_BATCH_BYTES) {
+      throw new Error(`"${item.file.name}" is too large. Please choose images under 4 MB.`);
+    }
+
+    if (currentChunk.length > 0 && currentBytes + size > MAX_BATCH_BYTES) {
+      chunks.push(currentChunk);
+      currentChunk = [];
+      currentBytes = 0;
+    }
+
+    currentChunk.push(item);
+    currentBytes += size;
   }
+
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
+function buildChunkFormData(
+  entries: ArtworkEntry[],
+  chunkItems: FlatImageItem[],
+  batchIndex: number,
+  totalBatches: number,
+  finalize: boolean,
+  coaIdsByEntryId: Record<string, string>,
+  sessionFirstCoaId: string,
+  sessionFirstCosId: string,
+): { formData: FormData; chunkEntryOrder: string[] } {
+  const formData = new FormData();
+  formData.append('batchIndex', String(batchIndex));
+  formData.append('totalBatches', String(totalBatches));
+  formData.append('finalize', finalize ? 'true' : 'false');
+  formData.append('totalArtworkCount', String(entries.length));
+
+  if (sessionFirstCoaId) {
+    formData.append('sessionFirstCoaId', sessionFirstCoaId);
+  }
+  if (sessionFirstCosId) {
+    formData.append('sessionFirstCosId', sessionFirstCosId);
+  }
+
+  const byEntry = new Map<string, File[]>();
+  for (const item of chunkItems) {
+    const existing = byEntry.get(item.entryId) ?? [];
+    existing.push(item.file);
+    byEntry.set(item.entryId, existing);
+  }
+
+  const chunkEntryOrder: string[] = [];
+  let localIndex = 0;
+  for (const entry of entries) {
+    const images = byEntry.get(entry.id);
+    if (!images?.length) continue;
+
+    chunkEntryOrder.push(entry.id);
+    const prefix = `artwork_${localIndex}_`;
+    const existingCoaId = coaIdsByEntryId[entry.id];
+
+    if (existingCoaId) {
+      formData.append(`${prefix}existingCoaId`, existingCoaId);
+    } else {
+      appendArtworkTextFields(formData, localIndex, entry);
+    }
+
+    for (const file of images) {
+      formData.append(`images_${localIndex}`, file);
+    }
+
+    localIndex++;
+  }
+
+  formData.append('count', String(localIndex));
+  return { formData, chunkEntryOrder };
+}
+
+function isSizeLimitError(message: string): boolean {
+  return /body.*limit|413|payload too large|request entity too large|too large|exceeded/i.test(
+    message,
+  );
 }
 
 type ArtworkEntryCardProps = {
@@ -102,8 +201,9 @@ type ArtworkEntryCardProps = {
   canRemove: boolean;
   onUpdate: (id: string, patch: Partial<ArtworkEntry>) => void;
   onRemove: (id: string) => void;
-  onAddImages: (id: string, files: File[]) => void;
+  onAddImages: (id: string, files: File[]) => Promise<void>;
   onRemoveImage: (id: string, imageIndex: number) => void;
+  preparingImages: boolean;
 };
 
 function ArtworkEntryCard({
@@ -114,6 +214,7 @@ function ArtworkEntryCard({
   onRemove,
   onAddImages,
   onRemoveImage,
+  preparingImages,
 }: ArtworkEntryCardProps) {
   const previewUrls = useMemo(
     () => entry.images.map((file) => URL.createObjectURL(file)),
@@ -129,9 +230,7 @@ function ArtworkEntryCard({
   return (
     <div className="rounded-lg border border-wine/15 bg-parchment/30 p-5 space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-wine">
-          Artwork {index + 1}
-        </p>
+        <p className="text-sm font-medium text-wine">Artwork {index + 1}</p>
         {canRemove && (
           <Button
             type="button"
@@ -161,18 +260,20 @@ function ArtworkEntryCard({
         <Input
           id={`images-${entry.id}`}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           multiple
+          disabled={preparingImages}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
             if (files.length > 0) {
-              onAddImages(entry.id, files);
+              void onAddImages(entry.id, files);
             }
             e.target.value = '';
           }}
         />
         <p className="text-ink/50 text-xs">
           Add one or more photos. The first photo is the primary image on the certificate.
+          {preparingImages ? ' Preparing photos…' : ''}
         </p>
         {previewUrls.length > 0 && (
           <div className="flex flex-wrap gap-3 pt-1">
@@ -220,9 +321,7 @@ function ArtworkEntryCard({
             id={`creationDate-${entry.id}`}
             type="date"
             value={entry.creationDate}
-            onChange={(e) =>
-              onUpdate(entry.id, { creationDate: e.target.value })
-            }
+            onChange={(e) => onUpdate(entry.id, { creationDate: e.target.value })}
           />
         </div>
         <div className="space-y-2">
@@ -230,9 +329,7 @@ function ArtworkEntryCard({
           <Input
             id={`dimensions-${entry.id}`}
             value={entry.dimensions}
-            onChange={(e) =>
-              onUpdate(entry.id, { dimensions: e.target.value })
-            }
+            onChange={(e) => onUpdate(entry.id, { dimensions: e.target.value })}
             placeholder='24" × 36"'
           />
         </div>
@@ -243,9 +340,7 @@ function ArtworkEntryCard({
         <Textarea
           id={`description-${entry.id}`}
           value={entry.description}
-          onChange={(e) =>
-            onUpdate(entry.id, { description: e.target.value })
-          }
+          onChange={(e) => onUpdate(entry.id, { description: e.target.value })}
           rows={3}
           placeholder="Optional notes about the work"
         />
@@ -268,9 +363,7 @@ function ArtworkEntryCard({
             <Textarea
               id={`formerOwners-${entry.id}`}
               value={entry.formerOwners}
-              onChange={(e) =>
-                onUpdate(entry.id, { formerOwners: e.target.value })
-              }
+              onChange={(e) => onUpdate(entry.id, { formerOwners: e.target.value })}
               rows={2}
             />
           </div>
@@ -279,9 +372,7 @@ function ArtworkEntryCard({
             <Textarea
               id={`auctionHistory-${entry.id}`}
               value={entry.auctionHistory}
-              onChange={(e) =>
-                onUpdate(entry.id, { auctionHistory: e.target.value })
-              }
+              onChange={(e) => onUpdate(entry.id, { auctionHistory: e.target.value })}
               rows={2}
             />
           </div>
@@ -303,9 +394,7 @@ function ArtworkEntryCard({
             <Textarea
               id={`historicContext-${entry.id}`}
               value={entry.historicContext}
-              onChange={(e) =>
-                onUpdate(entry.id, { historicContext: e.target.value })
-              }
+              onChange={(e) => onUpdate(entry.id, { historicContext: e.target.value })}
               rows={2}
             />
           </div>
@@ -316,9 +405,7 @@ function ArtworkEntryCard({
             <Textarea
               id={`celebrityNotes-${entry.id}`}
               value={entry.celebrityNotes}
-              onChange={(e) =>
-                onUpdate(entry.id, { celebrityNotes: e.target.value })
-              }
+              onChange={(e) => onUpdate(entry.id, { celebrityNotes: e.target.value })}
               rows={2}
             />
           </div>
@@ -341,9 +428,7 @@ function ArtworkEntryCard({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`productionLocation-${entry.id}`}>
-              Production location
-            </Label>
+            <Label htmlFor={`productionLocation-${entry.id}`}>Production location</Label>
             <Input
               id={`productionLocation-${entry.id}`}
               value={entry.productionLocation}
@@ -389,7 +474,13 @@ export function SubmitExhibitionClient({
     'loading' | 'needs_sign_in' | 'ready' | 'done' | 'error'
   >('loading');
   const [error, setError] = useState<string | null>(contextError);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [preparingImages, setPreparingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    batch: number;
+    totalBatches: number;
+  } | null>(null);
   const [entries, setEntries] = useState<ArtworkEntry[]>([emptyEntry()]);
   const [submittedCount, setSubmittedCount] = useState(1);
 
@@ -454,14 +545,38 @@ export function SubmitExhibitionClient({
     );
   };
 
-  const addImages = (id: string, files: File[]) => {
-    setEntries((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? { ...entry, images: [...entry.images, ...files] }
-          : entry,
-      ),
-    );
+  const addImages = async (id: string, rawFiles: File[]) => {
+    const imageFiles = rawFiles.filter(isLikelyImageFile);
+    if (imageFiles.length === 0) {
+      toast.error('Please choose image files');
+      return;
+    }
+
+    setPreparingImages(true);
+    try {
+      const prepared: File[] = [];
+      for (const raw of imageFiles) {
+        const file = await prepareImageForUpload(raw);
+        if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
+          toast.error(`"${file.name}" is too large. Please choose images under 4 MB.`);
+          return;
+        }
+        prepared.push(file);
+      }
+
+      setEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === id
+            ? { ...entry, images: [...entry.images, ...prepared] }
+            : entry,
+        ),
+      );
+    } catch (err) {
+      console.error('[Exhibitions] prepareImageForUpload failed', err);
+      toast.error('Failed to prepare images. Please try again.');
+    } finally {
+      setPreparingImages(false);
+    }
   };
 
   const removeImage = (id: string, imageIndex: number) => {
@@ -479,6 +594,7 @@ export function SubmitExhibitionClient({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
@@ -493,41 +609,124 @@ export function SubmitExhibitionClient({
     }
 
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append('count', String(entries.length));
+      const flatImages: FlatImageItem[] = [];
+      for (const entry of entries) {
+        for (const file of entry.images) {
+          flatImages.push({ entryId: entry.id, file });
+        }
+      }
 
-      entries.forEach((entry, index) => {
-        appendArtworkFields(formData, index, entry);
-      });
-
-      const result = await submitExhibitionArtwork(token, formData);
-
-      if (result.success) {
-        setSubmittedCount(result.count);
-        setAuthState('done');
-        toast.success(
-          result.count === 1
-            ? 'Artwork submitted successfully'
-            : `${result.count} artworks submitted successfully`,
-        );
-        setTimeout(() => {
-          if (result.count === 1) {
-            router.replace(`/artworks/${result.artworkId}/certificate`);
-          } else {
-            router.replace('/artworks/my');
-          }
-        }, 1500);
+      let imageChunks: FlatImageItem[][];
+      try {
+        imageChunks = buildImageChunks(flatImages);
+      } catch (chunkErr) {
+        const message =
+          chunkErr instanceof Error ? chunkErr.message : 'Failed to prepare upload';
+        setSubmitError(message);
+        toast.error(message);
         return;
       }
 
-      setError(result.error);
-      setAuthState('error');
-      toast.error(result.error);
+      if (imageChunks.length === 0) {
+        toast.error('Add at least one photo');
+        return;
+      }
+
+      const coaIdsByEntryId: Record<string, string> = {};
+      let sessionFirstCoaId = '';
+      let sessionFirstCosId = '';
+      let artworksUploaded = 0;
+
+      setUploadProgress({ batch: 0, totalBatches: imageChunks.length });
+
+      try {
+        for (let batchIndex = 0; batchIndex < imageChunks.length; batchIndex++) {
+          setUploadProgress({ batch: batchIndex + 1, totalBatches: imageChunks.length });
+
+          const finalize = batchIndex === imageChunks.length - 1;
+          const { formData, chunkEntryOrder } = buildChunkFormData(
+            entries,
+            imageChunks[batchIndex],
+            batchIndex,
+            imageChunks.length,
+            finalize,
+            coaIdsByEntryId,
+            sessionFirstCoaId,
+            sessionFirstCosId,
+          );
+
+          const result = await submitExhibitionArtwork(token, formData);
+
+          if (!result.success) {
+            const partialMessage =
+              artworksUploaded > 0
+                ? `${result.error} (${artworksUploaded} of ${entries.length} artworks uploaded — try again to finish)`
+                : result.error;
+            setSubmitError(partialMessage);
+            toast.error(partialMessage);
+            setUploadProgress(null);
+            return;
+          }
+
+          chunkEntryOrder.forEach((entryId, idx) => {
+            const coaId = result.coaIds[idx];
+            if (coaId && !coaIdsByEntryId[entryId]) {
+              coaIdsByEntryId[entryId] = coaId;
+            }
+          });
+
+          if (!sessionFirstCoaId && result.artworkId) {
+            sessionFirstCoaId = result.artworkId;
+          }
+          if (!sessionFirstCosId && result.cosArtworkId) {
+            sessionFirstCosId = result.cosArtworkId;
+          }
+
+          artworksUploaded = Object.keys(coaIdsByEntryId).length;
+
+          if (result.finalized) {
+            setSubmittedCount(result.count);
+            setUploadProgress(null);
+            setAuthState('done');
+            toast.success(
+              result.count === 1
+                ? 'Artwork submitted successfully'
+                : `${result.count} artworks submitted successfully`,
+            );
+            setTimeout(() => {
+              if (result.count === 1) {
+                router.replace(`/artworks/${result.artworkId}/certificate`);
+              } else {
+                router.replace('/artworks/my');
+              }
+            }, 1500);
+            return;
+          }
+        }
+      } catch (err) {
+        setUploadProgress(null);
+        const message = err instanceof Error ? err.message : String(err);
+        const partialMessage =
+          artworksUploaded > 0
+            ? `${
+                isSizeLimitError(message)
+                  ? 'Photo(s) are too large to upload in a single batch. Try fewer photos or smaller images (under 4 MB each).'
+                  : 'Something went wrong. Please try again.'
+              } (${artworksUploaded} of ${entries.length} artworks uploaded — try again to finish)`
+            : isSizeLimitError(message)
+              ? 'Photo(s) are too large to upload in a single batch. Try fewer photos or smaller images (under 4 MB each).'
+              : 'Something went wrong. Please try again.';
+
+        console.error('[Exhibitions] submitExhibitionArtwork client error', err);
+        setSubmitError(partialMessage);
+        toast.error(partialMessage);
+      }
     });
   };
 
-  const submitLabel =
-    entries.length === 1
+  const submitLabel = uploadProgress
+    ? `Uploading batch ${uploadProgress.batch} of ${uploadProgress.totalBatches}…`
+    : entries.length === 1
       ? pending
         ? 'Submitting…'
         : 'Submit artwork & create COA'
@@ -635,6 +834,12 @@ export function SubmitExhibitionClient({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 font-serif">
+        {submitError && (
+          <p className="rounded-md border border-wine/20 bg-wine/5 px-4 py-3 text-sm text-wine">
+            {submitError}
+          </p>
+        )}
+
         {entries.map((entry, index) => (
           <ArtworkEntryCard
             key={entry.id}
@@ -645,6 +850,7 @@ export function SubmitExhibitionClient({
             onRemove={removeEntry}
             onAddImages={addImages}
             onRemoveImage={removeImage}
+            preparingImages={preparingImages}
           />
         ))}
 
@@ -653,13 +859,14 @@ export function SubmitExhibitionClient({
           variant="outline"
           className="w-full border-wine/20 text-wine hover:bg-wine/5"
           onClick={addEntry}
+          disabled={pending || preparingImages}
         >
           Add another artwork
         </Button>
 
         <Button
           type="submit"
-          disabled={pending}
+          disabled={pending || preparingImages}
           className="w-full bg-wine text-parchment hover:bg-wine/90"
         >
           {submitLabel}
