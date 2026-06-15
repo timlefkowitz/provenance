@@ -96,10 +96,23 @@ class GtmService {
 
   // ─── conversion events ──────────────────────────────────────────────────────
 
+  /**
+   * Fires a Google Ads conversion event directly via gtag.
+   * Conversion ID and label come from the Google Ads "Sign-up" conversion action.
+   */
+  private fireGoogleAdsConversion(): void {
+    if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+    window.gtag('event', 'conversion', {
+      send_to: 'AW-18140035105/t81PCLn4478cEKHw68lD',
+    });
+    console.log('[GTM] Google Ads conversion fired');
+  }
+
   trackSignup(): void {
     const utm = readUtmCookie();
     console.log('[GTM] trackSignup', utm);
     this.push({ event: 'signup', ...utm });
+    this.fireGoogleAdsConversion();
   }
 
   trackTrialStarted(): void {
