@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@kit/ui/alert';
 import { toast } from '@kit/ui/sonner';
 import { createExhibition } from '../_actions/create-exhibition';
 import { updateExhibition } from '../_actions/update-exhibition';
-import { ArtistSelector } from './artist-selector';
+import { ParticipantSelector, type ExhibitionArtistInvite } from './participant-selector';
 
 type Artist = {
   id: string;
@@ -31,6 +31,7 @@ export function ExhibitionForm({
   const initialMetadata = (exhibition as any)?.metadata || {};
   
   const [selectedArtists, setSelectedArtists] = useState<Artist[]>(initialArtists);
+  const [selectedInvites, setSelectedInvites] = useState<ExhibitionArtistInvite[]>([]);
 
   const [formData, setFormData] = useState({
     title: exhibition?.title || '',
@@ -67,6 +68,16 @@ export function ExhibitionForm({
         formDataObj.append('theme', formData.theme);
         // Append artist IDs as JSON array
         formDataObj.append('artistIds', JSON.stringify(selectedArtists.map(a => a.id)));
+        formDataObj.append(
+          'artistInvites',
+          JSON.stringify(
+            selectedInvites.map(({ email, name, artistAccountId }) => ({
+              email,
+              name,
+              artistAccountId: artistAccountId ?? null,
+            })),
+          ),
+        );
 
         if (exhibition) {
           await updateExhibition(exhibition.id, formDataObj);
@@ -175,9 +186,11 @@ export function ExhibitionForm({
           />
         </div>
 
-        <ArtistSelector
+        <ParticipantSelector
           selectedArtists={selectedArtists}
           onArtistsChange={setSelectedArtists}
+          selectedInvites={selectedInvites}
+          onInvitesChange={setSelectedInvites}
         />
 
         <div className="space-y-2">

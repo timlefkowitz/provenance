@@ -1,5 +1,8 @@
 import { sendNotificationEmail } from '~/lib/email';
-import { getCertificateClaimUrl } from '~/lib/certificate-claims/site-url';
+import {
+  getCertificateClaimUrl,
+  getExhibitionSubmitUrl,
+} from '~/lib/certificate-claims/site-url';
 
 export async function sendGalleryCoSInviteEmail(params: {
   to: string;
@@ -174,4 +177,32 @@ export async function sendBatchGalleryCoSInviteEmail(params: {
     ctaUrl: claimUrl,
     ctaLabel: isSingle ? 'Create Certificate of Show' : `Accept all ${count}`,
   });
+}
+
+export async function sendExhibitionArtistInviteEmail(params: {
+  to: string;
+  recipientName: string;
+  exhibitionTitle: string;
+  senderName?: string;
+  token: string;
+}): Promise<void> {
+  const { to, recipientName, exhibitionTitle, senderName, token } = params;
+  const submitUrl = getExhibitionSubmitUrl(token);
+  const fromLine = senderName ? ` from ${senderName}` : '';
+  console.log('[Exhibitions] sendExhibitionArtistInviteEmail', {
+    to,
+    exhibitionTitle,
+    senderName,
+  });
+  await sendNotificationEmail(
+    to,
+    recipientName,
+    `Submit artwork for "${exhibitionTitle}"`,
+    {
+      title: 'Submit your artwork',
+      body: `You have been invited${fromLine} to submit artwork for the exhibition "${exhibitionTitle}". Sign in with this email address, upload your work, and we will issue your Certificate of Authenticity — the gallery will receive a linked Certificate of Show.`,
+      ctaUrl: submitUrl,
+      ctaLabel: 'Submit artwork',
+    },
+  );
 }

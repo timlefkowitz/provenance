@@ -4,6 +4,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
+import {
+  createExhibitionArtistInvites,
+  type ExhibitionArtistInviteInput,
+} from './manage-exhibition-invites';
 
 export async function createExhibition(formData: FormData) {
   console.log('[Exhibitions] createExhibition started');
@@ -44,6 +48,7 @@ export async function createExhibition(formData: FormData) {
   const curator = formData.get('curator') as string | null;
   const theme = formData.get('theme') as string | null;
   const artistIdsJson = formData.get('artistIds') as string | null;
+  const artistInvitesJson = formData.get('artistInvites') as string | null;
   const ownerRoleInput = (formData.get('ownerRole') as string | null) || userRole;
 
   // The requested owner_role must match the authenticated user's account role.
@@ -148,6 +153,17 @@ export async function createExhibition(formData: FormData) {
     artistNames,
     exhibitionTitle: title,
   });
+
+  if (artistInvitesJson) {
+    try {
+      const invites = JSON.parse(artistInvitesJson) as ExhibitionArtistInviteInput[];
+      if (invites.length > 0) {
+        await createExhibitionArtistInvites(exhibition.id, invites);
+      }
+    } catch (e) {
+      console.error('[Exhibitions] createExhibition artist invites failed', e);
+    }
+  }
 
   return { success: true, exhibitionId: exhibition.id };
 }

@@ -5,6 +5,8 @@ import { getExhibitionWithDetails } from '../../_actions/get-exhibitions';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { ExhibitionForm } from '../../_components/exhibition-form';
 import { ExhibitionDetails } from '../../_components/exhibition-details';
+import { ExhibitionInvitesPanel } from '../../_components/exhibition-invites-panel';
+import { getExhibitionInvites } from '../../_actions/manage-exhibition-invites';
 
 export const metadata = {
   title: 'Edit Exhibition | Provenance',
@@ -52,6 +54,8 @@ export default async function EditExhibitionPage({
     redirect('/exhibitions');
   }
 
+  const invites = await getExhibitionInvites(id);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
@@ -64,6 +68,8 @@ export default async function EditExhibitionPage({
       </div>
 
       <ExhibitionForm exhibition={exhibition} />
+
+      <ExhibitionInvitesPanel initialInvites={invites} />
 
       <section id="artworks" className="mt-16 pt-12 border-t border-wine/15 scroll-mt-8">
         <div className="mb-8">

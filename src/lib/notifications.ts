@@ -42,7 +42,8 @@ export type NotificationType =
   | 'vendor_counterparty_linked'
   | 'trial_expiring'
   | 'subscription_payment_failed'
-  | 'gallery_team_invite';
+  | 'gallery_team_invite'
+  | 'exhibition_artwork_submitted';
 
 export interface CreateNotificationParams {
   userId: string;

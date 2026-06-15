@@ -14,3 +14,9 @@ export function getCertificateClaimUrl(token: string): string {
   const params = new URLSearchParams({ token });
   return `${base}/claim/certificate?${params.toString()}`;
 }
+
+export function getExhibitionSubmitUrl(token: string): string {
+  const base = getSiteUrl();
+  const params = new URLSearchParams({ token });
+  return `${base}/exhibitions/submit?${params.toString()}`;
+}
