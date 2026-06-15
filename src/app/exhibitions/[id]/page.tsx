@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -9,6 +9,7 @@ import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles'
 import { Button } from '@kit/ui/button';
 import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
 import { ExhibitionDetails } from '../_components/exhibition-details';
+import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 
 export const metadata = {
   title: 'Exhibition | Provenance',
@@ -56,7 +57,7 @@ export default async function ExhibitionPage({
   const { data: { user } } = await client.auth.getUser();
 
   const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user?.id ?? null });
-  if (!exhibition) redirect('/exhibitions');
+  if (!exhibition) notFound();
 
   const isOwner =
     !!user && (await canManageExhibition(user.id, exhibition.gallery_id));
@@ -201,19 +202,10 @@ export default async function ExhibitionPage({
       {/* ── ARTWORKS ──────────────────────────────────────────── */}
       <div className="container mx-auto px-4 max-w-6xl py-12 pb-24">
         {isOwner && (
-          <div className="mb-8 rounded-xl border border-wine/15 bg-parchment/40 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm font-serif text-ink/65">
-              You are drafting this exhibition. Add listings, search works, and publish when ready.
-            </p>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="font-serif border-wine/25 text-wine shrink-0"
-            >
-              <Link href={`/exhibitions/${id}/edit#artworks`}>Full draft workspace</Link>
-            </Button>
-          </div>
+          <ExhibitionPublishBanner
+            exhibitionId={id}
+            publishedAt={exhibition.published_at ?? null}
+          />
         )}
         {exhibition.artworks.length > 0 && (
           <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-8">

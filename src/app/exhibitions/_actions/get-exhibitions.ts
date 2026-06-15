@@ -13,6 +13,7 @@ export type Exhibition = {
   location: string | null;
   image_url: string | null;
   owner_role: 'gallery' | 'institution' | null;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -88,6 +89,7 @@ export async function getExhibitionsForArtistAccount(
         location,
         image_url,
         owner_role,
+        published_at,
         created_at,
         updated_at
       )
@@ -140,6 +142,7 @@ export async function getExhibitionsForArtistAccount(
           location,
           image_url,
           owner_role,
+          published_at,
           created_at,
           updated_at
         )
@@ -187,6 +190,19 @@ export async function getExhibitionWithDetails(
     return null;
   }
 
+  const viewerId = options?.viewerUserId ?? null;
+  const canManage =
+    !!viewerId && (await canManageExhibition(viewerId, exhibition.gallery_id));
+
+  if (!exhibition.published_at && !canManage) {
+    console.log('[Exhibitions] getExhibitionWithDetails: unpublished and viewer cannot manage', {
+      exhibitionId,
+    });
+    return null;
+  }
+
+  const canSeeDraftListings = canManage;
+
   // Get artists
   const { data: artists } = await (client as any)
     .from('exhibition_artists')
@@ -199,12 +215,6 @@ export async function getExhibitionWithDetails(
       )
     `)
     .eq('exhibition_id', exhibitionId);
-
-  const viewerId = options?.viewerUserId ?? null;
-  const canSeeDraftListings =
-    !!viewerId && (await canManageExhibition(viewerId, exhibition.gallery_id));
-
-  // Get artwork links, then fetch rows directly (more reliable than nested join for all fields)
   const { data: artworkLinks, error: linksError } = await (client as any)
     .from('exhibition_artworks')
     .select('artwork_id, exhibition_id')

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Calendar, MapPin, Edit, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, Calendar, MapPin, Edit, Trash2, ArrowRight, Copy, Check, Globe, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from '@kit/ui/alert-dialog';
 import { deleteExhibition } from '../_actions/delete-exhibition';
+import { publishExhibition, unpublishExhibition } from '../_actions/publish-exhibition';
 import { toast } from '@kit/ui/sonner';
 import { useRouter } from 'next/navigation';
 import type { Exhibition } from '../_actions/get-exhibitions';
@@ -52,13 +53,14 @@ function formatRange(start: string, end: string | null) {
 
 export function ExhibitionsList({
   exhibitions,
-  galleryId,
 }: {
   exhibitions: Exhibition[];
   galleryId: string;
 }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleDelete = async (exhibitionId: string) => {
     try {
@@ -71,6 +73,43 @@ export function ExhibitionsList({
       toast.error(error.message || 'Failed to delete exhibition');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handlePublishToggle = async (exhibition: Exhibition) => {
+    setPublishingId(exhibition.id);
+    try {
+      const result = exhibition.published_at
+        ? await unpublishExhibition(exhibition.id)
+        : await publishExhibition(exhibition.id);
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(
+        exhibition.published_at ? 'Exhibition is now private' : 'Exhibition published',
+      );
+      router.refresh();
+    } catch (error: unknown) {
+      console.error('[ExhibitionsList] publish toggle failed', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update exhibition');
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  const handleCopyLink = async (exhibitionId: string) => {
+    const url = `${window.location.origin}/exhibitions/${exhibitionId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(exhibitionId);
+      toast.success('Link copied to clipboard');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error('[ExhibitionsList] copy link failed', error);
+      toast.error('Could not copy link');
     }
   };
 
@@ -128,11 +167,24 @@ export function ExhibitionsList({
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         {/* Status */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
-                          <span className={`text-[10px] uppercase tracking-widest font-serif ${styles.text}`}>
-                            {styles.label}
-                          </span>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
+                            <span className={`text-[10px] uppercase tracking-widest font-serif ${styles.text}`}>
+                              {styles.label}
+                            </span>
+                          </div>
+                          {ex.published_at ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-widest font-serif text-emerald-800">
+                              <Globe className="h-3 w-3" />
+                              Published
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-widest font-serif text-amber-900">
+                              <Lock className="h-3 w-3" />
+                              Draft
+                            </span>
+                          )}
                         </div>
 
                         {/* Title */}
@@ -169,6 +221,38 @@ export function ExhibitionsList({
 
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {ex.published_at && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-ink/40 hover:text-wine hover:bg-wine/10"
+                            onClick={() => handleCopyLink(ex.id)}
+                            aria-label="Copy exhibition link"
+                          >
+                            {copiedId === ex.id ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 font-serif text-xs text-ink/40 hover:text-wine hover:bg-wine/10"
+                          disabled={publishingId === ex.id || deletingId === ex.id}
+                          onClick={() => handlePublishToggle(ex)}
+                        >
+                          {publishingId === ex.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : ex.published_at ? (
+                            'Unpublish'
+                          ) : (
+                            'Publish'
+                          )}
+                        </Button>
                         <Button
                           asChild
                           variant="ghost"
