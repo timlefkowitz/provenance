@@ -21,12 +21,12 @@ import { Textarea } from '@kit/ui/textarea';
 import {
   SOURCE_LABELS,
   type ArtistLead,
-} from '../_actions/leads-constants';
+} from '~/app/portal/or/_actions/leads-constants';
 import {
   createContact,
   deleteLead,
   promoteContactToLead,
-} from '../_actions/leads';
+} from '~/app/portal/or/_actions/leads';
 
 function displayName(lead: ArtistLead) {
   return lead.contact_name?.trim() || lead.contact_email || 'No name';

@@ -105,7 +105,7 @@ export function CrmWorkspace({
             })}
           </nav>
           <Link
-            href="/portal/or/mailing-list"
+            href="/mailing-list"
             className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-wine/15 bg-parchment/50 px-3 py-2 text-xs font-serif text-wine hover:bg-wine/6 transition-colors shrink-0"
           >
             <Mail className="h-3.5 w-3.5" />

@@ -62,7 +62,7 @@ const TOOLBOX_ITEMS = [
     icon: Users,
   },
   {
-    href: '/portal/or/mailing-list',
+    href: '/mailing-list',
     label: 'Mailing List',
     description: 'Contacts & email outreach',
     icon: Mail,

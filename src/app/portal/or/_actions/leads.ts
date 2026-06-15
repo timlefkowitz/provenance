@@ -9,7 +9,7 @@ import {
 } from './crm-intel';
 import { type ArtistLead, type CrmLeadIntel, type LeadStage } from './leads-constants';
 
-const CRM_PATHS = ['/portal/or', '/portal/or/mailing-list'] as const;
+const CRM_PATHS = ['/portal/or', '/mailing-list'] as const;
 
 function revalidateCrmPaths() {
   for (const path of CRM_PATHS) {
