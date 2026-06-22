@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { TacoAvatar } from '~/components/taco-avatar';
 
 export type FeedArtwork = {
   id: string;
@@ -96,21 +97,11 @@ export function ArtistPanel({
 
       {!loading && !error && (preview || !hasResolvableProfile) && (
         <div className="max-w-sm w-full flex flex-col items-center text-center">
-          {preview?.picture_url ? (
-            <Image
-              src={preview.picture_url}
-              alt={displayName}
-              width={80}
-              height={80}
-              className="rounded-full object-cover mb-4"
-            />
-          ) : (
-            <div className="h-20 w-20 rounded-full bg-wine/10 flex items-center justify-center mb-4">
-              <span className="font-display text-2xl text-wine/40">
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <TacoAvatar
+            pictureUrl={preview?.picture_url}
+            displayName={displayName}
+            className="h-20 w-20 rounded-full mb-4"
+          />
 
           <h2 className="font-display text-xl text-wine mb-1">{displayName}</h2>
 

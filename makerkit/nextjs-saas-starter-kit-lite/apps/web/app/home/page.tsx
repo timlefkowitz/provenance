@@ -1,15 +1,12 @@
-import { PageBody, PageHeader } from '@kit/ui/page';
+import { redirect } from 'next/navigation';
 
-import { DashboardDemo } from '~/home/_components/dashboard-demo';
-
+/**
+ * The apps/web home page redirects to the main Provenance application.
+ * This shell app handles marketing pages and subdomain persona LPs;
+ * the actual authenticated product lives at the main app (src/).
+ */
 export default function HomePage() {
-  return (
-    <>
-      <PageHeader description={'Your SaaS at a glance'} />
-
-      <PageBody>
-        <DashboardDemo />
-      </PageBody>
-    </>
-  );
+  // Redirect authenticated users who land here to the real product.
+  const productUrl = process.env.NEXT_PUBLIC_PRODUCT_URL || 'https://provenance.guru';
+  redirect(`${productUrl}/artworks`);
 }

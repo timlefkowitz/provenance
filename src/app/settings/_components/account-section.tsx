@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import Link from 'next/link';
+import { TacoAvatar } from '~/components/taco-avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { UnifiedProfileSettingsForm } from '~/components/unified-profile-settings-form';
@@ -38,23 +38,11 @@ export function AccountSection({
       <Card className="border-wine/20 bg-parchment/60">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/30 bg-wine/10 shrink-0">
-              {pictureUrl ? (
-                <Image
-                  src={pictureUrl}
-                  alt={name || 'Profile photo'}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-wine/10">
-                  <span className="text-2xl font-display font-bold text-wine uppercase">
-                    {name?.charAt(0) || '?'}
-                  </span>
-                </div>
-              )}
-            </div>
+            <TacoAvatar
+              pictureUrl={pictureUrl}
+              displayName={name || 'Profile photo'}
+              className="w-16 h-16 rounded-full border-2 border-wine/30 shrink-0"
+            />
             <div>
               <CardTitle className="font-display">{name || 'Your Account'}</CardTitle>
               <CardDescription className="font-serif">{email}</CardDescription>

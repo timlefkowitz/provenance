@@ -7,13 +7,13 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
     const headersList = await headers();
     const pathname = headersList.get('x-pathname') || '';
 
-    // Skip check on onboarding page, auth pages, public pages, or pages with server actions
-    // Server actions will fail if we redirect, so we allow access to these pages
+    // Skip check on onboarding page, auth pages, and fully public pages.
+    // Note: /artworks/add is intentionally NOT excluded so new users are
+    // funnelled through role selection before creating their first certificate.
     if (
       pathname.startsWith('/onboarding') || 
       pathname.startsWith('/auth') ||
       pathname.startsWith('/about') || // Public about page
-      pathname.startsWith('/artworks/add') || // Allow artwork uploads even without role
       pathname.startsWith('/settings') || // Account/settings page (redirects to sign-in if not authenticated)
       pathname.startsWith('/artists') || // Public artist profiles
       pathname.startsWith('/registry') || // Public directory (includes /artists index redirect target)

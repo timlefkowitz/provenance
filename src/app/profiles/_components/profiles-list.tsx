@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { TacoAvatar } from '~/components/taco-avatar';
 import { useRouter } from 'next/navigation';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
@@ -81,23 +81,11 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
               className="block"
             >
               <div className="flex items-start gap-4 mb-4">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/20 bg-wine/10 flex-shrink-0">
-                  {profile.picture_url ? (
-                    <Image
-                      src={profile.picture_url}
-                      alt={profile.name}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-xl font-display font-bold text-wine uppercase">
-                        {profile.name?.charAt(0) || '?'}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <TacoAvatar
+                  pictureUrl={profile.picture_url}
+                  displayName={profile.name}
+                  className="w-16 h-16 rounded-full border-2 border-wine/20 flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     {getRoleIcon(profile.role)}

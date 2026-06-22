@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Button } from '@kit/ui/button';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
@@ -530,32 +531,17 @@ export default async function ArtistProfilePage({
           <div className="flex flex-col sm:flex-row gap-7 sm:gap-10 items-start">
 
             {/* Avatar — square for galleries, circle for artists */}
-            <div
+            <TacoAvatar
+              pictureUrl={pictureUrl}
+              displayName={displayName}
+              priority
               className={[
-                'relative flex-shrink-0 overflow-hidden border border-wine/20 bg-wine/5',
+                'flex-shrink-0 border border-wine/20',
                 isGallery
                   ? 'w-24 h-24 md:w-32 md:h-32 rounded-xl shadow-sm'
                   : 'w-24 h-24 md:w-28 md:h-28 rounded-full',
               ].join(' ')}
-            >
-              {pictureUrl ? (
-                <Image
-                  src={pictureUrl}
-                  alt={displayName}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                  loading="eager"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-wine/8">
-                  <span className="text-3xl md:text-4xl font-display font-bold text-wine/60 uppercase select-none">
-                    {displayName?.charAt(0) || '?'}
-                  </span>
-                </div>
-              )}
-            </div>
+            />
 
             {/* Identity block */}
             <div className="flex-1 min-w-0">

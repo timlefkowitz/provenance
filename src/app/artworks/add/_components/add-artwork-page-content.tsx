@@ -6,6 +6,7 @@ import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { getPerspective } from '~/components/perspective-switcher';
 import { AddArtworkForm } from './add-artwork-form';
 import { RoleModeSwitcher } from './role-mode-switcher';
+import { FirstRunBanner } from '~/components/first-run-banner';
 import { Card, CardContent } from '@kit/ui/card';
 import { Info } from 'lucide-react';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
@@ -83,6 +84,7 @@ export function AddArtworkPageContent({
 
   return (
     <>
+      <FirstRunBanner />
       <div className="mb-8">
         <RoleModeSwitcher
           onModeChange={(mode) => setCurrentPerspective(mode)}

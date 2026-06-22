@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
+import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import {
   Card,
@@ -81,23 +82,11 @@ export default async function ProfilePage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/30 bg-wine/10">
-                {currentPictureUrl ? (
-                  <Image
-                    src={currentPictureUrl}
-                    alt={currentName || 'Profile photo'}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-wine/10">
-                    <span className="text-2xl font-display font-bold text-wine uppercase">
-                      {currentName?.charAt(0) || '?'}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <TacoAvatar
+                pictureUrl={currentPictureUrl}
+                displayName={currentName || 'Profile photo'}
+                className="w-16 h-16 rounded-full border-2 border-wine/30"
+              />
               <div>
                 <CardTitle>Your Profile Photo</CardTitle>
                 <CardDescription>

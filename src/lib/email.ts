@@ -256,6 +256,54 @@ export async function sendUpdateEmail(
 }
 
 /**
+ * Send a certificate claim / share invite email to a non-registered email address.
+ * Used by the viral loop: any certificate owner can invite someone to claim the work.
+ */
+export async function sendCertificateInviteEmail(
+  toEmail: string,
+  params: {
+    senderName: string;
+    artworkTitle: string;
+    artistName?: string | null;
+    certificateUrl: string;
+    personalMessage?: string | null;
+  },
+): Promise<void> {
+  const title = `${params.senderName} shared a certificate with you`;
+  const artwork = params.artworkTitle || 'an artwork';
+  const byLine = params.artistName ? ` by ${params.artistName}` : '';
+  const messageBlock = params.personalMessage
+    ? `<p style="font-style:italic;color:#666;margin:12px 0;">"${params.personalMessage}"</p>`
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/></head>
+<body style="font-family:Georgia,serif;color:#1a1a1a;background:#f5f1e8;margin:0;padding:0;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border:1px solid #ddd;padding:40px;">
+    <h1 style="font-size:22px;font-weight:bold;color:#5c1a1a;margin-bottom:8px;">A certificate has been shared with you</h1>
+    <p style="margin:0 0 16px;">${params.senderName} has shared a Provenance certificate for <strong>${artwork}</strong>${byLine} with you.</p>
+    ${messageBlock}
+    <p style="margin:16px 0;">You can view the verified certificate and, if you are the artist or owner, claim it as yours.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+      <tr>
+        <td style="background:#5c1a1a;border-radius:4px;padding:12px 24px;">
+          <a href="${params.certificateUrl}" style="color:#fff;text-decoration:none;font-weight:bold;font-size:15px;">View Certificate</a>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:12px;color:#888;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
+      Provenance | Verified certificates for artists, collectors &amp; galleries.<br/>
+      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru'}/lp/artist" style="color:#5c1a1a;">Create your own free certificate</a>
+    </p>
+  </div>
+</body>
+</html>`;
+
+  await sendEmail({ to: toEmail, subject: title, html });
+}
+
+/**
  * Strip HTML tags to create plain text version
  */
 function stripHtml(html: string): string {

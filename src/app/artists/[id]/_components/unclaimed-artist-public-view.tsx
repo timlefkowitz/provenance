@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   ArtworkCard,
   type ArtworkCardArtwork,
 } from '~/app/artworks/_components/artwork-card';
 import { Calendar, MapPin, Newspaper, FileText } from 'lucide-react';
 import { SocialLinkItem } from './social-link-item';
+import { TacoAvatar } from '~/components/taco-avatar';
 
 export type UnclaimedArtistProfileRow = {
   id: string;
@@ -63,25 +63,12 @@ export function UnclaimedArtistPublicView({
           <div className="flex flex-col sm:flex-row gap-7 sm:gap-10 items-start">
 
             {/* Avatar */}
-            <div className="relative flex-shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border border-wine/20 bg-wine/5">
-              {pictureUrl ? (
-                <Image
-                  src={pictureUrl}
-                  alt={displayName}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                  loading="eager"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-3xl md:text-4xl font-display font-bold text-wine/60 uppercase select-none">
-                    {displayName?.charAt(0) || '?'}
-                  </span>
-                </div>
-              )}
-            </div>
+            <TacoAvatar
+              pictureUrl={pictureUrl}
+              displayName={displayName}
+              priority
+              className="flex-shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-full border border-wine/20"
+            />
 
             {/* Identity */}
             <div className="flex-1 min-w-0">

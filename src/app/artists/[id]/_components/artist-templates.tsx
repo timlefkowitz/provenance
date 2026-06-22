@@ -8,6 +8,7 @@ import { Button } from '@kit/ui/button';
 import { StreakStar } from '~/components/streak-star';
 import type { StarTier } from '~/lib/streak-service';
 import { SocialLinkItem } from './social-link-item';
+import { TacoAvatar } from '~/components/taco-avatar';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -168,26 +169,12 @@ function ProfileAvatar({
   const radius =
     rounded === 'full' ? 'rounded-full' : rounded === 'xl' ? 'rounded-xl' : 'rounded-none';
   return (
-    <div
-      className={`relative overflow-hidden bg-wine/5 border border-wine/20 ${radius} ${className}`}
-    >
-      {pictureUrl ? (
-        <Image
-          src={pictureUrl}
-          alt={displayName}
-          fill
-          className="object-cover"
-          unoptimized
-          priority
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-display font-bold text-wine/50 uppercase select-none text-4xl">
-            {displayName.charAt(0) || '?'}
-          </span>
-        </div>
-      )}
-    </div>
+    <TacoAvatar
+      pictureUrl={pictureUrl}
+      displayName={displayName}
+      priority
+      className={`bg-wine/5 border border-wine/20 ${radius} ${className}`}
+    />
   );
 }
 

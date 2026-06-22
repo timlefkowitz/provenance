@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
@@ -530,23 +531,11 @@ export default async function PortalPage() {
                       className="group"
                     >
                       <div className="flex flex-col items-center text-center p-3 border border-wine/10 rounded-md hover:bg-wine/5 transition-colors">
-                        <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-wine/20 bg-wine/10 mb-2">
-                          {artist.picture_url ? (
-                            <Image
-                              src={artist.picture_url}
-                              alt={artist.name}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-xl font-display font-bold text-wine uppercase">
-                                {artist.name?.charAt(0) || '?'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        <TacoAvatar
+                          pictureUrl={artist.picture_url}
+                          displayName={artist.name}
+                          className="w-16 h-16 rounded-full border-2 border-wine/20 mb-2"
+                        />
                         <p className="text-sm font-serif text-ink line-clamp-2 group-hover:text-wine transition-colors">
                           {artist.name}
                         </p>

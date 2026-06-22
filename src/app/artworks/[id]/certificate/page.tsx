@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
+import { CertificateViralCta } from '~/components/certificate-viral-cta';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, USER_ROLES } from '~/lib/user-roles';
@@ -358,20 +359,31 @@ export default async function CertificatePage({
   }
 
   return (
-    <CertificateOfAuthenticity 
-      artwork={artwork} 
-      isOwner={isOwner} 
-      canEditCertificate={canEditCertificate}
-      canRequestProvenance={canRequestProvenance}
-      isAdmin={userIsAdmin}
-      creatorInfo={creatorInfo}
-      exhibition={exhibition}
-      showVerifyCta={showVerifyCta}
-      certificateStatus={artwork.certificate_status ?? null}
-      certificateType={certificateType}
-      attachments={attachments}
-      valuation={latestValuation}
-    />
+    <>
+      <CertificateOfAuthenticity 
+        artwork={artwork} 
+        isOwner={isOwner} 
+        canEditCertificate={canEditCertificate}
+        canRequestProvenance={canRequestProvenance}
+        isAdmin={userIsAdmin}
+        creatorInfo={creatorInfo}
+        exhibition={exhibition}
+        showVerifyCta={showVerifyCta}
+        certificateStatus={artwork.certificate_status ?? null}
+        certificateType={certificateType}
+        attachments={attachments}
+        valuation={latestValuation}
+      />
+      {/* Viral acquisition surface: shown only to unauthenticated visitors */}
+      {!user && artwork.status === 'verified' && (
+        <div className="container mx-auto max-w-3xl px-4 pb-16">
+          <CertificateViralCta
+            artworkTitle={artwork.title}
+            artistName={artwork.artist_name}
+          />
+        </div>
+      )}
+    </>
   );
 }
 

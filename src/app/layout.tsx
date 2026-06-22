@@ -12,6 +12,7 @@ import { Navigation } from "~/components/navigation";
 import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { ClientAnalytics } from "~/components/client-analytics";
+import { PostHogProvider } from "~/components/posthog-provider";
 import { GoogleTagManager } from "~/components/google-tag-manager";
 import { CookieConsentBanner } from "~/components/cookie-consent-banner";
 import { LegalModalProvider } from "~/components/legal/legal-modal-context";
@@ -150,6 +151,7 @@ export default async function RootLayout({
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
         <Toaster position="bottom-center" />
         <ClientAnalytics />
+        <PostHogProvider />
       </body>
     </html>
   );

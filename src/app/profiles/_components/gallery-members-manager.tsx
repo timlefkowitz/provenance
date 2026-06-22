@@ -7,6 +7,7 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
+import { TacoAvatar } from '~/components/taco-avatar';
 import { Badge } from '@kit/ui/badge';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { 
@@ -349,12 +350,11 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
                   className="flex items-center justify-between p-3 border border-ink/10 rounded-lg bg-parchment/40"
                 >
                   <div className="flex items-center space-x-3 flex-1">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={member.user?.picture_url || undefined} />
-                      <AvatarFallback className="bg-wine/10 text-wine font-serif">
-                        {member.user?.name?.[0]?.toUpperCase() || member.user?.email?.[0]?.toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <TacoAvatar
+                      pictureUrl={member.user?.picture_url}
+                      displayName={member.user?.name || member.user?.email || 'Member'}
+                      className="h-10 w-10 rounded-full"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
                         <p className="font-serif font-medium text-ink truncate">

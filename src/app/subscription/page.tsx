@@ -9,7 +9,7 @@ export const metadata = {
   description: 'Manage your subscription and billing',
 };
 
-type SearchParams = Promise<{ success?: string; canceled?: string; upgrade?: string; role?: string }>;
+type SearchParams = Promise<{ success?: string; canceled?: string; upgrade?: string; role?: string; interval?: string }>;
 
 export default async function SubscriptionPage({
   searchParams,
@@ -27,6 +27,7 @@ export default async function SubscriptionPage({
   const success = params.success === '1';
   const canceled = params.canceled === '1';
   const upgrade = params.upgrade === '1';
+  const defaultInterval = params.interval === 'year' ? 'year' : null;
 
   const { data: account } = await client
     .from('accounts')
@@ -72,6 +73,7 @@ export default async function SubscriptionPage({
         success={success}
         canceled={canceled}
         upgrade={upgrade}
+        defaultInterval={defaultInterval}
       />
     </div>
   );

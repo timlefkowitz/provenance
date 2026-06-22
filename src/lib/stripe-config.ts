@@ -37,7 +37,12 @@ export function getStripePriceId(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-/** Display prices for the subscription page (not from Stripe) */
+/**
+ * Display prices for the subscription page (not fetched from Stripe at runtime).
+ * Canonical prices: Artist $10/mo | Collector $29.99/mo | Gallery $99/mo.
+ * Note: the investor one-pager rounds collector to $30 — the authoritative
+ * price is $29.99/mo as entered in Stripe and shown to users here.
+ */
 export const SUBSCRIPTION_PRICES: Record<
   SubscriptionRole,
   { monthly: number; yearly: number; yearlyLabel: string }
