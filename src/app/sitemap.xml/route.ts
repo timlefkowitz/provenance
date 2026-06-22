@@ -116,6 +116,20 @@ export async function GET() {
       });
     }
 
+    // Published exhibition detail pages (public, published_at IS NOT NULL)
+    const { data: exhibitions } = await admin
+      .from('exhibitions')
+      .select('id, updated_at')
+      .not('published_at', 'is', null)
+      .limit(1000);
+
+    for (const exhibition of exhibitions ?? []) {
+      out.push({
+        loc: new URL(`/exhibitions/${exhibition.id}`, base).href,
+        lastModified: exhibition.updated_at ? new Date(exhibition.updated_at) : now,
+      });
+    }
+
     console.log('[SEO/sitemap.xml] returning', out.length, 'urls (with dynamic pages)');
   } catch (error) {
     console.error('[SEO/sitemap.xml] dynamic pages omitted', error);

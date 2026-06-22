@@ -10,6 +10,7 @@ import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, USER_ROLES } f
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
+import appConfig from '~/config/app.config';
 
 export const dynamic = 'force-dynamic';
 
@@ -358,8 +359,30 @@ export default async function CertificatePage({
     console.error('[Certificate] artwork_valuations fetch exception', err);
   }
 
+  const pageUrl = new URL(`/artworks/${artwork.id}/certificate`, appConfig.url).href;
+  const artworkJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'VisualArtwork',
+    name: artwork.title,
+    url: pageUrl,
+    ...(artwork.artist_name ? { creator: { '@type': 'Person', name: artwork.artist_name } } : {}),
+    ...(artwork.creation_date ? { dateCreated: artwork.creation_date } : {}),
+    ...(artwork.medium ? { artMedium: artwork.medium } : {}),
+    ...(artwork.dimensions ? { artworkSurface: artwork.dimensions } : {}),
+    ...(artwork.description ? { description: artwork.description } : {}),
+    ...(artwork.image_url ? { image: artwork.image_url } : {}),
+    ...(artwork.certificate_number ? { identifier: String(artwork.certificate_number) } : {}),
+    ...(artwork.production_location ? { locationCreated: { '@type': 'Place', name: artwork.production_location } } : {}),
+    isPartOf: { '@type': 'WebSite', name: 'Provenance', url: appConfig.url },
+  };
+
   return (
     <>
+      <script
+        key="ld:artwork"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(artworkJsonLd) }}
+      />
       <CertificateOfAuthenticity 
         artwork={artwork} 
         isOwner={isOwner} 

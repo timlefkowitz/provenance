@@ -3,10 +3,41 @@ import { getOpenCallBySlug } from '../_actions/get-open-call';
 import { isOpenCallSubmissionExpired } from '../_lib/open-call-utils';
 import { getMediumLabel } from '../_actions/open-call-constants';
 import { OpenCallSubmissionForm } from './_components/open-call-submission-form';
+import appConfig from '~/config/app.config';
 
-export const metadata = {
-  title: 'Open Call | Provenance',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const openCall = await getOpenCallBySlug(slug);
+
+  if (!openCall) {
+    return { title: 'Open Call | Provenance', robots: { index: false, follow: false } };
+  }
+
+  const title = `${openCall.exhibition.title} — Open Call | Provenance`;
+
+  const descParts: string[] = [];
+  if (openCall.exhibition.description) descParts.push(openCall.exhibition.description);
+  if (openCall.medium) descParts.push(`Medium: ${getMediumLabel(openCall.medium)}`);
+  if (openCall.submission_closing_date) {
+    const close = new Date(openCall.submission_closing_date).toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    });
+    descParts.push(`Deadline: ${close}`);
+  }
+  if (openCall.exhibition.location) descParts.push(openCall.exhibition.location);
+  const description = descParts.join(' · ') || 'Open call for artists on Provenance.';
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary', title, description },
+  };
+}
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -36,7 +67,32 @@ export default async function OpenCallPage({
     ? formatDate(openCall.submission_closing_date)
     : null;
 
+  const pageUrl = new URL(`/open-calls/${openCall.slug}`, appConfig.url).href;
+  const openCallJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: openCall.exhibition.title,
+    url: pageUrl,
+    ...(openCall.exhibition.description ? { description: openCall.exhibition.description } : {}),
+    startDate: openCall.exhibition.start_date,
+    ...(openCall.exhibition.end_date ? { endDate: openCall.exhibition.end_date } : {}),
+    ...(openCall.exhibition.location
+      ? { location: { '@type': 'Place', name: openCall.exhibition.location } }
+      : {}),
+    ...(openCall.submission_closing_date
+      ? { registrationDeadline: openCall.submission_closing_date }
+      : {}),
+    organizer: { '@type': 'Organization', name: 'Provenance', url: appConfig.url },
+    isPartOf: { '@type': 'WebSite', name: 'Provenance', url: appConfig.url },
+  };
+
   return (
+    <>
+      <script
+        key="ld:open-call"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(openCallJsonLd) }}
+      />
     <div className="container mx-auto px-4 py-10 max-w-3xl">
       <div className="mb-8">
         <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -89,5 +145,6 @@ export default async function OpenCallPage({
         <OpenCallSubmissionForm openCallId={openCall.id} isExpired={isExpired} />
       )}
     </div>
+    </>
   );
 }

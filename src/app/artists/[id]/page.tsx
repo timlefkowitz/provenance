@@ -4,9 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { Button } from '@kit/ui/button';
+import appConfig from '~/config/app.config';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
-import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
+import { getUserRole, isValidRole, getRoleLabel, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
 import {
   getExhibitionsForGallery,
   getExhibitionsForArtistAccount,
@@ -41,9 +43,105 @@ import {
 } from './_components/artist-templates';
 import { TemplateSwitcher } from './_components/template-switcher';
 
-export const metadata = {
-  title: 'Artist Profile | Provenance',
-};
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ role?: string; profileId?: string }>;
+}) {
+  const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const requestedRole = resolvedSearchParams?.role;
+
+  try {
+    const admin = getSupabaseServerAdminClient() as any;
+
+    // Try account lookup first (most common path)
+    const { data: account } = await admin
+      .from('accounts')
+      .select('id, name, picture_url, public_data')
+      .eq('id', id)
+      .maybeSingle();
+
+    let displayName: string | null = null;
+    let bio: string | null = null;
+    let pictureUrl: string | null = null;
+    let roleLabel = 'Artist';
+
+    if (account) {
+      displayName = account.name;
+      pictureUrl = account.picture_url;
+      const primaryRole = getUserRole(account.public_data as Record<string, any>);
+      const role = requestedRole && isValidRole(requestedRole) ? requestedRole : primaryRole;
+      if (role) roleLabel = getRoleLabel(role);
+
+      // Fetch role profile for bio
+      const { data: roleProfile } = await admin
+        .from('user_profiles')
+        .select('name, bio, picture_url')
+        .eq('user_id', id)
+        .eq('role', role ?? primaryRole ?? 'artist')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (roleProfile) {
+        displayName = roleProfile.name || displayName;
+        bio = roleProfile.bio || null;
+        pictureUrl = roleProfile.picture_url || pictureUrl;
+      }
+    } else {
+      // Unclaimed artist lookup by profile UUID
+      const { data: profileRow } = await admin
+        .from('user_profiles')
+        .select('name, bio, picture_url, role')
+        .eq('id', id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (profileRow) {
+        displayName = profileRow.name;
+        bio = profileRow.bio || null;
+        pictureUrl = profileRow.picture_url;
+        if (profileRow.role && isValidRole(profileRow.role)) {
+          roleLabel = getRoleLabel(profileRow.role);
+        }
+      }
+    }
+
+    if (!displayName) {
+      return { title: 'Artist Profile | Provenance' };
+    }
+
+    const title = `${displayName} — ${roleLabel} | Provenance`;
+    const description = bio
+      ? bio.length > 160 ? `${bio.slice(0, 157)}…` : bio
+      : `${roleLabel} profile on Provenance.`;
+
+    const images = pictureUrl
+      ? [{ url: pictureUrl, width: 400, height: 400, alt: displayName }]
+      : [];
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: 'profile',
+        images,
+      },
+      twitter: {
+        card: images.length ? 'summary' : 'summary',
+        title,
+        description,
+      },
+    };
+  } catch (err) {
+    console.error('[SEO/artists/[id]] generateMetadata failed', err);
+    return { title: 'Artist Profile | Provenance' };
+  }
+}
 
 /**
  * Look up a published creator website for the given profile_id.
@@ -522,8 +620,29 @@ export default async function ArtistProfilePage({
     );
   }
 
+  const profilePageUrl = new URL(`/artists/${id}`, appConfig.url).href;
+  const profileJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    url: profilePageUrl,
+    mainEntity: {
+      '@type': isGallery ? 'Organization' : 'Person',
+      name: displayName,
+      url: profilePageUrl,
+      ...(bio ? { description: bio } : {}),
+      ...(pictureUrl ? { image: pictureUrl } : {}),
+      ...(website ? { sameAs: website } : {}),
+      ...(location ? { address: { '@type': 'PostalAddress', addressLocality: location } } : {}),
+    },
+  };
+
   return (
     <>
+      <script
+        key="ld:profile"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(profileJsonLd) }}
+      />
       <div className="min-h-screen">
       {/* ── HERO HEADER ─────────────────────────────────────────── */}
       <div className="border-b border-wine/15">

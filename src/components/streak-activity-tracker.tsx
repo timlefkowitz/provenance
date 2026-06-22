@@ -12,9 +12,15 @@ function getTodayKey(): string {
 
 export function StreakActivityTracker() {
   const user = useCurrentUser();
+  // Accept sub (from JWT claims) or id (from getUser fallback) so the tracker
+  // fires for all authenticated users, not just those whose session resolved via getUser.
+  const userId =
+    (user.data as { sub?: string } | undefined)?.sub ??
+    (user.data as { id?: string } | undefined)?.id ??
+    null;
 
   useEffect(() => {
-    if (!user.data?.id) {
+    if (!userId) {
       return;
     }
 
@@ -47,7 +53,7 @@ export function StreakActivityTracker() {
       .catch((error) => {
         console.error('[Streak] Daily activity ping failed', error);
       });
-  }, [user.data?.id]);
+  }, [userId]);
 
   return null;
 }

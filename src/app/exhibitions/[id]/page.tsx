@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import appConfig from '~/config/app.config';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
@@ -11,11 +13,77 @@ import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
 import { ExhibitionDetails } from '../_components/exhibition-details';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 
-export const metadata = {
-  title: 'Exhibition | Provenance',
-};
-
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const admin = getSupabaseServerAdminClient() as any;
+
+  const { data: exhibition } = await admin
+    .from('exhibitions')
+    .select('title, description, location, start_date, end_date, image_url, gallery_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!exhibition) {
+    return { title: 'Exhibition | Provenance' };
+  }
+
+  // Try to get the gallery name
+  let galleryName: string | null = null;
+  if (exhibition.gallery_id) {
+    const { data: account } = await admin
+      .from('accounts')
+      .select('name')
+      .eq('id', exhibition.gallery_id)
+      .maybeSingle();
+    galleryName = account?.name ?? null;
+  }
+
+  const title = galleryName
+    ? `${exhibition.title} — ${galleryName} | Provenance`
+    : `${exhibition.title} | Provenance`;
+
+  const dateRange = (() => {
+    if (!exhibition.start_date) return null;
+    const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+    const start = new Date(exhibition.start_date).toLocaleDateString('en-US', opts);
+    if (!exhibition.end_date) return start;
+    const end = new Date(exhibition.end_date).toLocaleDateString('en-US', opts);
+    return `${start} – ${end}`;
+  })();
+
+  const descriptionParts: string[] = [];
+  if (exhibition.description) descriptionParts.push(exhibition.description);
+  else if (galleryName) descriptionParts.push(`An exhibition by ${galleryName}.`);
+  if (dateRange) descriptionParts.push(dateRange);
+  if (exhibition.location) descriptionParts.push(exhibition.location);
+  const description = descriptionParts.join(' · ') || 'Exhibition on Provenance.';
+
+  const images = exhibition.image_url
+    ? [{ url: exhibition.image_url, width: 1200, height: 630, alt: exhibition.title }]
+    : [];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      images,
+    },
+    twitter: {
+      card: images.length ? 'summary_large_image' : 'summary',
+      title,
+      description,
+    },
+  };
+}
 
 function getStatus(startDate: string, endDate: string | null): 'upcoming' | 'ongoing' | 'past' {
   const now = new Date();
@@ -92,7 +160,32 @@ export default async function ExhibitionPage({
   const statusStyle = STATUS_STYLES[status];
   const metadata = (exhibition as any).metadata as { curator?: string; theme?: string } | undefined;
 
+  const pageUrl = new URL(`/exhibitions/${id}`, appConfig.url).href;
+  const exhibitionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ExhibitionEvent',
+    name: exhibition.title,
+    url: pageUrl,
+    ...(exhibition.description ? { description: exhibition.description } : {}),
+    startDate: exhibition.start_date,
+    ...(exhibition.end_date ? { endDate: exhibition.end_date } : {}),
+    ...(exhibition.location
+      ? { location: { '@type': 'Place', name: exhibition.location } }
+      : {}),
+    ...(exhibition.image_url ? { image: exhibition.image_url } : {}),
+    organizer: backLabel === 'Gallery'
+      ? { '@type': 'Organization', name: backLabel, url: new URL(backLink, appConfig.url).href }
+      : { '@type': 'Organization', name: 'Provenance', url: appConfig.url },
+    isPartOf: { '@type': 'WebSite', name: 'Provenance', url: appConfig.url },
+  };
+
   return (
+    <>
+      <script
+        key="ld:exhibition"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(exhibitionJsonLd) }}
+      />
     <div className="min-h-screen">
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div className="border-b border-wine/15">
@@ -215,5 +308,6 @@ export default async function ExhibitionPage({
         <ExhibitionDetails exhibition={exhibition} isOwner={isOwner} />
       </div>
     </div>
+    </>
   );
 }

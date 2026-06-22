@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useCurrentUser } from '~/hooks/use-current-user';
+import { normalizePath } from '~/lib/normalize-path';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 // Don't fire a ping unless at least this much time has passed since the
@@ -18,7 +19,13 @@ const MIN_GAP_MS = 45_000;
  */
 export function PresenceTracker() {
   const user = useCurrentUser();
-  const userId = user.data?.id ?? null;
+  // getClaims() returns a JWT payload with `sub`; getUser() fallback spreads
+  // the full User object which includes `id`. Accept either so the tracker
+  // works regardless of which auth path resolved the current session.
+  const userId =
+    (user.data as { sub?: string } | undefined)?.sub ??
+    (user.data as { id?: string } | undefined)?.id ??
+    null;
   const lastPingRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -38,7 +45,15 @@ export function PresenceTracker() {
       }
       lastPingRef.current = now;
       try {
-        await fetch('/api/heartbeat', { method: 'POST', keepalive: true });
+        const path = typeof window !== 'undefined'
+          ? normalizePath(window.location.pathname)
+          : null;
+        await fetch('/api/heartbeat', {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path }),
+        });
       } catch (err) {
         // Swallow — presence is best-effort.
         console.error('[Presence] heartbeat failed', err);
