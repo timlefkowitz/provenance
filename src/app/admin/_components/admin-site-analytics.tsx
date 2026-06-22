@@ -1,7 +1,6 @@
 import {
   BarChart2,
   Clock,
-  Globe,
   Map,
   Monitor,
   RefreshCw,
@@ -12,11 +11,10 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
-import { adminMonoLabel, adminPanel, adminPanelInner } from './admin-dash-tokens';
+import { adminMonoLabel, adminPanelInner } from './admin-dash-tokens';
 
 // -------------------------------------------------------------------------
 // Types
@@ -176,70 +174,96 @@ function CollapsiblePanel({
 // -------------------------------------------------------------------------
 
 async function loadDauSeries(days: number): Promise<DauRow[]> {
-  const admin = getSupabaseServerAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc('admin_dau_series', { p_days: days });
-  if (error) {
-    console.error('[AdminSiteAnalytics] admin_dau_series failed', error);
+  try {
+    const admin = getSupabaseServerAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (admin as any).rpc('admin_dau_series', { p_days: days });
+    if (error) {
+      console.error('[AdminSiteAnalytics] admin_dau_series failed', error);
+      return [];
+    }
+    return (data ?? []) as DauRow[];
+  } catch (err) {
+    console.error('[AdminSiteAnalytics] admin_dau_series threw', err);
     return [];
   }
-  return (data ?? []) as DauRow[];
 }
 
 async function loadTopPages(limit = 20): Promise<PageRow[]> {
-  const admin = getSupabaseServerAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc('admin_top_pages', { p_limit: limit });
-  if (error) {
-    console.error('[AdminSiteAnalytics] admin_top_pages failed', error);
+  try {
+    const admin = getSupabaseServerAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (admin as any).rpc('admin_top_pages', { p_limit: limit });
+    if (error) {
+      console.error('[AdminSiteAnalytics] admin_top_pages failed', error);
+      return [];
+    }
+    return (data ?? []) as PageRow[];
+  } catch (err) {
+    console.error('[AdminSiteAnalytics] admin_top_pages threw', err);
     return [];
   }
-  return (data ?? []) as PageRow[];
 }
 
 async function loadSessionStats(): Promise<SessionStats | null> {
-  const admin = getSupabaseServerAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc('admin_session_stats');
-  if (error) {
-    console.error('[AdminSiteAnalytics] admin_session_stats failed', error);
+  try {
+    const admin = getSupabaseServerAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (admin as any).rpc('admin_session_stats');
+    if (error) {
+      console.error('[AdminSiteAnalytics] admin_session_stats failed', error);
+      return null;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    return {
+      total_sessions:         Number(row.total_sessions ?? 0),
+      distinct_users:         Number(row.distinct_users ?? 0),
+      avg_session_minutes:    Number(row.avg_session_minutes ?? 0),
+      median_session_minutes: Number(row.median_session_minutes ?? 0),
+      p90_session_minutes:    Number(row.p90_session_minutes ?? 0),
+    };
+  } catch (err) {
+    console.error('[AdminSiteAnalytics] admin_session_stats threw', err);
     return null;
   }
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return null;
-  return {
-    total_sessions:         Number(row.total_sessions ?? 0),
-    distinct_users:         Number(row.distinct_users ?? 0),
-    avg_session_minutes:    Number(row.avg_session_minutes ?? 0),
-    median_session_minutes: Number(row.median_session_minutes ?? 0),
-    p90_session_minutes:    Number(row.p90_session_minutes ?? 0),
-  };
 }
 
 async function loadDeviceBreakdown(): Promise<DeviceRow[]> {
-  const admin = getSupabaseServerAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc('admin_device_breakdown');
-  if (error) {
-    console.error('[AdminSiteAnalytics] admin_device_breakdown failed', error);
+  try {
+    const admin = getSupabaseServerAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (admin as any).rpc('admin_device_breakdown');
+    if (error) {
+      console.error('[AdminSiteAnalytics] admin_device_breakdown failed', error);
+      return [];
+    }
+    return (data ?? []) as DeviceRow[];
+  } catch (err) {
+    console.error('[AdminSiteAnalytics] admin_device_breakdown threw', err);
     return [];
   }
-  return (data ?? []) as DeviceRow[];
 }
 
 async function loadRetention(): Promise<RetentionRow[]> {
-  const admin = getSupabaseServerAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc('admin_retention');
-  if (error) {
-    console.error('[AdminSiteAnalytics] admin_retention failed', error);
+  try {
+    const admin = getSupabaseServerAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (admin as any).rpc('admin_retention');
+    if (error) {
+      console.error('[AdminSiteAnalytics] admin_retention failed', error);
+      return [];
+    }
+    return (data ?? []) as RetentionRow[];
+  } catch (err) {
+    console.error('[AdminSiteAnalytics] admin_retention threw', err);
     return [];
   }
-  return (data ?? []) as RetentionRow[];
 }
 
 /** Compute daily signup counts for the last N days from auth.admin.listUsers. */
 async function loadSignupSeries(days: number): Promise<{ day: string; count: number }[]> {
+  try {
   const admin = getSupabaseServerAdminClient();
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 500 });
   if (error) {
@@ -267,6 +291,10 @@ async function loadSignupSeries(days: number): Promise<{ day: string; count: num
   return Array.from(byDay.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([day, count]) => ({ day, count }));
+  } catch (err) {
+    console.error('[AdminSiteAnalytics] loadSignupSeries threw', err);
+    return [];
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -298,11 +326,6 @@ export async function AdminSiteAnalytics() {
               .reduce((s, r) => s + Number(r.active_users), 0) / 7,
           )
         : null;
-    const mau30 = (() => {
-      const seen = new Set<string>();
-      return 0; // populated from distinct users across the 30-day series
-    })();
-    void mau30;
 
     // WAU = distinct users in last 7 days — approximate from DAU series (server can't
     // de-duplicate user_ids, so show max instead and note the approximation).
@@ -685,6 +708,7 @@ export async function AdminSiteAnalytics() {
       </section>
     );
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('[AdminSiteAnalytics] failed to render', err);
     return (
       <section
@@ -704,6 +728,11 @@ export async function AdminSiteAnalytics() {
           applied, or missing{' '}
           <code className="rounded bg-black/30 px-1">SUPABASE_SERVICE_ROLE_KEY</code>.
         </p>
+        {message && (
+          <pre className="mt-3 overflow-x-auto rounded bg-black/40 px-3 py-2 font-mono text-[11px] text-red-200/70">
+            {message}
+          </pre>
+        )}
       </section>
     );
   }

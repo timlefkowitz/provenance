@@ -10,11 +10,71 @@ const FeedQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   limit: z.coerce.number().int().min(1).max(20).default(10),
   q: z.string().trim().max(100).optional(),
-  sort: z.enum(['shuffle', 'recent', 'top', 'following']).default('shuffle'),
+  sort: z.enum(['shuffle', 'recent', 'top', 'following', 'exhibitions']).default('shuffle'),
 });
 
 const SELECT_COLS =
-  'id, title, artist_name, image_url, medium, creation_date, account_id, artist_account_id, artist_profile_id';
+  'id, title, artist_name, image_url, medium, creation_date, account_id, artist_account_id, artist_profile_id, created_at';
+
+type ArtworkRow = {
+  id: string;
+  title: string;
+  artist_name: string | null;
+  image_url: string | null;
+  medium: string | null;
+  creation_date: string | null;
+  account_id: string;
+  artist_account_id: string | null;
+  artist_profile_id: string | null;
+  created_at: string;
+};
+
+/**
+ * Returns all artworks that belong to at least one published exhibition.
+ * No status/certificate_type filter — exhibition membership grants visibility.
+ */
+async function fetchExhibitionArtworks(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  q: string,
+): Promise<ArtworkRow[]> {
+  const { data: exhibitions, error: exError } = await db
+    .from('exhibitions')
+    .select('id')
+    .not('published_at', 'is', null);
+
+  if (exError) {
+    console.error('[API/artworks/feed] Exhibition lookup failed', exError);
+    return [];
+  }
+
+  const exhibitionIds = (exhibitions ?? []).map((e: { id: string }) => e.id);
+  if (exhibitionIds.length === 0) return [];
+
+  const { data: linkRows, error: linkError } = await db
+    .from('exhibition_artworks')
+    .select('artwork_id')
+    .in('exhibition_id', exhibitionIds);
+
+  if (linkError) {
+    console.error('[API/artworks/feed] Exhibition artwork links failed', linkError);
+    return [];
+  }
+
+  const artworkIds = [...new Set((linkRows ?? []).map((r: { artwork_id: string }) => r.artwork_id))];
+  if (artworkIds.length === 0) return [];
+
+  let artworkQuery = db.from('artworks').select(SELECT_COLS).in('id', artworkIds);
+  artworkQuery = applySearchFilter(artworkQuery, q);
+
+  const { data, error } = await artworkQuery;
+  if (error) {
+    console.error('[API/artworks/feed] Exhibition artworks fetch failed', error);
+    return [];
+  }
+
+  return (data ?? []) as ArtworkRow[];
+}
 
 function applySearchFilter<T>(qb: T, q: string): T {
   if (!q.trim()) return qb;
@@ -65,6 +125,29 @@ export async function GET(request: NextRequest) {
     if (sort === 'following' && !user) {
       console.log('[API/artworks/feed] Following sort requested but user not signed in');
       return NextResponse.json({ items: [], hasMore: false });
+    }
+
+    // --- sort: exhibitions ---
+    if (sort === 'exhibitions') {
+      const exhibitionArtworks = await fetchExhibitionArtworks(db, q);
+
+      const sorted = [...exhibitionArtworks].sort((a, b) => {
+        const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const db2 = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return db2 - da;
+      });
+
+      const items = sorted.slice(offset, offset + limit);
+      const hasMore = offset + limit < sorted.length;
+
+      console.log('[API/artworks/feed] Returning exhibitions feed slice', {
+        total: sorted.length,
+        offset,
+        returned: items.length,
+        hasMore,
+      });
+
+      return NextResponse.json({ items, hasMore });
     }
 
     // Base query shared by all sort modes
@@ -194,20 +277,31 @@ export async function GET(request: NextRequest) {
     }
 
     // --- sort: shuffle (default) ---
-    const { data: rows, error } = await baseQuery;
+    // Merge standard artworks with exhibition artworks from published exhibitions.
+    // Exhibition artworks bypass the verified/authenticity filter but are still deduplicated.
+    const [{ data: rows, error }, exhibitionArtworks] = await Promise.all([
+      baseQuery,
+      fetchExhibitionArtworks(db, q),
+    ]);
 
     if (error) {
       console.error('[API/artworks/feed] Query failed', error);
       return NextResponse.json({ error: 'Failed to fetch artworks' }, { status: 500 });
     }
 
-    const all = rows ?? [];
+    const mainArtworks = rows ?? [];
+    const mainIds = new Set(mainArtworks.map((a: ArtworkRow) => a.id));
+    const newExhibitionArtworks = exhibitionArtworks.filter((a) => !mainIds.has(a.id));
+    const all = [...mainArtworks, ...newExhibitionArtworks];
+
     const shuffled = seededShuffle(all, seed);
     const items = shuffled.slice(offset, offset + limit);
     const hasMore = offset + limit < shuffled.length;
 
     console.log('[API/artworks/feed] Returning feed slice', {
       total: shuffled.length,
+      mainCount: mainArtworks.length,
+      exhibitionCount: newExhibitionArtworks.length,
       offset,
       limit,
       returned: items.length,

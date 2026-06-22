@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Clock, Heart, Plus, Search, Shuffle, SlidersHorizontal, Users, X } from 'lucide-react';
+import { Building2, Clock, Heart, Plus, Search, Shuffle, SlidersHorizontal, Users, X } from 'lucide-react';
 import { FeedSlide } from './feed-slide';
 import type { FeedArtwork } from './artist-panel';
 
 const PAGE_SIZE = 10;
 
-type SortMode = 'shuffle' | 'recent' | 'top' | 'following';
+type SortMode = 'shuffle' | 'recent' | 'top' | 'following' | 'exhibitions';
 
 const SORT_OPTIONS: {
   value: SortMode;
@@ -20,6 +20,7 @@ const SORT_OPTIONS: {
   { value: 'recent', label: 'Most Recent', icon: Clock, requiresAuth: false },
   { value: 'top', label: 'Top Favorited', icon: Heart, requiresAuth: false },
   { value: 'following', label: 'Following', icon: Users, requiresAuth: true },
+  { value: 'exhibitions', label: 'Exhibitions', icon: Building2, requiresAuth: false },
 ];
 
 export function ArtworkFeed({
@@ -274,11 +275,18 @@ export function ArtworkFeed({
           <p className="text-sm text-ink/50 font-serif">
             {sortMode === 'following'
               ? 'No artworks from artists you follow yet.'
-              : 'No artworks found'}
+              : sortMode === 'exhibitions'
+                ? 'No exhibition artworks to show yet.'
+                : 'No artworks found'}
           </p>
           {sortMode === 'following' && (
             <p className="text-xs text-ink/35 font-serif">
               Follow artists from their profiles to see their work here.
+            </p>
+          )}
+          {sortMode === 'exhibitions' && (
+            <p className="text-xs text-ink/35 font-serif">
+              Artworks from published gallery exhibitions will appear here.
             </p>
           )}
         </div>
