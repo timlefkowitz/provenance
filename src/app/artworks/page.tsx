@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { ArtworkFeed } from './_components/artwork-feed';
+import { NewUserConversionTracker } from '~/app/portal/_components/new-user-conversion-tracker';
 
 export const metadata = {
   title: 'Artworks | Provenance',
@@ -15,6 +16,10 @@ export default async function ArtworksPage() {
   } = await client.auth.getUser();
 
   return (
-    <ArtworkFeed currentUserId={user?.id} isSignedIn={!!user} />
+    <>
+      {/* Fires GTM signup + trial_started events on first landing after auth callback */}
+      <NewUserConversionTracker />
+      <ArtworkFeed currentUserId={user?.id} isSignedIn={!!user} />
+    </>
   );
 }

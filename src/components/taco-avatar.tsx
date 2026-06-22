@@ -23,7 +23,7 @@ export function TacoAvatar({
         src={pictureUrl || '/taco-cat.png'}
         alt={pictureUrl ? displayName : 'Taco the Cat — default avatar'}
         fill
-        className="object-cover"
+        className={`object-cover ${!pictureUrl ? 'object-top' : ''}`}
         unoptimized={!!pictureUrl}
         priority={priority}
       />
