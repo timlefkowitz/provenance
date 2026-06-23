@@ -74,6 +74,11 @@ const TOOLS: {
     title: 'queued',
     desc: 'Homepage feature pool.',
   },
+  {
+    href: '/admin/taco',
+    title: 'taco-usage',
+    desc: 'AI token spend & user activity.',
+  },
 ];
 
 export default async function AdminPage() {

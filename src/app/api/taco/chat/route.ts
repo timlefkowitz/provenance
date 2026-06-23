@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { extractTextFromCvBuffer } from '~/app/grants/_actions/extract-text-from-cv';
 import { ALL_TACO_TOOLS } from './tools';
 import {
@@ -165,6 +166,11 @@ export async function POST(request: NextRequest) {
     // -- Agentic loop --
     const collectedSuggestions: NavigationSuggestion[] = [];
 
+    // Accumulated token counts across all iterations
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let completedIterations = 0;
+
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       console.log('[Taco] agent iteration', iteration + 1);
 
@@ -174,6 +180,13 @@ export async function POST(request: NextRequest) {
         tools: ALL_TACO_TOOLS,
         tool_choice: 'auto',
       });
+
+      // Accumulate usage from this iteration
+      if (completion.usage) {
+        totalPromptTokens += completion.usage.prompt_tokens ?? 0;
+        totalCompletionTokens += completion.usage.completion_tokens ?? 0;
+      }
+      completedIterations = iteration + 1;
 
       const msg = completion.choices[0]?.message;
       if (!msg) break;
@@ -241,7 +254,41 @@ export async function POST(request: NextRequest) {
     const reply =
       typeof lastAssistant?.content === 'string'
         ? lastAssistant.content.trim()
-        : "*blinks slowly* I got a bit tangled. Try asking again?";
+        : "*blinks slowly* I got a bit tangled. Try again?";
+
+    // -- Fire-and-forget usage log (does not block the response) --
+    const estimatedCostUsd =
+      (totalPromptTokens * 2.5 + totalCompletionTokens * 10.0) / 1_000_000;
+
+    console.log('[Taco] usage tokens=', totalPromptTokens + totalCompletionTokens,
+      'prompt=', totalPromptTokens, 'completion=', totalCompletionTokens,
+      'cost~$', estimatedCostUsd.toFixed(6), 'iterations=', completedIterations,
+    );
+
+    void (async () => {
+      try {
+        const adminClient = getSupabaseServerAdminClient();
+        const { error: logError } = await (adminClient as any)
+          .from('taco_usage_logs')
+          .insert({
+            user_id: user.id,
+            prompt_tokens: totalPromptTokens,
+            completion_tokens: totalCompletionTokens,
+            total_tokens: totalPromptTokens + totalCompletionTokens,
+            agent_iterations: completedIterations,
+            had_images: incomingImages.length > 0,
+            had_docs: incomingDocs.length > 0,
+            estimated_cost_usd: estimatedCostUsd,
+          });
+        if (logError) {
+          console.error('[Taco] usage log insert failed', logError);
+        } else {
+          console.log('[Taco] usage log inserted');
+        }
+      } catch (logErr) {
+        console.error('[Taco] usage log threw', logErr);
+      }
+    })();
 
     console.log(
       '[Taco] returning reply, suggestions=',
