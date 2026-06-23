@@ -93,7 +93,7 @@ export async function handleGetMyCollection(userId: string): Promise<unknown> {
 
   const { data, error } = await (client as any)
     .from('artworks')
-    .select('id, title, artist_name, year, medium, image_url, status')
+    .select('id, title, artist_name, creation_date, medium, image_url, status, certificate_type, is_public')
     .eq('account_id', userId)
     .order('created_at', { ascending: false })
     .limit(30);
@@ -107,8 +107,11 @@ export async function handleGetMyCollection(userId: string): Promise<unknown> {
     id: row.id,
     title: row.title,
     artist_name: row.artist_name,
-    year: row.year,
+    year: row.creation_date ? new Date(row.creation_date).getFullYear() : null,
     medium: row.medium,
+    status: row.status,
+    certificate_type: row.certificate_type,
+    is_public: row.is_public,
   }));
 
   console.log('[Taco] handleGetMyCollection returned', artworks.length, 'artworks');
