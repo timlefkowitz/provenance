@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 
 const PreviewQuerySchema = z
@@ -48,6 +48,10 @@ export async function GET(request: NextRequest) {
     let location: string | null = null;
     let resolvedAccountId = accountId ?? null;
     let resolvedProfileId = profileId ?? null;
+    // Set when the poster account is a gallery and we resolved its gallery
+    // profile (e.g. "FL!GHT") so the panel shows the gallery, not the personal account.
+    let galleryProfileSlug: string | null = null;
+    let galleryProfileId: string | null = null;
 
     if (accountId) {
       const { data: account, error: accountError } = await client
@@ -124,31 +128,91 @@ export async function GET(request: NextRequest) {
         bio = (publicData?.bio as string) ?? null;
         medium = (publicData?.medium as string) ?? null;
         location = (publicData?.location as string) ?? null;
+
+        // When a gallery posts a certificate (e.g. a Certificate of Show), the
+        // poster account name is the owner's personal name (e.g. "timothy lefkowitz").
+        // Prefer the gallery profile (e.g. "FL!GHT") so the artist panel shows the
+        // gallery that posted it, mirroring the certificate page's "Uploaded by Gallery".
+        const posterRole = getUserRole(publicData as Record<string, any> | null);
+        if (posterRole === USER_ROLES.GALLERY) {
+          const { data: galleryProfiles } = await sb
+            .from('user_profiles')
+            .select('id, name, picture_url, bio, medium, location, slug')
+            .eq('user_id', posterAccountId)
+            .eq('role', USER_ROLES.GALLERY)
+            .eq('is_active', true)
+            .order('name', { ascending: true });
+
+          let galleryProfile = null;
+          if (galleryProfiles && galleryProfiles.length > 0) {
+            // Prefer a profile whose name differs from the personal account name
+            // (this surfaces "FL!GHT" rather than "timothy lefkowitz").
+            galleryProfile =
+              galleryProfiles.find(
+                (p: { name: string | null }) =>
+                  (p.name ?? '').toLowerCase() !== (account.name ?? '').toLowerCase(),
+              ) ?? galleryProfiles[0];
+          }
+
+          if (galleryProfile) {
+            name = galleryProfile.name || name;
+            picture_url = galleryProfile.picture_url ?? picture_url;
+            bio = galleryProfile.bio ?? bio;
+            medium = galleryProfile.medium ?? medium;
+            location = galleryProfile.location ?? location;
+            galleryProfileId = galleryProfile.id;
+            galleryProfileSlug = galleryProfile.slug ?? null;
+            console.log('[API/artist-preview] Resolved gallery profile for poster', {
+              posterAccountId,
+              galleryProfileId,
+            });
+          }
+        }
       }
     }
 
-    const profileHref =
-      getArtistPublicProfileHref({
-        artist_account_id: resolvedAccountId,
-        artist_profile_id: resolvedProfileId,
-      }) ?? (posterAccountId ? `/artists/${posterAccountId}` : null);
+    let profileHref: string | null;
+    if (galleryProfileId) {
+      profileHref = galleryProfileSlug
+        ? `/g/${galleryProfileSlug}`
+        : `/artists/${posterAccountId}?role=gallery&profileId=${galleryProfileId}`;
+    } else {
+      profileHref =
+        getArtistPublicProfileHref({
+          artist_account_id: resolvedAccountId,
+          artist_profile_id: resolvedProfileId,
+        }) ?? (posterAccountId ? `/artists/${posterAccountId}` : null);
+    }
 
     let recentWorks: RecentWork[] = [];
 
+    // For a gallery poster we show what the gallery posted (any certificate type),
+    // not works where the gallery account is credited as the artist.
+    const isGalleryPoster = !!galleryProfileId;
+
     const worksFilters: string[] = [];
-    if (resolvedAccountId) worksFilters.push(`artist_account_id.eq.${resolvedAccountId}`);
-    if (resolvedProfileId) worksFilters.push(`artist_profile_id.eq.${resolvedProfileId}`);
+    if (!isGalleryPoster) {
+      if (resolvedAccountId) worksFilters.push(`artist_account_id.eq.${resolvedAccountId}`);
+      if (resolvedProfileId) worksFilters.push(`artist_profile_id.eq.${resolvedProfileId}`);
+    }
     if (posterAccountId && worksFilters.length === 0) {
       worksFilters.push(`account_id.eq.${posterAccountId}`);
     }
 
     if (worksFilters.length > 0) {
-      const { data: works, error: worksError } = await sb
+      let worksQuery = sb
         .from('artworks')
         .select('id, title, image_url')
         .eq('status', 'verified')
-        .eq('certificate_type', 'authenticity')
-        .eq('is_public', true)
+        .eq('is_public', true);
+
+      // Gallery feed entries are Certificates of Show; restrict to authenticity
+      // only when surfacing an individual artist's catalog.
+      if (!isGalleryPoster) {
+        worksQuery = worksQuery.eq('certificate_type', 'authenticity');
+      }
+
+      const { data: works, error: worksError } = await worksQuery
         .or(worksFilters.join(','))
         .order('created_at', { ascending: false })
         .limit(3);
