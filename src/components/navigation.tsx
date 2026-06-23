@@ -180,7 +180,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                               alt={item.label}
                               width={36}
                               height={36}
-                              className="h-full w-full object-cover rounded-lg"
+                              className="h-full w-full object-cover object-top rounded-lg"
                             />
                           ) : item.icon ? (
                             <item.icon className="h-4 w-4" />
@@ -396,7 +396,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                               alt={item.label}
                               width={36}
                               height={36}
-                              className="h-full w-full object-cover rounded-lg"
+                              className="h-full w-full object-cover object-top rounded-lg"
                             />
                           ) : item.icon ? (
                             <item.icon className="h-4 w-4" />

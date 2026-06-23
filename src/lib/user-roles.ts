@@ -77,6 +77,9 @@ export const GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES: readonly CertificateType[] =
 /** Max certificates a gallery may pin for /registry directory thumbnails */
 export const GALLERY_REGISTRY_THUMBNAIL_MAX = 5;
 
+/** Max artworks an artist or gallery may pin for the artworks feed panel */
+export const FEED_PANEL_ARTWORK_MAX = 3;
+
 /**
  * Whether Collection / gallery profile UI may offer pinning this artwork for /registry (artist → COA only).
  */

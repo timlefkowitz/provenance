@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
     let galleryProfileSlug: string | null = null;
     let galleryProfileId: string | null = null;
 
+    // Tracks pinned artwork IDs for the feed panel (set when a profile has overridden the default).
+    let pinnedArtworkIds: string[] | null = null;
+
     if (accountId) {
       const { data: account, error: accountError } = await client
         .from('accounts')
@@ -75,7 +78,7 @@ export async function GET(request: NextRequest) {
 
       const { data: profile } = await sb
         .from('user_profiles')
-        .select('id, name, picture_url, bio, medium, location')
+        .select('id, name, picture_url, bio, medium, location, feed_panel_artwork_ids')
         .eq('user_id', accountId)
         .eq('role', USER_ROLES.ARTIST)
         .eq('is_active', true)
@@ -90,11 +93,13 @@ export async function GET(request: NextRequest) {
         bio = profile.bio ?? bio;
         medium = profile.medium ?? medium;
         location = profile.location ?? location;
+        const ids = profile.feed_panel_artwork_ids as string[] | null;
+        if (ids && ids.length > 0) pinnedArtworkIds = ids;
       }
     } else if (profileId) {
       const { data: profile, error: profileError } = await sb
         .from('user_profiles')
-        .select('id, name, picture_url, bio, medium, location, user_id')
+        .select('id, name, picture_url, bio, medium, location, user_id, feed_panel_artwork_ids')
         .eq('id', profileId)
         .eq('role', USER_ROLES.ARTIST)
         .eq('is_active', true)
@@ -112,6 +117,8 @@ export async function GET(request: NextRequest) {
         bio = profile.bio;
         medium = profile.medium;
         location = profile.location;
+        const ids = profile.feed_panel_artwork_ids as string[] | null;
+        if (ids && ids.length > 0) pinnedArtworkIds = ids;
       }
     } else if (posterAccountId) {
       const { data: account } = await client
@@ -137,7 +144,7 @@ export async function GET(request: NextRequest) {
         if (posterRole === USER_ROLES.GALLERY) {
           const { data: galleryProfiles } = await sb
             .from('user_profiles')
-            .select('id, name, picture_url, bio, medium, location, slug')
+            .select('id, name, picture_url, bio, medium, location, slug, feed_panel_artwork_ids')
             .eq('user_id', posterAccountId)
             .eq('role', USER_ROLES.GALLERY)
             .eq('is_active', true)
@@ -162,6 +169,8 @@ export async function GET(request: NextRequest) {
             location = galleryProfile.location ?? location;
             galleryProfileId = galleryProfile.id;
             galleryProfileSlug = galleryProfile.slug ?? null;
+            const ids = galleryProfile.feed_panel_artwork_ids as string[] | null;
+            if (ids && ids.length > 0) pinnedArtworkIds = ids;
             console.log('[API/artist-preview] Resolved gallery profile for poster', {
               posterAccountId,
               galleryProfileId,
@@ -190,37 +199,55 @@ export async function GET(request: NextRequest) {
     // not works where the gallery account is credited as the artist.
     const isGalleryPoster = !!galleryProfileId;
 
-    const worksFilters: string[] = [];
-    if (!isGalleryPoster) {
-      if (resolvedAccountId) worksFilters.push(`artist_account_id.eq.${resolvedAccountId}`);
-      if (resolvedProfileId) worksFilters.push(`artist_profile_id.eq.${resolvedProfileId}`);
-    }
-    if (posterAccountId && worksFilters.length === 0) {
-      worksFilters.push(`account_id.eq.${posterAccountId}`);
-    }
-
-    if (worksFilters.length > 0) {
-      let worksQuery = sb
+    if (pinnedArtworkIds && pinnedArtworkIds.length > 0) {
+      // Artist or gallery has pinned specific artworks — fetch them in order.
+      const { data: pinned, error: pinnedError } = await sb
         .from('artworks')
         .select('id, title, image_url')
+        .in('id', pinnedArtworkIds)
         .eq('status', 'verified')
         .eq('is_public', true);
 
-      // Gallery feed entries are Certificates of Show; restrict to authenticity
-      // only when surfacing an individual artist's catalog.
+      if (pinnedError) {
+        console.error('[API/artist-preview] Pinned works lookup failed', pinnedError);
+      } else {
+        // Preserve the user-defined order
+        const byId = new Map((pinned ?? []).map((w: RecentWork) => [w.id, w]));
+        recentWorks = pinnedArtworkIds.map((id) => byId.get(id)).filter(Boolean) as RecentWork[];
+      }
+    } else {
+      const worksFilters: string[] = [];
       if (!isGalleryPoster) {
-        worksQuery = worksQuery.eq('certificate_type', 'authenticity');
+        if (resolvedAccountId) worksFilters.push(`artist_account_id.eq.${resolvedAccountId}`);
+        if (resolvedProfileId) worksFilters.push(`artist_profile_id.eq.${resolvedProfileId}`);
+      }
+      if (posterAccountId && worksFilters.length === 0) {
+        worksFilters.push(`account_id.eq.${posterAccountId}`);
       }
 
-      const { data: works, error: worksError } = await worksQuery
-        .or(worksFilters.join(','))
-        .order('created_at', { ascending: false })
-        .limit(3);
+      if (worksFilters.length > 0) {
+        let worksQuery = sb
+          .from('artworks')
+          .select('id, title, image_url')
+          .eq('status', 'verified')
+          .eq('is_public', true);
 
-      if (worksError) {
-        console.error('[API/artist-preview] Recent works lookup failed', worksError);
-      } else {
-        recentWorks = works ?? [];
+        // Gallery feed entries are Certificates of Show; restrict to authenticity
+        // only when surfacing an individual artist's catalog.
+        if (!isGalleryPoster) {
+          worksQuery = worksQuery.eq('certificate_type', 'authenticity');
+        }
+
+        const { data: works, error: worksError } = await worksQuery
+          .or(worksFilters.join(','))
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        if (worksError) {
+          console.error('[API/artist-preview] Recent works lookup failed', worksError);
+        } else {
+          recentWorks = works ?? [];
+        }
       }
     }
 

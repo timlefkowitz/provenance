@@ -31,6 +31,10 @@ import {
   GalleryThumbnailPicker,
   type EligibleThumbnailArtwork,
 } from './_components/gallery-thumbnail-picker';
+import {
+  FeedPanelThumbnailPicker,
+  type FeedPanelEligibleArtwork,
+} from './_components/feed-panel-thumbnail-picker';
 import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { StreakStar } from '~/components/streak-star';
@@ -420,6 +424,94 @@ export default async function ArtistProfilePage({
     });
   }
 
+  // ── FEED PANEL PICKER DATA (owner only — both artists and galleries) ──
+  // Lets the owner pin up to 3 artworks for the feed panel preview.
+  let feedPanelEligibleArtworks: FeedPanelEligibleArtwork[] = [];
+  let feedPanelSelectedIds: string[] = [];
+  if (isOwner && roleProfile?.id) {
+    if (isArtistProfile) {
+      // Artist: COA, verified, public, credited to this artist
+      const orParts = [`artist_account_id.eq.${account.id}`];
+      if (roleProfile.id) orParts.push(`artist_profile_id.eq.${roleProfile.id}`);
+
+      const [{ data: feedRows, error: feedErr }, { data: feedProfileRow }] = await Promise.all([
+        (client as any)
+          .from('artworks')
+          .select('id, title, image_url, artist_name, created_at')
+          .eq('certificate_type', 'authenticity')
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .not('image_url', 'is', null)
+          .or(orParts.join(','))
+          .order('created_at', { ascending: false })
+          .limit(48),
+        (client as any)
+          .from('user_profiles')
+          .select('feed_panel_artwork_ids')
+          .eq('id', roleProfile.id)
+          .maybeSingle(),
+      ]);
+
+      if (feedErr) {
+        console.error('[ArtistProfile] feed panel artist eligibility query failed', feedErr);
+      }
+
+      feedPanelEligibleArtworks = (feedRows || []).map((row: any) => ({
+        id: row.id as string,
+        title: (row.title as string) || 'Untitled',
+        image_url: (row.image_url as string | null) ?? null,
+        artist_name: (row.artist_name as string | null) ?? null,
+      }));
+
+      feedPanelSelectedIds =
+        ((feedProfileRow?.feed_panel_artwork_ids as string[] | null)?.filter(Boolean)) ?? [];
+
+      console.log('[ArtistProfile] artist feed panel picker data resolved', {
+        profileId: roleProfile.id,
+        eligibleCount: feedPanelEligibleArtworks.length,
+        selectionCount: feedPanelSelectedIds.length,
+      });
+    } else if (isGallery) {
+      // Gallery: any cert type, verified, public, posted by this account
+      const [{ data: feedRows, error: feedErr }, { data: feedProfileRow }] = await Promise.all([
+        (client as any)
+          .from('artworks')
+          .select('id, title, image_url, artist_name, created_at')
+          .eq('account_id', account.id)
+          .eq('status', 'verified')
+          .eq('is_public', true)
+          .not('image_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(48),
+        (client as any)
+          .from('user_profiles')
+          .select('feed_panel_artwork_ids')
+          .eq('id', roleProfile.id)
+          .maybeSingle(),
+      ]);
+
+      if (feedErr) {
+        console.error('[ArtistProfile] feed panel gallery eligibility query failed', feedErr);
+      }
+
+      feedPanelEligibleArtworks = (feedRows || []).map((row: any) => ({
+        id: row.id as string,
+        title: (row.title as string) || 'Untitled',
+        image_url: (row.image_url as string | null) ?? null,
+        artist_name: (row.artist_name as string | null) ?? null,
+      }));
+
+      feedPanelSelectedIds =
+        ((feedProfileRow?.feed_panel_artwork_ids as string[] | null)?.filter(Boolean)) ?? [];
+
+      console.log('[ArtistProfile] gallery feed panel picker data resolved', {
+        profileId: roleProfile.id,
+        eligibleCount: feedPanelEligibleArtworks.length,
+        selectionCount: feedPanelSelectedIds.length,
+      });
+    }
+  }
+
   // ── LATEST CERTIFICATE OF SHOW (galleries only) ──
   // Featured at the top of the gallery profile so visitors immediately see
   // the most recent show this gallery has issued a COS for. We match on
@@ -522,7 +614,8 @@ export default async function ArtistProfilePage({
     galleries.length > 0 ||
     newsPublications.length > 0 ||
     (isGallery && isOwner && roleProfile?.id) ||
-    (isGallery && isOwner && galleryEligibleThumbnails.length > 0);
+    (isGallery && isOwner && galleryEligibleThumbnails.length > 0) ||
+    (isOwner && Boolean(roleProfile?.id));
 
   // CV button data — artists only (not galleries)
   const hasCv = isArtistProfile && Boolean(roleProfile?.artist_cv_json);
@@ -892,6 +985,20 @@ export default async function ArtistProfilePage({
                     Public Links
                   </p>
                   <GalleryPublicLinks profileId={roleProfile.id} slug={roleProfile.slug} />
+                </section>
+              )}
+
+              {isOwner && roleProfile?.id && (
+                <section className="border-t border-wine/10 pt-8">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">
+                    Feed panel photos
+                  </p>
+                  <FeedPanelThumbnailPicker
+                    profileId={roleProfile.id}
+                    mode={isGallery ? 'gallery' : 'artist'}
+                    artworks={feedPanelEligibleArtworks}
+                    initialSelectedIds={feedPanelSelectedIds}
+                  />
                 </section>
               )}
             </aside>
