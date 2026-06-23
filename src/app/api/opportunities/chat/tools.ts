@@ -85,7 +85,59 @@ export const RECOMMEND_OPPORTUNITIES_TOOL: OpenAI.Chat.Completions.ChatCompletio
   },
 };
 
+/**
+ * Tool: draft a grant proposal document and save it to the artist's account.
+ * Called when the user asks Taco to write / draft a proposal or application.
+ */
+export const DRAFT_PROPOSAL_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'draft_proposal',
+    description:
+      'Create a draft grant proposal document for the artist. Call this when the artist asks you to draft, write, or help with a grant application or proposal. Use your knowledge of the artist profile and the specific grant to write a compelling, personalised proposal with sections: project summary, artistic statement, project description, budget overview, and timeline. Save the draft so the artist can open and edit it.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Title of the proposal document, e.g. "Application for NEA Individual Artist Grant"',
+        },
+        grant_id: {
+          type: 'string',
+          description: 'The ID of the artist_grants row this proposal is for, if known. Omit if unknown.',
+        },
+        grant_name: {
+          type: 'string',
+          description: 'Human-readable name of the grant or opportunity this proposal is for.',
+        },
+        project_summary: {
+          type: 'string',
+          description: 'A concise 2-3 sentence executive summary of the proposed project.',
+        },
+        artistic_statement: {
+          type: 'string',
+          description: 'A 1-2 paragraph artistic statement tailored to this grant\'s focus.',
+        },
+        project_description: {
+          type: 'string',
+          description: 'Detailed description of the proposed project (3-5 paragraphs).',
+        },
+        budget_overview: {
+          type: 'string',
+          description: 'High-level budget breakdown — line items and total.',
+        },
+        timeline: {
+          type: 'string',
+          description: 'Project timeline with key milestones.',
+        },
+      },
+      required: ['title'],
+    },
+  },
+};
+
 export const ALL_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   SEARCH_OPEN_CALLS_TOOL,
   RECOMMEND_OPPORTUNITIES_TOOL,
+  DRAFT_PROPOSAL_TOOL,
 ];

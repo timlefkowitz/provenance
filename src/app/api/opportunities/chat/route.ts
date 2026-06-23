@@ -9,6 +9,7 @@ import { ALL_TOOLS } from './tools';
 import {
   handleSearchOpenCalls,
   handleRecommendOpportunities,
+  handleDraftProposal,
 } from './tool-handlers';
 
 /** Maximum agentic loop iterations before forcing a final reply. */
@@ -58,6 +59,9 @@ function buildSystemPrompt(
     `3. Finally, give the artist a friendly, concise summary of what you found and any advice on which to prioritize.`,
     ``,
     `Be specific and honest. Only recommend real, established programs you know with confidence. If your knowledge of a specific deadline is uncertain, omit the deadline field rather than guessing. Always suggest the artist verify current deadlines on the program's official website.`,
+    ``,
+    `PROPOSAL DRAFTING:`,
+    `When the artist asks you to draft, write, or help with a grant application or proposal (e.g. "draft a proposal for this grant", "write my application", "help me apply"), call the draft_proposal tool with compelling, personalised content using the artist's CV and profile details. Create all relevant sections. After saving, tell the artist their draft is ready and they can open and edit it.`,
     `Always respond in a warm, professional tone. Keep your conversational reply concise (3-5 sentences).`,
   ].filter(Boolean);
 
@@ -141,6 +145,7 @@ export async function POST(request: NextRequest) {
     ];
 
     const allNewOpportunities: Grant[] = [];
+    let newProposalId: string | null = null;
 
     // Agentic loop
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
@@ -179,11 +184,16 @@ export async function POST(request: NextRequest) {
               user.id,
               artistProfile.id ?? null,
             );
-            // Collect new opportunities to return to the client
             if (outcome.opportunities.length) {
               allNewOpportunities.push(...outcome.opportunities);
             }
             result = { saved: outcome.saved, error: outcome.error };
+          } else if (tc.function.name === 'draft_proposal') {
+            const outcome = await handleDraftProposal(args, user.id);
+            if (outcome.proposalId) {
+              newProposalId = outcome.proposalId;
+            }
+            result = { proposalId: outcome.proposalId, error: outcome.error };
           } else {
             result = { error: `Unknown tool: ${tc.function.name}` };
           }
@@ -210,8 +220,8 @@ export async function POST(request: NextRequest) {
         ? lastAssistantMessage.content.trim()
         : "I searched for opportunities but couldn't produce a summary. Please try again.";
 
-    console.log('[Opportunities] returning reply with', allNewOpportunities.length, 'new opportunities');
-    return NextResponse.json({ reply, newOpportunities: allNewOpportunities });
+    console.log('[Opportunities] returning reply with', allNewOpportunities.length, 'new opportunities', newProposalId ? `proposalId=${newProposalId}` : '');
+    return NextResponse.json({ reply, newOpportunities: allNewOpportunities, newProposalId });
   } catch (err) {
     console.error('[Opportunities] chat error', err);
     return NextResponse.json(

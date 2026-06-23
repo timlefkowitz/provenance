@@ -79,12 +79,19 @@ export function GrantsPageContent({
     [grants],
   );
 
+  const communityCount = useMemo(
+    () => grants.filter((g) => g.is_community === true).length,
+    [grants],
+  );
+
   const filteredAndSortedGrants = useMemo(() => {
     let list = [...grants];
 
-    // Bookmark filter
+    // Bookmark/community filter
     if (bookmarkFilter === 'saved') {
       list = list.filter((g) => g.bookmarked === true);
+    } else if (bookmarkFilter === 'community') {
+      list = list.filter((g) => g.is_community === true);
     }
 
     // Search: name, description, discipline, amount
@@ -113,7 +120,7 @@ export function GrantsPageContent({
           (d) =>
             d.toLowerCase() === mediumLower ||
             d.toLowerCase().includes(mediumLower) ||
-            mediumLower.includes(d.toLowerCase())
+            mediumLower.includes(d.toLowerCase()),
         );
       });
     }
@@ -125,8 +132,9 @@ export function GrantsPageContent({
       const locLower = locationFilter.toLowerCase();
       list = list.filter((g) =>
         g.eligible_locations?.some(
-          (loc) => loc.toLowerCase() === locLower || loc.toLowerCase().includes(locLower)
-        )
+          (loc) =>
+            loc.toLowerCase() === locLower || loc.toLowerCase().includes(locLower),
+        ),
       );
     }
 
@@ -148,7 +156,7 @@ export function GrantsPageContent({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Left: grant list + filters (always shown so curated grants and search are visible) */}
+      {/* Left: grant list + filters */}
       <div className="lg:col-span-3 space-y-4">
         {!hasCv && <UploadCvForm />}
         <GrantsFilters
@@ -164,15 +172,17 @@ export function GrantsPageContent({
           bookmarkFilter={bookmarkFilter}
           onBookmarkFilterChange={setBookmarkFilter}
           savedCount={savedCount}
+          communityCount={communityCount}
         />
         <GrantsList
           grants={filteredAndSortedGrants}
           onToggleBookmark={handleToggleBookmark}
           onRemoveGrant={handleRemoveGrant}
+          onGrantChanged={refreshGrants}
         />
       </div>
 
-      {/* Right: chatbot */}
+      {/* Right: Taco chatbot */}
       <div className="lg:col-span-2">
         <div className="lg:sticky lg:top-24">
           <OpportunitiesChatbot hasCv={hasCv} onOpportunitiesUpdated={refreshGrants} />
