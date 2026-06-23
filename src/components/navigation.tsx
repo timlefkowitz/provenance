@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
+import type { LucideIcon } from 'lucide-react';
 import {
   Award,
   ChevronDown,
@@ -32,11 +34,22 @@ import { UsingGalleryLabel } from './using-gallery-label';
 const desktopNavItemClass =
   'inline-flex items-center rounded-md px-2 py-1 -mx-2 -my-1 text-ink hover:text-wine transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment';
 
+type ToolboxItem =
+  | { href: string; label: string; description: string; icon: LucideIcon; image?: never }
+  | { href: string; label: string; description: string; image: string; icon?: never };
+
 /**
  * Toolbox entries shared between the desktop dropdown and the mobile menu.
  * Each tool gets an icon + short description for the rich dropdown panel.
+ * Items with `image` use a photo in the icon slot instead of a Lucide icon.
  */
-const TOOLBOX_ITEMS = [
+const TOOLBOX_ITEMS: ToolboxItem[] = [
+  {
+    href: '/taco',
+    label: 'Ask Taco',
+    description: 'Your studio AI — chat, images & docs',
+    image: '/taco-cat.png',
+  },
   {
     href: '/profile/site',
     label: 'Website Editor',
@@ -73,7 +86,7 @@ const TOOLBOX_ITEMS = [
     description: 'Logistics, inventory & tasks',
     icon: ClipboardList,
   },
-] as const;
+];
 
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
@@ -160,8 +173,18 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                         href={item.href}
                         className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25">
-                          <item.icon className="h-4 w-4" />
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25 overflow-hidden">
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.label}
+                              width={36}
+                              height={36}
+                              className="h-full w-full object-cover rounded-lg"
+                            />
+                          ) : item.icon ? (
+                            <item.icon className="h-4 w-4" />
+                          ) : null}
                         </span>
                         <span className="min-w-0">
                           <span className="block text-sm font-semibold text-ink leading-tight">
@@ -366,8 +389,18 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                         }`}
                         style={{ animationDelay: `${i * 45}ms` }}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine">
-                          <item.icon className="h-4 w-4" />
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine overflow-hidden">
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.label}
+                              width={36}
+                              height={36}
+                              className="h-full w-full object-cover rounded-lg"
+                            />
+                          ) : item.icon ? (
+                            <item.icon className="h-4 w-4" />
+                          ) : null}
                         </span>
                         {featured ? (
                           <span className="min-w-0 text-left">

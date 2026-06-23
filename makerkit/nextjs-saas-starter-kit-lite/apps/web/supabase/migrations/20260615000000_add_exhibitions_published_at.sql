@@ -26,6 +26,8 @@ WHERE published_at IS NULL;
 -- Split anon vs authenticated so anon never calls is_gallery_member_for_exhibition
 -- (that function is granted to authenticated only).
 DROP POLICY IF EXISTS exhibitions_read_public ON public.exhibitions;
+DROP POLICY IF EXISTS exhibitions_read_anon ON public.exhibitions;
+DROP POLICY IF EXISTS exhibitions_read_authenticated ON public.exhibitions;
 
 CREATE POLICY exhibitions_read_anon ON public.exhibitions
   FOR SELECT

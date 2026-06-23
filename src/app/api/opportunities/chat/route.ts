@@ -7,6 +7,7 @@ import { getActiveSubscription } from '~/lib/subscription';
 import type { ArtistCvJson, Grant } from '~/lib/grants';
 import { ALL_TOOLS } from './tools';
 import {
+  handleSearchArtKnowledge,
   handleSearchOpenCalls,
   handleRecommendOpportunities,
   handleDraftProposal,
@@ -42,8 +43,10 @@ function buildSystemPrompt(
   const careerSummary = cvJson?.summary ?? null;
 
   const lines = [
-    `You are an expert opportunities assistant for visual artists on Provenance, a platform for artists and galleries.`,
-    `Your job is to find the most relevant grants, open calls, and artist residencies for this specific artist.`,
+    `You are an expert art-world assistant for visual artists on Provenance, a platform for artists and galleries.`,
+    `Your job is to find the most relevant grants, open calls, and artist residencies for this specific artist — and to answer art history, technique, and career questions with depth and accuracy.`,
+    ``,
+    `You have access to a curated art knowledge base built from Wikipedia art articles and art history books. Use it as your primary reference before relying on your training data.`,
     ``,
     `ARTIST PROFILE:`,
     `- Name: ${name}`,
@@ -53,12 +56,16 @@ function buildSystemPrompt(
     exhibitionHistory ? `- Exhibition history: ${exhibitionHistory}` : null,
     careerSummary ? `- Career summary: ${careerSummary}` : null,
     ``,
-    `STRATEGY:`,
-    `1. Always start by calling search_open_calls to surface curated platform opportunities first.`,
-    `2. Using your knowledge, recommend relevant grants, artist residencies, and open calls that match this artist's medium, location, and career stage. Draw on well-known funding bodies, arts councils, foundations, and residency programs. Call recommend_opportunities with ALL relevant opportunities you identified — both from the platform and from your knowledge. Classify each as "grant", "open_call", or "residency".`,
-    `3. Finally, give the artist a friendly, concise summary of what you found and any advice on which to prioritize.`,
+    `STRATEGY FOR OPPORTUNITIES:`,
+    `1. Call search_art_knowledge with a query relevant to this artist's medium and practice to retrieve contextual art knowledge that will ground your recommendations.`,
+    `2. Call search_open_calls to surface curated platform opportunities.`,
+    `3. Using the retrieved knowledge and your training, recommend relevant grants, artist residencies, and open calls. Call recommend_opportunities with ALL relevant opportunities. Classify each as "grant", "open_call", or "residency".`,
+    `4. Give the artist a friendly, concise summary of what you found and advice on which to prioritize.`,
     ``,
-    `Be specific and honest. Only recommend real, established programs you know with confidence. If your knowledge of a specific deadline is uncertain, omit the deadline field rather than guessing. Always suggest the artist verify current deadlines on the program's official website.`,
+    `STRATEGY FOR ART QUESTIONS:`,
+    `When the artist asks about art history, movements, techniques, or specific artists, call search_art_knowledge first to retrieve relevant passages from the knowledge base, then answer using that grounded context. Cite sources where helpful.`,
+    ``,
+    `Be specific and honest. Only recommend real, established programs you know with confidence. If a deadline is uncertain, omit it rather than guessing. Always suggest the artist verify current deadlines on the program's official website.`,
     ``,
     `PROPOSAL DRAFTING:`,
     `When the artist asks you to draft, write, or help with a grant application or proposal (e.g. "draft a proposal for this grant", "write my application", "help me apply"), call the draft_proposal tool with compelling, personalised content using the artist's CV and profile details. Create all relevant sections. After saving, tell the artist their draft is ready and they can open and edit it.`,
@@ -176,7 +183,9 @@ export async function POST(request: NextRequest) {
         try {
           const args = JSON.parse(tc.function.arguments ?? '{}');
 
-          if (tc.function.name === 'search_open_calls') {
+          if (tc.function.name === 'search_art_knowledge') {
+            result = await handleSearchArtKnowledge(args);
+          } else if (tc.function.name === 'search_open_calls') {
             result = await handleSearchOpenCalls(args, artistLocation);
           } else if (tc.function.name === 'recommend_opportunities') {
             const outcome = await handleRecommendOpportunities(

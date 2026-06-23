@@ -47,6 +47,8 @@ create index if not exists knowledge_chunks_source_idx
 alter table public.knowledge_chunks enable row level security;
 
 -- All authenticated users can read knowledge chunks (they are public reference data)
+drop policy if exists "Authenticated users can read knowledge chunks" on public.knowledge_chunks;
+
 create policy "Authenticated users can read knowledge chunks"
   on public.knowledge_chunks
   for select

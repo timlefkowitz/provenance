@@ -136,7 +136,39 @@ export const DRAFT_PROPOSAL_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 };
 
+/**
+ * Tool: search the curated art knowledge base (Wikipedia articles, art history
+ * books, etc.) using semantic similarity. Use this to ground answers about
+ * art movements, techniques, artist careers, grant programs, and residencies.
+ */
+export const SEARCH_ART_KNOWLEDGE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'search_art_knowledge',
+    description:
+      'Search a curated art knowledge base built from Wikipedia art articles, art history books, and grant program documentation. Use this to answer questions about art movements, techniques, notable artists, grant bodies, residency programs, and art history. Always call this before relying on your training knowledge for art-specific questions.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description:
+            'A natural-language search query describing the art knowledge you are looking for. Be specific — e.g. "Guggenheim Fellowship eligibility for visual artists" or "Impressionism painting techniques".',
+        },
+        source_filter: {
+          type: 'string',
+          enum: ['wikipedia', 'book', 'custom', 'grant_description'],
+          description:
+            'Optional: restrict results to a specific source type. Omit to search all sources.',
+        },
+      },
+      required: ['query'],
+    },
+  },
+};
+
 export const ALL_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  SEARCH_ART_KNOWLEDGE_TOOL,
   SEARCH_OPEN_CALLS_TOOL,
   RECOMMEND_OPPORTUNITIES_TOOL,
   DRAFT_PROPOSAL_TOOL,

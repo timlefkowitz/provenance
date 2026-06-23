@@ -3,11 +3,38 @@ import { getOpenCallsList } from '~/app/open-calls/_actions/get-open-calls-list'
 import type { Grant, OpportunityType } from '~/lib/grants';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
+import { retrieveArtKnowledge, formatChunksAsContext } from '~/lib/art-knowledge/retrieval';
 
 type SaveableOpportunity = Omit<
   Grant,
   'id' | 'user_id' | 'artist_profile_id' | 'created_at' | 'updated_at'
 >;
+
+// ─── search_art_knowledge ─────────────────────────────────────────────────────
+
+type SearchArtKnowledgeArgs = {
+  query: string;
+  source_filter?: 'wikipedia' | 'book' | 'custom' | 'grant_description' | null;
+};
+
+export async function handleSearchArtKnowledge(
+  args: SearchArtKnowledgeArgs,
+): Promise<{ context: string; chunk_count: number }> {
+  console.log('[ArtKnowledge] handleSearchArtKnowledge', args.query.slice(0, 80));
+
+  const chunks = await retrieveArtKnowledge(args.query, {
+    matchCount: 6,
+    matchThreshold: 0.62,
+    filterSource: args.source_filter ?? null,
+  });
+
+  if (!chunks.length) {
+    return { context: 'No relevant art knowledge found for this query.', chunk_count: 0 };
+  }
+
+  const context = formatChunksAsContext(chunks);
+  return { context, chunk_count: chunks.length };
+}
 
 // ─── search_open_calls ────────────────────────────────────────────────────────
 
