@@ -176,8 +176,8 @@ export async function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    // Supabase, Vercel analytics, Google Analytics / Ads measurement endpoints
-    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net",
+    // Supabase, Vercel analytics, Google Analytics / Ads, PostHog analytics
+    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://us.i.posthog.com https://eu.i.posthog.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com",
     // Google Ads remarketing iframes (Floodlight / DoubleClick)
     "frame-src 'self' https://bid.g.doubleclick.net https://td.doubleclick.net",
     // Preview route: allow same-origin embedding. All other routes deny framing entirely.
