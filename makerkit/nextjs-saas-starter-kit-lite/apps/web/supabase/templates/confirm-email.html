@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="color-scheme" content="dark light">
-  <meta name="supported-color-schemes" content="dark light">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
   <title>Confirm your email</title>
-  <style>:root { color-scheme: dark light; }</style>
+  <style>:root { color-scheme: dark; }</style>
 </head>
 <body style="margin:0;padding:0;background-color:#0E0B0A;">
   <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td><![endif]-->
@@ -38,7 +38,6 @@
           <tr>
             <td bgcolor="#0E0B0A" style="padding:20px 0 0;background-color:#0E0B0A;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #3A2E25;background-color:#171311;border-radius:4px;border-collapse:collapse;">
-                <!-- Gold accent bar -->
                 <tr>
                   <td height="3" bgcolor="#C9A24B" style="height:3px;line-height:3px;font-size:1px;background-color:#C9A24B;border-radius:4px 4px 0 0;">&nbsp;</td>
                 </tr>
@@ -51,16 +50,22 @@
                     <!-- CTA button -->
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:28px 0 8px;border-collapse:collapse;">
                       <tr>
-                        <td align="center" bgcolor="#C9A24B" style="background-color:#C9A24B;border-radius:6px;border:1px solid #C9A24B;mso-padding-alt:0;">
-                          <!--[if mso]>
-                          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;callback={{ .RedirectTo }}" style="height:48px;v-text-anchor:middle;width:280px;" arcsize="10%" stroke="f" fillcolor="#C9A24B">
-                            <w:anchorlock/>
-                            <center style="color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;mso-text-raise:8;">Confirm email</center>
-                          </v:roundrect>
-                          <![endif]-->
-                          <!--[if !mso]><!-- -->
-                          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;callback={{ .RedirectTo }}" target="_blank" style="display:block;background-color:#C9A24B;border:1px solid #C9A24B;border-radius:6px;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;color:#FFFFFF;text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">Confirm email</a>
-                          <!--<![endif]-->
+                        <td align="center" style="padding:0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+                            <tr>
+                              <td align="center" bgcolor="#C9A24B" style="background-color:#C9A24B;border-radius:6px;border:1px solid #C9A24B;mso-padding-alt:0;">
+                                <!--[if mso]>
+                                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;callback={{ .RedirectTo }}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="10%" stroke="f" fillcolor="#C9A24B">
+                                  <w:anchorlock/>
+                                  <center style="color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;mso-text-raise:8;">Confirm email</center>
+                                </v:roundrect>
+                                <![endif]-->
+                                <!--[if !mso]><!-- -->
+                                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;callback={{ .RedirectTo }}" target="_blank" style="display:inline-block;background-color:#C9A24B;border-radius:6px;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;color:#FFFFFF;text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">Confirm email</a>
+                                <!--<![endif]-->
+                              </td>
+                            </tr>
+                          </table>
                         </td>
                       </tr>
                     </table>

@@ -83,7 +83,7 @@ export function stripMarkdownLinkLineByHref(
   return { markdown: stripped, linkLabel: decodeBasicHtmlEntities(match[1]) };
 }
 
-/** Primary pill CTA — gold fill with dark label, bulletproof for Outlook */
+/** Primary pill CTA — nested table so the button shrinks to its content (not full-width) */
 export function buildBulletproofButtonTable(
   href: string,
   label: string,
@@ -95,22 +95,28 @@ export function buildBulletproofButtonTable(
   return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:28px 0 8px;border-collapse:collapse;">
   <tr>
-    <td align="center" bgcolor="${wine}" style="background-color:${wine};border-radius:6px;border:1px solid ${wine};mso-padding-alt:0;">
-      <!--[if mso]>
-      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:48px;v-text-anchor:middle;width:280px;" arcsize="10%" stroke="f" fillcolor="${wine}">
-        <w:anchorlock/>
-        <center style="color:${accentText};font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;mso-text-raise:8;">${safeLabel}</center>
-      </v:roundrect>
-      <![endif]-->
-      <!--[if !mso]><!-- -->
-      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:block;background-color:${wine};border:1px solid ${wine};border-radius:6px;padding:14px 32px;font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;color:${accentText};text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">${safeLabel}</a>
-      <!--<![endif]-->
+    <td align="center" style="padding:0;">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" bgcolor="${wine}" style="background-color:${wine};border-radius:6px;border:1px solid ${wine};mso-padding-alt:0;">
+            <!--[if mso]>
+            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="10%" stroke="f" fillcolor="${wine}">
+              <w:anchorlock/>
+              <center style="color:${accentText};font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;mso-text-raise:8;">${safeLabel}</center>
+            </v:roundrect>
+            <![endif]-->
+            <!--[if !mso]><!-- -->
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:${wine};border-radius:6px;padding:14px 32px;font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;color:${accentText};text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">${safeLabel}</a>
+            <!--<![endif]-->
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>`.trim();
 }
 
-/** Secondary outline pill — gold border + gold label on transparent background */
+/** Secondary outline pill — nested table, gold border + gold label */
 export function buildBulletproofSecondaryButtonTable(
   href: string,
   label: string,
@@ -122,16 +128,22 @@ export function buildBulletproofSecondaryButtonTable(
   return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:12px 0 8px;border-collapse:collapse;">
   <tr>
-    <td align="center" bgcolor="${cardBg}" style="background-color:${cardBg};border-radius:6px;border:1px solid ${wine};mso-padding-alt:0;">
-      <!--[if mso]>
-      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:48px;v-text-anchor:middle;width:280px;" arcsize="10%" strokecolor="${wine}" fillcolor="${cardBg}">
-        <w:anchorlock/>
-        <center style="color:${wine};font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;mso-text-raise:8;">${safeLabel}</center>
-      </v:roundrect>
-      <![endif]-->
-      <!--[if !mso]><!-- -->
-      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:block;background-color:transparent;border:1px solid ${wine};border-radius:6px;padding:14px 32px;font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;color:${wine};text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">${safeLabel}</a>
-      <!--<![endif]-->
+    <td align="center" style="padding:0;">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" bgcolor="${cardBg}" style="background-color:${cardBg};border-radius:6px;border:1px solid ${wine};mso-padding-alt:0;">
+            <!--[if mso]>
+            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="10%" strokecolor="${wine}" fillcolor="${cardBg}">
+              <w:anchorlock/>
+              <center style="color:${wine};font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;mso-text-raise:8;">${safeLabel}</center>
+            </v:roundrect>
+            <![endif]-->
+            <!--[if !mso]><!-- -->
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:transparent;border:1px solid ${wine};border-radius:6px;padding:14px 32px;font-family:${fontFamily};font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;color:${wine};text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-hide:all;">${safeLabel}</a>
+            <!--<![endif]-->
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>`.trim();
@@ -207,11 +219,11 @@ export function buildEmailHtml(pageTitle: string, innerHtml: string, theme: Emai
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="color-scheme" content="dark light">
-  <meta name="supported-color-schemes" content="dark light">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
   <title>${escapeHtml(pageTitle)}</title>
   <style>
-    :root { color-scheme: dark light; supported-color-schemes: dark light; }
+    :root { color-scheme: dark; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:${parchment};">
