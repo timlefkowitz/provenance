@@ -52,14 +52,6 @@ export interface ArtistTemplateProps {
   };
 }
 
-export type TemplateId =
-  | 'manifesto'
-  | 'darkroom'
-  | 'archive'
-  | 'kinetic'
-  | 'broadsheet'
-  | 'void';
-
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
 function formatYear(iso: string) {
@@ -1209,23 +1201,3 @@ export function VoidTemplate(props: ArtistTemplateProps) {
   );
 }
 
-// ─── Registry ────────────────────────────────────────────────────────────────
-
-export const TEMPLATE_OPTIONS = [
-  { id: 'manifesto' as const, label: 'Manifesto', component: ManifestoTemplate },
-  { id: 'darkroom' as const, label: 'Darkroom', component: DarkroomTemplate },
-  { id: 'archive' as const, label: 'Archive', component: ArchiveTemplate },
-  { id: 'kinetic' as const, label: 'Kinetic', component: KineticTemplate },
-  { id: 'broadsheet' as const, label: 'Broadsheet', component: BroadsheetTemplate },
-  { id: 'void' as const, label: 'Void', component: VoidTemplate },
-] as const;
-
-export const TEMPLATE_IDS = TEMPLATE_OPTIONS.map((t) => t.id);
-
-export function isValidTemplateId(id: string | undefined): id is TemplateId {
-  return TEMPLATE_IDS.includes(id as TemplateId);
-}
-
-export function getTemplateComponent(id: TemplateId) {
-  return TEMPLATE_OPTIONS.find((t) => t.id === id)?.component ?? null;
-}

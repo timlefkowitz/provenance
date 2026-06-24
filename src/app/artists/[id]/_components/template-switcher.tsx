@@ -6,7 +6,7 @@ import { LayoutGrid, X } from 'lucide-react';
 import {
   TEMPLATE_OPTIONS,
   type TemplateId,
-} from './artist-templates';
+} from './template-registry';
 
 type TemplateSwitcherProps = {
   current: TemplateId | null;

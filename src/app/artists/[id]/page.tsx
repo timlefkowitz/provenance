@@ -44,7 +44,7 @@ import {
   isValidTemplateId,
   type ArtistTemplateProps,
   type TemplateId,
-} from './_components/artist-templates';
+} from './_components/template-registry';
 import { TemplateSwitcher } from './_components/template-switcher';
 
 export async function generateMetadata({
