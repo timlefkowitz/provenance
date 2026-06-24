@@ -2,6 +2,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { sendEmail } from '~/lib/email';
+import {
+  buildBulletproofButtonTable,
+  buildEmailHtml,
+  escapeHtml,
+} from '~/lib/email-layout';
+import { getPresetThemeDefaults } from '~/lib/email-layout-presets';
 
 export const runtime = 'nodejs';
 
@@ -107,34 +113,36 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
 }
 
 function buildTrialNudgeHtml(name: string, daysLeft: number): string {
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"/></head>
-<body style="font-family:Georgia,serif;color:#1a1a1a;background:#f5f1e8;margin:0;padding:0;">
-  <div style="max-width:560px;margin:40px auto;background:#fff;border:1px solid #ddd;padding:40px;">
-    <h1 style="font-size:22px;font-weight:bold;color:#5c1a1a;margin-bottom:16px;">Your trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}</h1>
-    <p>Hi ${name},</p>
-    <p>Your 14-day Provenance trial is winding down. Don't let your access to grants, CRM, open calls, and white-label sites lapse — subscribe now and keep everything you've built.</p>
-    <ul style="line-height:2;">
-      <li>Grants assistant &amp; AI-powered CV tools</li>
-      <li>Opportunities &amp; Relationships CRM</li>
-      <li>Open calls for your region</li>
-      <li>White-label artist or gallery website</li>
-    </ul>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-      <tr>
-        <td style="background:#5c1a1a;border-radius:4px;padding:12px 24px;">
-          <a href="${SITE_URL}/subscription" style="color:#fff;text-decoration:none;font-weight:bold;font-size:15px;">Upgrade now →</a>
-        </td>
-      </tr>
-    </table>
-    <p style="font-size:13px;color:#888;">Plans start at $10/month. Annual plans save ~2 months.</p>
-    <p style="font-size:12px;color:#aaa;border-top:1px solid #eee;padding-top:16px;margin-top:32px;">
-      Provenance | <a href="${SITE_URL}" style="color:#5c1a1a;">provenance.guru</a>
-    </p>
-  </div>
-</body>
-</html>`;
+  const theme = getPresetThemeDefaults('minimal');
+  const { ink, wine, inkMuted, surfaceMuted, fontFamily, fontFamilyHeading } = theme;
+
+  const safeName = escapeHtml(name);
+  const dayWord = daysLeft === 1 ? 'day' : 'days';
+
+  const featureRow = (text: string) =>
+    `<tr>
+      <td width="20" style="padding:8px 0;vertical-align:top;">
+        <span style="font-family:${fontFamily};font-size:14px;color:${wine};">&#9656;</span>
+      </td>
+      <td style="padding:8px 0;font-family:${fontFamily};font-size:15px;line-height:1.6;color:${ink};">${text}</td>
+    </tr>`;
+
+  const innerHtml = `
+<h1 style="margin:0 0 8px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">Your trial ends in ${daysLeft} ${dayWord}</h1>
+<p style="margin:0 0 6px;font-family:${fontFamily};font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:${wine};">Action required</p>
+<p style="margin:0 0 24px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">
+  Hi ${safeName}, your 14-day Provenance trial is winding down. Don't let your access to grants, CRM, open calls, and white-label sites lapse — subscribe now and keep everything you've built.
+</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;border-collapse:collapse;">
+  ${featureRow('Grants assistant &amp; AI-powered CV tools')}
+  ${featureRow('Opportunities &amp; Relationships CRM')}
+  ${featureRow('Open calls for your region')}
+  ${featureRow('White-label artist or gallery website')}
+</table>
+${buildBulletproofButtonTable(`${SITE_URL}/subscription`, 'Upgrade Now', theme)}
+<p style="margin:16px 0 0;font-family:${fontFamily};font-size:13px;line-height:1.6;color:${inkMuted};">Plans start at $10/month. Annual plans save ~2 months.</p>`;
+
+  return buildEmailHtml(`Your Provenance trial ends in ${daysLeft} ${dayWord}`, `<div>${innerHtml}</div>`, theme);
 }
 
 // ─── Weekly digest ────────────────────────────────────────────────────────────
@@ -232,52 +240,51 @@ function formatDeadline(deadline: string | null): string {
 }
 
 function buildDigestHtml(name: string, openCalls: any[], grants: any[]): string {
-  const ocRows = openCalls.map((oc) => `
-    <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;">
-        <strong>${oc.title}</strong>
-        ${oc.deadline ? `<span style="color:#888;font-size:12px;margin-left:8px;">Deadline: ${formatDeadline(oc.deadline)}</span>` : ''}
-      </td>
-    </tr>`).join('');
+  const theme = getPresetThemeDefaults('minimal');
+  const { ink, wine, inkMuted, cardBorder, fontFamily, fontFamilyHeading } = theme;
 
-  const grantRows = grants.map((g) => `
-    <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;">
-        <strong>${g.title}</strong>
-        ${g.deadline ? `<span style="color:#888;font-size:12px;margin-left:8px;">Deadline: ${formatDeadline(g.deadline)}</span>` : ''}
-      </td>
-    </tr>`).join('');
+  const safeName = escapeHtml(name);
 
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"/></head>
-<body style="font-family:Georgia,serif;color:#1a1a1a;background:#f5f1e8;margin:0;padding:0;">
-  <div style="max-width:560px;margin:40px auto;background:#fff;border:1px solid #ddd;padding:40px;">
-    <h1 style="font-size:22px;font-weight:bold;color:#5c1a1a;margin-bottom:4px;">Your weekly digest</h1>
-    <p style="color:#888;font-size:13px;margin-top:0;">Grants &amp; open calls, curated for artists</p>
-    <p>Hi ${name},</p>
+  const buildSection = (
+    sectionTitle: string,
+    items: any[],
+    browseHref: string,
+    browseLabel: string,
+  ): string => {
+    if (!items.length) return '';
+    const rows = items
+      .map(
+        (item) => `
+      <tr>
+        <td style="padding:14px 0;border-bottom:1px solid ${cardBorder};">
+          <p style="margin:0 0 4px;font-family:${fontFamily};font-size:15px;font-weight:600;color:${ink};">${escapeHtml(item.title)}</p>
+          ${item.deadline ? `<p style="margin:0;font-family:${fontFamily};font-size:12px;letter-spacing:0.06em;color:${wine};text-transform:uppercase;">Deadline: ${formatDeadline(item.deadline)}</p>` : ''}
+        </td>
+      </tr>`,
+      )
+      .join('');
 
-    ${openCalls.length > 0 ? `
-    <h2 style="font-size:16px;color:#5c1a1a;margin-top:24px;">Open Calls</h2>
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;">
-      ${ocRows}
-    </table>
-    <p style="margin-top:8px;"><a href="${SITE_URL}/open-calls/browse" style="color:#5c1a1a;font-size:13px;">Browse all open calls →</a></p>` : ''}
+    return `
+<p style="margin:28px 0 4px;font-family:${fontFamily};font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:${wine};">${escapeHtml(sectionTitle)}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${cardBorder};border-collapse:collapse;">
+  ${rows}
+</table>
+<p style="margin:10px 0 0;font-family:${fontFamily};font-size:13px;">
+  <a href="${browseHref}" target="_blank" rel="noopener noreferrer" style="color:${wine};text-decoration:none;font-weight:500;">${escapeHtml(browseLabel)} &rarr;</a>
+</p>`;
+  };
 
-    ${grants.length > 0 ? `
-    <h2 style="font-size:16px;color:#5c1a1a;margin-top:24px;">Grants</h2>
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;">
-      ${grantRows}
-    </table>
-    <p style="margin-top:8px;"><a href="${SITE_URL}/grants" style="color:#5c1a1a;font-size:13px;">Browse all grants →</a></p>` : ''}
+  const innerHtml = `
+<h1 style="margin:0 0 4px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">Your weekly digest</h1>
+<p style="margin:0 0 20px;font-family:${fontFamily};font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:${wine};">Grants &amp; open calls, curated for artists</p>
+<p style="margin:0 0 4px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">Hi ${safeName}, here's what's open this week.</p>
+${buildSection('Open Calls', openCalls, `${SITE_URL}/open-calls/browse`, 'Browse all open calls')}
+${buildSection('Grants', grants, `${SITE_URL}/grants`, 'Browse all grants')}
+<p style="margin:28px 0 0;font-family:${fontFamily};font-size:12px;line-height:1.6;color:${inkMuted};">
+  <a href="${SITE_URL}/settings" target="_blank" rel="noopener noreferrer" style="color:${inkMuted};text-decoration:underline;">Manage email preferences</a>
+</p>`;
 
-    <p style="font-size:12px;color:#aaa;border-top:1px solid #eee;padding-top:16px;margin-top:32px;">
-      Provenance | <a href="${SITE_URL}" style="color:#5c1a1a;">provenance.guru</a><br/>
-      <a href="${SITE_URL}/settings" style="color:#aaa;">Manage email preferences</a>
-    </p>
-  </div>
-</body>
-</html>`;
+  return buildEmailHtml('Your weekly Provenance digest', `<div>${innerHtml}</div>`, theme);
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────

@@ -77,15 +77,15 @@ function applyEmailInlineStyles(html: string, theme: EmailTheme): string {
     html
       .replace(
         /<h1(\s[^>]*)?>/gi,
-        `<h1 style="margin:0 0 16px;font-family:${ffHeading};font-size:24px;font-weight:600;color:${ink};line-height:1.3;letter-spacing:-0.02em;">`,
+        `<h1 style="margin:0 0 20px;font-family:${ffHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;letter-spacing:-0.01em;">`,
       )
       .replace(
         /<h2(\s[^>]*)?>/gi,
-        `<h2 style="margin:0 0 16px;font-family:${ffHeading};font-size:20px;font-weight:600;color:${ink};line-height:1.35;letter-spacing:-0.015em;">`,
+        `<h2 style="margin:0 0 16px;font-family:${ffHeading};font-size:21px;font-weight:600;color:${wine};line-height:1.3;letter-spacing:-0.01em;">`,
       )
       .replace(
         /<h3(\s[^>]*)?>/gi,
-        `<h3 style="margin:0 0 12px;font-family:${ffHeading};font-size:16px;font-weight:600;color:${ink};line-height:1.4;">`,
+        `<h3 style="margin:0 0 12px;font-family:${ffHeading};font-size:17px;font-weight:600;color:${ink};line-height:1.4;">`,
       )
       .replace(
         /<p(\s[^>]*)?>/gi,
@@ -107,7 +107,7 @@ function applyEmailInlineStyles(html: string, theme: EmailTheme): string {
       )
       .replace(
         /<a /gi,
-        `<a style="color:${ink};font-weight:500;text-decoration:underline;font-family:inherit;" `,
+        `<a style="color:${wine};font-weight:500;text-decoration:none;font-family:inherit;" `,
       )
       .replace(/<strong(\s[^>]*)?>/gi, `<strong style="font-weight:600;color:${ink};font-family:inherit;">`)
       .replace(/<em(\s[^>]*)?>/gi, `<em style="font-style:italic;color:${ink};font-family:inherit;">`)

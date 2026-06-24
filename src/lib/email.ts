@@ -13,6 +13,12 @@ import {
   renderWelcomeEmailHtml,
 } from '~/lib/email-templates-store';
 import type { SummaryItem } from '~/lib/email-defaults';
+import {
+  buildBulletproofButtonTable,
+  buildEmailHtml,
+  escapeHtml,
+} from '~/lib/email-layout';
+import { getPresetThemeDefaults } from '~/lib/email-layout-presets';
 
 export type { SummaryItem } from '~/lib/email-defaults';
 
@@ -269,38 +275,45 @@ export async function sendCertificateInviteEmail(
     personalMessage?: string | null;
   },
 ): Promise<void> {
-  const title = `${params.senderName} shared a certificate with you`;
-  const artwork = params.artworkTitle || 'an artwork';
-  const byLine = params.artistName ? ` by ${params.artistName}` : '';
-  const messageBlock = params.personalMessage
-    ? `<p style="font-style:italic;color:#666;margin:12px 0;">"${params.personalMessage}"</p>`
+  const subject = `${params.senderName} shared a certificate with you`;
+  const theme = getPresetThemeDefaults('minimal');
+  const { ink, wine, inkMuted, surfaceMuted, fontFamily, fontFamilyHeading } = theme;
+
+  const artwork = escapeHtml(params.artworkTitle || 'an artwork');
+  const sender = escapeHtml(params.senderName);
+  const byLine = params.artistName
+    ? ` by <em style="font-style:italic;">${escapeHtml(params.artistName)}</em>`
     : '';
 
-  const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"/></head>
-<body style="font-family:Georgia,serif;color:#1a1a1a;background:#f5f1e8;margin:0;padding:0;">
-  <div style="max-width:560px;margin:40px auto;background:#fff;border:1px solid #ddd;padding:40px;">
-    <h1 style="font-size:22px;font-weight:bold;color:#5c1a1a;margin-bottom:8px;">A certificate has been shared with you</h1>
-    <p style="margin:0 0 16px;">${params.senderName} has shared a Provenance certificate for <strong>${artwork}</strong>${byLine} with you.</p>
-    ${messageBlock}
-    <p style="margin:16px 0;">You can view the verified certificate and, if you are the artist or owner, claim it as yours.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-      <tr>
-        <td style="background:#5c1a1a;border-radius:4px;padding:12px 24px;">
-          <a href="${params.certificateUrl}" style="color:#fff;text-decoration:none;font-weight:bold;font-size:15px;">View Certificate</a>
-        </td>
-      </tr>
-    </table>
-    <p style="font-size:12px;color:#888;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-      Provenance | Verified certificates for artists, collectors &amp; galleries.<br/>
-      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru'}/lp/artist" style="color:#5c1a1a;">Create your own free certificate</a>
-    </p>
-  </div>
-</body>
-</html>`;
+  const messageBlock = params.personalMessage
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;border-collapse:collapse;">
+        <tr>
+          <td width="3" bgcolor="${wine}" style="width:3px;background-color:${wine};font-size:1px;">&nbsp;</td>
+          <td bgcolor="${surfaceMuted}" style="padding:16px 20px;background-color:${surfaceMuted};">
+            <p style="margin:0;font-family:${fontFamily};font-size:15px;line-height:1.65;color:${inkMuted};font-style:italic;">"${escapeHtml(params.personalMessage)}"</p>
+          </td>
+        </tr>
+      </table>`
+    : '';
 
-  await sendEmail({ to: toEmail, subject: title, html });
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+
+  const innerHtml = `
+<h1 style="margin:0 0 20px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">A certificate has been shared with you</h1>
+<p style="margin:0 0 16px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">
+  ${sender} has shared a Provenance certificate for <strong style="font-weight:600;color:${wine};">${artwork}</strong>${byLine} with you.
+</p>
+${messageBlock}
+<p style="margin:0 0 8px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">
+  View the verified certificate and — if you are the artist or owner — claim it as yours.
+</p>
+${buildBulletproofButtonTable(params.certificateUrl, 'View Certificate', theme)}
+<p style="margin:20px 0 0;font-family:${fontFamily};font-size:13px;line-height:1.6;color:${inkMuted};">
+  Don't have an account? <a href="${siteUrl}/lp/artist" target="_blank" rel="noopener noreferrer" style="color:${wine};text-decoration:none;font-weight:500;">Create your free certificate</a>
+</p>`;
+
+  const html = buildEmailHtml(subject, `<div>${innerHtml}</div>`, theme);
+  await sendEmail({ to: toEmail, subject, html });
 }
 
 /**
