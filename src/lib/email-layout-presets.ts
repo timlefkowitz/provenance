@@ -30,7 +30,7 @@ const MINIMAL_THEME: EmailTheme = {
   cardBorder: '#3A2E25',      // warm hairline
   ink: '#F3ECDD',             // warm cream text
   wine: '#C9A24B',            // gold accent (buttons, links, wordmark)
-  accentText: '#161310',      // dark label on gold button
+  accentText: '#FFFFFF',      // white label on gold button
   inkSubtitle: '#B8A98C',     // muted cream subtitle
   inkMuted: '#9B8E78',        // footer / hint text
   surfaceMuted: '#241C16',    // blockquote / code tint
