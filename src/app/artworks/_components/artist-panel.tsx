@@ -136,6 +136,7 @@ export function ArtistPanel({
                       fill
                       className="object-cover"
                       sizes="80px"
+                      unoptimized
                     />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center">
