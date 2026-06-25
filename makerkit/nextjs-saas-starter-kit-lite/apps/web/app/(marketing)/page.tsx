@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { ArrowRightIcon, ShieldCheck } from 'lucide-react';
+import { ArrowRightIcon, Lock, ShieldCheck, UserCheck } from 'lucide-react';
 
 import {
   CtaButton,
@@ -166,6 +166,7 @@ function Home() {
             </FeatureShowcase>
           </div>
         </div>
+        <DataTransparencySection />
         <FoundersSection />
       </div>
     </>
@@ -173,6 +174,87 @@ function Home() {
 }
 
 export default withI18n(Home);
+
+function DataTransparencySection() {
+  return (
+    <section
+      id="data-privacy"
+      className="container mx-auto max-w-5xl px-4"
+      aria-label="How we use your data"
+    >
+      <div className="border-border bg-muted/40 rounded-2xl border p-8 md:p-12">
+        <div className="mb-8 text-center">
+          <p className="text-primary mb-3 text-sm font-semibold tracking-widest uppercase">
+            Your data &amp; privacy
+          </p>
+          <h2 className="text-foreground text-2xl font-bold tracking-tight md:text-3xl">
+            How Provenance uses your information
+          </h2>
+          <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-base">
+            Provenance is a provenance registry for the art world. When you sign
+            in with Google, we request only the minimum data needed to create
+            and maintain your account.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="flex flex-col items-start gap-3 rounded-xl bg-white p-6 shadow-sm dark:bg-white/5">
+            <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <h3 className="text-foreground font-semibold">
+              What we access via Google
+            </h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Your email address, display name, and profile photo. These are
+              used only to create your account and display your identity within
+              Provenance.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 rounded-xl bg-white p-6 shadow-sm dark:bg-white/5">
+            <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <h3 className="text-foreground font-semibold">
+              How we use it
+            </h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              To authenticate your identity, personalize your dashboard, and
+              associate certificates, artworks, and provenance records with your
+              account. We do not use your Google data for advertising.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 rounded-xl bg-white p-6 shadow-sm dark:bg-white/5">
+            <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
+              <Lock className="h-5 w-5" />
+            </div>
+            <h3 className="text-foreground font-semibold">
+              What we never do
+            </h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              We never sell, share, or rent your personal information to third
+              parties. Your Google credentials are never stored — authentication
+              is handled entirely by Google and Supabase Auth.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-muted-foreground mt-8 text-center text-sm">
+          For full details, read our{' '}
+          <Link
+            href="/privacy-policy"
+            className="text-primary underline underline-offset-4 hover:opacity-80"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      </div>
+    </section>
+  );
+}
 
 function MainCallToActionButton() {
   return (
