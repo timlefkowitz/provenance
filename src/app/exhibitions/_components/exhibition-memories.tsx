@@ -356,39 +356,19 @@ export function ExhibitionMemories({
                   )}
                 </div>
 
-                {/* Photos — full width, layout adapts to count */}
+                {/* Photos — each one full width, stacked vertically */}
                 {imgCount > 0 && (
-                  <div
-                    className={
-                      imgCount === 1
-                        ? ''
-                        : imgCount === 2
-                        ? 'grid grid-cols-2 gap-0.5'
-                        : imgCount === 3
-                        ? 'grid grid-cols-2 gap-0.5'
-                        : 'grid grid-cols-2 gap-0.5'
-                    }
-                  >
-                    {memory.image_urls.map((url, i) => {
-                      // For 3 images: first photo spans full width, next two split
-                      const isFirstOfThree = imgCount === 3 && i === 0;
-                      return (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={`${memory.id}-${i}`}
-                          src={url}
-                          alt=""
-                          loading="lazy"
-                          className={[
-                            'w-full object-cover block',
-                            imgCount === 1 ? 'max-h-[520px]' : 'aspect-square',
-                            isFirstOfThree ? 'col-span-2 aspect-video' : '',
-                          ]
-                            .filter(Boolean)
-                            .join(' ')}
-                        />
-                      );
-                    })}
+                  <div className="flex flex-col gap-0.5">
+                    {memory.image_urls.map((url, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={`${memory.id}-${i}`}
+                        src={url}
+                        alt=""
+                        loading="lazy"
+                        className="w-full h-auto block"
+                      />
+                    ))}
                   </div>
                 )}
 
