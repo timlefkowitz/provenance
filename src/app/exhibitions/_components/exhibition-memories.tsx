@@ -17,7 +17,8 @@ const MAX_IMAGES = 4;
 type PendingImage = {
   key: string;
   file: File;
-  previewUrl: string;
+  /** Blob object-URL for JPEG/PNG/WebP; null for HEIC (server converts, no browser preview). */
+  previewUrl: string | null;
 };
 
 function formatWhen(iso: string): string {
@@ -67,14 +68,26 @@ export function ExhibitionMemories({
 
   useEffect(() => {
     return () => {
-      images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+      images.forEach((img) => {
+        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isHeicFile = (file: File): boolean => {
+    const mime = file.type.toLowerCase();
+    if (mime === 'image/heic' || mime === 'image/heif') return true;
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    return ext === 'heic' || ext === 'heif';
+  };
+
   const addFiles = (fileList: FileList | null) => {
     if (!fileList) return;
-    const incoming = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+    // Accept standard images plus HEIC/HEIF from iPhone (server converts them).
+    const incoming = Array.from(fileList).filter(
+      (f) => f.type.startsWith('image/') || isHeicFile(f),
+    );
     setImages((prev) => {
       const room = MAX_IMAGES - prev.length;
       if (room <= 0) {
@@ -84,7 +97,9 @@ export function ExhibitionMemories({
       const next = incoming.slice(0, room).map((file) => ({
         key: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
         file,
-        previewUrl: URL.createObjectURL(file),
+        // HEIC files can't be previewed in Chrome/Firefox — skip the blob URL
+        // so the upload still works. The server converts them to JPEG.
+        previewUrl: isHeicFile(file) ? null : URL.createObjectURL(file),
       }));
       return [...prev, ...next];
     });
@@ -93,13 +108,15 @@ export function ExhibitionMemories({
   const removeImage = (key: string) => {
     setImages((prev) => {
       const target = prev.find((i) => i.key === key);
-      if (target) URL.revokeObjectURL(target.previewUrl);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
       return prev.filter((i) => i.key !== key);
     });
   };
 
   const resetForm = () => {
-    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    images.forEach((img) => {
+      if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+    });
     setImages([]);
     setBody('');
   };
@@ -175,10 +192,21 @@ export function ExhibitionMemories({
               {images.map((img) => (
                 <div
                   key={img.key}
-                  className="relative h-20 w-20 overflow-hidden rounded-lg border border-wine/15"
+                  className="relative h-20 w-20 overflow-hidden rounded-lg border border-wine/15 bg-parchment/60"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.previewUrl} alt="" className="h-full w-full object-cover" />
+                  {img.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={img.previewUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    // HEIC files can't be previewed in the browser; show a
+                    // filename placeholder — the server converts them to JPEG on upload.
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center">
+                      <Camera className="h-5 w-5 text-wine/40" />
+                      <span className="text-[9px] font-serif text-ink/40 leading-tight break-all line-clamp-2">
+                        {img.file.name}
+                      </span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeImage(img.key)}
@@ -195,7 +223,7 @@ export function ExhibitionMemories({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,image/heic,image/heif"
             multiple
             className="hidden"
             onChange={(e) => {
@@ -206,7 +234,7 @@ export function ExhibitionMemories({
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,image/heic,image/heif"
             capture="environment"
             className="hidden"
             onChange={(e) => {
