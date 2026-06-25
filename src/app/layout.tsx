@@ -109,7 +109,10 @@ export default async function RootLayout({
     } = await client.auth.getUser();
 
     if (authError) {
-      console.error('[Provenance] RootLayout auth.getUser failed', authError);
+      // AuthSessionMissingError is expected for unauthenticated visitors — not a real error.
+      if (authError.name !== 'AuthSessionMissingError') {
+        console.error('[Provenance] RootLayout auth.getUser failed', authError);
+      }
     } else if (user) {
       initialUser = {
         ...user,
