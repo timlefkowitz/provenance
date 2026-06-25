@@ -2,10 +2,10 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { USER_ROLES } from '~/lib/user-roles';
 import appConfig from '~/config/app.config';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
+import { getExhibitionShareMeta } from '../_actions/get-exhibition-share-meta';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
@@ -21,52 +21,41 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const admin = getSupabaseServerAdminClient() as any;
 
-  const { data: exhibition } = await admin
-    .from('exhibitions')
-    .select('title, description, location, start_date, end_date, image_url, gallery_id')
-    .eq('id', id)
-    .maybeSingle();
+  const meta = await getExhibitionShareMeta(id);
 
-  if (!exhibition) {
+  if (!meta) {
     return { title: 'Exhibition | Provenance' };
   }
 
-  // Try to get the gallery name
-  let galleryName: string | null = null;
-  if (exhibition.gallery_id) {
-    const { data: account } = await admin
-      .from('accounts')
-      .select('name')
-      .eq('id', exhibition.gallery_id)
-      .maybeSingle();
-    galleryName = account?.name ?? null;
-  }
+  const galleryName = meta.ownerName;
 
   const title = galleryName
-    ? `${exhibition.title} — ${galleryName} | Provenance`
-    : `${exhibition.title} | Provenance`;
+    ? `${meta.title} — ${galleryName} | Provenance`
+    : `${meta.title} | Provenance`;
 
   const dateRange = (() => {
-    if (!exhibition.start_date) return null;
+    if (!meta.startDate) return null;
     const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
-    const start = new Date(exhibition.start_date).toLocaleDateString('en-US', opts);
-    if (!exhibition.end_date) return start;
-    const end = new Date(exhibition.end_date).toLocaleDateString('en-US', opts);
+    const start = new Date(meta.startDate).toLocaleDateString('en-US', opts);
+    if (!meta.endDate) return start;
+    const end = new Date(meta.endDate).toLocaleDateString('en-US', opts);
     return `${start} – ${end}`;
   })();
 
   const descriptionParts: string[] = [];
-  if (exhibition.description) descriptionParts.push(exhibition.description);
+  if (meta.description) descriptionParts.push(meta.description);
   else if (galleryName) descriptionParts.push(`An exhibition by ${galleryName}.`);
   if (dateRange) descriptionParts.push(dateRange);
-  if (exhibition.location) descriptionParts.push(exhibition.location);
+  if (meta.location) descriptionParts.push(meta.location);
   const description = descriptionParts.join(' · ') || 'Exhibition on Provenance.';
 
-  const images = exhibition.image_url
-    ? [{ url: exhibition.image_url, width: 1200, height: 630, alt: exhibition.title }]
-    : [];
+  // When the exhibition has its own image, use it for the rich preview.
+  // Otherwise fall back to the branded exhibition Open Graph image
+  // (opengraph-image.tsx) so previews never show the default favicon.
+  const images = meta.imageUrl
+    ? [{ url: meta.imageUrl, width: 1200, height: 630, alt: meta.title }]
+    : undefined;
 
   return {
     title,
@@ -75,12 +64,13 @@ export async function generateMetadata({
       title,
       description,
       type: 'website',
-      images,
+      ...(images ? { images } : {}),
     },
     twitter: {
-      card: images.length ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
+      ...(images ? { images: images.map((i) => i.url) } : {}),
     },
   };
 }
