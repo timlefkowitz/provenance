@@ -36,15 +36,15 @@
   --color-notify-info: var(--notify-info);
   --color-notify-warning: var(--notify-warning);
 
-  /* Use Gotham as primary font across the app, with sensible fallbacks */
-  --font-display: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-    sans-serif;
-  --font-serif: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-    sans-serif;
-  --font-body: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-    sans-serif;
-  --font-family-landing: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    system-ui, sans-serif;
+  /* Gotham (commercial) with strong geometric-sans fallbacks */
+  --font-display: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+  --font-serif: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+  --font-family-landing: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 @layer base {
@@ -55,8 +55,23 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: "Gotham", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-      sans-serif;
+    font-family: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
+      BlinkMacSystemFont, system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  h1 {
+    letter-spacing: -0.04em;
   }
 }
 
@@ -90,6 +105,11 @@
 }
 @utility pr-safe {
   padding-right: max(env(safe-area-inset-right), 0px);
+}
+
+/* Near-invisible diffuse shadow for premium layered card depth */
+@utility shadow-editorial {
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04), 0 8px 24px rgba(10, 10, 10, 0.05);
 }
 
 /* ── Toolbox dropdown animations ──
