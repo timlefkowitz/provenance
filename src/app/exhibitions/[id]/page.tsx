@@ -6,11 +6,12 @@ import { USER_ROLES } from '~/lib/user-roles';
 import appConfig from '~/config/app.config';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { getExhibitionShareMeta } from '../_actions/get-exhibition-share-meta';
+import { getExhibitionMemories } from '../_actions/exhibition-memories';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
 import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
-import { ExhibitionDetails } from '../_components/exhibition-details';
+import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 
 export const dynamic = 'force-dynamic';
@@ -119,6 +120,8 @@ export default async function ExhibitionPage({
 
   const isOwner =
     !!user && (await canManageExhibition(user.id, exhibition.gallery_id));
+
+  const memories = await getExhibitionMemories(id);
 
   // Resolve back link
   let backLink = '/exhibitions';
@@ -282,7 +285,7 @@ export default async function ExhibitionPage({
         </div>
       )}
 
-      {/* ── ARTWORKS ──────────────────────────────────────────── */}
+      {/* ── TABS: WORKS / ARTISTS & MEDIA / MEMORIES ──────────── */}
       <div className="container mx-auto px-4 max-w-6xl py-12 pb-24">
         {isOwner && (
           <ExhibitionPublishBanner
@@ -290,12 +293,13 @@ export default async function ExhibitionPage({
             publishedAt={exhibition.published_at ?? null}
           />
         )}
-        {exhibition.artworks.length > 0 && (
-          <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-8">
-            Works in Exhibition · {exhibition.artworks.length}
-          </p>
-        )}
-        <ExhibitionDetails exhibition={exhibition} isOwner={isOwner} />
+        <ExhibitionTabs
+          exhibition={exhibition}
+          isOwner={isOwner}
+          memories={memories}
+          canPost={!!user}
+          currentUserId={user?.id ?? null}
+        />
       </div>
     </div>
     </>
