@@ -17,7 +17,7 @@ import {
 } from '~/lib/email-defaults';
 import type { SummaryItem } from '~/lib/email-defaults';
 
-export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('minimal');
+export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('atelier');
 
 type EmailSettingsRow = {
   layout_preset?: string | null;

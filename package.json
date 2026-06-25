@@ -20,6 +20,8 @@
     "build:planets:all": "pnpm --filter @provenance/collectibles --filter @provenance/realestate --filter @provenance/vehicles --filter @provenance/api build",
     "dev:vehicles": "pnpm --filter @provenance/vehicles dev",
     "dev:realestate": "pnpm --filter @provenance/realestate dev",
+    "email:contrast": "tsx scripts/check-email-contrast.ts",
+    "email:gen-auth": "tsx scripts/generate-auth-email-templates.ts",
     "with-env": "dotenv -e ./.env.local --",
     "postinstall": "node scripts/ensure-ffmpeg-static.cjs"
   },

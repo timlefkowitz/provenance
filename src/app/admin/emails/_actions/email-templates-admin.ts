@@ -12,16 +12,21 @@ import {
   DEFAULT_EMAIL_SUBJECTS,
   type EmailTemplateKey,
 } from '~/lib/email-defaults';
-import type { AdminEmailThemeDraft } from '~/lib/email-layout-presets';
 import {
+  EMAIL_LAYOUT_PRESET_IDS,
+  type AdminEmailThemeDraft,
   defaultAdminEmailThemeDraft,
   getPresetThemeDefaults,
+  normalizeEmailLayoutPreset,
   resolveEmailThemeFromAdminDraft,
 } from '~/lib/email-layout-presets';
 import type { EmailTheme } from '~/lib/email-layout';
 
+const PRESET_ENUM = EMAIL_LAYOUT_PRESET_IDS as unknown as [string, ...string[]];
+
 const settingsSchema = z.object({
-  masthead_title: z.string().min(1).max(120),
+  layout_preset:     z.enum(PRESET_ENUM),
+  masthead_title:    z.string().min(1).max(120),
   masthead_subtitle: z.string().min(1).max(200),
 });
 
@@ -35,15 +40,15 @@ const templateSchema = z.object({
     'artwork_featured',
     'institution_thanks',
   ]),
-  subject: z.string().min(1).max(500),
+  subject:       z.string().min(1).max(500),
   body_markdown: z.string().min(1).max(100_000),
 });
 
 const previewPayloadSchema = z.object({
-  template_key: templateSchema.shape.template_key,
-  subject: z.string().min(1).max(500),
+  template_key:  templateSchema.shape.template_key,
+  subject:       z.string().min(1).max(500),
   body_markdown: z.string().min(1).max(100_000),
-  theme: settingsSchema,
+  theme:         settingsSchema,
 });
 
 async function requireAdminUser() {
@@ -60,8 +65,12 @@ async function requireAdminUser() {
 function dbRowToDraft(row: Record<string, unknown>): AdminEmailThemeDraft {
   const d = defaultAdminEmailThemeDraft();
   return {
+    layout_preset:
+      normalizeEmailLayoutPreset(row.layout_preset),
     masthead_title:
-      typeof row.masthead_title === 'string' && row.masthead_title ? row.masthead_title : d.masthead_title,
+      typeof row.masthead_title === 'string' && row.masthead_title
+        ? row.masthead_title
+        : d.masthead_title,
     masthead_subtitle:
       typeof row.masthead_subtitle === 'string' && row.masthead_subtitle
         ? row.masthead_subtitle
@@ -71,10 +80,7 @@ function dbRowToDraft(row: Record<string, unknown>): AdminEmailThemeDraft {
 
 export type EmailTemplatesAdminPayload = {
   theme: AdminEmailThemeDraft;
-  templates: Record<
-    EmailTemplateKey,
-    { subject: string; bodyMarkdown: string }
-  >;
+  templates: Record<EmailTemplateKey, { subject: string; bodyMarkdown: string }>;
 };
 
 export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminPayload> {
@@ -92,7 +98,9 @@ export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminP
     console.error('[Admin/emails] email_settings read failed', settingsErr);
   }
 
-  const theme: AdminEmailThemeDraft = settingsRow ? dbRowToDraft(settingsRow) : defaultAdminEmailThemeDraft();
+  const theme: AdminEmailThemeDraft = settingsRow
+    ? dbRowToDraft(settingsRow)
+    : defaultAdminEmailThemeDraft();
 
   const { data: templateRows, error: tplErr } = await admin
     .from('email_templates')
@@ -105,7 +113,7 @@ export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminP
   const byKey = new Map<string, { subject: string; body_markdown: string }>();
   for (const row of templateRows ?? []) {
     byKey.set(row.template_key, {
-      subject: row.subject,
+      subject:       row.subject,
       body_markdown: row.body_markdown,
     });
   }
@@ -115,7 +123,7 @@ export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminP
   for (const k of keys) {
     const row = byKey.get(k);
     templates[k] = {
-      subject: row?.subject ?? DEFAULT_EMAIL_SUBJECTS[k],
+      subject:      row?.subject       ?? DEFAULT_EMAIL_SUBJECTS[k],
       bodyMarkdown: row?.body_markdown ?? DEFAULT_EMAIL_MARKDOWN[k],
     };
   }
@@ -123,7 +131,9 @@ export async function getEmailTemplatesAdminData(): Promise<EmailTemplatesAdminP
   return { theme, templates };
 }
 
-export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Promise<{ ok: boolean; error?: string }> {
+export async function saveEmailTheme(
+  input: z.infer<typeof settingsSchema>,
+): Promise<{ ok: boolean; error?: string }> {
   console.log('[Admin/emails] saveEmailTheme started');
   try {
     await requireAdminUser();
@@ -132,26 +142,34 @@ export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Pro
       return { ok: false, error: parsed.error.flatten().formErrors.join(', ') };
     }
 
-    const preset = getPresetThemeDefaults('minimal');
+    const presetId = parsed.data.layout_preset;
+    const preset   = getPresetThemeDefaults(presetId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tables not in generated DB types yet
     const admin = getSupabaseServerAdminClient() as any;
-    const { data: existing } = await admin.from('email_settings').select('id').limit(1).maybeSingle();
+    const { data: existing } = await admin
+      .from('email_settings')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
 
     const payload = {
-      layout_preset: 'minimal',
-      parchment: preset.parchment,
-      ink: preset.ink,
-      wine: preset.wine,
-      ink_subtitle: preset.inkSubtitle,
-      ink_muted: preset.inkMuted,
-      masthead_title: parsed.data.masthead_title,
+      layout_preset:     presetId,
+      parchment:         preset.parchment,
+      ink:               preset.ink,
+      wine:              preset.wine,
+      ink_subtitle:      preset.inkSubtitle,
+      ink_muted:         preset.inkMuted,
+      masthead_title:    parsed.data.masthead_title,
       masthead_subtitle: parsed.data.masthead_subtitle,
-      updated_at: new Date().toISOString(),
+      updated_at:        new Date().toISOString(),
     };
 
     if (existing?.id) {
-      const { error } = await admin.from('email_settings').update(payload).eq('id', existing.id);
+      const { error } = await admin
+        .from('email_settings')
+        .update(payload)
+        .eq('id', existing.id);
       if (error) {
         console.error('[Admin/emails] saveEmailTheme update failed', error);
         return { ok: false, error: error.message };
@@ -164,7 +182,7 @@ export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Pro
       }
     }
 
-    console.log('[Admin/emails] email theme saved');
+    console.log('[Admin/emails] email theme saved', presetId);
     revalidatePath('/admin/emails');
     return { ok: true };
   } catch (e) {
@@ -175,10 +193,7 @@ export async function saveEmailTheme(input: z.infer<typeof settingsSchema>): Pro
 
 export async function previewEmailTemplate(
   input: z.infer<typeof previewPayloadSchema>,
-): Promise<
-  | { ok: true; html: string; previewSubject: string }
-  | { ok: false; error: string }
-> {
+): Promise<{ ok: true; html: string; previewSubject: string } | { ok: false; error: string }> {
   try {
     await requireAdminUser();
     const parsed = previewPayloadSchema.safeParse(input);
@@ -191,7 +206,7 @@ export async function previewEmailTemplate(
 
     const theme: EmailTheme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
 
-    console.log('[Admin/emails] previewEmailTemplate', parsed.data.template_key);
+    console.log('[Admin/emails] previewEmailTemplate', parsed.data.template_key, parsed.data.theme.layout_preset);
     const { html, previewSubject } = buildEmailPreviewHtml(
       parsed.data.template_key,
       theme,
@@ -273,10 +288,10 @@ export async function saveEmailTemplate(
     const admin = getSupabaseServerAdminClient() as any;
     const { error } = await admin.from('email_templates').upsert(
       {
-        template_key: parsed.data.template_key,
-        subject: parsed.data.subject,
+        template_key:  parsed.data.template_key,
+        subject:       parsed.data.subject,
         body_markdown: parsed.data.body_markdown,
-        updated_at: new Date().toISOString(),
+        updated_at:    new Date().toISOString(),
       },
       { onConflict: 'template_key' },
     );

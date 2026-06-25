@@ -14,14 +14,170 @@ import {
   type EmailTemplatesAdminPayload,
 } from '../_actions/email-templates-admin';
 import type { EmailTemplateKey } from '~/lib/email-defaults';
+import {
+  EMAIL_LAYOUT_PRESET_IDS,
+  EMAIL_LAYOUT_PRESET_LABELS,
+  EMAIL_THEMES,
+  type AdminEmailThemeDraft,
+} from '~/lib/email-layout-presets';
+import type { EmailLayoutPresetId } from '~/lib/email-layout';
+
+// ── Preset swatch card ─────────────────────────────────────────────────────
+
+function PresetCard({
+  id,
+  isActive,
+  onSelect,
+}: {
+  id: EmailLayoutPresetId;
+  isActive: boolean;
+  onSelect: (id: EmailLayoutPresetId) => void;
+}) {
+  const t = EMAIL_THEMES[id];
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(id)}
+      className={`group relative flex flex-col overflow-hidden rounded-lg border-2 transition-all text-left ${
+        isActive
+          ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
+          : 'border-neutral-200 hover:border-neutral-400'
+      }`}
+      aria-pressed={isActive}
+    >
+      {/* Mini email preview */}
+      <div
+        style={{ backgroundColor: t.parchment }}
+        className="h-24 w-full relative overflow-hidden"
+      >
+        {/* Hero band preview for hero variant */}
+        {t.mastheadVariant === 'hero' && t.heroBandColor && (
+          <div
+            style={{ backgroundColor: t.heroBandColor, height: '36px' }}
+            className="w-full flex items-center justify-center"
+          >
+            <span
+              style={{ color: t.heroBandTextColor ?? '#fff', fontFamily: t.fontFamily, fontSize: '8px', letterSpacing: '0.2em' }}
+              className="uppercase font-bold"
+            >
+              {t.mastheadTitle}
+            </span>
+          </div>
+        )}
+
+        {/* Non-hero masthead preview */}
+        {t.mastheadVariant !== 'hero' && (
+          <div className="px-3 pt-2.5">
+            <p
+              style={{
+                color: t.wine,
+                fontFamily: t.mastheadVariant === 'mono' ? 'monospace' : t.fontFamily,
+                fontSize: '7px',
+                letterSpacing: '0.18em',
+                textAlign: t.mastheadAlign === 'center' ? 'center' : 'left',
+              }}
+              className="uppercase font-bold m-0 leading-none"
+            >
+              {t.mastheadTitle}
+            </p>
+            <div
+              style={{ backgroundColor: t.mastheadVariant === 'double-rule' ? t.wine : t.cardBorder, height: '1px', marginTop: '5px' }}
+            />
+          </div>
+        )}
+
+        {/* Card preview */}
+        {t.useCard ? (
+          <div
+            style={{
+              backgroundColor: t.cardBg,
+              border: `1px solid ${t.cardBorder}`,
+              borderRadius: t.cardRadius,
+              margin: '6px 6px 0',
+              padding: '5px 6px',
+            }}
+          >
+            {t.accentBarHeight > 0 && (
+              <div style={{ backgroundColor: t.wine, height: `${Math.min(t.accentBarHeight, 2)}px`, borderRadius: '2px 2px 0 0', margin: '-5px -6px 4px -6px' }} />
+            )}
+            <div style={{ backgroundColor: t.ink, height: '3px', width: '55%', borderRadius: '2px' }} />
+            <div style={{ backgroundColor: t.inkMuted, height: '2px', width: '80%', borderRadius: '2px', marginTop: '4px' }} />
+            <div style={{ backgroundColor: t.inkMuted, height: '2px', width: '70%', borderRadius: '2px', marginTop: '3px' }} />
+            {/* Button preview */}
+            <div
+              style={{
+                backgroundColor: t.wine,
+                borderRadius: t.buttonRadius,
+                marginTop: '6px',
+                padding: '3px 8px',
+                display: 'inline-block',
+              }}
+            >
+              <span style={{ color: t.accentText, fontSize: '6px', fontFamily: t.fontFamily }}>
+                {t.buttonTextTransform === 'uppercase' ? 'ACTION' : 'Action'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ margin: '6px 6px 0', padding: '5px 6px' }}>
+            <div style={{ backgroundColor: t.ink, height: '3px', width: '55%', borderRadius: '2px' }} />
+            <div style={{ backgroundColor: t.inkMuted, height: '2px', width: '80%', borderRadius: '2px', marginTop: '4px' }} />
+            <div style={{ backgroundColor: t.inkMuted, height: '2px', width: '70%', borderRadius: '2px', marginTop: '3px' }} />
+            <div
+              style={{
+                backgroundColor: t.wine,
+                borderRadius: t.buttonRadius,
+                marginTop: '6px',
+                padding: '3px 8px',
+                display: 'inline-block',
+              }}
+            >
+              <span style={{ color: t.accentText, fontSize: '6px', fontFamily: t.fontFamily }}>
+                {t.buttonTextTransform === 'uppercase' ? 'ACTION' : 'Action'}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Label + swatches */}
+      <div className="px-2.5 py-2 bg-white border-t border-neutral-200">
+        <p className="text-[11px] font-semibold text-neutral-800 leading-none mb-1.5">
+          {EMAIL_LAYOUT_PRESET_LABELS[id]}
+        </p>
+        <div className="flex items-center gap-1">
+          {[t.parchment, t.cardBg, t.wine, t.accentText].map((color, i) => (
+            <span
+              key={i}
+              title={color}
+              style={{ backgroundColor: color, border: '1px solid rgba(0,0,0,0.12)' }}
+              className="block w-3 h-3 rounded-sm flex-shrink-0"
+            />
+          ))}
+          <span className="text-[9px] text-neutral-400 ml-0.5 leading-none">
+            bg · card · accent · label
+          </span>
+        </div>
+      </div>
+
+      {isActive && (
+        <div className="absolute top-1.5 right-1.5 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
+          Active
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ── Main form ──────────────────────────────────────────────────────────────
 
 const TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
-  welcome: 'Welcome',
-  certification: 'Certification',
-  notification: 'Notification',
-  summary: 'Summary',
-  update: 'Update',
-  artwork_featured: 'Artwork featured',
+  welcome:            'Welcome',
+  certification:      'Certification',
+  notification:       'Notification',
+  summary:            'Summary',
+  update:             'Update',
+  artwork_featured:   'Artwork featured',
   institution_thanks: 'Institution thank-you',
 };
 
@@ -37,7 +193,7 @@ const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
 Primary action links: keep one markdown line like [Your label](https://…) that matches the main URL we inject (e.g. Get Started → site/artworks/add). That line is replaced by a bulletproof button; if you change the URL or label, remove the old markdown line to avoid a duplicate text link.`;
 
 function serializeWorkspaceState(
-  theme: EmailTemplatesAdminPayload['theme'],
+  theme: AdminEmailThemeDraft,
   templates: EmailTemplatesAdminPayload['templates'],
 ) {
   return JSON.stringify({ theme, templates });
@@ -50,13 +206,10 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
     [initial.templates],
   );
   const [activeKey, setActiveKey] = useState<EmailTemplateKey>(keys[0] ?? 'welcome');
-
-  const [theme, setTheme] = useState<EmailTemplatesAdminPayload['theme']>(initial.theme);
-
+  const [theme, setTheme] = useState<AdminEmailThemeDraft>(initial.theme);
   const [templates, setTemplates] = useState(initial.templates);
 
   const savedBaselineRef = useRef(serializeWorkspaceState(initial.theme, initial.templates));
-
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -82,14 +235,12 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
 
       try {
         const res = await previewEmailTemplate({
-          template_key: activeKey,
-          subject: t.subject,
+          template_key:  activeKey,
+          subject:       t.subject,
           body_markdown: t.bodyMarkdown,
           theme,
         });
-        if (seq !== previewSeq.current) {
-          return;
-        }
+        if (seq !== previewSeq.current) return;
         if (res.ok) {
           setPreviewHtml(res.html);
           setPreviewSubject(res.previewSubject);
@@ -97,15 +248,11 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
           toast.error(res.error ?? 'Preview failed');
         }
       } catch (e) {
-        if (seq !== previewSeq.current) {
-          return;
-        }
+        if (seq !== previewSeq.current) return;
         console.error('[Admin/emails] preview client error', e);
         toast.error(e instanceof Error ? e.message : 'Preview failed');
       } finally {
-        if (seq === previewSeq.current) {
-          setPreviewLoading(false);
-        }
+        if (seq === previewSeq.current) setPreviewLoading(false);
       }
     },
     [activeKey, templates, theme],
@@ -124,10 +271,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
       setPreviewLoading(false);
       return;
     }
-
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
       void runPreview(false);
@@ -153,9 +297,9 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
       const res = await saveEmailTheme(theme);
       if (res.ok) {
         savedBaselineRef.current = serializeWorkspaceState(theme, templates);
-        toast.success('Email masthead saved');
+        toast.success(`Design style saved — ${EMAIL_LAYOUT_PRESET_LABELS[theme.layout_preset]}`);
       } else {
-        toast.error(res.error ?? 'Failed to save masthead');
+        toast.error(res.error ?? 'Failed to save');
       }
     });
   };
@@ -164,13 +308,13 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
     const t = templates[activeKey];
     startTransition(async () => {
       const res = await saveEmailTemplate({
-        template_key: activeKey,
-        subject: t.subject,
+        template_key:  activeKey,
+        subject:       t.subject,
         body_markdown: t.bodyMarkdown,
       });
       if (res.ok) {
         savedBaselineRef.current = serializeWorkspaceState(theme, templates);
-        toast.success(`Saved “${TEMPLATE_LABELS[activeKey]}” template`);
+        toast.success(`Saved "${TEMPLATE_LABELS[activeKey]}" template`);
       } else {
         toast.error(res.error ?? 'Failed to save template');
       }
@@ -185,8 +329,8 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
     }
     startTransition(async () => {
       const res = await sendTestEmailTemplate({
-        template_key: activeKey,
-        subject: t.subject,
+        template_key:  activeKey,
+        subject:       t.subject,
         body_markdown: t.bodyMarkdown,
         theme,
       });
@@ -200,9 +344,17 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
 
   return (
     <div className="space-y-10">
+
+      {/* ── Design style ──────────────────────────────────────── */}
       <section className="border border-neutral-200 rounded-lg p-6 bg-white space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-neutral-900">Masthead</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-neutral-900">Design style</h2>
+            <p className="text-sm text-neutral-600 mt-1">
+              Choose a design for all outgoing transactional emails. The live preview updates instantly.
+              Save with <strong>Save style &amp; masthead</strong> to apply globally.
+            </p>
+          </div>
           <span
             className={`text-xs font-medium uppercase tracking-wide px-2.5 py-1 rounded border ${
               isDirty
@@ -213,8 +365,24 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
             {isDirty ? 'Unsaved changes' : 'Saved'}
           </span>
         </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {EMAIL_LAYOUT_PRESET_IDS.map((id) => (
+            <PresetCard
+              key={id}
+              id={id}
+              isActive={theme.layout_preset === id}
+              onSelect={(id) => setTheme((s) => ({ ...s, layout_preset: id }))}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Masthead ──────────────────────────────────────────── */}
+      <section className="border border-neutral-200 rounded-lg p-6 bg-white space-y-4">
+        <h2 className="text-xl font-semibold text-neutral-900">Masthead</h2>
         <p className="text-sm text-neutral-600">
-          Wordmark and subtitle shown at the top of every email. Layout and colors use the minimal design system.
+          Wordmark and subtitle shown at the top of every email.
         </p>
         <div>
           <Label htmlFor="masthead_title">Wordmark</Label>
@@ -235,10 +403,11 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
           />
         </div>
         <Button type="button" onClick={saveTheme} disabled={pending}>
-          Save masthead
+          Save style &amp; masthead
         </Button>
       </section>
 
+      {/* ── Templates ─────────────────────────────────────────── */}
       <section className="border border-neutral-200 rounded-lg p-6 bg-white space-y-6">
         <div>
           <h2 className="text-xl font-semibold text-neutral-900">Email templates (Markdown)</h2>
@@ -278,7 +447,7 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
                 }
               />
               <p className="text-xs text-neutral-500 mt-1">
-                Notification & summary/update emails still receive the subject from the app when sent
+                Notification &amp; summary/update emails still receive the subject from the app when sent
                 programmatically; this subject is used for welcome/certification and as a default where
                 applicable.
               </p>
@@ -333,12 +502,13 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
                 >
                   {isDirty ? 'Draft' : 'Saved'}
                 </span>
-                <span className="text-[11px] uppercase tracking-wide text-neutral-500">Sample data</span>
+                <span className="text-[11px] uppercase tracking-wide text-neutral-500">
+                  {EMAIL_LAYOUT_PRESET_LABELS[theme.layout_preset]}
+                </span>
               </div>
             </div>
             <p className="text-xs text-neutral-500 leading-relaxed">
               Placeholders are filled with example names, links, and lists so you can see the real layout.
-              Client apps may still override some subject lines when sending.
             </p>
             <div className="rounded-lg border border-neutral-200 bg-neutral-50 shadow-sm overflow-hidden">
               <div className="border-b border-neutral-200 bg-white px-4 py-3 space-y-1.5 text-left">

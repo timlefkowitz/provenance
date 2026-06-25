@@ -20,7 +20,7 @@ export default async function AdminEmailsPage() {
             Email templates
           </h1>
           <p className="text-ink/70 font-serif">
-            Edit transactional email copy (Markdown) and masthead text. All emails use the minimal design system.
+            Choose one of 8 design styles, edit the masthead wordmark, and edit Markdown copy for every transactional email template. All styles are WCAG AA contrast-verified.
             Requires the <code className="text-sm">email_settings</code> and{' '}
             <code className="text-sm">email_templates</code> tables in Supabase.
           </p>
