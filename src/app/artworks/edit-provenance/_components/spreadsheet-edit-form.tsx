@@ -1339,6 +1339,7 @@ export function SpreadsheetEditForm({
                             fill
                             className="object-cover"
                             sizes="(max-width:640px) 45vw, 132px"
+                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -1653,6 +1654,7 @@ export function SpreadsheetEditForm({
                                       fill
                                       className="object-cover"
                                       sizes="(max-width:640px) 90vw, 80px"
+                                      unoptimized
                                     />
                                     {isUploadingImage && (
                                       <div className="absolute inset-0 bg-black/45 flex items-center justify-center">

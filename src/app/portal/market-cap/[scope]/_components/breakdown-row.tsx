@@ -63,6 +63,7 @@ export function BreakdownRowComponent({ row, artworkHref }: BreakdownRowProps) {
             width={64}
             height={64}
             className="h-full w-full object-cover"
+            unoptimized
           />
         ) : (
           <ImageIcon className="h-6 w-6 text-ink/20" />
