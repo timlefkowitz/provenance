@@ -86,61 +86,46 @@ export type ArtworkFormDataForPrintMenu = {
 
 // ── Wall Labels ───────────────────────────────────────────────────────────────
 
-type LabelSize = { label: string; wIn: number; hIn: number };
-const LABEL_SIZES: Record<'small' | 'standard' | 'medium' | 'extended', LabelSize> = {
-  small:    { label: '2 × 3 in', wIn: 2, hIn: 3 },
-  standard: { label: '2 × 4 in', wIn: 2, hIn: 4 },
-  medium:   { label: '2 × 5 in', wIn: 2, hIn: 5 },
-  extended: { label: '2 × 6 in', wIn: 2, hIn: 6 },
-};
-
-function parseLargestDimensionInches(dimensions: string | null | undefined): number | null {
-  if (!dimensions) return null;
-  const numbers = [...dimensions.matchAll(/(\d+(?:\.\d+)?)/g)].map((m) => parseFloat(m[1]));
-  if (numbers.length === 0) return null;
-  const max = Math.max(...numbers);
-  return /\bcm\b/i.test(dimensions) ? max / 2.54 : max;
-}
-
-function chooseLabelSize(dimensions: string | null | undefined): LabelSize {
-  const maxIn = parseLargestDimensionInches(dimensions);
-  if (maxIn === null) return LABEL_SIZES.standard;
-  if (maxIn <= 12) return LABEL_SIZES.small;
-  if (maxIn <= 36) return LABEL_SIZES.standard;
-  if (maxIn <= 72) return LABEL_SIZES.medium;
-  return LABEL_SIZES.extended;
+function formatPrice(value: string | null | undefined): string {
+  if (!value) return '';
+  const raw = value.trim();
+  const num = parseFloat(raw.replace(/[^0-9.]/g, ''));
+  if (isNaN(num)) return raw;
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
 }
 
 function buildWallLabelsHtml(
   artworks: ArtworkForPrintMenu[],
   artworkData: Record<string, ArtworkFormDataForPrintMenu>,
 ): string {
-  const DPI = 96;
+  // Landscape labels: 4 × 2.5 in at 96 DPI
+  const W_PX = Math.round(4 * 96);
+  const H_PX = Math.round(2.5 * 96);
+
   const labelCells = artworks
     .map((artwork) => {
-      const form = artworkData[artwork.id];
-      const title      = escapeHtml(form?.title       || artwork.title       || 'Untitled');
-      const artist     = escapeHtml(form?.artist_name  || artwork.artist_name  || '');
-      const year       = getYear(form?.creation_date   || artwork.creation_date);
-      const medium     = escapeHtml(form?.medium        || artwork.medium        || '');
-      const dims       = escapeHtml(form?.dimensions    || artwork.dimensions    || '');
-      const creditLine = escapeHtml(form?.owned_by      || artwork.owned_by      || '');
-      const edition    = escapeHtml(form?.edition       || artwork.edition       || '');
-      const labelSize  = chooseLabelSize(form?.dimensions || artwork.dimensions);
-      const wPx = Math.round(labelSize.wIn * DPI);
-      const hPx = Math.round(labelSize.hIn * DPI);
+      const form       = artworkData[artwork.id];
+      const title      = escapeHtml(form?.title        || artwork.title        || 'Untitled');
+      const artist     = escapeHtml(form?.artist_name   || artwork.artist_name  || '');
+      const year       = getYear(form?.creation_date    || artwork.creation_date);
+      const medium     = escapeHtml(form?.medium         || artwork.medium        || '');
+      const dims       = escapeHtml(form?.dimensions     || artwork.dimensions    || '');
+      const edition    = escapeHtml(form?.edition        || artwork.edition       || '');
+      const creditLine = escapeHtml(form?.owned_by       || artwork.owned_by      || '');
+      const rawValue   = form?.value ?? artwork.value;
+      const price      = escapeHtml(formatPrice(rawValue));
       const titleLine  = year ? `${title}, ${year}` : title;
-      const metaParts  = [medium, dims].filter(Boolean).join('; ');
       const editionStr = edition ? `Edition ${edition}` : '';
 
       return `
-        <div class="label" style="width:${wPx}px;height:${hPx}px;" data-size="${escapeHtml(labelSize.label)}">
-          ${artist     ? `<div class="artist">${artist}</div>`           : ''}
+        <div class="label" style="width:${W_PX}px;height:${H_PX}px;">
+          ${artist     ? `<div class="artist">${artist}</div><div class="spacer"></div>` : ''}
           <div class="title">${titleLine}</div>
-          ${metaParts  ? `<div class="meta">${metaParts}</div>`          : ''}
-          ${editionStr ? `<div class="edition">${editionStr}</div>`      : ''}
-          ${creditLine ? `<div class="credit">${creditLine}</div>`       : ''}
-          <div class="size-badge">${escapeHtml(labelSize.label)}</div>
+          ${medium     ? `<div class="meta">${medium}</div>`       : ''}
+          ${dims       ? `<div class="meta">${dims}</div>`         : ''}
+          ${editionStr ? `<div class="meta">${editionStr}</div>`   : ''}
+          ${price      ? `<div class="meta">${price}</div>`        : ''}
+          ${creditLine ? `<div class="credit">${creditLine}</div>` : ''}
         </div>`;
     })
     .join('');
@@ -151,27 +136,23 @@ function buildWallLabelsHtml(
   <meta charset="utf-8" />
   <title>Wall Labels — Provenance</title>
   <style>
-    @page { size: letter; margin: 0.5in; }
+    @page { size: letter landscape; margin: 0.5in; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #0e0b07; }
+    body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #111; }
     .page-grid { display: flex; flex-wrap: wrap; gap: 0.25in; align-items: flex-start; }
     .label {
       break-inside: avoid; page-break-inside: avoid;
-      border: 0.4pt solid #ccc; padding: 7px 9px 18px;
-      position: relative; display: flex; flex-direction: column;
-      justify-content: flex-start; gap: 3px; overflow: hidden;
+      border: 0.5pt solid #d0cdc8;
+      padding: 14px 16px 14px;
+      display: flex; flex-direction: column;
+      justify-content: flex-start; gap: 2px; overflow: hidden;
     }
-    .artist   { font-size: 9pt; font-weight: bold; line-height: 1.2; letter-spacing: 0.01em; }
-    .title    { font-size: 8pt; font-style: italic; line-height: 1.3; color: #1a1209; }
-    .meta     { font-size: 6.5pt; line-height: 1.4; color: #333; margin-top: 1px; }
-    .edition  { font-size: 6pt; color: #555; }
-    .credit   { font-size: 6pt; color: #555; font-style: normal; }
-    .size-badge {
-      position: absolute; bottom: 3px; right: 5px;
-      font-size: 5pt; color: #bbb;
-      font-family: 'Courier New', monospace; letter-spacing: 0.04em;
-    }
-    @media print { .size-badge { display: none; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    .spacer  { height: 6px; }
+    .artist  { font-size: 10pt; font-weight: bold; line-height: 1.25; letter-spacing: 0.01em; }
+    .title   { font-size: 9.5pt; font-style: italic; line-height: 1.3; }
+    .meta    { font-size: 9pt; line-height: 1.4; }
+    .credit  { font-size: 8pt; color: #555; margin-top: 2px; }
+    @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   </style>
 </head>
 <body>
