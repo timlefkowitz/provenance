@@ -107,7 +107,6 @@ function getRemotePatterns() {
       remotePatterns.push({
         protocol: url.protocol === 'https:' ? 'https' : 'http',
         hostname,
-        pathname: '/storage/v1/object/public/**',
       });
     } catch (error) {
       console.warn('Invalid SUPABASE_URL in next.config.ts:', SUPABASE_URL, error);
