@@ -115,6 +115,14 @@ function getPatterns() {
     {
       pattern: new URLPattern({ pathname: '/auth/*?' }),
       handler: async (req: NextRequest, res: NextResponse) => {
+        // The callback route must always run its route handler so it can
+        // exchange the OAuth code for a session. Intercepting it here would
+        // redirect away before the code exchange happens, leaving the user
+        // unsigned-in even after a successful OAuth flow.
+        if (req.nextUrl.pathname === pathsConfig.auth.callback) {
+          return;
+        }
+
         const { data } = await getUser(req, res);
 
         // the user is logged out, so we don't need to do anything
