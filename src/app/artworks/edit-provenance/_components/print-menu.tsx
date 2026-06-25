@@ -112,13 +112,13 @@ function buildWallLabelsHtml(
       const dims       = escapeHtml(form?.dimensions     || artwork.dimensions    || '');
       const edition    = escapeHtml(form?.edition        || artwork.edition       || '');
       const creditLine = escapeHtml(form?.owned_by       || artwork.owned_by      || '');
-      const rawValue   = form?.value ?? artwork.value;
+      const rawValue   = form?.value || artwork.value;
       const price      = escapeHtml(formatPrice(rawValue));
       const titleLine  = year ? `${title}, ${year}` : title;
       const editionStr = edition ? `Edition ${edition}` : '';
 
       return `
-        <div class="label" style="width:${W_PX}px;height:${H_PX}px;">
+        <div class="label" style="width:${W_PX}px;min-height:${H_PX}px;">
           ${artist     ? `<div class="artist">${artist}</div><div class="spacer"></div>` : ''}
           <div class="title">${titleLine}</div>
           ${medium     ? `<div class="meta">${medium}</div>`       : ''}
@@ -145,7 +145,7 @@ function buildWallLabelsHtml(
       border: 0.5pt solid #d0cdc8;
       padding: 14px 16px 14px;
       display: flex; flex-direction: column;
-      justify-content: flex-start; gap: 2px; overflow: hidden;
+      justify-content: flex-start; gap: 2px;
     }
     .spacer  { height: 6px; }
     .artist  { font-size: 10pt; font-weight: bold; line-height: 1.25; letter-spacing: 0.01em; }
@@ -496,6 +496,20 @@ export function PrintMenu({
   const handlePrintWallLabels = () => {
     if (disabled) return;
     console.log('[Collection] PrintMenu: Wall Labels', { count: selectedArtworks.length });
+    // Diagnostic: surface which fields resolve for each label so we can tell
+    // whether missing dimensions/price is a data issue vs a rendering issue.
+    console.log(
+      '[Collection] Wall Labels field check',
+      selectedArtworks.map((a) => {
+        const form = artworkData[a.id];
+        return {
+          id: a.id,
+          title: form?.title || a.title,
+          dimensions: form?.dimensions || a.dimensions || '(empty)',
+          value: form?.value || a.value || '(empty)',
+        };
+      }),
+    );
     openPrintWindow(buildWallLabelsHtml(selectedArtworks, artworkData), 900, 720);
   };
 
