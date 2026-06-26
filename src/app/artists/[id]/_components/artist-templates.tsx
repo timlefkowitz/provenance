@@ -42,6 +42,7 @@ export interface ArtistTemplateProps {
   links: string[];
   website: string | null;
   isOwner: boolean;
+  profileId?: string;
   publishedSiteUrl: string | null;
   hasCv: boolean;
   cvHref: string;
@@ -77,14 +78,16 @@ function exhibitionYear(start: string, end: string | null) {
 
 function OwnerActions({
   isOwner,
+  profileId,
   publishedSiteUrl,
   hasCv,
   cvHref,
 }: Pick<
   ArtistTemplateProps,
-  'isOwner' | 'publishedSiteUrl' | 'hasCv' | 'cvHref'
+  'isOwner' | 'profileId' | 'publishedSiteUrl' | 'hasCv' | 'cvHref'
 >) {
   if (!isOwner) return null;
+  const siteHref = profileId ? `/profile/site?profileId=${profileId}` : '/profile/site';
   return (
     <div className="flex flex-wrap gap-2">
       <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
@@ -96,7 +99,7 @@ function OwnerActions({
         size="sm"
         className="font-serif border-wine/30 hover:bg-wine/10"
       >
-        <Link href="/profile/site">
+        <Link href={siteHref}>
           {publishedSiteUrl ? 'Manage Website' : 'Create Website'}
         </Link>
       </Button>

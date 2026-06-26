@@ -370,6 +370,8 @@ export default async function ArtistProfilePage({
   } else if (isArtistProfile) {
     allExhibitions = await getExhibitionsForArtistAccount(account.id, {
       artistProfileId: roleProfile?.id ?? null,
+      // Exclude shows created by this user's own gallery — they belong on the gallery view
+      excludeGalleryId: account.id,
     });
   }
   const exhibitions = allExhibitions.slice(0, 6);
@@ -591,18 +593,21 @@ export default async function ArtistProfilePage({
       .limit(96);
 
     if (userRole === USER_ROLES.ARTIST) {
+      // Artist profiles: only show Certificates of Authenticity (COA).
+      // We match by artist_account_id or artist_profile_id — deliberately
+      // excluding the legacy account_id fallback so gallery-uploaded COS/COO
+      // artworks (which share the same account_id) never bleed through.
+      artworksQuery = artworksQuery.eq('certificate_type', 'authenticity');
       const orParts: string[] = [`artist_account_id.eq.${account.id}`];
       if (roleProfile?.id) {
         orParts.push(`artist_profile_id.eq.${roleProfile.id}`);
       }
-      orParts.push(
-        `and(account_id.eq.${account.id},artist_account_id.is.null,artist_profile_id.is.null)`,
-      );
       artworksQuery = artworksQuery.or(orParts.join(','));
       console.log('[ArtistProfile] artist works filter applied', {
         accountId: account.id,
         hasRoleProfile: Boolean(roleProfile?.id),
         roleProfileId: roleProfile?.id ?? null,
+        certificateType: 'authenticity',
       });
     } else {
       artworksQuery = artworksQuery.eq('account_id', account.id);
@@ -696,6 +701,7 @@ export default async function ArtistProfilePage({
         links,
         website: website || null,
         isOwner,
+        profileId: roleProfile?.id,
         publishedSiteUrl,
         hasCv,
         cvHref,
@@ -860,7 +866,7 @@ export default async function ArtistProfilePage({
                       size="sm"
                       className="font-serif border-wine/30 hover:bg-wine/10"
                     >
-                      <Link href="/profile/site">
+                      <Link href={roleProfile?.id ? `/profile/site?profileId=${roleProfile.id}` : '/profile/site'}>
                         {publishedSiteUrl ? 'Manage Website' : 'Create Website'}
                       </Link>
                     </Button>

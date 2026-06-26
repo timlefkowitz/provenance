@@ -101,6 +101,7 @@ export default async function ProfileSitePage({
       {/* ── Editor + Preview ── */}
       <div className="container mx-auto px-4 max-w-7xl py-6 pb-20">
         <SiteEditor
+          key={activeProfile.id}
           profileId={activeProfile.id}
           profile={{
             name: activeProfile.name,

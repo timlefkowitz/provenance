@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
 import type { LucideIcon } from 'lucide-react';
@@ -92,6 +92,18 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
   const user = useCurrentUser(props.initialUser);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setSelectedProfileId(localStorage.getItem('selected_profile_id'));
+
+    const handleProfileSelected = (e: Event) => {
+      setSelectedProfileId((e as CustomEvent<string>).detail);
+    };
+    window.addEventListener('user_profile_selected', handleProfileSelected);
+    return () => window.removeEventListener('user_profile_selected', handleProfileSelected);
+  }, []);
 
   // Investor pages have their own dedicated nav; hide the main nav there.
   // Preview mode renders templates full-screen with its own floating bar.
@@ -162,7 +174,12 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                     </span>
                     <span className="flex-1 h-px bg-wine/10" />
                   </div>
-                  {TOOLBOX_ITEMS.map((item, i) => (
+                  {TOOLBOX_ITEMS.map((item, i) => {
+                    const href =
+                      item.href === '/profile/site' && selectedProfileId
+                        ? `/profile/site?profileId=${selectedProfileId}`
+                        : item.href;
+                    return (
                     <DropdownMenuItem
                       key={item.href}
                       asChild
@@ -170,7 +187,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                       style={{ animationDelay: `${60 + i * 45}ms` }}
                     >
                       <Link
-                        href={item.href}
+                        href={href}
                         className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25 overflow-hidden">
@@ -196,7 +213,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                         </span>
                       </Link>
                     </DropdownMenuItem>
-                  ))}
+                  ); })}
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -377,10 +394,14 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 <div className="w-full grid grid-cols-2 gap-2 pb-2">
                   {TOOLBOX_ITEMS.map((item, i) => {
                     const featured = i === 0;
+                    const href =
+                      item.href === '/profile/site' && selectedProfileId
+                        ? `/profile/site?profileId=${selectedProfileId}`
+                        : item.href;
                     return (
                       <Link
                         key={item.href}
-                        href={item.href}
+                        href={href}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`animate-toolbox-item rounded-xl border transition-colors touch-manipulation ${
                           featured

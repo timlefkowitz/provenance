@@ -63,17 +63,30 @@ export async function getExhibitionsForGallery(
 }
 
 /**
- * Exhibitions where this artist is credited (exhibition_artists) or has verified works in the show (exhibition_artworks).
+ * Exhibitions where this artist is credited (exhibition_artists) or has verified
+ * COA artworks in the show (exhibition_artworks).
+ *
+ * Pass `excludeGalleryId` (the artist's own account ID) to suppress exhibitions
+ * that the artist created in their own gallery capacity — those belong on the
+ * gallery view, not the artist view.
  */
 export async function getExhibitionsForArtistAccount(
   artistAccountId: string,
-  options?: { artistProfileId?: string | null },
+  options?: { artistProfileId?: string | null; excludeGalleryId?: string | null },
 ): Promise<Exhibition[]> {
+  console.log('[Exhibitions] getExhibitionsForArtistAccount started', {
+    artistAccountId,
+    artistProfileId: options?.artistProfileId ?? null,
+    excludeGalleryId: options?.excludeGalleryId ?? null,
+  });
+
   const client = getSupabaseServerClient();
   const profileId = options?.artistProfileId ?? null;
+  const excludeGalleryId = options?.excludeGalleryId ?? null;
 
   const byId = new Map<string, Exhibition>();
 
+  // 1. Exhibitions where the artist is explicitly credited
   const { data: creditedRows, error: creditedErr } = await (client as any)
     .from('exhibition_artists')
     .select(
@@ -106,18 +119,21 @@ export async function getExhibitionsForArtistAccount(
     if (ex?.id) byId.set(ex.id, ex);
   }
 
+  // 2. Exhibitions that contain COA artworks credited to this artist.
+  // Only match by artist_account_id / artist_profile_id — not the legacy
+  // account_id fallback — so gallery-uploaded artworks don't bleed through.
+  // Also restrict to COA so COS artworks from the gallery don't pull in
+  // gallery-owned exhibitions.
   const orParts: string[] = [`artist_account_id.eq.${artistAccountId}`];
   if (profileId) {
     orParts.push(`artist_profile_id.eq.${profileId}`);
   }
-  orParts.push(
-    `and(account_id.eq.${artistAccountId},artist_account_id.is.null,artist_profile_id.is.null)`,
-  );
 
   const { data: artworkRows, error: artworkErr } = await (client as any)
     .from('artworks')
     .select('id')
     .eq('status', 'verified')
+    .eq('certificate_type', 'authenticity')
     .or(orParts.join(','));
 
   if (artworkErr) {
@@ -160,11 +176,17 @@ export async function getExhibitionsForArtistAccount(
     }
   }
 
-  const list = Array.from(byId.values());
+  // Remove exhibitions that belong to this artist's own gallery account
+  // (those should only appear on the gallery profile view)
+  let list = Array.from(byId.values());
+  if (excludeGalleryId) {
+    list = list.filter((ex) => ex.gallery_id !== excludeGalleryId);
+  }
   list.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
   console.log('[Exhibitions] getExhibitionsForArtistAccount', {
     artistAccountId,
+    excludeGalleryId,
     count: list.length,
   });
 
