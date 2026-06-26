@@ -161,6 +161,10 @@ export type SiteArtwork = {
   image_url: string | null;
   created_at: string;
   certificate_number: string;
+  for_sale?: boolean;
+  sale_price?: number | null;
+  sale_currency?: string | null;
+  sold_at?: string | null;
 };
 
 export type SiteExhibition = {

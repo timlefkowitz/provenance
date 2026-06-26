@@ -17,6 +17,7 @@ import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
+import { createArtworkStripeListing } from './create-artwork-stripe-listing';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -54,6 +55,12 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const soldBy = formData.get('soldBy') as string || '';
     const soldByIsPublic = formData.get('soldByIsPublic') === 'true';
     const sourceCoaCertificateNumber = (formData.get('sourceCoaCertificateNumber') as string)?.trim() || '';
+
+    // Sales & Inquiries fields
+    const inquireEnabled = formData.get('inquireEnabled') !== 'false'; // default true
+    const forSale = formData.get('forSale') === 'true';
+    const salePriceRaw = formData.get('salePrice') as string || '';
+    const salePrice = salePriceRaw ? parseFloat(salePriceRaw) : null;
 
     logger.info('artwork_post_request_received', {
       userId,
@@ -310,6 +317,14 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         // Try to include is_public, but handle case where migration hasn't been run yet
         insertData.is_public = isPublic;
 
+        // Sales & Inquiries
+        insertData.inquire_enabled = inquireEnabled;
+        insertData.for_sale = forSale;
+        if (forSale && salePrice && salePrice > 0) {
+          insertData.sale_price = salePrice;
+          insertData.sale_currency = 'usd';
+        }
+
         // Add gallery_profile_id if provided (for galleries with multiple profiles)
         if (galleryProfileId && effectiveRole === USER_ROLES.GALLERY) {
           // Verify the gallery profile belongs to this user OR user is a gallery member
@@ -416,6 +431,22 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         } else if (artwork) {
           artworkIds.push(artwork.id);
+
+          // If the artwork is listed for sale, create a Stripe Product + Price (best-effort)
+          if (forSale && salePrice && salePrice > 0) {
+            try {
+              await createArtworkStripeListing({
+                artworkId: artwork.id,
+                title: title.trim(),
+                imageUrl: imageUrl ?? null,
+                priceUsd: salePrice,
+                ownerUserId: userId,
+              });
+            } catch (stripeErr) {
+              console.error('[ArtworkSale] Stripe listing creation failed (non-fatal)', stripeErr);
+            }
+          }
+
           try {
             console.log('[Streak] Tracking artwork upload activity for streak');
             await trackUserStreakActivity(client, {

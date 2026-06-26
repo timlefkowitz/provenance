@@ -1,9 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSiteData } from '../../_data/get-site-data';
 import { resolveAccent } from '../../_templates/palette';
+import { ArtworkInquireModal } from '../../_components/artwork-inquire-modal';
+import { ArtworkBuyButton } from '../../_components/artwork-buy-button';
+import { isSellingEnabled } from '~/lib/stripe-connect';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +27,23 @@ export default async function SiteArtworkPage({
   }
 
   const accentColor = resolveAccent(site.theme.accent);
+
+  const sellingEnabled = artworkData.for_sale && !artworkData.sold_at
+    ? await isSellingEnabled(artworkData.account_id)
+    : false;
+
+  const showInquireButton = artworkData.inquire_enabled && !artworkData.sold_at;
+  const showBuyButton = sellingEnabled && !!artworkData.stripe_price_id;
+  const isSold = !!artworkData.sold_at;
+
+  const formattedPrice = artworkData.sale_price
+    ? new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: (artworkData.sale_currency ?? 'usd').toUpperCase(),
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(Number(artworkData.sale_price))
+    : null;
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', color: '#111', background: '#fff', minHeight: '100svh' }}>
@@ -92,6 +112,26 @@ export default async function SiteArtworkPage({
               </div>
             )}
 
+            {/* Price */}
+            {(showBuyButton || isSold) && formattedPrice && (
+              <div>
+                <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#aaa' }}>
+                  {isSold ? 'Sold' : 'Price'}
+                </p>
+                <p className="text-lg font-semibold" style={{ color: '#111' }}>
+                  {formattedPrice}
+                  {isSold && (
+                    <span
+                      className="ml-2 text-xs uppercase tracking-widest px-2 py-0.5 rounded"
+                      style={{ background: '#f0f0f0', color: '#888', verticalAlign: 'middle' }}
+                    >
+                      Sold
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
             <div>
               <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#aaa' }}>
                 Added
@@ -104,6 +144,45 @@ export default async function SiteArtworkPage({
                 })}
               </p>
             </div>
+
+            {/* CTAs */}
+            {!isSold && (showInquireButton || showBuyButton) && (
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', paddingTop: '8px' }}>
+                {showInquireButton && (
+                  <ArtworkInquireModal
+                    artworkId={artworkData.id}
+                    ownerAccountId={artworkData.account_id}
+                    artworkTitle={artworkData.title}
+                    accentColor={accentColor}
+                  />
+                )}
+                {showBuyButton && formattedPrice && (
+                  <ArtworkBuyButton
+                    artworkId={artworkData.id}
+                    label={`Buy — ${formattedPrice}`}
+                    accentColor={accentColor}
+                  />
+                )}
+              </div>
+            )}
+
+            {isSold && (
+              <div
+                style={{
+                  display: 'inline-block',
+                  padding: '10px 20px',
+                  fontFamily: 'system-ui, sans-serif',
+                  fontSize: '12px',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: '#888',
+                  border: '1px solid #ddd',
+                  borderRadius: '2px',
+                }}
+              >
+                This work has been sold
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -111,15 +190,18 @@ export default async function SiteArtworkPage({
   );
 }
 
+
 async function fetchArtwork(artworkId: string) {
-  const client = getSupabaseServerClient();
-  const { data } = await (client as any)
+  const admin = getSupabaseServerAdminClient();
+  const { data } = await (admin as any)
     .from('artworks')
-    .select('id, title, artist_name, image_url, description, dimensions, created_at')
+    .select(
+      'id, account_id, title, artist_name, image_url, description, dimensions, created_at, ' +
+      'inquire_enabled, for_sale, sale_price, sale_currency, stripe_price_id, sold_at',
+    )
     .eq('id', artworkId)
     .eq('status', 'verified')
     .eq('is_public', true)
     .maybeSingle();
   return data ?? null;
 }
-

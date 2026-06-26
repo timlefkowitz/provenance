@@ -680,6 +680,18 @@ export function CertificateOfAuthenticity({
             </Button>
           )}
 
+          {/* Inquiries (owner only) */}
+          {isOwner && (
+            <Button
+              onClick={() => router.push(`/artworks/${artwork.id}/inquiries`)}
+              variant="outline"
+              className="font-serif text-xs sm:text-sm"
+              size="sm"
+            >
+              Inquiries
+            </Button>
+          )}
+
           {/* Upload (owner or gallery team) */}
           {canEditCertificate && (
             <UploadAttachmentsDialog

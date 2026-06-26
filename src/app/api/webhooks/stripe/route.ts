@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { fulfillDomainPurchase } from '~/lib/domain-purchase-fulfillment';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -227,6 +228,71 @@ export async function POST(request: NextRequest) {
             console.error('[Sites] Webhook: domain purchase fulfillment failed', result.error);
           }
           return NextResponse.json({ received: true, error: result.ok ? undefined : result.error });
+        }
+
+        if (session.metadata?.type === 'artwork_purchase') {
+          const artworkId = session.metadata.artwork_id;
+          const ownerAccountId = session.metadata.owner_account_id;
+          const buyerEmail = session.customer_details?.email ?? null;
+          const buyerName = session.customer_details?.name ?? null;
+
+          console.log('[ArtworkSale] Webhook: artwork purchase completed', {
+            artworkId,
+            sessionId: session.id,
+          });
+
+          try {
+            // Mark artwork as sold
+            const { error: updateErr } = await (admin as any)
+              .from('artworks')
+              .update({ sold_at: new Date().toISOString() })
+              .eq('id', artworkId);
+
+            if (updateErr) {
+              console.error('[ArtworkSale] Webhook: failed to mark artwork sold', updateErr);
+            }
+
+            // Record purchase in artwork_inquiries
+            const { error: inquiryErr } = await (admin as any)
+              .from('artwork_inquiries')
+              .insert({
+                artwork_id: artworkId,
+                owner_account_id: ownerAccountId,
+                name: buyerName ?? buyerEmail ?? 'Unknown buyer',
+                email: buyerEmail ?? '',
+                inquiry_type: 'purchase',
+                stripe_session_id: session.id,
+                status: 'sold',
+              });
+
+            if (inquiryErr) {
+              console.error('[ArtworkSale] Webhook: failed to insert purchase inquiry', inquiryErr);
+            }
+
+            // Capture buyer in owner's CRM (best-effort)
+            if (buyerEmail) {
+              try {
+                await captureCrmContacts(ownerAccountId, [
+                  {
+                    email: buyerEmail,
+                    name: buyerName ?? undefined,
+                    source: 'artwork_purchase',
+                  },
+                ]);
+              } catch (crmErr) {
+                console.error('[ArtworkSale] Webhook: CRM capture failed (non-fatal)', crmErr);
+              }
+            }
+
+            console.log('[ArtworkSale] Artwork sold via Stripe session', {
+              artworkId,
+              sessionId: session.id,
+            });
+          } catch (fulfillErr) {
+            console.error('[ArtworkSale] Webhook: artwork purchase fulfillment threw', fulfillErr);
+          }
+
+          return NextResponse.json({ received: true });
         }
 
         // Reconcile subscription checkout immediately so the success page never shows stale state.

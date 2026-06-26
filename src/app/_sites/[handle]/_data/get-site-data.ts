@@ -92,7 +92,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
   if (sections.artworks) {
     let q = sb
       .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type')
+      .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at')
       .eq('status', 'verified')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
@@ -144,6 +144,10 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
         image_url: row.image_url ?? null,
         created_at: row.created_at,
         certificate_number: row.certificate_number,
+        for_sale: row.for_sale ?? false,
+        sale_price: row.sale_price ?? null,
+        sale_currency: row.sale_currency ?? null,
+        sold_at: row.sold_at ?? null,
       });
     }
   }

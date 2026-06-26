@@ -6,6 +6,8 @@ import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
 import { ensureArtistsInRegistry } from './_actions/ensure-artists-in-registry';
 import { getUserGalleryProfiles } from './_actions/get-user-gallery-profiles';
+import { getActiveSubscription } from '~/lib/subscription';
+import { isSellingEnabled } from '~/lib/stripe-connect';
 
 export const metadata = {
   title: 'Add Artwork | Provenance',
@@ -39,6 +41,13 @@ export default async function AddArtworkPage() {
   // Get gallery profiles for all users (they might switch to gallery mode even if their primary role isn't gallery)
   // This allows users to post as a gallery profile even if their account role is artist/collector
   const galleryProfiles = await getUserGalleryProfiles(user.id);
+
+  // Subscription & selling status for the Sales & Inquiries section
+  const [activeSub, sellingEnabled] = await Promise.all([
+    getActiveSubscription(user.id),
+    isSellingEnabled(user.id),
+  ]);
+  const hasPaidPlan = !!activeSub;
 
   // Determine if this user has previously created any artworks (for first-artwork GTM event)
   const { count: artworkCount } = await client
@@ -75,6 +84,8 @@ export default async function AddArtworkPage() {
         pastArtists={pastArtists}
         galleryProfiles={galleryProfiles}
         hasExistingArtworks={hasExistingArtworks}
+        hasPaidPlan={hasPaidPlan}
+        sellingEnabled={sellingEnabled}
       />
     </div>
   );

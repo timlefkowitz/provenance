@@ -56,12 +56,41 @@ export function SiteArtworkCard({
             {artwork.artist_name}
           </p>
         )}
-        <p
-          className="text-xs mt-1"
-          style={{ color: '#999', fontFamily: 'system-ui, sans-serif' }}
-        >
-          {new Date(artwork.created_at).getFullYear()}
-        </p>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <p
+            className="text-xs"
+            style={{ color: '#999', fontFamily: 'system-ui, sans-serif' }}
+          >
+            {new Date(artwork.created_at).getFullYear()}
+          </p>
+          {artwork.sold_at ? (
+            <span
+              className="text-xs px-1.5 py-0.5 rounded"
+              style={{
+                fontFamily: 'system-ui, sans-serif',
+                background: '#f0f0f0',
+                color: '#888',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                fontSize: '10px',
+              }}
+            >
+              Sold
+            </span>
+          ) : artwork.for_sale && artwork.sale_price ? (
+            <span
+              className="text-xs"
+              style={{ fontFamily: 'system-ui, sans-serif', color: '#555' }}
+            >
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: (artwork.sale_currency ?? 'usd').toUpperCase(),
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }).format(Number(artwork.sale_price))}
+            </span>
+          ) : null}
+        </div>
       </div>
     </Link>
   );

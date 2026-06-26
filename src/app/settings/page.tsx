@@ -10,6 +10,8 @@ import { BillingSection } from './_components/billing-section';
 import { AppearanceSection } from './_components/appearance-section';
 import { TeamsSection } from './_components/teams-section';
 import { AccountActionsSection } from './_components/account-actions-section';
+import { StripeConnectCard } from './_components/stripe-connect-card';
+import { getConnectAccount } from '~/lib/stripe-connect';
 
 export const metadata = {
   title: 'Settings | Provenance',
@@ -28,7 +30,7 @@ export default async function SettingsPage() {
   }
 
   const subscriptionNowIso = new Date().toISOString();
-  const [accountResult, allProfiles, galleryProfiles, subscriptionResult] =
+  const [accountResult, allProfiles, galleryProfiles, subscriptionResult, connectAccount] =
     await Promise.all([
       client
         .from('accounts')
@@ -47,11 +49,21 @@ export default async function SettingsPage() {
         )
         .order('current_period_end', { ascending: false })
         .limit(1),
+      getConnectAccount(user.id),
     ]);
 
   const account = accountResult.data;
   const publicData = (account?.public_data as Record<string, any>) || {};
   const subscription = subscriptionResult.data?.[0] ?? null;
+  const hasPaidPlan = !!(subscription?.status === 'active' || subscription?.status === 'trialing');
+  const connectStatus = connectAccount
+    ? {
+        connected: true,
+        charges_enabled: connectAccount.charges_enabled,
+        details_submitted: connectAccount.details_submitted,
+        payouts_enabled: connectAccount.payouts_enabled,
+      }
+    : { connected: false };
 
   const editableProfiles = allProfiles.filter(
     (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
@@ -94,6 +106,8 @@ export default async function SettingsPage() {
           <ProfilesSection profiles={editableProfiles} />
 
           <BillingSection subscription={subscription} />
+
+          <StripeConnectCard hasPaidPlan={hasPaidPlan} initialStatus={connectStatus} />
 
           <AppearanceSection />
 

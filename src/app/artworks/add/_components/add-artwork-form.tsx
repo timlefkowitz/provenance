@@ -23,6 +23,7 @@ import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@kit/ui/accordion';
 import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
+import { UpgradePrompt } from '~/components/upgrade-prompt';
 
 type ImagePreview = {
   id?: string;
@@ -271,6 +272,8 @@ export function AddArtworkForm({
   pastArtists = [],
   galleryProfiles = [],
   hasExistingArtworks = false,
+  hasPaidPlan = false,
+  sellingEnabled = false,
   onExhibitionsChange,
 }: { 
   userId: string;
@@ -281,6 +284,8 @@ export function AddArtworkForm({
   pastArtists?: PastArtist[];
   galleryProfiles?: UserProfile[];
   hasExistingArtworks?: boolean;
+  hasPaidPlan?: boolean;
+  sellingEnabled?: boolean;
   onExhibitionsChange?: (exhibitions: UserExhibition[]) => void;
 }) {
   const router = useRouter();
@@ -320,6 +325,10 @@ export function AddArtworkForm({
     soldBy: '',
     soldByIsPublic: false,
     sourceCoaCertificateNumber: '',
+    // Sales & Inquiries
+    inquireEnabled: true,
+    forSale: false,
+    salePrice: '',
   });
 
   // Sync default privacy when perspective changes unless the user manually toggled it
@@ -632,6 +641,12 @@ export function AddArtworkForm({
               'sourceCoaCertificateNumber',
               formData.sourceCoaCertificateNumber.trim(),
             );
+          }
+          // Sales & Inquiries
+          formDataToSend.append('inquireEnabled', formData.inquireEnabled.toString());
+          formDataToSend.append('forSale', formData.forSale.toString());
+          if (formData.forSale && formData.salePrice) {
+            formDataToSend.append('salePrice', formData.salePrice);
           }
 
           const result = await createArtworksBatch(formDataToSend, userId);
@@ -1352,6 +1367,94 @@ export function AddArtworkForm({
           </p>
         </div>
       )}
+
+      {/* Sales & Inquiries */}
+      <div className="space-y-4 p-4 border border-wine/20 rounded-lg bg-parchment/50">
+        <div>
+          <p className="text-base font-serif font-medium text-ink">Sales &amp; Inquiries</p>
+          <p className="text-xs text-ink/60 font-serif mt-0.5">
+            Let visitors contact you or purchase this artwork directly from your site.
+          </p>
+        </div>
+
+        {/* Inquire toggle — free for everyone */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="inquireEnabled" className="text-sm font-serif">
+              Allow visitors to inquire
+            </Label>
+            <p className="text-xs text-ink/60 font-serif">
+              Shows an &ldquo;Inquire&rdquo; button on this artwork on your creator site.
+            </p>
+          </div>
+          <Switch
+            id="inquireEnabled"
+            checked={formData.inquireEnabled}
+            onCheckedChange={(checked) => setFormData({ ...formData, inquireEnabled: checked })}
+          />
+        </div>
+
+        {/* Sell toggle — paid gate */}
+        {!hasPaidPlan ? (
+          <div className="pt-2">
+            <UpgradePrompt
+              featureName="Sell Your Work"
+              description="List this artwork for sale on your creator site. Buyers pay through Stripe — funds go straight to your account."
+              source="add_artwork_form_sell"
+            />
+          </div>
+        ) : !sellingEnabled ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-serif text-amber-800">
+            To list artworks for sale, first{' '}
+            <a href="/settings#selling" className="underline font-medium">
+              connect your Stripe account
+            </a>{' '}
+            in Settings and complete onboarding.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="forSale" className="text-sm font-serif">
+                  List for sale
+                </Label>
+                <p className="text-xs text-ink/60 font-serif">
+                  Displays a &ldquo;Buy&rdquo; button with checkout on your site.
+                </p>
+              </div>
+              <Switch
+                id="forSale"
+                checked={formData.forSale}
+                onCheckedChange={(checked) => setFormData({ ...formData, forSale: checked })}
+              />
+            </div>
+
+            {formData.forSale && (
+              <div className="space-y-1">
+                <Label htmlFor="salePrice" className="text-sm font-serif">
+                  Sale price (USD) *
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/50 text-sm font-serif">$</span>
+                  <Input
+                    id="salePrice"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formData.salePrice}
+                    onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
+                    placeholder="0"
+                    className="font-serif pl-7"
+                  />
+                </div>
+                <p className="text-xs text-ink/50 font-serif">
+                  Stripe fees apply. Funds are deposited to your connected bank account.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Privacy Setting */}
       <div className="space-y-2 p-4 border border-wine/20 rounded-lg bg-parchment/50">
