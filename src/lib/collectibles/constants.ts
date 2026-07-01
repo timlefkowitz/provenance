@@ -17,6 +17,8 @@ export const COLLECTIBLE_CATEGORIES = [
   'jewelry',
   'wine',
   'antiques',
+  'electronics',
+  'instruments',
   'other',
 ] as const;
 
@@ -76,6 +78,7 @@ export interface CollectibleRow {
   grading_score: string | null;
   serial_number: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   certificate_number: string | null;
   certificate_status: string | null;
   provenance_history: unknown;

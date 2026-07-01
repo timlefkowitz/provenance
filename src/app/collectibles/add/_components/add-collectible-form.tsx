@@ -26,6 +26,9 @@ import {
 } from '~/lib/collectibles/constants';
 import { createCollectible } from '../_actions/create-collectible';
 
+const MAX_IMAGES = 6;
+const MAX_SINGLE_IMAGE_BYTES = 4 * 1024 * 1024;
+
 type DetectedLocation = {
   latitude: number;
   longitude: number;
@@ -35,7 +38,10 @@ type DetectedLocation = {
   formatted?: string;
 } | null;
 
-const MAX_SINGLE_IMAGE_BYTES = 4 * 1024 * 1024;
+type PendingImage = {
+  file: File;
+  previewUrl: string;
+};
 
 async function maybeCompressImage(file: File): Promise<File> {
   if (file.size <= MAX_SINGLE_IMAGE_BYTES || typeof createImageBitmap === 'undefined') {
@@ -86,8 +92,7 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [images, setImages] = useState<PendingImage[]>([]);
   const [location, setLocation] = useState<DetectedLocation>(null);
 
   const [formData, setFormData] = useState({
@@ -106,73 +111,105 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
     isPublic: false,
   });
 
+  // Revoke blob URLs on unmount to avoid memory leaks.
   useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    return () => {
+      images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const removeImage = (index: number) => {
+    setImages((prev) => {
+      URL.revokeObjectURL(prev[index]!.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    let picked = files[0];
     setError(null);
 
-    if (!picked.type.startsWith('image/')) {
-      setError('Please choose an image file.');
+    const slots = MAX_IMAGES - images.length;
+    if (slots <= 0) {
+      setError(`You can add up to ${MAX_IMAGES} photos.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    if (picked.size > MAX_SINGLE_IMAGE_BYTES) {
-      picked = await maybeCompressImage(picked);
+    const incoming = Array.from(files).slice(0, slots);
+    if (files.length > slots) {
+      setError(
+        `Only ${slots} more photo${slots === 1 ? '' : 's'} can be added (max ${MAX_IMAGES}). The first ${slots} ${slots === 1 ? 'was' : 'were'} added.`,
+      );
+    }
+
+    const processed: PendingImage[] = [];
+    for (const raw of incoming) {
+      if (!raw.type.startsWith('image/')) {
+        setError('Please choose image files only.');
+        continue;
+      }
+      let picked = raw;
       if (picked.size > MAX_SINGLE_IMAGE_BYTES) {
-        setError(`"${picked.name}" is too large. Please choose an image under 4 MB.`);
-        return;
-      }
-    }
-
-    // EXIF GPS -> reverse geocode (best effort)
-    try {
-      const gps = await exifr.gps(picked);
-      if (gps?.latitude && gps?.longitude) {
-        try {
-          const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${gps.latitude}&longitude=${gps.longitude}&localityLanguage=en`,
-          );
-          const geo = await res.json();
-          setLocation({
-            latitude: gps.latitude,
-            longitude: gps.longitude,
-            city: geo.city || geo.locality,
-            region: geo.principalSubdivision,
-            country: geo.countryName,
-            formatted: geo.locality
-              ? `${geo.locality}, ${geo.principalSubdivision || geo.countryName}`
-              : geo.principalSubdivision
-                ? `${geo.principalSubdivision}, ${geo.countryName}`
-                : geo.countryName || undefined,
-          });
-        } catch {
-          setLocation({ latitude: gps.latitude, longitude: gps.longitude });
+        picked = await maybeCompressImage(picked);
+        if (picked.size > MAX_SINGLE_IMAGE_BYTES) {
+          setError(`"${raw.name}" is too large. Please choose images under 4 MB.`);
+          continue;
         }
-      } else {
-        setLocation(null);
       }
-    } catch {
-      setLocation(null);
+      processed.push({ file: picked, previewUrl: URL.createObjectURL(picked) });
     }
 
-    setFile(picked);
-    if (!formData.title) {
-      setFormData((prev) => ({
-        ...prev,
-        title: picked.name.replace(/\.[^/.]+$/, ''),
-      }));
+    if (processed.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
+
+    // EXIF GPS from the first new photo (only if we have no location yet).
+    if (!location && processed[0]) {
+      try {
+        const gps = await exifr.gps(processed[0].file);
+        if (gps?.latitude && gps?.longitude) {
+          try {
+            const res = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${gps.latitude}&longitude=${gps.longitude}&localityLanguage=en`,
+            );
+            const geo = await res.json();
+            setLocation({
+              latitude: gps.latitude,
+              longitude: gps.longitude,
+              city: geo.city || geo.locality,
+              region: geo.principalSubdivision,
+              country: geo.countryName,
+              formatted: geo.locality
+                ? `${geo.locality}, ${geo.principalSubdivision || geo.countryName}`
+                : geo.principalSubdivision
+                  ? `${geo.principalSubdivision}, ${geo.countryName}`
+                  : geo.countryName || undefined,
+            });
+          } catch {
+            setLocation({ latitude: gps.latitude, longitude: gps.longitude });
+          }
+        }
+      } catch {
+        // EXIF unavailable — no location to set
+      }
+    }
+
+    setImages((prev) => {
+      const next = [...prev, ...processed];
+      // Auto-fill title from first photo filename if title is still empty.
+      if (prev.length === 0 && next[0] && !formData.title) {
+        setFormData((fd) => ({
+          ...fd,
+          title: next[0]!.file.name.replace(/\.[^/.]+$/, ''),
+        }));
+      }
+      return next;
+    });
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -180,8 +217,8 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
     e.preventDefault();
     setError(null);
 
-    if (!file) {
-      setError('Please add a photo of your collectible.');
+    if (images.length === 0) {
+      setError('Please add at least one photo of your collectible.');
       return;
     }
     if (!formData.title.trim()) {
@@ -196,7 +233,7 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
     startTransition(async () => {
       try {
         const fd = new FormData();
-        fd.append('image', file);
+        images.forEach((img) => fd.append('images', img.file));
         fd.append('title', formData.title);
         fd.append('category', formData.category);
         fd.append('subcategory', formData.subcategory);
@@ -227,6 +264,8 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
     });
   };
 
+  const atCap = images.length >= MAX_IMAGES;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -236,15 +275,18 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
         </Alert>
       )}
 
-      {/* Step 1 — Photo */}
+      {/* Step 1 — Photos */}
       <div className="space-y-2">
-        <Label htmlFor="image">Collectible Photo *</Label>
+        <Label htmlFor="images">
+          Collectible Photos * <span className="text-ink/50 font-normal text-sm">({images.length}/{MAX_IMAGES})</span>
+        </Label>
         <div className="border-2 border-dashed border-wine/30 rounded-lg p-6 bg-parchment/50">
           <input
             ref={fileInputRef}
             type="file"
-            id="image"
+            id="images"
             accept="image/*"
+            multiple
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -253,18 +295,20 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
               type="button"
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              disabled={atCap}
               onClick={() => {
                 fileInputRef.current?.removeAttribute('capture');
                 fileInputRef.current?.click();
               }}
             >
               <Upload className="mr-2 h-4 w-4" />
-              Choose Photo
+              {images.length === 0 ? 'Choose Photo(s)' : 'Add More Photos'}
             </Button>
             <Button
               type="button"
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              disabled={atCap}
               onClick={() => {
                 fileInputRef.current?.setAttribute('capture', 'environment');
                 fileInputRef.current?.click();
@@ -275,36 +319,66 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
             </Button>
           </div>
 
-          {previewUrl ? (
-            <div className="relative max-w-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setFile(null);
-                  setLocation(null);
-                }}
-                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
-                aria-label="Remove image"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewUrl}
-                alt="Collectible preview"
-                className="w-full h-56 object-cover rounded-lg"
-              />
-              {location && (
-                <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  <span>{location.formatted || 'Location detected'}</span>
+          {images.length > 0 ? (
+            <div className="space-y-3">
+              {/* First photo: large preview with location badge */}
+              <div className="relative max-w-xs">
+                <button
+                  type="button"
+                  onClick={() => removeImage(0)}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
+                  aria-label="Remove photo"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={images[0]!.previewUrl}
+                  alt="Collectible preview"
+                  className="w-full h-56 object-cover rounded-lg"
+                />
+                {location && (
+                  <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{location.formatted || 'Location detected'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional photos: thumbnail strip */}
+              {images.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {images.slice(1).map((img, i) => (
+                    <div key={img.previewUrl} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => removeImage(i + 1)}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 z-10"
+                        aria-label="Remove photo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.previewUrl}
+                        alt={`Collectible photo ${i + 2}`}
+                        className="w-20 h-20 object-cover rounded-lg border border-wine/20"
+                      />
+                    </div>
+                  ))}
                 </div>
+              )}
+
+              {!atCap && (
+                <p className="text-xs text-ink/50 font-serif">
+                  {MAX_IMAGES - images.length} more photo{MAX_IMAGES - images.length === 1 ? '' : 's'} can be added.
+                </p>
               )}
             </div>
           ) : (
             <div className="space-y-2 text-center py-8">
-              <p className="text-ink/70 font-serif">Click to upload a photo or take one</p>
-              <p className="text-xs text-ink/50">PNG, JPG, or WEBP up to 4MB.</p>
+              <p className="text-ink/70 font-serif">Click to upload photos or take one</p>
+              <p className="text-xs text-ink/50">PNG, JPG, or WEBP up to 4 MB each. Up to {MAX_IMAGES} photos.</p>
             </div>
           )}
         </div>
@@ -510,7 +584,7 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
       <div className="flex gap-4 pt-4">
         <Button
           type="submit"
-          disabled={pending || !file}
+          disabled={pending || images.length === 0}
           className="bg-wine text-parchment hover:bg-wine/90 font-serif"
         >
           {pending ? 'Creating Certificate…' : 'Create Certificate of Ownership'}

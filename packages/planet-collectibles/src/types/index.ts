@@ -24,6 +24,8 @@ export const COLLECTIBLE_CATEGORIES = [
   'jewelry',
   'wine',
   'antiques',
+  'electronics',
+  'instruments',
   'other',
 ] as const;
 

@@ -20,7 +20,7 @@ export async function createCollectible(formData: FormData, userId: string) {
     const client = getSupabaseServerClient();
     const adminClient = getSupabaseServerAdminClient();
 
-    const image = formData.get('image') as File | null;
+    const images = formData.getAll('images') as File[];
     const title = ((formData.get('title') as string) || '').trim();
     const description = (formData.get('description') as string) || '';
     const category = (formData.get('category') as string) || '';
@@ -36,9 +36,10 @@ export async function createCollectible(formData: FormData, userId: string) {
     const isPublic = formData.get('isPublic') === 'true';
     const locationStr = (formData.get('location') as string) || '';
 
-    if (!image || typeof image === 'string') {
-      console.error('[Collectibles] createCollectible missing image', { userId });
-      return { error: 'A photo of the collectible is required' };
+    const validImages = images.filter((f): f is File => f instanceof File && f.size > 0);
+    if (validImages.length === 0) {
+      console.error('[Collectibles] createCollectible missing images', { userId });
+      return { error: 'At least one photo of the collectible is required' };
     }
     if (!title) {
       return { error: 'A title is required' };
@@ -63,8 +64,13 @@ export async function createCollectible(formData: FormData, userId: string) {
       }
     }
 
-    console.log('[Collectibles] Uploading collectible image', { userId, category });
-    const imageUrl = await artworkImageUploader.upload(client, adminClient, image, userId);
+    console.log('[Collectibles] Uploading collectible images', { userId, category, count: validImages.length });
+    const imageUrls: string[] = [];
+    for (const img of validImages) {
+      const url = await artworkImageUploader.upload(client, adminClient, img, userId);
+      imageUrls.push(url);
+    }
+    console.log('[Collectibles] All images uploaded', { userId, count: imageUrls.length });
 
     const certificateNumber = await generateCollectibleCertificateNumber(client);
 
@@ -89,7 +95,8 @@ export async function createCollectible(formData: FormData, userId: string) {
       grading_service: gradingService || null,
       grading_score: gradingScore || null,
       serial_number: serialNumber || null,
-      image_url: imageUrl,
+      image_url: imageUrls[0] ?? null,
+      image_urls: imageUrls,
       certificate_number: certificateNumber,
       certificate_status: 'verified',
       status: 'verified',

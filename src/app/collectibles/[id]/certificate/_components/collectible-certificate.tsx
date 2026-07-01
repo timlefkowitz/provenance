@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { QRCodeSVG } from 'qrcode.react';
@@ -84,6 +84,21 @@ export function CollectibleCertificate({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+
+  // Build the full photo list: prefer image_urls array, fall back to image_url.
+  const allPhotos = useMemo(() => {
+    const urls = collectible.image_urls;
+    if (Array.isArray(urls) && urls.length > 0) return urls;
+    if (collectible.image_url) return [collectible.image_url];
+    return [];
+  }, [collectible.image_url, collectible.image_urls]);
+
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const activePhoto = allPhotos[activePhotoIndex] ?? allPhotos[0] ?? null;
+
+  const selectPhoto = useCallback((index: number) => {
+    setActivePhotoIndex(index);
+  }, []);
 
   const initialScans: ScanLocation[] = useMemo(() => {
     const raw = (collectible.metadata as Record<string, unknown> | null)?.['scan_locations'];
@@ -348,18 +363,44 @@ export function CollectibleCertificate({
           </div>
 
           <div className="grid gap-8 md:grid-cols-2">
-            {/* Image */}
-            <div>
-              {collectible.image_url ? (
+            {/* Image gallery */}
+            <div className="space-y-2">
+              {activePhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={collectible.image_url}
+                  src={activePhoto}
                   alt={collectible.title}
                   className="w-full rounded-lg border border-wine/20 object-cover"
                 />
               ) : (
                 <div className="w-full aspect-square rounded-lg border border-wine/20 bg-parchment flex items-center justify-center text-ink/40 font-serif">
                   No image
+                </div>
+              )}
+
+              {/* Thumbnail strip — only shown when there are multiple photos */}
+              {allPhotos.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {allPhotos.map((url, i) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => selectPhoto(i)}
+                      className={`rounded border-2 overflow-hidden transition-colors ${
+                        i === activePhotoIndex
+                          ? 'border-wine'
+                          : 'border-wine/20 hover:border-wine/50'
+                      }`}
+                      aria-label={`View photo ${i + 1}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`${collectible.title} photo ${i + 1}`}
+                        className="w-14 h-14 object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

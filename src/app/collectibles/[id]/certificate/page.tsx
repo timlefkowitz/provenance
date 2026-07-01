@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const COLLECTIBLE_SELECT = `
   id, account_id, title, description, category, subcategory, manufacturer, year,
-  condition, grading_service, grading_score, serial_number, image_url,
+  condition, grading_service, grading_score, serial_number, image_url, image_urls,
   certificate_number, certificate_status, provenance_history, metadata, status,
   is_public, value, value_is_public, created_at, updated_at
 `;
