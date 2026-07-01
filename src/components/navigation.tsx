@@ -8,14 +8,18 @@ import type { JwtPayload } from '@supabase/supabase-js';
 import type { LucideIcon } from 'lucide-react';
 import {
   Award,
+  Building2,
   ChevronDown,
   ClipboardList,
+  FileText,
   GalleryVerticalEnd,
   Globe,
   Mail,
+  Newspaper,
   Users,
   Wrench,
 } from 'lucide-react';
+import { cn } from '@kit/ui/utils';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';
@@ -31,17 +35,46 @@ import { NotificationBadge } from './notification-badge';
 import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
-const desktopNavItemClass =
-  'inline-flex items-center rounded-md px-2 py-1 -mx-2 -my-1 text-ink hover:text-wine transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment';
+// Shared base for desktop nav links and dropdown triggers.
+// Uses an ::after underline that scales in on hover / stays full when active.
+const BASE_NAV =
+  'relative inline-flex items-center px-1 py-0.5 text-sm font-bold uppercase tracking-[0.08em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment font-nav ' +
+  "after:content-[''] after:absolute after:bottom-[-2px] after:left-0 after:h-[1.5px] after:rounded-full after:bg-wine after:transition-all after:duration-300";
+
+function navLinkClass(path: string, pathname: string | null) {
+  const isActive =
+    path === '/'
+      ? pathname === '/'
+      : pathname === path || Boolean(pathname?.startsWith(path + '/'));
+  return cn(
+    BASE_NAV,
+    isActive
+      ? 'text-wine after:w-full'
+      : 'text-ink hover:text-wine after:w-0 hover:after:w-full',
+  );
+}
+
+const dropdownTriggerClass = cn(
+  BASE_NAV,
+  'gap-1.5 text-ink hover:text-wine after:w-0 hover:after:w-full',
+  'data-[state=open]:text-wine data-[state=open]:after:w-full',
+  'group cursor-pointer select-none',
+);
 
 type ToolboxItem =
   | { href: string; label: string; description: string; icon: LucideIcon; image?: never }
   | { href: string; label: string; description: string; image: string; icon?: never };
 
+type InfoItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  i18nKey?: string;
+  defaults?: string;
+};
+
 /**
- * Toolbox entries shared between the desktop dropdown and the mobile menu.
- * Each tool gets an icon + short description for the rich dropdown panel.
- * Items with `image` use a photo in the icon slot instead of a Lucide icon.
+ * Toolbox entries — shared between desktop dropdown and mobile menu.
  */
 const TOOLBOX_ITEMS: ToolboxItem[] = [
   {
@@ -88,11 +121,27 @@ const TOOLBOX_ITEMS: ToolboxItem[] = [
   },
 ];
 
+/**
+ * Info dropdown items (always visible — no auth gate).
+ */
+const INFO_ITEMS: InfoItem[] = [
+  { href: '/blog', label: 'Blog', icon: Newspaper, i18nKey: 'marketing:blog', defaults: 'Blog' },
+  {
+    href: '/about',
+    label: 'About',
+    icon: Building2,
+    i18nKey: 'common:navigation.about',
+    defaults: 'About',
+  },
+  { href: '/docs', label: 'Docs', icon: FileText },
+];
+
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
   const user = useCurrentUser(props.initialUser);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -105,9 +154,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     return () => window.removeEventListener('user_profile_selected', handleProfileSelected);
   }, []);
 
-  // Investor pages have their own dedicated nav; hide the main nav there.
-  // Preview mode renders templates full-screen with its own floating bar.
-  // Docs has its own dark shell with sidebar navigation.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Investor pages have their own nav; preview and docs have their own shells.
   if (
     pathname?.startsWith('/investors') ||
     pathname?.startsWith('/profile/site/preview') ||
@@ -118,50 +171,47 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
 
   return (
     <>
-    <nav className="relative z-[100] flex items-center justify-between gap-3 px-4 sm:px-6 pl-safe pr-safe py-3 sm:py-4 border-b border-wine/20 bg-parchment/95 backdrop-blur-sm sticky top-0 shadow-sm">
-      <div className="flex items-center gap-8 min-w-0">
-        <Link 
-          href="/" 
-          className="block max-w-[60vw] truncate text-xl sm:text-2xl font-display font-bold tracking-wide sm:tracking-widest uppercase text-wine hover:text-wine/80 transition-colors"
+      <nav
+        className={cn(
+          'relative z-[100] flex items-center justify-between px-4 sm:px-6 pl-safe pr-safe py-3 sm:py-4 border-b bg-parchment/95 backdrop-blur-sm sticky top-0 transition-[border-color,box-shadow] duration-300',
+          scrolled ? 'border-wine/35 shadow-md shadow-wine/5' : 'border-wine/20 shadow-sm',
+        )}
+      >
+        {/* Logo — left-pinned flex child */}
+        <Link
+          href="/"
+          className="block shrink-0 max-w-[40vw] truncate text-xl sm:text-2xl font-display font-bold tracking-wide sm:tracking-widest uppercase text-wine hover:text-wine/80 transition-colors"
         >
           Provenance
         </Link>
-        
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link 
-            href="/artworks" 
-            className={desktopNavItemClass}
-          >
+
+        {/*
+          Desktop nav — absolutely centered so it is always at 50% of the bar
+          regardless of how wide the logo or actions cluster are at any breakpoint.
+        */}
+        <div className="hidden md:flex items-center gap-5 absolute left-1/2 -translate-x-1/2 pointer-events-auto">
+          <Link href="/artworks" className={navLinkClass('/artworks', pathname)}>
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
-          <Link 
-            href="/registry" 
-            className={desktopNavItemClass}
-          >
+          <Link href="/registry" className={navLinkClass('/registry', pathname)}>
             <Trans i18nKey="common:navigation.registry" defaults="Artists" />
           </Link>
+
           {user.data && (
             <>
-              <Link
-                href="/artworks/my"
-                className={desktopNavItemClass}
-              >
+              <Link href="/artworks/my" className={navLinkClass('/artworks/my', pathname)}>
                 Collection
               </Link>
-              <Link 
-                href="/portal" 
-                className={desktopNavItemClass}
-              >
+              <Link href="/portal" className={navLinkClass('/portal', pathname)}>
                 Portal
               </Link>
+
+              {/* Toolbox dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger
-                  className={`${desktopNavItemClass} group gap-1.5 font-medium data-[state=open]:text-wine`}
-                >
-                  <Wrench className="h-4 w-4 transition-transform duration-300 ease-out group-hover:-rotate-12 group-data-[state=open]:-rotate-[24deg] group-data-[state=open]:scale-110" />
+                <DropdownMenuTrigger className={dropdownTriggerClass}>
+                  <Wrench className="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:-rotate-12 group-data-[state=open]:-rotate-[24deg] group-data-[state=open]:scale-110" />
                   Toolbox
-                  <ChevronDown className="h-4 w-4 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
+                  <ChevronDown className="h-3 w-3 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="start"
@@ -180,162 +230,188 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                         ? `/profile/site?profileId=${selectedProfileId}`
                         : item.href;
                     return (
-                    <DropdownMenuItem
-                      key={item.href}
-                      asChild
-                      className="animate-toolbox-item rounded-lg p-0 focus:bg-wine/5"
-                      style={{ animationDelay: `${60 + i * 45}ms` }}
-                    >
-                      <Link
-                        href={href}
-                        className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                      <DropdownMenuItem
+                        key={item.href}
+                        asChild
+                        className="animate-toolbox-item rounded-lg p-0 focus:bg-wine/5"
+                        style={{ animationDelay: `${60 + i * 45}ms` }}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25 overflow-hidden">
-                          {item.image ? (
-                            <Image
-                              src={item.image}
-                              alt={item.label}
-                              width={36}
-                              height={36}
-                              className="h-full w-full object-cover object-top rounded-lg"
-                            />
-                          ) : item.icon ? (
-                            <item.icon className="h-4 w-4" />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-ink leading-tight">
-                            {item.label}
+                        <Link
+                          href={href}
+                          className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25 overflow-hidden">
+                            {item.image ? (
+                              <Image
+                                src={item.image}
+                                alt={item.label}
+                                width={36}
+                                height={36}
+                                className="h-full w-full object-cover object-top rounded-lg"
+                              />
+                            ) : item.icon ? (
+                              <item.icon className="h-4 w-4" />
+                            ) : null}
                           </span>
-                          <span className="block text-[11px] text-ink/50 leading-tight mt-0.5">
-                            {item.description}
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-ink leading-tight">
+                              {item.label}
+                            </span>
+                            <span className="block text-[11px] text-ink/50 leading-tight mt-0.5">
+                              {item.description}
+                            </span>
                           </span>
-                        </span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ); })}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           )}
-          <Link href="/blog" className={desktopNavItemClass}>
-            <Trans i18nKey="marketing:blog" defaults="Blog" />
-          </Link>
-          <Link 
-            href="/about" 
-            className={desktopNavItemClass}
-          >
-            <Trans i18nKey="common:navigation.about" defaults="About" />
-          </Link>
-          <Link href="/docs" className={desktopNavItemClass}>
-            Docs
-          </Link>
+
+          {/* Info dropdown — Blog, About, Docs — always visible */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className={dropdownTriggerClass}>
+              Info
+              <ChevronDown className="h-3 w-3 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={10}
+              className="toolbox-dropdown z-[200] w-52 p-1.5 rounded-xl border-wine/15 bg-parchment shadow-xl shadow-wine/10"
+            >
+              <div className="px-3 pt-2 pb-1.5 flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-wine/60">
+                  Explore
+                </span>
+                <span className="flex-1 h-px bg-wine/10" />
+              </div>
+              {INFO_ITEMS.map((item) => (
+                <DropdownMenuItem
+                  key={item.href}
+                  asChild
+                  className="animate-toolbox-item rounded-lg p-0 focus:bg-wine/5"
+                >
+                  <Link
+                    href={item.href}
+                    className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105">
+                      <item.icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-sm font-semibold text-ink">
+                      {item.i18nKey ? (
+                        <Trans i18nKey={item.i18nKey} defaults={item.defaults} />
+                      ) : (
+                        item.label
+                      )}
+                    </span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </div>
 
-      {/*
-        Right-side cluster.
-        IMPORTANT: NotificationBadge and the user avatar/dropdown remain visible
-        at every breakpoint — only the secondary "Add Artwork" CTA and the
-        marketing sign-in/up buttons collapse behind the hamburger on mobile.
-        This way users on iPhone 16 Pro Max / Pixel 9 Pro can still reach
-        notifications and account actions with one tap.
-      */}
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-        {user.data ? (
-          <>
-            {/* Notifications — always visible */}
-            <NotificationBadge />
+        {/*
+          Right-side cluster.
+          NotificationBadge and account avatar stay visible at every breakpoint.
+          "Add Artwork" CTA and marketing auth buttons collapse on mobile.
+        */}
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+          {user.data ? (
+            <>
+              {/* Notifications — always visible */}
+              <NotificationBadge />
 
-            {/* Add Artwork — desktop / tablet only; mobile users use the hamburger menu */}
-            <Button
-              asChild
-              size="sm"
-              className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
-            >
-              <Link href="/artworks/add">
-                <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
-              </Link>
-            </Button>
+              {/* Add Artwork — desktop / tablet only */}
+              <Button
+                asChild
+                size="sm"
+                className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
+              >
+                <Link href="/artworks/add">
+                  <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
+                </Link>
+              </Button>
 
-            {/* User dropdown — always visible */}
-            <ProfileAccountDropdownContainer />
-          </>
-        ) : (
-          <>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="hidden md:inline-flex text-ink hover:text-wine hover:bg-wine/10"
-            >
-              <Link href={pathsConfig.auth.signIn}>
-                <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
-            >
-              <Link href={pathsConfig.auth.signUp}>
-                <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
-              </Link>
-            </Button>
-          </>
-        )}
+              {/* User dropdown — always visible */}
+              <ProfileAccountDropdownContainer />
+            </>
+          ) : (
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="hidden md:inline-flex text-ink hover:text-wine hover:bg-wine/10"
+              >
+                <Link href={pathsConfig.auth.signIn}>
+                  <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
+              >
+                <Link href={pathsConfig.auth.signUp}>
+                  <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
+                </Link>
+              </Button>
+            </>
+          )}
 
-        {/* Mobile hamburger — last so it stays at the right edge */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden -mr-1 p-2 text-wine hover:text-wine/80 transition-colors touch-manipulation"
-          aria-label="Toggle menu"
-          aria-expanded={mobileMenuOpen}
-        >
-          <svg
-            className="h-6 w-6"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
+          {/* Mobile hamburger — always last so it stays at the right edge */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden -mr-1 p-2 text-wine hover:text-wine/80 transition-colors touch-manipulation"
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
           >
-            <line
-              x1="3"
-              y1="6"
-              x2="21"
-              y2="6"
-              className={`transition-transform duration-300 origin-center ${
-                mobileMenuOpen ? 'translate-y-[6px] rotate-45' : ''
-              }`}
-            />
-            <line
-              x1="3"
-              y1="12"
-              x2="21"
-              y2="12"
-              className={`transition-all duration-300 origin-center ${
-                mobileMenuOpen ? 'opacity-0 scale-x-0' : ''
-              }`}
-            />
-            <line
-              x1="3"
-              y1="18"
-              x2="21"
-              y2="18"
-              className={`transition-transform duration-300 origin-center ${
-                mobileMenuOpen ? '-translate-y-[6px] -rotate-45' : ''
-              }`}
-            />
-          </svg>
-        </button>
-      </div>
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <line
+                x1="3"
+                y1="6"
+                x2="21"
+                y2="6"
+                className={`transition-transform duration-300 origin-center ${
+                  mobileMenuOpen ? 'translate-y-[6px] rotate-45' : ''
+                }`}
+              />
+              <line
+                x1="3"
+                y1="12"
+                x2="21"
+                y2="12"
+                className={`transition-all duration-300 origin-center ${
+                  mobileMenuOpen ? 'opacity-0 scale-x-0' : ''
+                }`}
+              />
+              <line
+                x1="3"
+                y1="18"
+                x2="21"
+                y2="18"
+                className={`transition-transform duration-300 origin-center ${
+                  mobileMenuOpen ? '-translate-y-[6px] -rotate-45' : ''
+                }`}
+              />
+            </svg>
+          </button>
+        </div>
+      </nav>
 
-    </nav>
-
-      {/* Mobile fullscreen menu — must live OUTSIDE <nav> so that the nav's
-          backdrop-filter does not create a new containing block and break
-          position:fixed on iOS/Android. */}
+      {/* Mobile fullscreen menu — lives outside <nav> so nav's backdrop-filter
+          does not create a new containing block breaking position:fixed on iOS. */}
       {mobileMenuOpen && (
         <div className="fixed inset-x-0 bottom-0 top-[var(--nav-h)] bg-parchment md:hidden z-[90] flex flex-col overflow-y-auto pb-safe">
           {user.data && (
@@ -360,6 +436,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             >
               <Trans i18nKey="common:navigation.registry" defaults="Artists" />
             </Link>
+
             {user.data && (
               <>
                 <Link
@@ -383,6 +460,8 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 >
                   Portal
                 </Link>
+
+                {/* Toolbox section */}
                 <div className="w-full flex items-center gap-2.5 pt-4 pb-2 px-1">
                   <span className="flex-1 h-px bg-wine/15" />
                   <span className="inline-flex items-center gap-1.5 text-xs font-display text-wine/70 uppercase tracking-widest">
@@ -443,27 +522,30 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 </div>
               </>
             )}
-            <Link
-              href="/blog"
-              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Trans i18nKey="marketing:blog" defaults="Blog" />
-            </Link>
-            <Link
-              href="/about"
-              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Trans i18nKey="common:navigation.about" defaults="About" />
-            </Link>
-            <Link
-              href="/docs"
-              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Docs
-            </Link>
+
+            {/* Info section — Blog, About, Docs */}
+            <div className="w-full flex items-center gap-2.5 pt-4 pb-2 px-1">
+              <span className="flex-1 h-px bg-wine/15" />
+              <span className="text-xs font-display text-wine/70 uppercase tracking-widest">
+                Info
+              </span>
+              <span className="flex-1 h-px bg-wine/15" />
+            </div>
+            {INFO_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.i18nKey ? (
+                  <Trans i18nKey={item.i18nKey} defaults={item.defaults} />
+                ) : (
+                  item.label
+                )}
+              </Link>
+            ))}
+
             <Link
               href="/feedback"
               className="w-full text-center text-base font-serif text-ink/70 hover:text-wine transition-colors py-2"
@@ -501,4 +583,3 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     </>
   );
 }
-

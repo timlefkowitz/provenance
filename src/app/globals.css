@@ -24,6 +24,21 @@
  */
 @variant dark (&:where(.dark, .dark *));
 
+/*
+  D-DIN — place licensed files at:
+    public/fonts/D-DIN.woff2
+    public/fonts/D-DIN.woff
+  The @font-face will activate as soon as the files are present.
+*/
+@font-face {
+  font-family: 'D-DIN';
+  src: url('/fonts/D-DIN.woff2') format('woff2'),
+       url('/fonts/D-DIN.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* User Custom Theme */
 @theme {
   --color-parchment: #F5F1E8;
@@ -44,6 +59,10 @@
   --font-body: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
   --font-family-landing: "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* D-DIN — used for the navbar. Falls back to Gotham → Helvetica Neue → system sans. */
+  --font-nav: "D-DIN", "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
 }
 

@@ -1,21 +1,44 @@
 import 'server-only';
 
-import { type NextRequest, NextResponse } from 'next/server';
-
 import { createServerClient } from '@supabase/ssr';
 
 import { Database } from '../database.types';
 import { getSupabaseClientKeys } from '../get-supabase-client-keys';
 
 /**
+ * Structural subset of NextRequest used by this client.
+ * Avoids importing NextRequest from 'next/server' directly, which causes
+ * TypeScript errors in pnpm monorepos where multiple workspaces resolve
+ * next to different physical installations (same version, different peer deps).
+ */
+interface MiddlewareRequest {
+  cookies: {
+    getAll(): Array<{ name: string; value: string }>;
+    set(name: string, value: string): void;
+  };
+}
+
+/**
+ * Structural subset of NextResponse used by this client.
+ */
+interface MiddlewareResponse {
+  cookies: {
+    // options comes from @supabase/ssr's CookieSerializeOptions — typed loosely
+    // so any Next.js version's ResponseCookies.set signature satisfies this.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    set(name: string, value: string, options?: any): void;
+  };
+}
+
+/**
  * Creates a middleware client for Supabase.
  *
- * @param {NextRequest} request - The Next.js request object.
- * @param {NextResponse} response - The Next.js response object.
+ * @param {MiddlewareRequest} request - The Next.js request object (or compatible structural type).
+ * @param {MiddlewareResponse} response - The Next.js response object (or compatible structural type).
  */
 export function createMiddlewareClient<GenericSchema = Database>(
-  request: NextRequest,
-  response: NextResponse,
+  request: MiddlewareRequest,
+  response: MiddlewareResponse,
 ) {
   const keys = getSupabaseClientKeys();
 
