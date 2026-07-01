@@ -21,6 +21,7 @@ import { NewUserConversionTracker } from './_components/new-user-conversion-trac
 import { PortfolioValueCard } from './_components/portfolio-value-card';
 import { ArtistMarketCapCard } from './_components/artist-market-cap-card';
 import { GalleryMarketCapCard } from './_components/gallery-market-cap-card';
+import { CollectiblesValueCard } from './_components/collectibles-value-card';
 
 export const metadata = {
   title: 'Portal | Provenance',
@@ -389,6 +390,7 @@ export default async function PortalPage() {
         <ArtistMarketCapCard artistAccountId={user.id} />
         <PortfolioValueCard userId={user.id} />
         <GalleryMarketCapCard galleryProfileIds={galleryProfileIds} galleryName={firstGalleryName} />
+        <CollectiblesValueCard userId={user.id} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

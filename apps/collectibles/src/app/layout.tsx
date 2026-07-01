@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
+import { collectiblesPath } from "~/lib/main-app";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -43,9 +44,10 @@ export default function RootLayout({
               PROVENANCE <span className="text-sm font-normal tracking-wide">COLLECTIBLES</span>
             </a>
             <div className="flex items-center gap-6 text-sm">
-              <a href="/browse" className="text-ink/70 hover:text-ink transition-colors">Browse</a>
-              <a href="/my" className="text-ink/70 hover:text-ink transition-colors">My Items</a>
-              <a href="/verify" className="text-ink/70 hover:text-ink transition-colors">Verify</a>
+              <a href={collectiblesPath()} className="text-ink/70 hover:text-ink transition-colors">Browse</a>
+              <a href={collectiblesPath("/my")} className="text-ink/70 hover:text-ink transition-colors">My Items</a>
+              <a href={collectiblesPath("/verify")} className="text-ink/70 hover:text-ink transition-colors">Verify</a>
+              <a href={collectiblesPath("/add")} className="rounded-md bg-wine px-3 py-1.5 text-white hover:bg-wine/90 transition-colors">Add</a>
             </div>
           </div>
         </nav>

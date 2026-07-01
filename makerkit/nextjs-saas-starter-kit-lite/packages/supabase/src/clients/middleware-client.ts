@@ -28,6 +28,9 @@ interface MiddlewareResponse {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     set(name: string, value: string, options?: any): void;
   };
+  headers: {
+    set(name: string, value: string): void;
+  };
 }
 
 /**
@@ -47,13 +50,19 @@ export function createMiddlewareClient<GenericSchema = Database>(
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
 
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
+        );
+
+        // @supabase/ssr v0.10+ passes Cache-Control / Expires / Pragma on token
+        // refresh so CDNs do not cache auth responses and leak sessions.
+        Object.entries(headers ?? {}).forEach(([key, value]) =>
+          response.headers.set(key, value),
         );
       },
     },

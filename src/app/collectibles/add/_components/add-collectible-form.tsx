@@ -1,0 +1,530 @@
+'use client';
+
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import exifr from 'exifr';
+import { Button } from '@kit/ui/button';
+import { Input } from '@kit/ui/input';
+import { Label } from '@kit/ui/label';
+import { Textarea } from '@kit/ui/textarea';
+import { Switch } from '@kit/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
+import { Camera, MapPin, Upload, X } from 'lucide-react';
+import {
+  COLLECTIBLE_CATEGORIES,
+  COLLECTIBLE_CONDITIONS,
+  GRADING_SERVICES,
+  formatCategoryLabel,
+  formatConditionLabel,
+} from '~/lib/collectibles/constants';
+import { createCollectible } from '../_actions/create-collectible';
+
+type DetectedLocation = {
+  latitude: number;
+  longitude: number;
+  city?: string;
+  region?: string;
+  country?: string;
+  formatted?: string;
+} | null;
+
+const MAX_SINGLE_IMAGE_BYTES = 4 * 1024 * 1024;
+
+async function maybeCompressImage(file: File): Promise<File> {
+  if (file.size <= MAX_SINGLE_IMAGE_BYTES || typeof createImageBitmap === 'undefined') {
+    return file;
+  }
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDim = 2000;
+    let { width, height } = bitmap;
+    let targetWidth = width;
+    let targetHeight = height;
+    if (width > height && width > maxDim) {
+      targetWidth = maxDim;
+      targetHeight = Math.round((maxDim / width) * height);
+    } else if (height >= width && height > maxDim) {
+      targetHeight = maxDim;
+      targetWidth = Math.round((maxDim / height) * width);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      bitmap.close();
+      return file;
+    }
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    bitmap.close();
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('compression failed'))),
+        'image/jpeg',
+        0.8,
+      );
+    });
+    const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpeg', {
+      type: 'image/jpeg',
+    });
+    return compressed.size < file.size ? compressed : file;
+  } catch (err) {
+    console.warn('[Collectibles] image compression failed, using original', err);
+    return file;
+  }
+}
+
+export function AddCollectibleForm({ userId }: { userId: string }) {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [location, setLocation] = useState<DetectedLocation>(null);
+
+  const [formData, setFormData] = useState({
+    title: '',
+    category: '',
+    subcategory: '',
+    manufacturer: '',
+    year: '',
+    condition: '',
+    gradingService: '',
+    gradingScore: '',
+    serialNumber: '',
+    description: '',
+    value: '',
+    valueIsPublic: false,
+    isPublic: false,
+  });
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    let picked = files[0];
+    setError(null);
+
+    if (!picked.type.startsWith('image/')) {
+      setError('Please choose an image file.');
+      return;
+    }
+
+    if (picked.size > MAX_SINGLE_IMAGE_BYTES) {
+      picked = await maybeCompressImage(picked);
+      if (picked.size > MAX_SINGLE_IMAGE_BYTES) {
+        setError(`"${picked.name}" is too large. Please choose an image under 4 MB.`);
+        return;
+      }
+    }
+
+    // EXIF GPS -> reverse geocode (best effort)
+    try {
+      const gps = await exifr.gps(picked);
+      if (gps?.latitude && gps?.longitude) {
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${gps.latitude}&longitude=${gps.longitude}&localityLanguage=en`,
+          );
+          const geo = await res.json();
+          setLocation({
+            latitude: gps.latitude,
+            longitude: gps.longitude,
+            city: geo.city || geo.locality,
+            region: geo.principalSubdivision,
+            country: geo.countryName,
+            formatted: geo.locality
+              ? `${geo.locality}, ${geo.principalSubdivision || geo.countryName}`
+              : geo.principalSubdivision
+                ? `${geo.principalSubdivision}, ${geo.countryName}`
+                : geo.countryName || undefined,
+          });
+        } catch {
+          setLocation({ latitude: gps.latitude, longitude: gps.longitude });
+        }
+      } else {
+        setLocation(null);
+      }
+    } catch {
+      setLocation(null);
+    }
+
+    setFile(picked);
+    if (!formData.title) {
+      setFormData((prev) => ({
+        ...prev,
+        title: picked.name.replace(/\.[^/.]+$/, ''),
+      }));
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!file) {
+      setError('Please add a photo of your collectible.');
+      return;
+    }
+    if (!formData.title.trim()) {
+      setError('Please enter a title.');
+      return;
+    }
+    if (!formData.category) {
+      setError('Please choose what kind of collectible this is.');
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const fd = new FormData();
+        fd.append('image', file);
+        fd.append('title', formData.title);
+        fd.append('category', formData.category);
+        fd.append('subcategory', formData.subcategory);
+        fd.append('manufacturer', formData.manufacturer);
+        fd.append('year', formData.year);
+        fd.append('condition', formData.condition);
+        fd.append('gradingService', formData.gradingService === '__none__' ? '' : formData.gradingService);
+        fd.append('gradingScore', formData.gradingScore);
+        fd.append('serialNumber', formData.serialNumber);
+        fd.append('description', formData.description);
+        fd.append('value', formData.value);
+        fd.append('valueIsPublic', String(formData.valueIsPublic));
+        fd.append('isPublic', String(formData.isPublic));
+        fd.append('location', location ? JSON.stringify(location) : '');
+
+        const result = await createCollectible(fd, userId);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        if (result.collectibleId) {
+          router.push(`/collectibles/${result.collectibleId}/certificate`);
+        }
+      } catch (err) {
+        console.error('[Collectibles] submit failed', err);
+        setError('Something went wrong. Please try again.');
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Step 1 — Photo */}
+      <div className="space-y-2">
+        <Label htmlFor="image">Collectible Photo *</Label>
+        <div className="border-2 border-dashed border-wine/30 rounded-lg p-6 bg-parchment/50">
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="image"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              onClick={() => {
+                fileInputRef.current?.removeAttribute('capture');
+                fileInputRef.current?.click();
+              }}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Choose Photo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              onClick={() => {
+                fileInputRef.current?.setAttribute('capture', 'environment');
+                fileInputRef.current?.click();
+              }}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Take Photo
+            </Button>
+          </div>
+
+          {previewUrl ? (
+            <div className="relative max-w-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setFile(null);
+                  setLocation(null);
+                }}
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Collectible preview"
+                className="w-full h-56 object-cover rounded-lg"
+              />
+              {location && (
+                <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  <span>{location.formatted || 'Location detected'}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2 text-center py-8">
+              <p className="text-ink/70 font-serif">Click to upload a photo or take one</p>
+              <p className="text-xs text-ink/50">PNG, JPG, or WEBP up to 4MB.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Step 2 — Type */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="category">What kind of collectible? *</Label>
+          <Select
+            value={formData.category || undefined}
+            onValueChange={(value) => setFormData({ ...formData, category: value })}
+          >
+            <SelectTrigger id="category" className="font-serif">
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {COLLECTIBLE_CATEGORIES.map((category) => (
+                <SelectItem key={category} value={category} className="font-serif">
+                  {formatCategoryLabel(category)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="subcategory">Subcategory (Optional)</Label>
+          <Input
+            id="subcategory"
+            value={formData.subcategory}
+            onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+            placeholder="e.g., Baseball, Silver Dollar, Marvel"
+            className="font-serif"
+          />
+        </div>
+      </div>
+
+      {/* Step 3 — Details */}
+      <div className="space-y-2">
+        <Label htmlFor="title">Title *</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="e.g., 1952 Topps Mickey Mantle"
+          className="font-serif"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="manufacturer">Manufacturer / Maker (Optional)</Label>
+          <Input
+            id="manufacturer"
+            value={formData.manufacturer}
+            onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+            placeholder="e.g., Topps, US Mint, Rolex"
+            className="font-serif"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="year">Year (Optional)</Label>
+          <Input
+            id="year"
+            type="number"
+            inputMode="numeric"
+            value={formData.year}
+            onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+            placeholder="e.g., 1952"
+            className="font-serif"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="condition">Condition (Optional)</Label>
+          <Select
+            value={formData.condition || '__none__'}
+            onValueChange={(value) =>
+              setFormData({ ...formData, condition: value === '__none__' ? '' : value })
+            }
+          >
+            <SelectTrigger id="condition" className="font-serif">
+              <SelectValue placeholder="Select condition" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="font-serif">
+                Not specified
+              </SelectItem>
+              {COLLECTIBLE_CONDITIONS.map((condition) => (
+                <SelectItem key={condition} value={condition} className="font-serif">
+                  {formatConditionLabel(condition)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="serialNumber">Serial Number (Optional)</Label>
+          <Input
+            id="serialNumber"
+            value={formData.serialNumber}
+            onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+            placeholder="e.g., 000123456"
+            className="font-serif"
+          />
+        </div>
+      </div>
+
+      {/* Grading */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="gradingService">Grading Service (Optional)</Label>
+          <Select
+            value={formData.gradingService || '__none__'}
+            onValueChange={(value) => setFormData({ ...formData, gradingService: value })}
+          >
+            <SelectTrigger id="gradingService" className="font-serif">
+              <SelectValue placeholder="Select grading service" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="font-serif">
+                Ungraded / Not specified
+              </SelectItem>
+              {GRADING_SERVICES.map((service) => (
+                <SelectItem key={service} value={service} className="font-serif">
+                  {service === 'other' ? 'Other' : service}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="gradingScore">Grade / Score (Optional)</Label>
+          <Input
+            id="gradingScore"
+            value={formData.gradingScore}
+            onChange={(e) => setFormData({ ...formData, gradingScore: e.target.value })}
+            placeholder="e.g., 9.5, MS-65, Gem Mint"
+            className="font-serif"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description (Optional)</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Describe the collectible, its history, and any notable features..."
+          rows={4}
+          className="font-serif"
+        />
+      </div>
+
+      {/* Value */}
+      <div className="space-y-2">
+        <Label htmlFor="value">Value (Optional)</Label>
+        <Input
+          id="value"
+          value={formData.value}
+          onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+          placeholder="e.g., $2,500 USD"
+          className="font-serif"
+        />
+        <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+          <div className="space-y-0.5">
+            <Label htmlFor="valueIsPublic" className="text-sm font-serif">
+              Make value public
+            </Label>
+            <p className="text-xs text-ink/60 font-serif">
+              By default, value is private and only visible to you. It always counts toward your
+              collection total.
+            </p>
+          </div>
+          <Switch
+            id="valueIsPublic"
+            checked={formData.valueIsPublic}
+            onCheckedChange={(checked) => setFormData({ ...formData, valueIsPublic: checked })}
+          />
+        </div>
+      </div>
+
+      {/* Privacy */}
+      <div className="space-y-2 p-4 border border-wine/20 rounded-lg bg-parchment/50">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="isPublic" className="text-base font-serif">
+              Make this collectible public
+            </Label>
+            <p className="text-sm text-ink/60 font-serif">
+              Your collection is private by default — only you can see it unless you make it public.
+            </p>
+          </div>
+          <Switch
+            id="isPublic"
+            checked={formData.isPublic}
+            onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-4 pt-4">
+        <Button
+          type="submit"
+          disabled={pending || !file}
+          className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+        >
+          {pending ? 'Creating Certificate…' : 'Create Certificate of Ownership'}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => router.back()}
+          disabled={pending}
+          className="font-serif"
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}

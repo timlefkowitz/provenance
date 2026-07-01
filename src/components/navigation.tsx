@@ -193,6 +193,9 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           <Link href="/artworks" className={navLinkClass('/artworks', pathname)}>
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
+          <Link href="/collectibles" className={navLinkClass('/collectibles', pathname)}>
+            Collectibles
+          </Link>
           <Link href="/registry" className={navLinkClass('/registry', pathname)}>
             <Trans i18nKey="common:navigation.registry" defaults="Artists" />
           </Link>
@@ -428,6 +431,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
+            </Link>
+            <Link
+              href="/collectibles"
+              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Collectibles
             </Link>
             <Link
               href="/registry"
