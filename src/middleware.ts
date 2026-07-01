@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { createMiddlewareClient } from '@kit/supabase/middleware-client';
+import { getPlanetFromHost } from '@provenance/core/types';
 import { RESERVED_SITE_HANDLES } from '~/lib/gallery-public-slug';
 
 export const config = {
@@ -113,6 +114,33 @@ function getSiteHandle(request: NextRequest): string | null {
   return subdomain.toLowerCase();
 }
 
+/**
+ * When a planet subdomain (e.g. collc.provenance.guru) hits the main deployment,
+ * rewrite to the matching app routes instead of the artworks homepage or a creator site.
+ */
+function getPlanetRewritePath(hostname: string, pathname: string): string | null {
+  const planet = getPlanetFromHost(hostname);
+  if (planet !== 'collectibles') {
+    return null;
+  }
+
+  if (
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next')
+  ) {
+    return null;
+  }
+
+  if (pathname === '/') {
+    return '/collectibles';
+  }
+  if (pathname.startsWith('/collectibles')) {
+    return pathname;
+  }
+  return `/collectibles${pathname}`;
+}
+
 export async function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const hostname = host.split(':')[0];
@@ -139,6 +167,32 @@ export async function middleware(request: NextRequest) {
     // Pass original host through so canonical URLs can be built server-side
     rewriteResponse.headers.set('x-forwarded-host', request.headers.get('host') || '');
     return rewriteResponse;
+  }
+
+  // ── Planet subdomain on main deployment (e.g. collc.provenance.guru) ────────
+  const planetPath = getPlanetRewritePath(hostname, request.nextUrl.pathname);
+  if (planetPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = planetPath;
+    const response = NextResponse.rewrite(url);
+    response.headers.set('x-pathname', planetPath);
+    response.headers.set('x-forwarded-host', request.headers.get('host') || '');
+
+    if (process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:') {
+      response.headers.set(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload',
+      );
+    }
+
+    try {
+      const supabase = createMiddlewareClient(request, response);
+      await supabase.auth.getUser();
+    } catch (error) {
+      console.error('[Collectibles] middleware Supabase error:', error);
+    }
+
+    return response;
   }
 
   // ── Main-app request ───────────────────────────────────────────────────────
