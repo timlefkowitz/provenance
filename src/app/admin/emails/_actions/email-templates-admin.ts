@@ -6,6 +6,7 @@ import { isAdmin } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { sendTransactionalEmailStrict } from '~/lib/email';
+import { logAdminOutreachSend } from '~/lib/admin-outreach-sends';
 import { buildEmailPreviewHtml } from '~/lib/email-templates-store';
 import {
   DEFAULT_EMAIL_MARKDOWN,
@@ -297,7 +298,7 @@ export async function sendEmailTemplateToRecipients(
 ): Promise<SendToRecipientsResult> {
   console.log('[Admin/emails] sendEmailTemplateToRecipients started');
   try {
-    await requireAdminUser();
+    const user = await requireAdminUser();
 
     const parsed = recipientsPayloadSchema.safeParse(input);
     if (!parsed.success) {
@@ -342,8 +343,23 @@ export async function sendEmailTemplateToRecipients(
       });
       if (res.ok) {
         sent.push(email);
+        if (parsed.data.template_key === 'invite') {
+          await logAdminOutreachSend({
+            email,
+            status: 'sent',
+            sentBy: user.id,
+          });
+        }
       } else {
         failed.push({ email, error: res.error });
+        if (parsed.data.template_key === 'invite') {
+          await logAdminOutreachSend({
+            email,
+            status: 'failed',
+            errorMessage: res.error,
+            sentBy: user.id,
+          });
+        }
       }
       if (recipients.length > 1) {
         await new Promise((resolve) => setTimeout(resolve, 600));

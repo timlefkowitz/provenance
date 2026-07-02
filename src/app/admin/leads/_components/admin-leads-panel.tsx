@@ -7,6 +7,7 @@ import { Button } from '@kit/ui/button';
 import { toast } from 'sonner';
 
 import { importLeadRowsToContacts } from '../../contacts/_actions/admin-contacts';
+import { LeadInviteOutreachPanel } from './lead-invite-outreach-panel';
 
 type LeadRow = {
   title: string;
@@ -241,6 +242,8 @@ export function AdminLeadsPanel() {
 
   return (
     <div className="space-y-6">
+      <LeadInviteOutreachPanel />
+
       {/* New search */}
       <section className="rounded-md border border-[#1793d1]/25 bg-black/30 p-4">
         <h2 className="mb-3 font-mono text-[12px] uppercase tracking-wide text-[#67d4ff]">
