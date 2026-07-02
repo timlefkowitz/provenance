@@ -3,10 +3,12 @@ import {
   getCertificationEmailSubject,
   getArtworkFeaturedEmailSubject,
   getInstitutionThanksEmailSubject,
+  getInviteEmailSubject,
   getWelcomeEmailSubject,
   renderArtworkFeaturedEmailHtml,
   renderCertificationEmailHtml,
   renderInstitutionThanksEmailHtml,
+  renderInviteEmailHtml,
   renderNotificationEmailHtml,
   renderSummaryEmailHtml,
   renderUpdateEmailHtml,
@@ -186,6 +188,22 @@ export async function sendInstitutionThanksEmail(email: string, name: string): P
   const [subject, html] = await Promise.all([
     getInstitutionThanksEmailSubject(),
     renderInstitutionThanksEmailHtml(name),
+  ]);
+
+  await sendEmail({
+    to: email,
+    subject,
+    html,
+  });
+}
+
+/**
+ * Send the invite marketing email (admin-triggered outreach to prospects).
+ */
+export async function sendInviteEmail(email: string, name: string): Promise<void> {
+  const [subject, html] = await Promise.all([
+    getInviteEmailSubject(),
+    renderInviteEmailHtml(name),
   ]);
 
   await sendEmail({

@@ -17,7 +17,7 @@ import {
 } from '~/lib/email-defaults';
 import type { SummaryItem } from '~/lib/email-defaults';
 
-export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('atelier');
+export const DEFAULT_EMAIL_THEME: EmailTheme = getPresetThemeDefaults('gallery');
 
 type EmailSettingsRow = {
   layout_preset?: string | null;
@@ -370,6 +370,28 @@ export async function getInstitutionThanksEmailSubject(): Promise<string> {
   return subject;
 }
 
+export async function renderInviteEmailHtml(name: string): Promise<string> {
+  const theme = await getResolvedEmailTheme();
+  const { bodyMarkdown } = await getResolvedTemplateMarkdown('invite');
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+  const displayName = name || 'there';
+
+  const resolvedSite = (isSafeHttpUrl(siteUrl) ? siteUrl : 'https://provenance.guru').replace(/\/$/, '');
+  const md = interpolateTemplate(
+    bodyMarkdown,
+    { name: escapeHtml(displayName) },
+    { siteUrl: resolvedSite },
+  );
+  const ctaHref = `${resolvedSite}/auth/sign-up`;
+  const inner = `<div>${renderMarkdownWithBulletCta(md, theme, ctaHref, 'Create your account')}</div>`;
+  return buildEmailHtml("You're Invited to Provenance", inner, theme);
+}
+
+export async function getInviteEmailSubject(): Promise<string> {
+  const { subject } = await getResolvedTemplateMarkdown('invite');
+  return subject;
+}
+
 /** Sample data for admin preview only — mirrors real sends without hitting the database. */
 const PREVIEW_SAMPLE = {
   name: 'Alex Rivera',
@@ -568,6 +590,23 @@ export function buildEmailPreviewHtml(
       const inner = `<div>${bodyHtml}${primaryBtn}${secondaryBtn}</div>`;
       return {
         html: buildEmailHtml('Thank you from Provenance', inner, t),
+        previewSubject: subject,
+      };
+    }
+    case 'invite': {
+      const resolvedSite = (isSafeHttpUrl(PREVIEW_SAMPLE.siteUrl)
+        ? PREVIEW_SAMPLE.siteUrl
+        : 'https://provenance.guru'
+      ).replace(/\/$/, '');
+      const md = interpolateTemplate(
+        bodyMarkdown,
+        { name: escapeHtml(PREVIEW_SAMPLE.name) },
+        { siteUrl: resolvedSite },
+      );
+      const ctaHref = `${resolvedSite}/auth/sign-up`;
+      const inner = `<div>${renderMarkdownWithBulletCta(md, t, ctaHref, 'Create your account')}</div>`;
+      return {
+        html: buildEmailHtml("You're Invited to Provenance", inner, t),
         previewSubject: subject,
       };
     }

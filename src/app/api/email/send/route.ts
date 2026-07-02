@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   sendWelcomeEmail,
   sendCertificationEmail,
+  sendInviteEmail,
   sendNotificationEmail,
   sendSummaryEmail,
   sendUpdateEmail,
@@ -15,7 +16,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
  *
  * POST /api/email/send
  * Body: {
- *   type: 'welcome' | 'certification' | 'notification' | 'summary' | 'update',
+ *   type: 'welcome' | 'certification' | 'notification' | 'summary' | 'update' | 'invite',
  *   email: string,
  *   userId?: string,
  *   name?: string,
@@ -216,6 +217,12 @@ export async function POST(request: NextRequest) {
         linkLabel: linkLabel ?? undefined,
       });
       return NextResponse.json({ success: true, message: 'Update email sent' });
+    }
+
+    // Invite marketing emails (prospect outreach)
+    if (type === 'invite') {
+      await sendInviteEmail(email, name || 'there');
+      return NextResponse.json({ success: true, message: 'Invite email sent' });
     }
 
     return NextResponse.json(

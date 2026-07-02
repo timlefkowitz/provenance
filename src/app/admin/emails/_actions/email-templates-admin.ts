@@ -39,6 +39,7 @@ const templateSchema = z.object({
     'update',
     'artwork_featured',
     'institution_thanks',
+    'invite',
   ]),
   subject:       z.string().min(1).max(500),
   body_markdown: z.string().min(1).max(100_000),
@@ -49,6 +50,15 @@ const previewPayloadSchema = z.object({
   subject:       z.string().min(1).max(500),
   body_markdown: z.string().min(1).max(100_000),
   theme:         settingsSchema,
+});
+
+const MAX_RECIPIENTS_PER_SEND = 500;
+
+const recipientsPayloadSchema = previewPayloadSchema.extend({
+  recipients: z
+    .array(z.string().trim().email())
+    .min(1, 'Add at least one recipient email address.')
+    .max(MAX_RECIPIENTS_PER_SEND, `Limit ${MAX_RECIPIENTS_PER_SEND} recipients per send.`),
 });
 
 async function requireAdminUser() {
@@ -270,6 +280,89 @@ export async function sendTestEmailTemplate(
     return {
       ok: false,
       error: e instanceof Error ? e.message : 'Failed to send test email',
+    };
+  }
+}
+
+export type SendToRecipientsResult =
+  | { ok: true; sent: string[]; failed: { email: string; error: string }[] }
+  | { ok: false; error: string };
+
+/**
+ * Send a template to an arbitrary list of external email addresses.
+ * Recipients do not need to be existing users.
+ */
+export async function sendEmailTemplateToRecipients(
+  input: z.infer<typeof recipientsPayloadSchema>,
+): Promise<SendToRecipientsResult> {
+  console.log('[Admin/emails] sendEmailTemplateToRecipients started');
+  try {
+    await requireAdminUser();
+
+    const parsed = recipientsPayloadSchema.safeParse(input);
+    if (!parsed.success) {
+      const issues = parsed.error.issues.map((i) => i.message).join(', ');
+      return { ok: false, error: issues || 'Invalid payload' };
+    }
+
+    const recipients = Array.from(
+      new Set(parsed.data.recipients.map((r) => r.trim().toLowerCase())),
+    );
+
+    const theme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
+
+    // Real recipients shouldn't see the preview sample name ("Alex Rivera").
+    // Pre-fill greeting placeholders with a generic salutation before rendering.
+    const bodyMarkdown = parsed.data.body_markdown
+      .split('{{name}}').join('there')
+      .split('{{artistName}}').join('there');
+
+    const { html, previewSubject } = buildEmailPreviewHtml(
+      parsed.data.template_key,
+      theme,
+      parsed.data.subject,
+      bodyMarkdown,
+    );
+
+    console.log(
+      '[Admin/emails] sendEmailTemplateToRecipients sending',
+      parsed.data.template_key,
+      `${recipients.length} recipient(s)`,
+    );
+
+    const sent: string[] = [];
+    const failed: { email: string; error: string }[] = [];
+
+    // Sequential with a small delay to stay under Resend rate limits (~2 req/s).
+    for (const email of recipients) {
+      const res = await sendTransactionalEmailStrict({
+        to: email,
+        subject: previewSubject,
+        html,
+      });
+      if (res.ok) {
+        sent.push(email);
+      } else {
+        failed.push({ email, error: res.error });
+      }
+      if (recipients.length > 1) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
+    }
+
+    if (failed.length > 0) {
+      console.error('[Admin/emails] sendEmailTemplateToRecipients partial failures', failed);
+    }
+    console.log(
+      '[Admin/emails] sendEmailTemplateToRecipients done',
+      `sent=${sent.length} failed=${failed.length}`,
+    );
+    return { ok: true, sent, failed };
+  } catch (e) {
+    console.error('[Admin/emails] sendEmailTemplateToRecipients failed', e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'Failed to send emails',
     };
   }
 }

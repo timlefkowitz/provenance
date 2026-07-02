@@ -10,6 +10,7 @@ import {
   previewEmailTemplate,
   saveEmailTemplate,
   saveEmailTheme,
+  sendEmailTemplateToRecipients,
   sendTestEmailTemplate,
   type EmailTemplatesAdminPayload,
 } from '../_actions/email-templates-admin';
@@ -179,6 +180,7 @@ const TEMPLATE_LABELS: Record<EmailTemplateKey, string> = {
   update:             'Update',
   artwork_featured:   'Artwork featured',
   institution_thanks: 'Institution thank-you',
+  invite:             'Invite',
 };
 
 const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
@@ -189,8 +191,30 @@ const PLACEHOLDER_HELP = `Placeholders (use exactly as shown):
 • update: {{name}}, {{title}}, {{body}}, {{ctaUrl}}, {{ctaLabel}}
 • artwork_featured: {{artistName}}, {{artworkTitle}}, {{artworkUrl}}
 • institution_thanks: {{name}}, {{feedbackUrl}}, {{institutionUrl}}
+• invite: {{name}}, {{siteUrl}}
 
 Primary action links: keep one markdown line like [Your label](https://…) that matches the main URL we inject (e.g. Get Started → site/artworks/add). That line is replaced by a bulletproof button; if you change the URL or label, remove the old markdown line to avoid a duplicate text link.`;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Split a pasted blob on commas/semicolons/whitespace into candidate addresses. */
+function parseRecipientList(raw: string): { valid: string[]; invalid: string[] } {
+  const parts = raw
+    .split(/[\s,;]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  for (const p of parts) {
+    if (EMAIL_RE.test(p)) {
+      const lower = p.toLowerCase();
+      if (!valid.includes(lower)) valid.push(lower);
+    } else {
+      invalid.push(p);
+    }
+  }
+  return { valid, invalid };
+}
 
 function serializeWorkspaceState(
   theme: AdminEmailThemeDraft,
@@ -208,6 +232,11 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
   const [activeKey, setActiveKey] = useState<EmailTemplateKey>(keys[0] ?? 'welcome');
   const [theme, setTheme] = useState<AdminEmailThemeDraft>(initial.theme);
   const [templates, setTemplates] = useState(initial.templates);
+
+  const [recipientsText, setRecipientsText] = useState('');
+  const [lastSendFailures, setLastSendFailures] = useState<
+    { email: string; error: string }[]
+  >([]);
 
   const savedBaselineRef = useRef(serializeWorkspaceState(initial.theme, initial.templates));
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -338,6 +367,50 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
         toast.success('Test email sent — check your inbox.');
       } else {
         toast.error(res.error ?? 'Failed to send test email');
+      }
+    });
+  };
+
+  const sendToRecipients = () => {
+    const t = templates[activeKey];
+    if (!t?.bodyMarkdown?.trim()) {
+      toast.error('Add some body Markdown before sending.');
+      return;
+    }
+    const { valid, invalid } = parseRecipientList(recipientsText);
+    if (invalid.length > 0) {
+      toast.error(
+        `Invalid email address${invalid.length > 1 ? 'es' : ''}: ${invalid.join(', ')}`,
+      );
+      return;
+    }
+    if (valid.length === 0) {
+      toast.error('Paste at least one email address (comma or newline separated).');
+      return;
+    }
+    startTransition(async () => {
+      setLastSendFailures([]);
+      const res = await sendEmailTemplateToRecipients({
+        template_key:  activeKey,
+        subject:       t.subject,
+        body_markdown: t.bodyMarkdown,
+        theme,
+        recipients:    valid,
+      });
+      if (!res.ok) {
+        toast.error(res.error ?? 'Failed to send');
+        return;
+      }
+      setLastSendFailures(res.failed);
+      if (res.failed.length === 0) {
+        toast.success(
+          `Sent "${TEMPLATE_LABELS[activeKey]}" to ${res.sent.length} address${res.sent.length === 1 ? '' : 'es'}.`,
+        );
+        setRecipientsText('');
+      } else {
+        toast.error(
+          `Sent to ${res.sent.length} of ${res.sent.length + res.failed.length} addresses — ${res.failed.length} failed (see details below).`,
+        );
       }
     });
   };
@@ -486,6 +559,49 @@ export function EditEmailTemplatesForm({ initial }: { initial: EmailTemplatesAdm
               >
                 Send test to my email
               </Button>
+            </div>
+
+            {/* ── Send to recipients ─────────────────────────── */}
+            <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50 space-y-3">
+              <div>
+                <h3 className="text-base font-semibold text-neutral-900">Send to recipients</h3>
+                <p className="text-sm text-neutral-600 mt-1">
+                  Send the current draft of &ldquo;{TEMPLATE_LABELS[activeKey]}&rdquo; to any email
+                  addresses — they don&apos;t need Provenance accounts. Separate addresses with
+                  commas or new lines (max 500 per send).
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="recipients_list">Recipient email addresses</Label>
+                <Textarea
+                  id="recipients_list"
+                  className="mt-1 min-h-[90px] font-mono text-sm bg-white"
+                  placeholder={'jane@example.com\ncollector@gallery.com'}
+                  value={recipientsText}
+                  onChange={(e) => setRecipientsText(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={sendToRecipients}
+                disabled={pending || previewLoading || !recipientsText.trim()}
+              >
+                {pending ? 'Sending…' : 'Send to list'}
+              </Button>
+              {lastSendFailures.length > 0 && (
+                <div className="border border-red-200 bg-red-50 rounded-md p-3 space-y-1">
+                  <p className="text-sm font-medium text-red-800">
+                    {lastSendFailures.length} address{lastSendFailures.length === 1 ? '' : 'es'} failed:
+                  </p>
+                  <ul className="text-xs text-red-700 space-y-0.5">
+                    {lastSendFailures.map((f) => (
+                      <li key={f.email}>
+                        <span className="font-mono">{f.email}</span> — {f.error}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 

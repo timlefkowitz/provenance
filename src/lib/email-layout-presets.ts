@@ -285,7 +285,7 @@ export const EMAIL_THEMES: Record<EmailLayoutPresetId, EmailTheme> = {
 
 /**
  * Normalize any DB value (including legacy `studio`/`heritage`/`archive`/`minimal`)
- * to a valid preset id. Unknown values fall back to `atelier`.
+ * to a valid preset id. Unknown values fall back to `gallery`.
  */
 export function normalizeEmailLayoutPreset(value: unknown): EmailLayoutPresetId {
   if (
@@ -294,10 +294,10 @@ export function normalizeEmailLayoutPreset(value: unknown): EmailLayoutPresetId 
   ) {
     return value as EmailLayoutPresetId;
   }
-  return 'atelier';
+  return 'gallery';
 }
 
-export function getPresetThemeDefaults(preset: EmailLayoutPresetId = 'atelier'): EmailTheme {
+export function getPresetThemeDefaults(preset: EmailLayoutPresetId = 'gallery'): EmailTheme {
   return EMAIL_THEMES[preset];
 }
 
@@ -310,9 +310,9 @@ export type AdminEmailThemeDraft = {
 
 /** Default draft when the DB has no `email_settings` row. */
 export function defaultAdminEmailThemeDraft(): AdminEmailThemeDraft {
-  const p = ATELIER_THEME;
+  const p = GALLERY_THEME;
   return {
-    layout_preset:      'atelier',
+    layout_preset:      'gallery',
     masthead_title:     p.mastheadTitle,
     masthead_subtitle:  p.mastheadSubtitle,
   };
