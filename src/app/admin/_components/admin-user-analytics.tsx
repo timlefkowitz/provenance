@@ -353,8 +353,9 @@ async function loadNewestAccounts() {
 async function loadStreakLeaders() {
   const admin = getSupabaseServerAdminClient();
   const { data, error } = await admin
-    .from('user_streaks')
+    .from('user_goals')
     .select('user_id, longest_streak_days, current_streak_days')
+    .eq('is_default', true)
     .order('longest_streak_days', { ascending: false })
     .order('current_streak_days', { ascending: false })
     .limit(STREAK_LEADERS_LIMIT);

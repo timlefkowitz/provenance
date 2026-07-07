@@ -14,9 +14,10 @@ export async function getUserStreak(userId: string): Promise<UserStreakView | nu
   const client = getSupabaseServerClient();
 
   const { data, error } = await client
-    .from('user_streaks')
+    .from('user_goals')
     .select('current_streak_days, longest_streak_days, daily_upload_count, star_tier')
     .eq('user_id', userId)
+    .eq('is_default', true)
     .maybeSingle();
 
   if (error) {

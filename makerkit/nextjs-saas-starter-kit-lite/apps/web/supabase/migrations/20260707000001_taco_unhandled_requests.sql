@@ -16,6 +16,10 @@ create table if not exists public.taco_unhandled_requests (
 -- Admins can read everything; users cannot read this table
 alter table public.taco_unhandled_requests enable row level security;
 
+-- Matches the app-level admin check in src/lib/admin.ts (accounts.public_data->>'admin').
+-- In practice, admin server actions read this table via the service-role client
+-- (bypassing RLS after a requireAdmin() check), so this policy is defense-in-depth.
+drop policy if exists "Admin full access to taco_unhandled_requests" on public.taco_unhandled_requests;
 create policy "Admin full access to taco_unhandled_requests"
   on public.taco_unhandled_requests
   for all
@@ -23,11 +27,7 @@ create policy "Admin full access to taco_unhandled_requests"
     exists (
       select 1 from public.accounts a
       where a.id = auth.uid()
-        and (a.is_super_admin = true or exists (
-          select 1 from public.account_memberships am
-          where am.account_id = a.id
-            and am.role = 'owner'
-        ))
+        and (a.public_data ->> 'admin') = 'true'
     )
   );
 

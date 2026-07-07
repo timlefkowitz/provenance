@@ -37,7 +37,9 @@ import {
 } from './_components/feed-panel-thumbnail-picker';
 import { SocialLinkItem } from './_components/social-link-item';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
+import { getCommitHistory } from '~/app/profile/_actions/get-commit-history';
 import { StreakStar } from '~/components/streak-star';
+import { ContributionGraph } from '~/components/contribution-graph';
 import { ExternalLink } from 'lucide-react';
 import {
   getTemplateComponent,
@@ -360,6 +362,7 @@ export default async function ArtistProfilePage({
   const newsPublications = (roleProfile?.news_publications as { title: string; url: string; publication_name?: string; date?: string }[] | undefined) || [];
 
   const streak = !isGallery ? await getUserStreak(account.id) : null;
+  const commits = !isGallery ? await getCommitHistory(account.id, 182) : [];
 
   // Fetch published creator website for this account (if any)
   const publishedSiteUrl = await getPublishedSiteUrl(client as any, roleProfile?.id ?? null);
@@ -818,6 +821,13 @@ export default async function ArtistProfilePage({
                           Longest streak: {streak.longestStreakDays} days
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Contribution graph */}
+                  {streak && commits.length > 0 && (
+                    <div className="mt-4 overflow-x-auto">
+                      <ContributionGraph commits={commits} weeks={26} />
                     </div>
                   )}
 

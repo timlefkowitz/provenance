@@ -34,10 +34,12 @@ create table if not exists public.artwork_inquiries (
 -- Owners can read and update their inquiries; anyone can insert (no auth needed for visitors)
 alter table public.artwork_inquiries enable row level security;
 
+drop policy if exists "owners_select_artwork_inquiries" on public.artwork_inquiries;
 create policy "owners_select_artwork_inquiries"
   on public.artwork_inquiries for select
   using (auth.uid() = owner_account_id);
 
+drop policy if exists "owners_update_artwork_inquiries" on public.artwork_inquiries;
 create policy "owners_update_artwork_inquiries"
   on public.artwork_inquiries for update
   using (auth.uid() = owner_account_id)
@@ -46,6 +48,7 @@ create policy "owners_update_artwork_inquiries"
 -- Public insert: visitors can insert, but only when the owner_account_id matches
 -- the real owner of the target artwork, and that artwork is public & accepts inquiries.
 -- This prevents direct-API abuse where a caller picks an arbitrary owner_account_id.
+drop policy if exists "public_insert_artwork_inquiries" on public.artwork_inquiries;
 create policy "public_insert_artwork_inquiries"
   on public.artwork_inquiries for insert
   with check (
@@ -76,6 +79,7 @@ create table if not exists public.stripe_connect_accounts (
 alter table public.stripe_connect_accounts enable row level security;
 
 -- Owners can read their own connect account; writes go through admin client only
+drop policy if exists "owners_select_stripe_connect_accounts" on public.stripe_connect_accounts;
 create policy "owners_select_stripe_connect_accounts"
   on public.stripe_connect_accounts for select
   using (auth.uid() = user_id);

@@ -13,8 +13,9 @@ import {
 import { Button } from '@kit/ui/button';
 import { UnifiedProfileSettingsForm } from '~/components/unified-profile-settings-form';
 import { ProfileArtworksSection } from './_components/profile-artworks-section';
-import { getUserStreak } from './_actions/get-user-streak';
-import { StreakStar } from '~/components/streak-star';
+import { getMyGoals } from './_actions/manage-goals';
+import { getCommitHistory } from './_actions/get-commit-history';
+import { ArtPracticeSection } from '~/components/art-practice-section';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 
@@ -43,7 +44,10 @@ export default async function ProfilePage() {
   const currentLinks = (publicData.links as string[]) || [];
   const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
-  const streak = await getUserStreak(user.id);
+  const [goals, commits] = await Promise.all([
+    getMyGoals(),
+    getCommitHistory(user.id),
+  ]);
 
   const roleProfiles = (await getUserProfiles(user.id)).filter(
     (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
@@ -67,17 +71,11 @@ export default async function ProfilePage() {
         <p className="text-ink/70 font-serif">
           Edit your profile information. Your name and medium will be used when creating artworks.
         </p>
-        {streak ? (
-          <div className="mt-4 space-y-1">
-            <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
-            <p className="text-xs text-ink/60 font-serif">
-              Longest streak: {streak.longestStreakDays} days. Uploads today: {streak.dailyUploadCount}/3.
-            </p>
-          </div>
-        ) : null}
       </div>
 
       <div className="flex w-full flex-1 flex-col space-y-4">
+        <ArtPracticeSection initialGoals={goals} commits={commits} />
+
         {/* Avatar & Photo Change Shortcut */}
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
