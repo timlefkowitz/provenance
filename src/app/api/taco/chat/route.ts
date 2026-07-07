@@ -10,6 +10,27 @@ import {
   handleGetMyCollection,
   handleListMyExhibitions,
   handleSuggestNavigation,
+  handleGetMyGrants,
+  handleGetMyProfile,
+  handleGetMySales,
+  handleGetPortalStats,
+  handleGetOpenCalls,
+  handleSummarizePractice,
+  handleCreateExhibition,
+  handleAddCvEntry,
+  handleUpdateArtistBio,
+  handleSearchPress,
+  handleSavePressToProfile,
+  handleDraftArtistStatement,
+  handleDraftExhibitionText,
+  handleDraftOpenCallSubmission,
+  handleDraftCollectorOutreach,
+  handleGenerateWebsiteBio,
+  handleSuggestPricing,
+  handleGetCollectorContacts,
+  handleCreateArtworkDraft,
+  handleSearchComparableSales,
+  handleFindGrantsForMe,
   type NavigationSuggestion,
 } from './tool-handlers';
 
@@ -350,12 +371,119 @@ export async function POST(request: NextRequest) {
               result = { acknowledged: true, count: suggestions.length };
               break;
             }
+            // ── Phase 1: reads ──────────────────────────────────────────────
+            case 'get_my_grants':
+              result = await handleGetMyGrants(user.id);
+              break;
+            case 'get_my_profile':
+              result = await handleGetMyProfile(user.id);
+              break;
+            case 'get_my_sales':
+              result = await handleGetMySales(user.id);
+              break;
+            case 'get_portal_stats':
+              result = await handleGetPortalStats(user.id);
+              break;
+            case 'get_open_calls':
+              result = await handleGetOpenCalls(user.id);
+              break;
+            case 'summarize_practice':
+              result = await handleSummarizePractice(user.id, apiKey);
+              break;
+            // ── Phase 2: writes ─────────────────────────────────────────────
+            case 'create_exhibition':
+              result = await handleCreateExhibition(
+                args as { title: string; start_date: string; description?: string; location?: string; end_date?: string },
+                user.id,
+              );
+              break;
+            case 'add_cv_entry':
+              result = await handleAddCvEntry(
+                args as { entry_type: 'exhibition' | 'education' | 'award' | 'residency' | 'publication'; name: string; venue_or_institution?: string; year?: string; description?: string },
+                user.id,
+              );
+              break;
+            case 'update_artist_bio':
+              result = await handleUpdateArtistBio(args as { bio: string; role?: string }, user.id);
+              break;
+            case 'search_press':
+              result = await handleSearchPress(args as { artist_name?: string }, user.id, apiKey);
+              break;
+            case 'save_press_to_profile':
+              result = await handleSavePressToProfile(
+                args as { items: { title: string; url: string; publication_name?: string; date?: string }[] },
+                user.id,
+              );
+              break;
+            // ── Phase 3: AI writing ─────────────────────────────────────────
+            case 'draft_artist_statement':
+              result = await handleDraftArtistStatement(args as { focus?: string }, user.id, apiKey);
+              break;
+            case 'draft_exhibition_text':
+              result = await handleDraftExhibitionText(
+                args as { exhibition_id?: string; exhibition_title?: string; format?: 'press_release' | 'wall_text' | 'catalogue_note' },
+                user.id,
+                apiKey,
+              );
+              break;
+            case 'draft_open_call_submission':
+              result = await handleDraftOpenCallSubmission(
+                args as { open_call_id?: string; open_call_title?: string },
+                user.id,
+                apiKey,
+              );
+              break;
+            case 'draft_collector_outreach':
+              result = await handleDraftCollectorOutreach(
+                args as { contact_name: string; context?: string },
+                user.id,
+                apiKey,
+              );
+              break;
+            case 'generate_website_bio':
+              result = await handleGenerateWebsiteBio(
+                args as { length?: 'short' | 'medium' },
+                user.id,
+                apiKey,
+              );
+              break;
+            case 'suggest_pricing':
+              result = await handleSuggestPricing(args as { artwork_title: string }, user.id);
+              break;
+            // ── Phase 4: extended ───────────────────────────────────────────
+            case 'get_collector_contacts':
+              result = await handleGetCollectorContacts(user.id);
+              break;
+            case 'create_artwork_draft':
+              result = await handleCreateArtworkDraft(
+                args as { title: string; medium?: string; year?: string; dimensions?: string; description?: string },
+                user.id,
+              );
+              break;
+            case 'search_comparable_sales':
+              result = await handleSearchComparableSales(
+                args as { medium?: string; artist_name?: string },
+                user.id,
+              );
+              break;
+            case 'find_grants_for_me':
+              result = await handleFindGrantsForMe(user.id);
+              break;
             default:
               result = { error: `Unknown tool: ${tc.function.name}` };
           }
         } catch (err) {
           console.error('[Taco] tool error', tc.function.name, err);
           result = { error: err instanceof Error ? err.message : 'Tool execution failed' };
+        }
+
+        // Collect any inline navigation suggestions returned by write/create tools
+        if (result && typeof result === 'object' && Array.isArray((result as any).navigation)) {
+          const inlineNav = (result as any).navigation as NavigationSuggestion[];
+          const valid = inlineNav.filter(
+            (s) => typeof s.label === 'string' && typeof s.href === 'string' && s.href.startsWith('/'),
+          );
+          collectedSuggestions.push(...valid);
         }
 
         messages.push({
