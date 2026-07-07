@@ -58,7 +58,8 @@ Guidelines:
 - Keep replies focused. Long prose should be broken into short paragraphs or bullets.
 - Never fabricate artworks, exhibitions, or grant details — use tools and be honest about limits.
 - If a user shares an image, describe it and offer insight relevant to their practice.
-- If a user shares a document, summarise it and offer to help with writing or analysis.`;
+- If a user shares a document, summarise it and offer to help with writing or analysis.
+- If the user asks you to do something you genuinely CANNOT do (a missing feature, an action outside your capabilities, or something the platform doesn't support yet), call the flag_unhandled_request tool with a specific summary of what they wanted, then tell them warmly that you've noted their request for the team.`;
 
 /** Map route prefixes → human-readable context injected into the system prompt. */
 const ROUTE_CONTEXT_MAP: { prefix: string; label: string; hint: string }[] = [
@@ -469,6 +470,34 @@ export async function POST(request: NextRequest) {
             case 'find_grants_for_me':
               result = await handleFindGrantsForMe(user.id);
               break;
+            // ── Meta ────────────────────────────────────────────────────────
+            case 'flag_unhandled_request': {
+              const summary = String((args as { summary?: string }).summary ?? '').trim();
+              if (summary) {
+                void (async () => {
+                  try {
+                    const adminClient = getSupabaseServerAdminClient();
+                    const { error: flagErr } = await (adminClient as any)
+                      .from('taco_unhandled_requests')
+                      .insert({
+                        user_id: user.id,
+                        user_message: messageText.slice(0, 2000),
+                        taco_summary: summary.slice(0, 1000),
+                        pathname: pathname ?? null,
+                      });
+                    if (flagErr) {
+                      console.error('[Taco] flag_unhandled_request insert failed', flagErr);
+                    } else {
+                      console.log('[Taco] unhandled request logged:', summary.slice(0, 80));
+                    }
+                  } catch (flagErr) {
+                    console.error('[Taco] flag_unhandled_request threw', flagErr);
+                  }
+                })();
+              }
+              result = { acknowledged: true };
+              break;
+            }
             default:
               result = { error: `Unknown tool: ${tc.function.name}` };
           }

@@ -460,6 +460,26 @@ const FIND_GRANTS_FOR_ME_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 };
 
+const FLAG_UNHANDLED_REQUEST_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'flag_unhandled_request',
+    description:
+      'Call this tool when the user asks you to do something you genuinely cannot do — a feature that does not exist yet, an action outside your capabilities, or something that would require platform functionality not currently available. Do NOT call it for things you can answer from knowledge; only use it for real capability gaps. This records the request for the product team.',
+    parameters: {
+      type: 'object',
+      properties: {
+        summary: {
+          type: 'string',
+          description:
+            'A concise 1-2 sentence description of what the user wanted that you could not provide. Be specific — e.g. "User asked to bulk-import artworks from a CSV file" rather than "user asked for something I can\'t do".',
+        },
+      },
+      required: ['summary'],
+    },
+  },
+};
+
 export const ALL_TACO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   // Original tools
   SEARCH_ARTWORKS_TOOL,
@@ -492,4 +512,6 @@ export const ALL_TACO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   CREATE_ARTWORK_DRAFT_TOOL,
   SEARCH_COMPARABLE_SALES_TOOL,
   FIND_GRANTS_FOR_ME_TOOL,
+  // Meta
+  FLAG_UNHANDLED_REQUEST_TOOL,
 ];

@@ -37,6 +37,20 @@ type UsageRow = {
   estimated_cost_usd: number;
 };
 
+type UnhandledRow = {
+  id: string;
+  user_id: string;
+  user_message: string;
+  taco_summary: string;
+  pathname: string | null;
+  resolved: boolean;
+  admin_note: string | null;
+  created_at: string;
+  // joined
+  email: string | null;
+  name: string | null;
+};
+
 type AccountRow = { id: string; email: string | null; name: string | null };
 
 /* -------------------------------------------------------------------------- */
@@ -175,6 +189,29 @@ async function loadTopUsers(limit = 10) {
   });
 }
 
+async function loadUnhandledRequests(limit = 50): Promise<UnhandledRow[]> {
+  const admin = getSupabaseServerAdminClient();
+
+  const { data, error } = await (admin as any)
+    .from('taco_unhandled_requests')
+    .select('id, user_id, user_message, taco_summary, pathname, resolved, admin_note, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[AdminTaco] unhandled_requests query failed', error);
+    return [];
+  }
+
+  const rows = (data ?? []) as Omit<UnhandledRow, 'email' | 'name'>[];
+  const accounts = await fetchAccountsByIds([...new Set(rows.map((r) => r.user_id))]);
+
+  return rows.map((r) => {
+    const acc = accounts.get(r.user_id);
+    return { ...r, email: acc?.email ?? null, name: acc?.name ?? null };
+  });
+}
+
 async function loadRecentRows(limit = 20) {
   const admin = getSupabaseServerAdminClient();
 
@@ -207,10 +244,11 @@ async function loadRecentRows(limit = 20) {
 export default async function AdminTacoPage() {
   await requireAdmin();
 
-  const [aggregates, topUsers, recentRows] = await Promise.all([
+  const [aggregates, topUsers, recentRows, unhandledRows] = await Promise.all([
     loadAggregates(),
     loadTopUsers(),
     loadRecentRows(),
+    loadUnhandledRequests(),
   ]);
 
   console.log('[AdminTaco] page loaded', {
@@ -218,6 +256,7 @@ export default async function AdminTacoPage() {
     monthRequests: aggregates.month.requests,
     topUsers: topUsers.length,
     recentRows: recentRows.length,
+    unhandledRows: unhandledRows.length,
   });
 
   return (
@@ -399,6 +438,82 @@ export default async function AdminTacoPage() {
           </Card>
         </section>
       </div>
+
+      {/* Unhandled requests (feature wishlist) */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <p className={adminMonoLabel}>taco_unhandled_requests</p>
+          <span className="font-mono text-[11px] text-slate-500">
+            {unhandledRows.filter((r) => !r.resolved).length} open ·{' '}
+            {unhandledRows.length} total
+          </span>
+        </div>
+        <Card className={adminPanel}>
+          <CardHeader className="border-b border-[#1793d1]/15 pb-4">
+            <CardTitle className="font-mono text-sm text-[#67d4ff]">
+              feature_wishlist
+            </CardTitle>
+            <CardDescription className="font-mono text-[11px] text-slate-500">
+              requests Taco could not fulfil — product gaps and missing actions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {unhandledRows.length === 0 ? (
+              <p className="font-mono text-[13px] text-slate-500">
+                no unhandled requests yet — Taco is handling everything 🐱
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {unhandledRows.map((r) => (
+                  <li
+                    key={r.id}
+                    className={cn(
+                      'rounded-sm border px-4 py-3',
+                      r.resolved
+                        ? 'border-[#1793d1]/10 bg-[#0a0d12] opacity-50'
+                        : 'border-[#1793d1]/20 bg-[#0f1318]',
+                    )}
+                  >
+                    <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="font-mono text-[12px] font-semibold text-slate-200">
+                        {bestLabel({ name: r.name, email: r.email, id: r.user_id })}
+                      </span>
+                      {r.pathname && (
+                        <span className="font-mono text-[11px] text-[#1793d1]/60">
+                          {r.pathname}
+                        </span>
+                      )}
+                      {r.resolved && (
+                        <span className="rounded-sm border border-emerald-700/40 bg-emerald-900/20 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400">
+                          resolved
+                        </span>
+                      )}
+                      <span className="ml-auto font-mono text-[11px] tabular-nums text-slate-600">
+                        {formatRelative(r.created_at)}
+                      </span>
+                    </div>
+                    {/* What Taco summarised the request as */}
+                    <p className="mb-1 font-mono text-[13px] leading-snug text-[#67d4ff]">
+                      {r.taco_summary}
+                    </p>
+                    {/* The raw user message */}
+                    <p className="truncate font-mono text-[11px] text-slate-500" title={r.user_message}>
+                      <span className="text-slate-600">raw: </span>
+                      {r.user_message}
+                    </p>
+                    {r.admin_note && (
+                      <p className="mt-1.5 font-mono text-[11px] text-amber-400/80">
+                        <span className="text-slate-600">note: </span>
+                        {r.admin_note}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Empty state hint */}
       {aggregates.allTime.requests === 0 && (
