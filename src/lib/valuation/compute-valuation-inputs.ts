@@ -108,6 +108,20 @@ export async function computeValuationInputs(
           .maybeSingle()
       : { data: null as any };
 
+    // Read self-reported sales history from onboarding — used as a market signal
+    // when no sales ledger entries exist yet for the artist.
+    const { data: artistProfileData } = artistId
+      ? await (admin as any)
+          .from('user_profiles')
+          .select('has_sold_work')
+          .eq('user_id', artistId)
+          .eq('role', 'artist')
+          .eq('is_active', true)
+          .maybeSingle()
+      : { data: null as any };
+
+    const hasSoldWork = (artistProfileData?.has_sold_work as string | null) ?? null;
+
     const { data: ownerStats } = ownerId
       ? await (admin as any)
           .from('entity_stats')
@@ -223,10 +237,23 @@ export async function computeValuationInputs(
       100,
     );
 
+    // Boost liquidity when the artist self-reported sales history during onboarding,
+    // particularly when no sales ledger entries exist yet.
+    const selfReportedLiquidityBonus = (() => {
+      if (auctionPrices.length > 0) return 0; // ledger data takes precedence
+      switch (hasSoldWork) {
+        case 'occasionally': return 5;
+        case 'regularly': return 15;
+        case 'gallery_represented': return 25;
+        default: return 0;
+      }
+    })();
+
     const liquidity = clamp(
       (auctionPrices.length * 10) +
         (Number(ownerStats?.total_sales_count ?? 0) * 2) +
-        (marketCap > 0 ? 20 : 0),
+        (marketCap > 0 ? 20 : 0) +
+        selfReportedLiquidityBonus,
       0,
       100,
     );

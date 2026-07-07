@@ -21,6 +21,7 @@ import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
 import { UtmCapture } from "~/components/utm-capture";
 import { TrialBanner } from "~/components/trial-banner";
+import { TacoBubble } from "~/components/taco-bubble";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
 import { cn } from "@kit/ui/utils";
@@ -150,6 +151,7 @@ export default async function RootLayout({
               <GalleryProfileNotification />
               {children}
               <RoleSelectionModal />
+              <TacoBubble isSignedIn={!!initialUser} />
             </OnboardingGuard>
             <CookieConsentBanner />
           </LegalModalProvider>

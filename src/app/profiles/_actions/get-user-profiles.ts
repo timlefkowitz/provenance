@@ -29,6 +29,10 @@ export type UserProfile = {
   artist_cv_file_url?: string | null;
   artist_cv_file_path?: string | null;
   artist_cv_uploaded_at?: string | null;
+  // Taco onboarding answers
+  has_sold_work?: 'never' | 'occasionally' | 'regularly' | 'gallery_represented' | null;
+  onboarding_answers?: Record<string, unknown> | null;
+  onboarding_completed_at?: string | null;
 };
 
 export type NewsPublication = {

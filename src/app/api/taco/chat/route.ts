@@ -18,7 +18,7 @@ export const maxDuration = 60;
 /** Maximum agentic iterations before forcing a final reply. */
 const MAX_ITERATIONS = 6;
 
-const SYSTEM_PROMPT = `You are Taco, a sleek black cat and the studio AI on Provenance — a platform for artists, galleries, and collectors to document and share art history.
+const BASE_SYSTEM_PROMPT = `You are Taco, a sleek black cat and the studio AI on Provenance — a platform for artists, galleries, and collectors to document and share art history.
 
 You are warm, knowledgeable, and faintly feline. Occasional *italicised cat actions* are welcome but keep them subtle. You are deeply familiar with the art world: grants, residencies, open calls, art writing, provenance, exhibitions, and artist practice.
 
@@ -38,6 +38,92 @@ Guidelines:
 - Never fabricate artworks, exhibitions, or grant details — use tools and be honest about limits.
 - If a user shares an image, describe it and offer insight relevant to their practice.
 - If a user shares a document, summarise it and offer to help with writing or analysis.`;
+
+/** Map route prefixes → human-readable context injected into the system prompt. */
+const ROUTE_CONTEXT_MAP: { prefix: string; label: string; hint: string }[] = [
+  {
+    prefix: '/grants',
+    label: 'Grants',
+    hint: 'The user is exploring the Grants tool — they can find art grants and residencies, and apply using their artist CV. Encourage uploading a CV if they haven\'t and offer to help draft proposals.',
+  },
+  {
+    prefix: '/artworks/add',
+    label: 'Add Artwork',
+    hint: 'The user is adding a new artwork / Certificate of Authenticity. Offer help with titles, provenance descriptions, edition details, or any fields they might need.',
+  },
+  {
+    prefix: '/artworks',
+    label: 'Artworks & Certificates',
+    hint: 'The user is in the artworks area — Certificates of Authenticity, provenance records, and artwork details.',
+  },
+  {
+    prefix: '/exhibitions',
+    label: 'Exhibitions',
+    hint: 'The user is managing exhibitions. Offer help with writing exhibition descriptions, open calls, or press releases.',
+  },
+  {
+    prefix: '/profile/site',
+    label: 'Website Editor',
+    hint: 'The user is editing their artist website. Help with bio copy, page structure, or describing their practice.',
+  },
+  {
+    prefix: '/portal/or',
+    label: 'CRM / Outreach',
+    hint: 'The user is in the CRM and outreach area. Offer help with collector messaging, outreach copy, or tracking contacts.',
+  },
+  {
+    prefix: '/portal/sales',
+    label: 'Sales',
+    hint: 'The user is reviewing their sales records. Offer help understanding their sales history or market positioning.',
+  },
+  {
+    prefix: '/portal',
+    label: 'Portal Dashboard',
+    hint: 'The user is in the artist/gallery portal. Offer to summarise their activity or help navigate to specific tools.',
+  },
+  {
+    prefix: '/mailing-list',
+    label: 'Mailing List',
+    hint: 'The user is managing their mailing list. Offer help writing newsletters or campaign copy.',
+  },
+  {
+    prefix: '/operations',
+    label: 'Operations',
+    hint: 'The user is in the Operations tool. Offer help with studio logistics, pricing, or planning.',
+  },
+  {
+    prefix: '/open-calls',
+    label: 'Open Calls',
+    hint: 'The user is browsing open calls. Offer to help find relevant opportunities and draft submission materials.',
+  },
+  {
+    prefix: '/registry',
+    label: 'Artist Registry',
+    hint: 'The user is browsing the public artist registry.',
+  },
+  {
+    prefix: '/taco',
+    label: 'Taco Studio',
+    hint: 'The user is in the full Taco studio chat.',
+  },
+];
+
+function buildSystemPrompt(pathname?: string | null, profileContext?: string | null): string {
+  let prompt = BASE_SYSTEM_PROMPT;
+
+  if (pathname) {
+    const match = ROUTE_CONTEXT_MAP.find((r) => pathname.startsWith(r.prefix));
+    if (match) {
+      prompt += `\n\nPage context: ${match.hint}`;
+    }
+  }
+
+  if (profileContext) {
+    prompt += `\n\nArtist profile context: ${profileContext}`;
+  }
+
+  return prompt;
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Build multimodal user message                                             */
@@ -115,12 +201,49 @@ export async function POST(request: NextRequest) {
       history?: { role: string; content: string }[];
       images?: { dataUrl: string; name: string }[];
       docs?: { name: string; mime: string; base64: string }[];
+      pathname?: string;
     };
 
     const messageText = (typeof body.message === 'string' ? body.message : '').trim();
     const history = Array.isArray(body.history) ? body.history : [];
     const incomingImages = Array.isArray(body.images) ? body.images.slice(0, 8) : [];
     const incomingDocs = Array.isArray(body.docs) ? body.docs.slice(0, 5) : [];
+    const pathname = typeof body.pathname === 'string' ? body.pathname : null;
+
+    // Optionally enrich with artist profile context for personalized responses
+    let profileContext: string | null = null;
+    try {
+      const { data: artistProfile } = await (client as any)
+        .from('user_profiles')
+        .select('medium, has_sold_work, onboarding_answers')
+        .eq('user_id', user.id)
+        .eq('role', 'artist')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (artistProfile) {
+        const parts: string[] = [];
+        if (artistProfile.medium) parts.push(`primary medium: ${artistProfile.medium}`);
+        if (artistProfile.has_sold_work) {
+          const soldMap: Record<string, string> = {
+            never: 'has not sold work yet',
+            occasionally: 'has sold work occasionally',
+            regularly: 'sells work regularly',
+            gallery_represented: 'is gallery-represented and sells through galleries',
+          };
+          parts.push(soldMap[artistProfile.has_sold_work as string] ?? `sales history: ${artistProfile.has_sold_work}`);
+        }
+        if ((artistProfile.onboarding_answers as Record<string, unknown> | null)?.goal) {
+          parts.push(`primary goal on Provenance: ${(artistProfile.onboarding_answers as Record<string, unknown>).goal}`);
+        }
+        if (parts.length) profileContext = parts.join(', ');
+      }
+    } catch (profileErr) {
+      // Non-fatal — just skip profile context
+      console.error('[Taco] profile context fetch failed', profileErr);
+    }
+
+    console.log('[Taco] pathname=', pathname, 'profileContext=', profileContext);
 
     if (!messageText && incomingImages.length === 0 && incomingDocs.length === 0) {
       return NextResponse.json({ error: 'Message, image, or document required' }, { status: 400 });
@@ -145,6 +268,8 @@ export async function POST(request: NextRequest) {
 
     // -- Build message list --
     const userContent = buildUserContent(messageText, incomingImages, extractedDocs);
+
+    const SYSTEM_PROMPT = buildSystemPrompt(pathname, profileContext);
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },

@@ -46,9 +46,14 @@ export function OnboardingForm() {
         gtmService.trackOnboardingComplete(role);
         capturePostHogEvent(PH_EVENTS.FIRST_RUN_STARTED, { role });
         router.refresh();
-        // Route new users directly into the "create your first certificate"
-        // flow so the aha moment is front-and-centre.
-        router.push('/artworks/add?first_run=1');
+        // Artists go to the Taco onboarding interview to collect CV,
+        // sales history, medium, and goals before the first-certificate aha moment.
+        // Collectors and galleries go straight to the certificate flow.
+        if (role === 'artist') {
+          router.push('/onboarding/chat');
+        } else {
+          router.push('/artworks/add?first_run=1');
+        }
       } catch (e) {
         setError('Something went wrong. Please try again.');
       }
