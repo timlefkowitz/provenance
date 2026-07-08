@@ -408,7 +408,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
           <div>
             <h1 className="font-display text-xl text-wine leading-none mb-0.5">Taco the cat</h1>
             <p className="text-[11px] text-ink/50 font-serif">
-              Studio AI · artworks, grants, writing & more
+              artworks, grants, writing & more
             </p>
           </div>
         </div>

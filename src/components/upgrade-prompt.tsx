@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import { Button } from '@kit/ui/button';
-import { capturePostHogEvent, PH_EVENTS } from '~/lib/posthog';
 
 export interface UpgradePromptProps {
   /** Short feature name shown in the heading, e.g. "Grants" */
@@ -15,29 +13,19 @@ export interface UpgradePromptProps {
   ctaHref?: string;
   /** Optional CTA label — defaults to "Upgrade to unlock" */
   ctaLabel?: string;
-  /** Passed to PostHog as context for which prompt converted */
+  /** Context for which prompt converted (retained for potential future analytics) */
   source: string;
 }
 
 /**
  * Drop-in upgrade prompt for subscription-gated feature pages.
- * Fires PostHog events on mount (shown) and on CTA click (clicked).
  */
 export function UpgradePrompt({
   featureName,
   description,
   ctaHref = '/subscription',
   ctaLabel = 'Upgrade to unlock',
-  source,
 }: UpgradePromptProps) {
-  useEffect(() => {
-    capturePostHogEvent(PH_EVENTS.UPGRADE_PROMPT_SHOWN, { feature: featureName, source });
-  }, [featureName, source]);
-
-  const handleClick = () => {
-    capturePostHogEvent(PH_EVENTS.UPGRADE_PROMPT_CLICKED, { feature: featureName, source });
-  };
-
   return (
     <div className="rounded-xl border border-wine/20 bg-wine/5 px-6 py-8 text-center max-w-xl">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-wine/10">
@@ -59,7 +47,7 @@ export function UpgradePrompt({
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-        <Button asChild onClick={handleClick} className="gap-2">
+        <Button asChild className="gap-2">
           <Link href={ctaHref}>{ctaLabel}</Link>
         </Button>
         <Button asChild variant="outline" size="sm">

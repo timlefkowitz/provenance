@@ -18,7 +18,6 @@ import { Trans } from '@kit/ui/trans';
 import { updateUserRole } from '../_actions/update-user-role';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { gtmService } from '~/lib/gtm';
-import { capturePostHogEvent, PH_EVENTS } from '~/lib/posthog';
 
 const ROLES = [
   { value: USER_ROLES.COLLECTOR, label: getRoleLabel(USER_ROLES.COLLECTOR) },
@@ -44,7 +43,6 @@ export function OnboardingForm() {
       try {
         await updateUserRole(role);
         gtmService.trackOnboardingComplete(role);
-        capturePostHogEvent(PH_EVENTS.FIRST_RUN_STARTED, { role });
         router.refresh();
         // Artists go to the Taco onboarding interview to collect CV,
         // sales history, medium, and goals before the first-certificate aha moment.

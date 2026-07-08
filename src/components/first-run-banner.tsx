@@ -1,19 +1,12 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import { Suspense } from 'react';
 import { Sparkles } from 'lucide-react';
-import { capturePostHogEvent, PH_EVENTS } from '~/lib/posthog';
 
 function FirstRunBannerInner() {
   const searchParams = useSearchParams();
   const isFirstRun = searchParams.get('first_run') === '1';
-
-  useEffect(() => {
-    if (isFirstRun) {
-      capturePostHogEvent(PH_EVENTS.FIRST_RUN_STARTED);
-    }
-  }, [isFirstRun]);
 
   if (!isFirstRun) return null;
 

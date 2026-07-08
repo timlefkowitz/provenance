@@ -5,8 +5,6 @@ declare global {
   }
 }
 
-import { capturePostHogEvent, PH_EVENTS } from './posthog';
-
 /** Read UTM cookie stored by UtmCapture without importing the component. */
 function readUtmCookie(): Record<string, string> {
   if (typeof document === 'undefined') return {};
@@ -115,14 +113,12 @@ class GtmService {
     console.log('[GTM] trackSignup', utm);
     this.push({ event: 'signup', ...utm });
     this.fireGoogleAdsConversion();
-    capturePostHogEvent(PH_EVENTS.SIGNUP, utm);
   }
 
   trackTrialStarted(): void {
     const utm = readUtmCookie();
     console.log('[GTM] trackTrialStarted', utm);
     this.push({ event: 'trial_started', ...utm });
-    capturePostHogEvent(PH_EVENTS.TRIAL_STARTED, utm);
   }
 
   trackPurchase(params: PurchaseParams): void {
@@ -142,25 +138,18 @@ class GtmService {
         ],
       },
     });
-    capturePostHogEvent(PH_EVENTS.SUBSCRIPTION_STARTED, {
-      role: params.role,
-      interval: params.interval,
-      value: params.value,
-    });
   }
 
   trackOnboardingComplete(role: string): void {
     const utm = readUtmCookie();
     console.log('[GTM] trackOnboardingComplete', { role, ...utm });
     this.push({ event: 'onboarding_complete', role, ...utm });
-    capturePostHogEvent(PH_EVENTS.ONBOARDING_COMPLETE, { role, ...utm });
   }
 
   trackArtworkCreated(isFirst: boolean): void {
     const utm = readUtmCookie();
     console.log('[GTM] trackArtworkCreated', { isFirst, ...utm });
     this.push({ event: 'artwork_created', is_first_artwork: isFirst, ...utm });
-    capturePostHogEvent(PH_EVENTS.CERTIFICATE_CREATED, { is_first: isFirst, ...utm });
   }
 
   trackLead(): void {

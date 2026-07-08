@@ -225,13 +225,13 @@ export async function middleware(request: NextRequest) {
   // Content-Security-Policy: restrict script/style/resources. Next.js and Supabase require specific allowances.
   const cspDirectives = [
     "default-src 'self'",
-    // Next.js / React hydration, Google Tag Manager, Google Ads, PostHog
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.googletagmanager.com https://googleads.g.doubleclick.net https://us-assets.i.posthog.com https://eu-assets.i.posthog.com",
+    // Next.js / React hydration, Google Tag Manager, Google Ads
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.googletagmanager.com https://googleads.g.doubleclick.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    // Supabase (direct + custom auth domain), Vercel analytics, Google Analytics / Ads, PostHog analytics, DoubleClick remarketing
-    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://auth.provenance.guru https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://ad.doubleclick.net https://www.google.com https://googleads.g.doubleclick.net https://us.i.posthog.com https://eu.i.posthog.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com",
+    // Supabase (direct + custom auth domain), Vercel analytics, Google Analytics / Ads, DoubleClick remarketing
+    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://auth.provenance.guru https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://ad.doubleclick.net https://www.google.com https://googleads.g.doubleclick.net",
     // Google Ads remarketing iframes (Floodlight / DoubleClick)
     "frame-src 'self' https://bid.g.doubleclick.net https://td.doubleclick.net",
     // Preview route: allow same-origin embedding. All other routes deny framing entirely.

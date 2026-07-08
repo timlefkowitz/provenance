@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Shield, ArrowRight } from 'lucide-react';
 import { Button } from '@kit/ui/button';
-import { capturePostHogEvent, PH_EVENTS } from '~/lib/posthog';
 
 interface CertificateViralCtaProps {
   artworkTitle?: string | null;
@@ -15,15 +14,7 @@ interface CertificateViralCtaProps {
  * for visitors who are not signed in. Encourages them to create their own
  * certificate on Provenance (artist growth loop) or claim this one (collector loop).
  */
-export function CertificateViralCta({ artworkTitle, artistName }: CertificateViralCtaProps) {
-  const handleCtaClick = (action: 'signup' | 'learn_more') => {
-    capturePostHogEvent(PH_EVENTS.CERTIFICATE_VERIFY_CTA_CLICKED, {
-      action,
-      artwork_title: artworkTitle,
-      artist_name: artistName,
-    });
-  };
-
+export function CertificateViralCta({}: CertificateViralCtaProps) {
   return (
     <div className="mt-12 rounded-xl border border-wine/20 bg-gradient-to-br from-wine/5 to-stone-50 px-6 py-8 text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-wine/10">
@@ -40,22 +31,14 @@ export function CertificateViralCta({ artworkTitle, artistName }: CertificateVir
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-        <Button
-          asChild
-          className="gap-2"
-          onClick={() => handleCtaClick('signup')}
-        >
+        <Button asChild className="gap-2">
           <Link href="/auth/sign-up">
             Create your free certificate
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
         </Button>
 
-        <Button
-          asChild
-          variant="outline"
-          onClick={() => handleCtaClick('learn_more')}
-        >
+        <Button asChild variant="outline">
           <Link href="/lp/artist">Learn more</Link>
         </Button>
       </div>

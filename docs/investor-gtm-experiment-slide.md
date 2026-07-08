@@ -1,10 +1,10 @@
 # Provenance — Paid Acquisition Experiment Slide
 
-*Fill in values from your ad platform (Meta Ads Manager / Google Ads) and from PostHog (product analytics) or the Provenance admin funnel panel (/admin). Replace every `[____]` before presenting.*
+*Fill in values from your ad platform (Meta Ads Manager / Google Ads) and from the Provenance admin funnel panel (/admin). Replace every `[____]` before presenting.*
 
-> **Measurement update (June 2026):** PostHog is now the canonical product-analytics tool for funnel and cohort analysis. GTM is retained for ad-conversion attribution only. The North Star activation metric is **new user → first published certificate within 24 h**. Optimise paid campaigns to this metric, not raw signups, to get a meaningful CAC signal.
+> **Measurement update:** GTM/GA drive ad-conversion attribution and funnel event tracking. The North Star activation metric is **new user → first published certificate within 24 h**. Optimise paid campaigns to this metric, not raw signups, to get a meaningful CAC signal.
 >
-> **Pre-condition for scaling paid spend:** activation funnel (onboarding → first certificate) must show ≥ 30% within-24 h completion **before** increasing budgets. Measure this in PostHog → Funnels → `signup` → `certificate_created`.
+> **Pre-condition for scaling paid spend:** activation funnel (onboarding → first certificate) must show ≥ 30% within-24 h completion **before** increasing budgets. Measure this via the admin funnel panel (`signup` → `certificate_created`).
 
 ---
 
@@ -42,7 +42,7 @@
 | **Activated (cert within 24 h)** | [____] | [____] | [____] |
 | **Estimated CAC (activation-based)** | $[___] | $[___] | $[___] |
 
-> *Funnel counts come from PostHog (primary) or the Provenance admin panel → "ad_funnel" section. Activation-based CAC = total spend ÷ activated users (those who created a certificate within 24 h of signup).*
+> *Funnel counts come from the Provenance admin panel → "ad_funnel" section. Activation-based CAC = total spend ÷ activated users (those who created a certificate within 24 h of signup).*
 
 ---
 
@@ -79,4 +79,4 @@
 
 ---
 
-*All data is from live production. Funnel tracked via PostHog events (`signup`, `onboarding_complete`, `certificate_created`, `first_run_started`) and GTM (`signup`, `trial_started`, `purchase`). Attribution via first-touch UTM cookie (`pv_utm`) captured by `UtmCapture` component.*
+*All data is from live production. Funnel tracked via GTM (`signup`, `trial_started`, `purchase`, `onboarding_complete`, `artwork_created`). Attribution via first-touch UTM cookie (`pv_utm`) captured by `UtmCapture` component.*

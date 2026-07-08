@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { gtmService } from '~/lib/gtm';
-import { capturePostHogEvent, PH_EVENTS } from '~/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import {
@@ -92,14 +91,6 @@ export function SubscriptionContent({
     gtmService.trackPurchase({ role: selectedRole, interval });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [success]);
-
-  // Track upgrade prompt view
-  useEffect(() => {
-    if (upgrade && !isActiveSubscription) {
-      capturePostHogEvent(PH_EVENTS.UPGRADE_PROMPT_SHOWN, { source: 'subscription_page', role: selectedRole });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [upgrade]);
 
   const isActiveSubscription = subscription?.status === 'active';
   const isTrialing = subscription?.status === 'trialing';
@@ -302,7 +293,7 @@ export function SubscriptionContent({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setInterval('year'); capturePostHogEvent(PH_EVENTS.UPGRADE_PROMPT_CLICKED, { source: 'annual_nudge', role: selectedRole }); }}
+                  onClick={() => setInterval('year')}
                   className={`font-serif px-4 py-2 rounded ${interval === 'year' ? 'bg-wine text-white' : 'bg-ink/10 text-ink'}`}
                 >
                   Yearly (save ~2 months)
@@ -317,7 +308,7 @@ export function SubscriptionContent({
                     <button
                       type="button"
                       className="underline hover:no-underline"
-                      onClick={() => { setInterval('year'); capturePostHogEvent(PH_EVENTS.UPGRADE_PROMPT_CLICKED, { source: 'annual_nudge_inline', role: selectedRole }); }}
+                      onClick={() => setInterval('year')}
                     >
                       Switch to yearly
                     </button>
