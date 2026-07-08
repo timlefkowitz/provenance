@@ -13,6 +13,10 @@ import {
   DEFAULT_SECTIONS,
   DEFAULT_ARTWORK_FILTERS,
 } from '~/app/_sites/types';
+import {
+  getEligibleSiteArtworks,
+  getFeaturedSiteArtworks,
+} from '~/app/_sites/_data/get-eligible-site-artworks';
 
 /**
  * Resolve a site handle → full SiteData for rendering.
@@ -78,65 +82,31 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     ? artworkFilters.certificate_types
     : DEFAULT_ARTWORK_FILTERS.certificate_types) as CertificateTypeKey[];
 
-  // 3. Fetch public artworks (up to 24), filtered by chosen certificate types
-  //
-  // The link between an artwork and a profile depends on the profile role:
-  //   - gallery: artworks have `gallery_profile_id = profile.id` (these are
-  //     Certificates of Show, including those posted by gallery team members).
-  //   - artist:  matched via `artist_account_id`, `artist_profile_id`, or a
-  //     legacy `account_id` upload that hasn't been linked to an artist yet.
-  //   - other (collector / fallback): artworks they own via `account_id`.
-  //
-  // Without the gallery branch, a gallery's COSes never appear on its site.
+  // 3. Fetch public artworks (up to 24).
+  //    If the site has curated/featured artwork ids use those (in pinned order).
+  //    Otherwise fall back to automatic: latest 24 filtered by certificate type.
+  const featuredIds: string[] = Array.isArray(siteRow.featured_artwork_ids)
+    ? (siteRow.featured_artwork_ids as string[]).filter(Boolean)
+    : [];
+
   const artworks: SiteData['artworks'] = [];
   if (sections.artworks) {
-    let q = sb
-      .from('artworks')
-      .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at')
-      .eq('status', 'verified')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .limit(24);
+    let rawRows: Awaited<ReturnType<typeof getEligibleSiteArtworks>>;
 
-    if (profile.role === 'gallery') {
-      console.log('[Sites] artworks query: gallery branch', {
-        galleryProfileId: profile.id,
-      });
-      q = q.eq('gallery_profile_id', profile.id);
-    } else if (profile.role === 'artist') {
-      console.log('[Sites] artworks query: artist branch', {
-        userId: profile.user_id,
-        profileId: profile.id,
-      });
-      q = q.or(
-        [
-          `artist_account_id.eq.${profile.user_id}`,
-          `artist_profile_id.eq.${profile.id}`,
-          `and(account_id.eq.${profile.user_id},artist_account_id.is.null,artist_profile_id.is.null)`,
-        ].join(','),
-      );
+    if (featuredIds.length > 0) {
+      console.log('[Sites] artworks: curated mode', { count: featuredIds.length });
+      rawRows = await getFeaturedSiteArtworks(sb, featuredIds);
     } else {
-      console.log('[Sites] artworks query: default branch', {
-        userId: profile.user_id,
-      });
-      q = q.or(
-        [
-          `artist_account_id.eq.${profile.user_id}`,
-          `and(account_id.eq.${profile.user_id},artist_account_id.is.null)`,
-        ].join(','),
+      console.log('[Sites] artworks: auto mode', { role: profile.role });
+      rawRows = await getEligibleSiteArtworks(
+        sb,
+        profile,
+        { certificate_types: allowedCertTypes as any },
+        24,
       );
     }
 
-    if (allowedCertTypes.length > 0 && allowedCertTypes.length < 3) {
-      q = q.in('certificate_type', allowedCertTypes);
-    }
-
-    const { data: artworkRows, error: artworkErr } = await q;
-    if (artworkErr) {
-      console.error('[Sites] artworks query failed', artworkErr);
-    }
-
-    for (const row of artworkRows ?? []) {
+    for (const row of rawRows) {
       artworks.push({
         id: row.id,
         title: row.title,
@@ -159,6 +129,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
       .from('exhibitions')
       .select('id, title, start_date, end_date, location, image_url')
       .eq('gallery_id', profile.user_id)
+      .not('published_at', 'is', null)
       .order('start_date', { ascending: false })
       .limit(12);
 

@@ -31,6 +31,7 @@ import {
 import { TemplatePicker } from './template-picker';
 import { CustomDomainCard } from './custom-domain-card';
 import { AccentColorPicker } from './accent-color-picker';
+import { FeaturedArtworksPicker } from './featured-artworks-picker';
 import { buildGoogleFontsUrl } from '~/app/_sites/_templates/palette';
 import type { ManageableProfile } from '../_actions/get-manageable-profiles';
 import type { SiteConfig } from '../_actions/get-site-config';
@@ -115,6 +116,9 @@ export function SiteEditor({
   const [artworkFilters, setArtworkFilters] = useState<SiteArtworkFilters>(
     initialConfig?.artworkFilters ?? DEFAULT_ARTWORK_FILTERS,
   );
+  const [featuredArtworkIds, setFeaturedArtworkIds] = useState<string[]>(
+    initialConfig?.featuredArtworkIds ?? [],
+  );
 
   const [publishedAt, setPublishedAt] = useState(initialConfig?.publishedAt ?? null);
   const [siteUrl, setSiteUrl] = useState(initialConfig?.siteUrl ?? null);
@@ -161,8 +165,9 @@ export function SiteEditor({
       surface: surfaceColor,
       font: theme.font_pairing,
     });
+    if (theme.text_color) params.set('ink', theme.text_color);
     return `/profile/site/preview?${params.toString()}`;
-  }, [profileId, previewKey, templateId, theme.accent, theme.font_pairing, surfaceColor]);
+  }, [profileId, previewKey, templateId, theme.accent, theme.font_pairing, theme.text_color, surfaceColor]);
 
   const editorFontsUrl = useMemo(() => {
     const families = [...new Set(SITE_FONT_PAIRINGS.flatMap((fp) => fp.googleFamilies))];
@@ -207,6 +212,7 @@ export function SiteEditor({
       aboutOverride,
       surfaceColor,
       artworkFilters,
+      featuredArtworkIds,
     });
     if (!result.success) {
       console.error('[SiteEditor] persist failed', result.error, {
@@ -743,6 +749,50 @@ export function SiteEditor({
 
             <div>
               <p className="text-[11px] text-ink/50 font-serif mb-2 uppercase tracking-widest">
+                Text color
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTheme((prev) => ({ ...prev, text_color: null }));
+                    markUnsaved();
+                  }}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 transition-transform',
+                    !theme.text_color && 'scale-105',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all',
+                      !theme.text_color ? 'border-ink' : 'border-wine/20',
+                    )}
+                    style={{ background: 'linear-gradient(135deg, #111 50%, #f5f5f5 50%)' }}
+                  />
+                  <span className="text-[10px] font-serif text-ink/60">Auto</span>
+                </button>
+                <AccentColorPicker
+                  value={theme.text_color ?? '#111111'}
+                  onChange={(color) => {
+                    setTheme((prev) => ({ ...prev, text_color: color }));
+                    markUnsaved();
+                  }}
+                />
+              </div>
+              {theme.text_color && (
+                <button
+                  type="button"
+                  className="mt-2 text-[11px] font-serif text-wine/70 hover:text-wine underline"
+                  onClick={() => { setTheme((prev) => ({ ...prev, text_color: null })); markUnsaved(); }}
+                >
+                  Reset to surface default
+                </button>
+              )}
+            </div>
+
+            <div>
+              <p className="text-[11px] text-ink/50 font-serif mb-2 uppercase tracking-widest">
                 Typography
               </p>
               <div className="flex flex-wrap gap-2">
@@ -789,6 +839,19 @@ export function SiteEditor({
           {/* ── CONTENT TAB ── */}
           {activeTab === 'content' && (
             <>
+        {/* ── FEATURED ARTWORKS ── */}
+        <section>
+          <h2 className="text-sm font-semibold text-ink font-serif mb-1">Featured works</h2>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            Choose specific works to showcase on your site and set their display order.
+          </p>
+          <FeaturedArtworksPicker
+            profileId={profileId}
+            selectedIds={featuredArtworkIds}
+            onChange={(ids) => { setFeaturedArtworkIds(ids); markUnsaved(); }}
+          />
+        </section>
+
         {/* ── CERTIFICATE TYPE FILTER ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-1">

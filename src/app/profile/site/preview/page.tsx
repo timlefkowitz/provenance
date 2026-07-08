@@ -9,6 +9,7 @@ import {
   resolveAccent,
   isValidSurfaceKey,
   isValidFontPairingKey,
+  isValidHexColor,
 } from '~/app/_sites/_templates/palette';
 import { SiteFontStyles } from '~/app/_sites/_components/site-font-styles';
 import {
@@ -17,6 +18,10 @@ import {
 } from '~/app/_sites/_components/provenance-site-bar';
 import type { SiteData, TemplateId } from '~/app/_sites/types';
 import { SITE_TEMPLATES } from '~/app/_sites/types';
+import {
+  getEligibleSiteArtworks,
+  getFeaturedSiteArtworks,
+} from '~/app/_sites/_data/get-eligible-site-artworks';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +46,7 @@ export default async function SitePreviewPage({
     accent?: string;
     surface?: string;
     font?: string;
+    ink?: string;
     v?: string;
   }>;
 }) {
@@ -93,15 +99,19 @@ export default async function SitePreviewPage({
     params.surface && isValidSurfaceKey(params.surface) ? params.surface : null;
   const fontOverride =
     params.font && isValidFontPairingKey(params.font) ? params.font : null;
+  const inkOverride =
+    params.ink && isValidHexColor(params.ink) ? params.ink : null;
 
   const effectiveTemplateId = templateOverride ?? config.templateId;
   const effectiveAccent = accentOverride ?? config.theme.accent;
   const effectiveSurface = surfaceOverride ?? config.surfaceColor;
   const effectiveFontPairing = fontOverride ?? config.theme.font_pairing;
+  const effectiveTextColor = inkOverride ?? config.theme.text_color ?? null;
   const effectiveTheme = {
     ...config.theme,
     accent: effectiveAccent,
     font_pairing: effectiveFontPairing,
+    text_color: effectiveTextColor,
   };
 
   console.log('[SitePreview] design overrides', {
@@ -109,62 +119,33 @@ export default async function SitePreviewPage({
     accentOverride,
     surfaceOverride,
     fontOverride,
+    inkOverride,
   });
 
-  // Build artworks query, applying certificate-type filter.
-  //
-  // Match the live-site loader (get-site-data.ts): galleries link via
-  // `gallery_profile_id` (catches all team-member-posted COSes), artists via
-  // `artist_account_id` / `artist_profile_id`, others via `account_id`.
-  const allowedTypes = config.artworkFilters.certificate_types ?? [];
-  let artworkQuery = sb
-    .from('artworks')
-    .select('id, title, artist_name, image_url, created_at, certificate_number, certificate_type')
-    .eq('status', 'verified')
-    .order('created_at', { ascending: false })
-    .limit(24);
+  // Fetch artworks: curated if featured_artwork_ids set, else auto.
+  const featuredIds: string[] = Array.isArray(config.featuredArtworkIds)
+    ? (config.featuredArtworkIds as string[]).filter(Boolean)
+    : [];
 
-  if (profile.role === 'gallery') {
-    console.log('[SitePreview] artworks query: gallery branch', {
-      galleryProfileId: profile.id,
-    });
-    artworkQuery = artworkQuery.eq('gallery_profile_id', profile.id);
-  } else if (profile.role === 'artist') {
-    console.log('[SitePreview] artworks query: artist branch', {
-      userId: profile.user_id,
-      profileId: profile.id,
-    });
-    artworkQuery = artworkQuery.or(
-      [
-        `artist_account_id.eq.${profile.user_id}`,
-        `artist_profile_id.eq.${profile.id}`,
-        `and(account_id.eq.${profile.user_id},artist_account_id.is.null,artist_profile_id.is.null)`,
-      ].join(','),
-    );
+  let artworkRows: any[];
+  if (featuredIds.length > 0) {
+    console.log('[SitePreview] artworks: curated mode', { count: featuredIds.length });
+    artworkRows = await getFeaturedSiteArtworks(sb, featuredIds);
   } else {
-    console.log('[SitePreview] artworks query: default branch', {
-      userId: profile.user_id,
-    });
-    artworkQuery = artworkQuery.or(
-      [
-        `artist_account_id.eq.${profile.user_id}`,
-        `and(account_id.eq.${profile.user_id},artist_account_id.is.null)`,
-      ].join(','),
+    console.log('[SitePreview] artworks: auto mode', { role: profile.role });
+    artworkRows = await getEligibleSiteArtworks(
+      sb,
+      profile,
+      config.artworkFilters,
+      24,
     );
-  }
-
-  if (allowedTypes.length > 0 && allowedTypes.length < 3) {
-    artworkQuery = artworkQuery.in('certificate_type', allowedTypes);
-  }
-  const { data: artworkRows, error: artworkErr } = await artworkQuery;
-  if (artworkErr) {
-    console.error('[SitePreview] artworks query failed', artworkErr);
   }
 
   const { data: exhibitionRows } = await sb
     .from('exhibitions')
     .select('id, title, start_date, end_date, location, image_url')
     .eq('gallery_id', profile.user_id)
+    .not('published_at', 'is', null)
     .order('start_date', { ascending: false })
     .limit(12);
 
@@ -193,6 +174,10 @@ export default async function SitePreviewPage({
       image_url: r.image_url ?? null,
       created_at: r.created_at,
       certificate_number: r.certificate_number,
+      for_sale: r.for_sale ?? false,
+      sale_price: r.sale_price ?? null,
+      sale_currency: r.sale_currency ?? null,
+      sold_at: r.sold_at ?? null,
     })),
     exhibitions: (exhibitionRows ?? []).map((r: any) => ({
       id: r.id,

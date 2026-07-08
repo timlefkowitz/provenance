@@ -460,6 +460,73 @@ const FIND_GRANTS_FOR_ME_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 };
 
+const GET_MY_WEBSITE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'get_my_website',
+    description:
+      "Fetch the user's creator website configuration from Provenance — handle, published state, template, colors, font, text color, tagline, sections, and the valid option lists so you can make valid choices when updating. Call this before update_my_website so you have the current state.",
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+};
+
+const UPDATE_MY_WEBSITE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'update_my_website',
+    description:
+      "Update the user's creator website configuration. Only pass fields the user wants to change — omitted fields keep their current values. ALWAYS call get_my_website first to know the current state. Confirm the changes with the user before calling this tool.",
+    parameters: {
+      type: 'object',
+      properties: {
+        profile_id: { type: 'string', description: 'The profile_id returned by get_my_website. Required.' },
+        handle: { type: 'string', description: 'URL handle (slug). Lowercase letters, numbers, hyphens. e.g. "jane-doe".' },
+        template_id: {
+          type: 'string',
+          enum: ['editorial','studio','atelier','whitecube','vitrine','salon','pavilion','folio','index','concrete','lightbox','noir','manifesto','billboard','shopfront','poster','annum','chronicle','ledger'],
+          description: 'Visual template to use.',
+        },
+        accent: { type: 'string', description: 'Accent color — a key from the valid accent list returned by get_my_website, or a hex color like #C4472A.' },
+        surface_color: { type: 'string', enum: ['parchment','cream','white','slate','charcoal','ink'], description: 'Background surface key.' },
+        font_pairing: { type: 'string', description: 'Font pairing key from the valid list returned by get_my_website.' },
+        text_color: { type: 'string', description: 'Hex color for body/heading text, e.g. "#1A1A1A". Pass null to reset to surface default.' },
+        tagline: { type: 'string', description: 'Hero tagline shown on the site.' },
+        display_name: { type: 'string', description: 'Display name override for the site header/logo area.' },
+        about_override: { type: 'string', description: 'Bio text override. Leave empty to use profile bio.' },
+        sections: {
+          type: 'object',
+          description: 'Section visibility toggles. Only include keys the user wants to change.',
+          properties: {
+            artworks: { type: 'boolean' },
+            exhibitions: { type: 'boolean' },
+            press: { type: 'boolean' },
+            bio: { type: 'boolean' },
+            contact: { type: 'boolean' },
+          },
+        },
+      },
+      required: ['profile_id'],
+    },
+  },
+};
+
+const PUBLISH_MY_WEBSITE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'publish_my_website',
+    description:
+      "Publish or unpublish the user's creator website. Requires the site to exist and have a handle. Confirm with the user before calling.",
+    parameters: {
+      type: 'object',
+      properties: {
+        profile_id: { type: 'string', description: 'The profile_id of the site to publish/unpublish.' },
+        published: { type: 'boolean', description: 'true to publish, false to unpublish.' },
+      },
+      required: ['profile_id', 'published'],
+    },
+  },
+};
+
 const FLAG_UNHANDLED_REQUEST_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: 'function',
   function: {
@@ -512,6 +579,10 @@ export const ALL_TACO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   CREATE_ARTWORK_DRAFT_TOOL,
   SEARCH_COMPARABLE_SALES_TOOL,
   FIND_GRANTS_FOR_ME_TOOL,
+  // Website editing
+  GET_MY_WEBSITE_TOOL,
+  UPDATE_MY_WEBSITE_TOOL,
+  PUBLISH_MY_WEBSITE_TOOL,
   // Meta
   FLAG_UNHANDLED_REQUEST_TOOL,
 ];

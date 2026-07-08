@@ -31,6 +31,8 @@ export type SiteConfig = {
   logoImageUrl: string | null;
   surfaceColor: string;
   artworkFilters: SiteArtworkFilters;
+  /** Ordered array of artwork UUIDs pinned for curation. Empty = auto. */
+  featuredArtworkIds: string[];
   publishedAt: string | null;
   siteUrl: string | null;
   /** Root hostname without www. (e.g. "provenance.guru") */
@@ -81,6 +83,7 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     logoImageUrl: data.logo_image_url ?? null,
     surfaceColor: data.surface_color ?? DEFAULT_SURFACE,
     artworkFilters: { ...DEFAULT_ARTWORK_FILTERS, ...(data.artwork_filters ?? {}) },
+    featuredArtworkIds: Array.isArray(data.featured_artwork_ids) ? (data.featured_artwork_ids as string[]).filter(Boolean) : [],
     publishedAt: data.published_at ?? null,
     siteUrl,
     siteDomain,

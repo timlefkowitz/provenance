@@ -32,6 +32,8 @@ export type UpsertSiteInput = {
   logoImageUrl?: string | null;
   surfaceColor?: string | null;
   artworkFilters?: Partial<SiteArtworkFilters>;
+  /** Ordered array of artwork UUIDs to pin. Pass empty array for automatic mode. */
+  featuredArtworkIds?: string[];
 };
 
 export type UpsertSiteResult =
@@ -121,7 +123,13 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     artworkFilters.certificate_types = DEFAULT_ARTWORK_FILTERS.certificate_types;
   }
 
-  // Full payload — requires migration 20260514 (extra columns)
+  // Sanitize featured artwork ids: dedupe, UUID-ish filter, cap at 24
+  const UUID_RE = /^[0-9a-f-]{36}$/i;
+  const featuredArtworkIds = input.featuredArtworkIds
+    ? Array.from(new Set(input.featuredArtworkIds.filter((id) => UUID_RE.test(id)))).slice(0, 24)
+    : undefined;
+
+  // Full payload — requires migration 20260514 (extra columns) + 20260708000000 (featured_artwork_ids)
   const fullPayload = {
     profile_id: input.profileId,
     handle: handleResult.normalized,
@@ -136,6 +144,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     logo_image_url: input.logoImageUrl ?? null,
     surface_color: input.surfaceColor ?? null,
     artwork_filters: artworkFilters,
+    ...(featuredArtworkIds !== undefined ? { featured_artwork_ids: featuredArtworkIds } : {}),
     updated_at: new Date().toISOString(),
   };
 
@@ -153,6 +162,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     about_override: input.aboutOverride?.trim() || null,
     surface_color: input.surfaceColor ?? null,
     artwork_filters: artworkFilters,
+    ...(featuredArtworkIds !== undefined ? { featured_artwork_ids: featuredArtworkIds } : {}),
     updated_at: new Date().toISOString(),
   };
 

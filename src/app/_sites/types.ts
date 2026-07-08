@@ -14,9 +14,16 @@ export type TemplateId =
   | 'index'
   | 'concrete'
   | 'lightbox'
-  | 'noir';
+  | 'noir'
+  | 'manifesto'
+  | 'billboard'
+  | 'shopfront'
+  | 'poster'
+  | 'annum'
+  | 'chronicle'
+  | 'ledger';
 
-export type TemplateCategory = 'original' | 'museum' | 'minimal' | 'photography';
+export type TemplateCategory = 'original' | 'museum' | 'minimal' | 'photography' | 'statement' | 'archive';
 
 export type SiteTemplateMeta = {
   id: TemplateId;
@@ -31,6 +38,8 @@ export const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
   museum: 'Museum',
   minimal: 'Minimal',
   photography: 'Photography',
+  statement: 'Statement',
+  archive: 'Archive',
 };
 
 export const TEMPLATE_CATEGORY_ORDER: TemplateCategory[] = [
@@ -38,6 +47,8 @@ export const TEMPLATE_CATEGORY_ORDER: TemplateCategory[] = [
   'museum',
   'minimal',
   'photography',
+  'statement',
+  'archive',
 ];
 
 export const SITE_TEMPLATES: SiteTemplateMeta[] = [
@@ -125,6 +136,58 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     bestFor: 'Photographers',
     category: 'photography',
   },
+  // Statement templates — Contino-inspired
+  {
+    id: 'manifesto',
+    name: 'Manifesto',
+    description: 'Emotion-led. Giant typographic hero, alternating full-width case-study rows.',
+    bestFor: 'Studios & brand-forward artists',
+    category: 'statement',
+  },
+  {
+    id: 'billboard',
+    name: 'Billboard',
+    description: 'Bold color blocks, oversized headlines, two-column work grid.',
+    bestFor: 'Artists & creative studios',
+    category: 'statement',
+  },
+  // Statement templates — Shrig Shop-inspired
+  {
+    id: 'shopfront',
+    name: 'Shopfront',
+    description: 'Product-card grid, sale prices and sold badges. Shop-feel.',
+    bestFor: 'Artists selling work directly',
+    category: 'statement',
+  },
+  {
+    id: 'poster',
+    name: 'Poster',
+    description: 'Playful tilted tiles, big friendly type, news-board press section.',
+    bestFor: 'Illustrators & printmakers',
+    category: 'statement',
+  },
+  // Archive templates — James Jean-inspired
+  {
+    id: 'annum',
+    name: 'Annum',
+    description: 'Fixed sidebar of years, minimal canvas, anchor-jump to each year\'s works.',
+    bestFor: 'Established artists with deep archives',
+    category: 'archive',
+  },
+  {
+    id: 'chronicle',
+    name: 'Chronicle',
+    description: 'Horizontal year tabs, dense uniform thumbnail grid per year.',
+    bestFor: 'Painters & photographers',
+    category: 'archive',
+  },
+  {
+    id: 'ledger',
+    name: 'Ledger',
+    description: 'Ultra-minimal text list of works with inline hover thumbnail reveal.',
+    bestFor: 'Archives & estates',
+    category: 'archive',
+  },
 ];
 
 export type SiteTheme = {
@@ -132,6 +195,8 @@ export type SiteTheme = {
   accent: string;
   /** Key from SITE_FONT_PAIRINGS */
   font_pairing: string;
+  /** Optional hex override for body/heading text color. Null = use surface default. */
+  text_color?: string | null;
 };
 
 export type SiteSections = {

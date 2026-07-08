@@ -84,14 +84,14 @@ export default async function ArtistCvPage({
       const { data: exLinks } = await sb
         .from('exhibition_artworks')
         .select(
-          `exhibition_id, exhibitions!exhibition_artworks_exhibition_id_fkey (id, title, start_date, end_date, location)`,
+          `exhibition_id, exhibitions!exhibition_artworks_exhibition_id_fkey (id, title, start_date, end_date, location, published_at)`,
         )
         .in('artwork_id', artworkIds);
 
       const seen = new Set<string>();
       for (const row of exLinks || []) {
         const ex = row.exhibitions;
-        if (ex?.id && !seen.has(ex.id)) {
+        if (ex?.id && !seen.has(ex.id) && ex.published_at !== null) {
           seen.add(ex.id);
           exhibitions.push({
             id: ex.id,
@@ -176,6 +176,7 @@ export default async function ArtistCvPage({
 
   const provenanceExhibitions = await getExhibitionsForArtistAccount(account.id, {
     artistProfileId: roleProfile?.id ?? null,
+    publishedOnly: true,
   });
 
   const merged = mergeCvExhibitions(cvJson, provenanceExhibitions);

@@ -38,7 +38,7 @@ export type ExhibitionWithDetails = Exhibition & {
 
 export async function getExhibitionsForGallery(
   galleryId: string,
-  options?: { ownerRole?: 'gallery' | 'institution' },
+  options?: { ownerRole?: 'gallery' | 'institution'; publishedOnly?: boolean },
 ): Promise<Exhibition[]> {
   const client = getSupabaseServerClient();
 
@@ -50,6 +50,10 @@ export async function getExhibitionsForGallery(
 
   if (options?.ownerRole) {
     query = query.eq('owner_role', options.ownerRole);
+  }
+
+  if (options?.publishedOnly) {
+    query = query.not('published_at', 'is', null);
   }
 
   const { data, error } = await query;
@@ -72,7 +76,7 @@ export async function getExhibitionsForGallery(
  */
 export async function getExhibitionsForArtistAccount(
   artistAccountId: string,
-  options?: { artistProfileId?: string | null; excludeGalleryId?: string | null },
+  options?: { artistProfileId?: string | null; excludeGalleryId?: string | null; publishedOnly?: boolean },
 ): Promise<Exhibition[]> {
   console.log('[Exhibitions] getExhibitionsForArtistAccount started', {
     artistAccountId,
@@ -181,6 +185,9 @@ export async function getExhibitionsForArtistAccount(
   let list = Array.from(byId.values());
   if (excludeGalleryId) {
     list = list.filter((ex) => ex.gallery_id !== excludeGalleryId);
+  }
+  if (options?.publishedOnly) {
+    list = list.filter((ex) => ex.published_at !== null);
   }
   list.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 

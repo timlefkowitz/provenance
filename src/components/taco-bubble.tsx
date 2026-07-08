@@ -22,7 +22,7 @@ type BubbleMessage = {
 /*  Routes where the bubble should be hidden                                  */
 /* -------------------------------------------------------------------------- */
 
-const HIDDEN_PREFIXES = ['/taco', '/onboarding', '/_sites'];
+const HIDDEN_PREFIXES = ['/taco', '/onboarding', '/_sites', '/profile/site/preview'];
 
 function useIsHidden(): boolean {
   const pathname = usePathname();
@@ -272,7 +272,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-semibold text-wine leading-none mb-0.5">Taco the cat</p>
-            <p className="text-[10px] text-ink/50 font-serif">Studio AI</p>
+            <p className="text-[10px] text-ink/50 font-serif">Taco the Cat</p>
           </div>
           {/* Expand to full page — 44px touch target */}
           <Link

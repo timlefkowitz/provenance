@@ -31,6 +31,9 @@ import {
   handleCreateArtworkDraft,
   handleSearchComparableSales,
   handleFindGrantsForMe,
+  handleGetMyWebsite,
+  handleUpdateMyWebsite,
+  handlePublishMyWebsite,
   type NavigationSuggestion,
 } from './tool-handlers';
 
@@ -50,6 +53,7 @@ Your abilities:
 - Answer questions about art history, technique, markets, and practice.
 - Analyse images and read documents the user shares with you.
 - Suggest relevant pages in the app using the suggest_navigation tool.
+- Read and edit the user's creator website (template, colors, font, text color, tagline, sections) using get_my_website, update_my_website, and publish_my_website. Always call get_my_website first, confirm changes with the user before writing.
 
 Guidelines:
 - Always call the appropriate tool when the user asks about their data — don't guess.
@@ -86,7 +90,7 @@ const ROUTE_CONTEXT_MAP: { prefix: string; label: string; hint: string }[] = [
   {
     prefix: '/profile/site',
     label: 'Website Editor',
-    hint: 'The user is editing their artist website. Help with bio copy, page structure, or describing their practice.',
+    hint: 'The user is editing their artist website. You can read their current site config with get_my_website and make changes with update_my_website (template, colors, font, text color, tagline, sections) or publish it with publish_my_website. Always confirm changes with the user before writing.',
   },
   {
     prefix: '/portal/or',
@@ -469,6 +473,34 @@ export async function POST(request: NextRequest) {
               break;
             case 'find_grants_for_me':
               result = await handleFindGrantsForMe(user.id);
+              break;
+            // ── Website tools ───────────────────────────────────────────────
+            case 'get_my_website':
+              result = await handleGetMyWebsite(user.id);
+              break;
+            case 'update_my_website':
+              result = await handleUpdateMyWebsite(
+                args as {
+                  profile_id: string;
+                  handle?: string;
+                  template_id?: string;
+                  accent?: string;
+                  surface_color?: string;
+                  font_pairing?: string;
+                  text_color?: string | null;
+                  tagline?: string;
+                  display_name?: string;
+                  about_override?: string;
+                  sections?: Partial<Record<string, boolean>>;
+                },
+                user.id,
+              );
+              break;
+            case 'publish_my_website':
+              result = await handlePublishMyWebsite(
+                args as { profile_id: string; published: boolean },
+                user.id,
+              );
               break;
             // ── Meta ────────────────────────────────────────────────────────
             case 'flag_unhandled_request': {

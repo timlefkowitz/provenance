@@ -2,19 +2,27 @@
 
 import { SITE_ACCENTS, SITE_FONT_PAIRINGS, SITE_SURFACES } from '../types';
 
-const HEX_ACCENT = /^#[0-9A-Fa-f]{6}$/;
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 
 export function resolveAccent(key: string): string {
-  if (HEX_ACCENT.test(key)) return key;
+  if (HEX_COLOR.test(key)) return key;
   const found = SITE_ACCENTS.find((a) => a.key === key);
   return found?.value ?? SITE_ACCENTS[0]?.value ?? '#4A2F25';
 }
 
 export function isCustomAccent(key: string): boolean {
-  return HEX_ACCENT.test(key);
+  return HEX_COLOR.test(key);
 }
 
-export function resolveSurface(key: string | null): { bg: string; ink: string } {
+export function isValidHexColor(value: string): boolean {
+  return HEX_COLOR.test(value);
+}
+
+/**
+ * Resolve the surface background and ink (text) color.
+ * When inkOverride is a valid hex it replaces the surface's default ink.
+ */
+export function resolveSurface(key: string | null, inkOverride?: string | null): { bg: string; ink: string } {
   const map: Record<string, { bg: string; ink: string }> = {
     parchment: { bg: '#F5F1E8', ink: '#111111' },
     cream: { bg: '#FAF7F0', ink: '#1A1A1A' },
@@ -23,7 +31,11 @@ export function resolveSurface(key: string | null): { bg: string; ink: string } 
     charcoal: { bg: '#1A1A1A', ink: '#F5F5F5' },
     ink: { bg: '#0F0F12', ink: '#F0EBE0' },
   };
-  return map[key ?? 'white'] ?? map.white;
+  const surface = map[key ?? 'white'] ?? map.white;
+  if (inkOverride && HEX_COLOR.test(inkOverride)) {
+    return { bg: surface.bg, ink: inkOverride };
+  }
+  return surface;
 }
 
 export function isValidSurfaceKey(key: string): boolean {
@@ -38,7 +50,14 @@ export function borderColor(surfaceKey: string | null): string {
   return isDarkSurface(surfaceKey) ? '#333' : '#e4e4e4';
 }
 
-export function mutedText(surfaceKey: string | null): string {
+/**
+ * Muted/secondary text color.
+ * When inkOverride is set, derive muted color as a semi-transparent version of it.
+ */
+export function mutedText(surfaceKey: string | null, inkOverride?: string | null): string {
+  if (inkOverride && HEX_COLOR.test(inkOverride)) {
+    return `${inkOverride}99`;
+  }
   return isDarkSurface(surfaceKey) ? 'rgba(255,255,255,0.6)' : '#888';
 }
 

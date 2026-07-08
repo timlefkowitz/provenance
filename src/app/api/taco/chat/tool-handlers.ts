@@ -15,6 +15,9 @@ import {
   generateWebsiteBio,
   generatePracticeSummary,
 } from './writing-helpers';
+import { SITE_TEMPLATES, SITE_ACCENTS, SITE_FONT_PAIRINGS, SITE_SURFACES, DEFAULT_THEME, DEFAULT_SECTIONS, DEFAULT_SURFACE } from '~/app/_sites/types';
+import { upsertSiteAction } from '~/app/profile/site/_actions/upsert-site';
+import { publishSiteAction } from '~/app/profile/site/_actions/publish-site';
 
 /* -------------------------------------------------------------------------- */
 /*  search_artworks                                                           */
@@ -1304,4 +1307,224 @@ function scorGrantRelevance(grant: any, medium: string | null, location: string 
     else if (days >= 30 && days < 90) score += 4;
   }
   return score;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  get_my_website                                                             */
+/* -------------------------------------------------------------------------- */
+
+export async function handleGetMyWebsite(userId: string): Promise<unknown> {
+  console.log('[Taco] handleGetMyWebsite userId=', userId);
+  const client = getSupabaseServerClient();
+
+  const { data: profiles, error: profileErr } = await (client as any)
+    .from('user_profiles')
+    .select('id, name, role')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(5);
+
+  if (profileErr || !profiles?.length) {
+    console.error('[Taco] handleGetMyWebsite no profiles', profileErr);
+    return { error: 'No active profiles found for this account.' };
+  }
+
+  const profileIds = profiles.map((p: any) => p.id);
+  const { data: sites, error: siteErr } = await (client as any)
+    .from('profile_sites')
+    .select('profile_id, handle, template_id, theme, sections, surface_color, tagline, display_name, about_override, published_at, featured_artwork_ids')
+    .in('profile_id', profileIds);
+
+  if (siteErr) {
+    console.error('[Taco] handleGetMyWebsite site query failed', siteErr);
+    return { error: siteErr.message };
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';
+  const rawHost = new URL(baseUrl).hostname;
+  const siteDomain = rawHost.startsWith('www.') ? rawHost.slice(4) : rawHost;
+
+  const results = (sites ?? []).map((row: any) => {
+    const profile = profiles.find((p: any) => p.id === row.profile_id);
+    const theme = { ...DEFAULT_THEME, ...(row.theme ?? {}) };
+    const sections = { ...DEFAULT_SECTIONS, ...(row.sections ?? {}) };
+    return {
+      profile_id: row.profile_id,
+      profile_name: profile?.name ?? null,
+      profile_role: profile?.role ?? null,
+      handle: row.handle,
+      published: !!row.published_at,
+      site_url: row.published_at ? `https://${row.handle}.${siteDomain}` : null,
+      editor_url: `/profile/site?profileId=${row.profile_id}`,
+      template_id: row.template_id,
+      accent: theme.accent,
+      font_pairing: theme.font_pairing,
+      text_color: theme.text_color ?? null,
+      surface_color: row.surface_color ?? DEFAULT_SURFACE,
+      tagline: row.tagline ?? null,
+      display_name: row.display_name ?? null,
+      about_override: row.about_override ?? null,
+      sections,
+      featured_artwork_ids: Array.isArray(row.featured_artwork_ids) ? row.featured_artwork_ids : [],
+    };
+  });
+
+  // If no site exists yet, return profiles so Taco knows which profile_id to use
+  const profilesWithoutSites = profiles.filter(
+    (p: any) => !(sites ?? []).some((s: any) => s.profile_id === p.id),
+  );
+
+  console.log('[Taco] handleGetMyWebsite returned', results.length, 'sites,', profilesWithoutSites.length, 'profiles without sites');
+  return {
+    sites: results,
+    profiles_without_sites: profilesWithoutSites.map((p: any) => ({ profile_id: p.id, name: p.name, role: p.role })),
+    valid_options: {
+      templates: SITE_TEMPLATES.map((t) => ({ id: t.id, name: t.name, description: t.description, category: t.category })),
+      accents: SITE_ACCENTS.map((a) => ({ key: a.key, label: a.label })),
+      surfaces: SITE_SURFACES.map((s) => ({ key: s.key, label: s.label })),
+      font_pairings: SITE_FONT_PAIRINGS.map((fp) => ({ key: fp.key, label: fp.label, description: fp.description })),
+    },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  update_my_website                                                          */
+/* -------------------------------------------------------------------------- */
+
+export async function handleUpdateMyWebsite(
+  args: {
+    profile_id: string;
+    handle?: string;
+    template_id?: string;
+    accent?: string;
+    surface_color?: string;
+    font_pairing?: string;
+    text_color?: string | null;
+    tagline?: string;
+    display_name?: string;
+    about_override?: string;
+    sections?: Partial<Record<string, boolean>>;
+  },
+  userId: string,
+): Promise<unknown> {
+  console.log('[Taco] handleUpdateMyWebsite profileId=', args.profile_id);
+
+  const client = getSupabaseServerClient();
+
+  // Verify the profile belongs to this user
+  const { data: profile } = await (client as any)
+    .from('user_profiles')
+    .select('id, user_id, role, name')
+    .eq('id', args.profile_id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!profile || profile.user_id !== userId) {
+    return { success: false, error: 'Profile not found or access denied.' };
+  }
+
+  // Fetch existing site row for defaults
+  const { data: existing } = await (client as any)
+    .from('profile_sites')
+    .select('*')
+    .eq('profile_id', args.profile_id)
+    .maybeSingle();
+
+  const existingTheme = { ...DEFAULT_THEME, ...(existing?.theme ?? {}) };
+  const existingSections = { ...DEFAULT_SECTIONS, ...(existing?.sections ?? {}) };
+
+  const newTheme: typeof existingTheme = {
+    ...existingTheme,
+    ...(args.accent !== undefined ? { accent: args.accent } : {}),
+    ...(args.font_pairing !== undefined ? { font_pairing: args.font_pairing } : {}),
+    ...(args.text_color !== undefined ? { text_color: args.text_color } : {}),
+  };
+
+  const newSections = {
+    ...existingSections,
+    ...(args.sections ?? {}),
+  };
+
+  const validTemplates = SITE_TEMPLATES.map((t) => t.id);
+  const templateId = (args.template_id && validTemplates.includes(args.template_id as any))
+    ? args.template_id as any
+    : existing?.template_id ?? 'studio';
+
+  const result = await upsertSiteAction({
+    profileId: args.profile_id,
+    handle: args.handle ?? existing?.handle ?? profile.name?.toLowerCase().replace(/\s+/g, '-') ?? 'my-site',
+    templateId,
+    theme: newTheme,
+    sections: newSections,
+    cta: existing?.cta ?? null,
+    tagline: args.tagline !== undefined ? args.tagline : existing?.tagline ?? null,
+    displayName: args.display_name !== undefined ? args.display_name : existing?.display_name ?? null,
+    aboutOverride: args.about_override !== undefined ? args.about_override : existing?.about_override ?? null,
+    surfaceColor: args.surface_color ?? existing?.surface_color ?? DEFAULT_SURFACE,
+    heroImageUrl: existing?.hero_image_url ?? null,
+    logoImageUrl: existing?.logo_image_url ?? null,
+    artworkFilters: existing?.artwork_filters ?? undefined,
+  });
+
+  if (!result.success) {
+    console.error('[Taco] handleUpdateMyWebsite upsert failed', result.error);
+    return {
+      success: false,
+      error: result.error,
+      navigation: [{ label: 'Open website editor', href: `/profile/site?profileId=${args.profile_id}` }],
+    };
+  }
+
+  console.log('[Taco] handleUpdateMyWebsite succeeded');
+  return {
+    success: true,
+    note: 'Website updated. Reload the editor to see the changes.',
+    navigation: [{ label: 'Open website editor', href: `/profile/site?profileId=${args.profile_id}` }],
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  publish_my_website                                                         */
+/* -------------------------------------------------------------------------- */
+
+export async function handlePublishMyWebsite(
+  args: { profile_id: string; published: boolean },
+  userId: string,
+): Promise<unknown> {
+  console.log('[Taco] handlePublishMyWebsite', { profileId: args.profile_id, published: args.published });
+
+  const client = getSupabaseServerClient();
+  const { data: profile } = await (client as any)
+    .from('user_profiles')
+    .select('user_id')
+    .eq('id', args.profile_id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!profile || profile.user_id !== userId) {
+    return { success: false, error: 'Profile not found or access denied.' };
+  }
+
+  const result = await publishSiteAction(args.profile_id, args.published);
+
+  if (!result.success) {
+    console.error('[Taco] handlePublishMyWebsite failed', result.error);
+    return {
+      success: false,
+      error: result.error,
+      navigation: [{ label: 'Open website editor', href: `/profile/site?profileId=${args.profile_id}` }],
+    };
+  }
+
+  console.log('[Taco] handlePublishMyWebsite succeeded');
+  return {
+    success: true,
+    published: args.published,
+    site_url: (result as any).url ?? null,
+    note: args.published ? `Your site is now live at ${(result as any).url}` : 'Your site has been unpublished.',
+    navigation: [
+      { label: 'Open website editor', href: `/profile/site?profileId=${args.profile_id}` },
+      ...(args.published ? [{ label: 'View live site', href: (result as any).url ?? '' }] : []),
+    ],
+  };
 }

@@ -12,6 +12,13 @@ import { IndexTemplate } from './index-template';
 import { ConcreteTemplate } from './concrete';
 import { LightboxTemplate } from './lightbox';
 import { NoirTemplate } from './noir';
+import { ManifestoTemplate } from './manifesto';
+import { BillboardTemplate } from './billboard';
+import { ShopfrontTemplate } from './shopfront';
+import { PosterTemplate } from './poster';
+import { AnnumTemplate } from './annum';
+import { ChronicleTemplate } from './chronicle';
+import { LedgerTemplate } from './ledger';
 
 type TemplateComponent = ComponentType<{ site: SiteData }>;
 
@@ -28,6 +35,13 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, TemplateComponent> = {
   concrete: ConcreteTemplate,
   lightbox: LightboxTemplate,
   noir: NoirTemplate,
+  manifesto: ManifestoTemplate,
+  billboard: BillboardTemplate,
+  shopfront: ShopfrontTemplate,
+  poster: PosterTemplate,
+  annum: AnnumTemplate,
+  chronicle: ChronicleTemplate,
+  ledger: LedgerTemplate,
 };
 
 export function renderSiteTemplate(site: SiteData) {

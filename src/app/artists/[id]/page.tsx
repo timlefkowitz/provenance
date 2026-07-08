@@ -261,7 +261,8 @@ export default async function ArtistProfilePage({
             title,
             start_date,
             end_date,
-            location
+            location,
+            published_at
           )
         `,
         )
@@ -270,7 +271,7 @@ export default async function ArtistProfilePage({
       const seen = new Set<string>();
       for (const row of exLinks || []) {
         const ex = row.exhibitions;
-        if (ex?.id && !seen.has(ex.id)) {
+        if (ex?.id && !seen.has(ex.id) && ex.published_at !== null) {
           seen.add(ex.id);
           exhibitions.push({
             id: ex.id,
@@ -369,12 +370,13 @@ export default async function ArtistProfilePage({
 
   let allExhibitions: Awaited<ReturnType<typeof getExhibitionsForGallery>> = [];
   if (isGallery) {
-    allExhibitions = await getExhibitionsForGallery(account.id);
+    allExhibitions = await getExhibitionsForGallery(account.id, { publishedOnly: true });
   } else if (isArtistProfile) {
     allExhibitions = await getExhibitionsForArtistAccount(account.id, {
       artistProfileId: roleProfile?.id ?? null,
       // Exclude shows created by this user's own gallery — they belong on the gallery view
       excludeGalleryId: account.id,
+      publishedOnly: true,
     });
   }
   const exhibitions = allExhibitions.slice(0, 6);
