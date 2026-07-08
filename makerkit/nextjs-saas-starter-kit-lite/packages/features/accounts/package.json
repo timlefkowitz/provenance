@@ -12,6 +12,7 @@
     "./personal-account-dropdown": "./src/components/personal-account-dropdown.tsx",
     "./personal-account-settings": "./src/components/account-settings-container.tsx",
     "./components": "./src/components/index.ts",
+    "./mfa": "./src/components/mfa/multi-factor-auth-list.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./api": "./src/server/api.ts"
   },

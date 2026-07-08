@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   // 30 calls / minute is a comfortable cap for a single chat session and
   // keeps a runaway client from burning tokens.
   if (
-    !checkRateLimit(req, {
+    !await checkRateLimit(req, {
       keyPrefix: `profiles-parse:${user.id}`,
       windowMs: 60_000,
       maxPerWindow: 30,

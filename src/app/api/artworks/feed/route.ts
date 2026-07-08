@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { escapeIlike } from '~/lib/escape-ilike';
 import { seededShuffle } from '~/lib/seeded-shuffle';
@@ -109,17 +108,7 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await client.auth.getUser();
 
-    let admin: ReturnType<typeof getSupabaseServerAdminClient> | null = null;
-    try {
-      admin = getSupabaseServerAdminClient();
-    } catch (e) {
-      console.error(
-        '[API/artworks/feed] Admin client unavailable, using RLS client:',
-        (e as Error).message,
-      );
-    }
-
-    const db = admin ?? (client as ReturnType<typeof getSupabaseServerClient>);
+    const db = client as ReturnType<typeof getSupabaseServerClient>;
 
     // "Following" requires auth — return empty immediately if signed out
     if (sort === 'following' && !user) {

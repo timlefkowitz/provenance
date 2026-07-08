@@ -11,6 +11,7 @@ import { AppearanceSection } from './_components/appearance-section';
 import { TeamsSection } from './_components/teams-section';
 import { AccountActionsSection } from './_components/account-actions-section';
 import { StripeConnectCard } from './_components/stripe-connect-card';
+import { SecuritySection } from './_components/security-section';
 import { getConnectAccount } from '~/lib/stripe-connect';
 
 export const metadata = {
@@ -115,6 +116,8 @@ export default async function SettingsPage() {
             galleryProfiles={galleryProfiles}
             userId={user.id}
           />
+
+          <SecuritySection userId={user.id} />
 
           <AccountActionsSection />
         </div>

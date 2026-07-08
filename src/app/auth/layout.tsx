@@ -129,9 +129,23 @@ function AuthLayout({ children }: React.PropsWithChildren) {
         </div>
 
         {/* Footer note */}
-        <p className="mt-8 text-xs text-center" style={{ color: '#4A2F25', opacity: 0.5 }}>
-          &copy; {new Date().getFullYear()} Provenance. All rights reserved.
-        </p>
+        <div className="mt-8 flex flex-col items-center gap-y-1 text-center">
+          <p className="text-xs" style={{ color: '#4A2F25', opacity: 0.5 }}>
+            &copy; {new Date().getFullYear()} Provenance. All rights reserved.
+          </p>
+          <p className="text-[10px]" style={{ color: '#4A2F25', opacity: 0.45 }}>
+            By continuing you agree to our{' '}
+            <a href="/terms-of-service" className="underline underline-offset-2 hover:opacity-80">
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a href="/privacy-policy" className="underline underline-offset-2 hover:opacity-80">
+              Privacy Policy
+            </a>
+            .{' '}
+            We use your Google account only for sign-in (email, name, photo).
+          </p>
+        </div>
       </div>
     </div>
   );

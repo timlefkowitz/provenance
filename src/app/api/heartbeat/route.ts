@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   // Cap any one user to 240 pings/minute (4x normal cadence) — prevents
   // a misbehaving / hostile client from inflating its own active time.
-  const ok = checkRateLimit(req, {
+  const ok = await checkRateLimit(req, {
     keyPrefix: `heartbeat:${user.id}`,
     maxPerWindow: 240,
     windowMs: 60_000,

@@ -49,3 +49,6 @@ yarn-error.log*
 # contentlayer
 .contentlayer/
 
+# PII / lead data — never commit real email lists
+data/lead-emails/
+

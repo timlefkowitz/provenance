@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { escapeIlike } from '~/lib/escape-ilike';
 
 const SearchArtworkTextQuerySchema = z.object({
-  userId: z.string().min(1),
   field: z.enum(['medium', 'production_location', 'owned_by', 'sold_by', 'former_owners']),
   q: z
     .string()
@@ -15,10 +15,16 @@ const SearchArtworkTextQuerySchema = z.object({
 const MAX_RESULTS = 25;
 
 export async function GET(request: NextRequest) {
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ suggestions: [] }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
 
   const parseResult = SearchArtworkTextQuerySchema.safeParse({
-    userId: searchParams.get('userId') ?? '',
     field: searchParams.get('field') ?? 'medium',
     q: searchParams.get('q') ?? '',
   });
@@ -27,15 +33,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ suggestions: [] }, { status: 400 });
   }
 
-  const { userId, field, q } = parseResult.data;
+  const { field, q } = parseResult.data;
+  const userId = user.id;
 
   try {
-    const client = getSupabaseServerClient();
-
-    console.log('[ArtworkTextTypeahead] search started', {
-      field,
-      q,
-    });
+    console.log('[ArtworkTextTypeahead] search started', { field, q });
 
     const { data, error } = await (client as any)
       .from('artworks')
@@ -43,7 +45,7 @@ export async function GET(request: NextRequest) {
       .eq('account_id', userId)
       .not(field, 'is', null)
       .neq(field, '')
-      .ilike(field, `%${q}%`)
+      .ilike(field, `%${escapeIlike(q)}%`)
       .limit(MAX_RESULTS);
 
     if (error) {

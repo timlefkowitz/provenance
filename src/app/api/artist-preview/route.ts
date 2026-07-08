@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
+import { checkRateLimit } from '~/lib/rate-limit';
 
 const PreviewQuerySchema = z
   .object({
@@ -21,6 +22,10 @@ type RecentWork = {
 };
 
 export async function GET(request: NextRequest) {
+  if (!await checkRateLimit(request, { keyPrefix: 'artist_preview', maxPerWindow: 120 })) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   console.log('[API/artist-preview] GET started');
 
   const parseResult = PreviewQuerySchema.safeParse({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { resolveArtistUserId } from '~/lib/crm/owner';
+import { escapeIlike } from '~/lib/escape-ilike';
 
 const SearchContactsQuerySchema = z.object({
   q: z.string().trim().min(2).max(100),
@@ -33,8 +34,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const artistUserId = await resolveArtistUserId(client, user.id);
-    const sanitized = q.replace(/[,()]/g, ' ').trim();
-    const pattern = `%${sanitized}%`;
+    const pattern = `%${escapeIlike(q)}%`;
 
     const { data: contacts, error } = await (client as any)
       .from('artist_leads')

@@ -28,7 +28,7 @@ console.log('[Auth] providers configured', {
 
 const authConfig = AuthConfigSchema.parse({
   captchaTokenSiteKey: process.env.NEXT_PUBLIC_CAPTCHA_SITE_KEY,
-  displayTermsCheckbox: false,
+  displayTermsCheckbox: true,
   providers: {
     password: passwordEnabled,
     magicLink: magicLinkEnabled,

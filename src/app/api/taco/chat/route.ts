@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { getActiveSubscription } from '~/lib/subscription';
+import { checkRateLimit } from '~/lib/rate-limit';
 import { extractTextFromCvBuffer } from '~/app/grants/_actions/extract-text-from-cv';
 import { ALL_TACO_TOOLS } from './tools';
 import {
@@ -212,6 +214,33 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       console.error('[Taco] auth failed', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // -- Subscription gate --
+    const subscription = await getActiveSubscription(user.id);
+    if (!subscription) {
+      console.log('[Taco] no active subscription', { userId: user.id });
+      return NextResponse.json(
+        {
+          error:
+            'Taco is a paid feature. Upgrade to an Artist, Collector, or Gallery plan to chat with Taco.',
+        },
+        { status: 403 },
+      );
+    }
+
+    // -- Per-user rate limit: 200 requests / minute (very generous) --
+    if (
+      !await checkRateLimit(
+        { ip: null, headers: request.headers },
+        { keyPrefix: `taco:${user.id}`, windowMs: 60_000, maxPerWindow: 200 },
+      )
+    ) {
+      console.warn('[Taco] rate limited', { userId: user.id });
+      return NextResponse.json(
+        { error: 'Too many requests — slow down a little.' },
+        { status: 429 },
+      );
     }
 
     // -- API key guard --

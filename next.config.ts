@@ -21,7 +21,7 @@ const INTERNAL_PACKAGES = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
   /** Bundled server routes must resolve the ffmpeg-static native binary at runtime */
   serverExternalPackages: ['ffmpeg-static'],
   /**
@@ -82,6 +82,24 @@ const nextConfig: NextConfig = {
           {
             key: 'Cache-Control',
             value: 'private, no-store, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        // Security headers for all API routes (excluded from middleware matcher by design).
+        source: '/api/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            // API responses carry no renderable content; deny all resource loading.
+            key: 'Content-Security-Policy',
+            value: "default-src 'none'; frame-ancestors 'none'",
           },
         ],
       },

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { checkRateLimit } from '~/lib/rate-limit';
+import { escapeIlike } from '~/lib/escape-ilike';
 
 const SearchArtistsQuerySchema = z.object({
   q: z
@@ -14,6 +16,10 @@ const SearchArtistsQuerySchema = z.object({
 const MAX_LIMIT = 20;
 
 export async function GET(request: NextRequest) {
+  if (!await checkRateLimit(request, { keyPrefix: 'search_artists', maxPerWindow: 60 })) {
+    return NextResponse.json([], { status: 429 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
 
   const parseResult = SearchArtistsQuerySchema.safeParse({
@@ -31,7 +37,7 @@ export async function GET(request: NextRequest) {
   const { data: accounts, error } = await client
     .from('accounts')
     .select('id, name, picture_url, public_data')
-    .ilike('name', `%${q}%`)
+    .ilike('name', `%${escapeIlike(q)}%`)
     .limit(MAX_LIMIT);
 
   if (error) {

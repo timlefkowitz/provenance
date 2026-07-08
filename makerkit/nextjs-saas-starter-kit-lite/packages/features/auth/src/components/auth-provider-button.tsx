@@ -1,5 +1,7 @@
 import { Button } from '@kit/ui/button';
 
+import { OauthProviderLogoImage } from './oauth-provider-logo-image';
+
 export function AuthProviderButton({
   providerId,
   onClick,
@@ -16,6 +18,7 @@ export function AuthProviderButton({
       variant={'outline'}
       onClick={onClick}
     >
+      <OauthProviderLogoImage providerId={providerId} />
       <span>{children}</span>
     </Button>
   );

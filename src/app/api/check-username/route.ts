@@ -15,7 +15,7 @@ const UsernameQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
 
-  if (!checkRateLimit(request, { keyPrefix: 'check_username', maxPerWindow: 30 })) {
+  if (!await checkRateLimit(request, { keyPrefix: 'check_username', maxPerWindow: 30 })) {
     return NextResponse.json({ available: false, error: 'Too many requests' }, { status: 429 });
   }
 

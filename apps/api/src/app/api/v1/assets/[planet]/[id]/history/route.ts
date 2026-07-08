@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isValidPlanet } from '@provenance/core/types';
-import { authenticateRequest, isAuthError } from '~/middleware/auth';
+import { authenticateRequest, isAuthError, requireScope, requirePlanet } from '~/middleware/auth';
 import { getServiceClient } from '~/lib/supabase';
 import { badRequest, serverError } from '~/lib/errors';
 
@@ -22,6 +22,12 @@ export async function GET(
   if (!isValidPlanet(planet)) {
     return badRequest(`Invalid planet: ${planet}`);
   }
+
+  const scopeError = requireScope(auth, 'verify');
+  if (scopeError) return scopeError;
+
+  const planetError = requirePlanet(auth, planet);
+  if (planetError) return planetError;
 
   try {
     const client = getServiceClient();

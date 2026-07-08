@@ -45,7 +45,7 @@ function sanitizeClientErrorPayload(input: unknown): Record<string, unknown> {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!checkRateLimit(req, { keyPrefix: 'log_client_error', maxPerWindow: 30 })) {
+    if (!await checkRateLimit(req, { keyPrefix: 'log_client_error', maxPerWindow: 30 })) {
       return NextResponse.json({ ok: false }, { status: 429 });
     }
 

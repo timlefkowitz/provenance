@@ -8,9 +8,11 @@ type Props = {
 export function LegalDocumentBody({ document, className }: Props) {
   return (
     <div className={className}>
-      <p className="text-xs italic text-ink/55 font-serif leading-relaxed mb-6">
-        {document.disclaimer}
-      </p>
+      {document.disclaimer && (
+        <p className="text-xs italic text-ink/55 font-serif leading-relaxed mb-6">
+          {document.disclaimer}
+        </p>
+      )}
       <div className="space-y-6">
         {document.sections.map((section, i) => (
           <section key={i}>

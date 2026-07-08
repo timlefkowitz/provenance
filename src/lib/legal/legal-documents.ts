@@ -19,8 +19,7 @@ function doc(id: LegalDocumentId, title: string, sections: LegalSection[]): Lega
   return {
     id,
     title,
-    disclaimer:
-      'This document is provided for informational purposes. Obtain qualified legal review before relying on it in production.',
+    disclaimer: '',
     sections,
   };
 }
@@ -37,12 +36,21 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
       heading: 'Information we collect',
       paragraphs: [
         'Account information: email address, password (hashed), username, and profile details you provide (name, bio, location, website, medium, profile photo).',
-        'Authentication data: if you sign in with Google OAuth, we receive basic profile information from Google as permitted by your Google account settings.',
+        'Authentication data: if you sign in with Google, we receive your email address, display name, and profile photo URL from Google. See the "Information from Google Sign-In" section below for full details.',
         'Content you upload: artwork images, titles, provenance records, exhibition details, press links, CVs, and other materials you submit to the platform.',
         'Creator site data: handle, template choices, hero images, logos, taglines, and section visibility settings for your public artist or gallery website.',
         'Billing information: subscription role, plan interval, and payment status. Payment card details are processed by Stripe; we do not store full card numbers on our servers.',
         'Usage and analytics: pages visited, features used, referral data, and advertising performance metrics collected via Google Tag Manager and related analytics tools, subject to your cookie consent choices.',
         'Technical data: IP address, browser type, device information, cookies, and localStorage entries (including language, theme, and consent preferences).',
+      ],
+    },
+    {
+      heading: 'Information from Google Sign-In',
+      paragraphs: [
+        'When you choose "Sign in with Google," Google provides us with the following information from your Google account: (1) your email address, used as your account identifier and for transactional emails; (2) your display name, shown on your profile and artworks; and (3) your profile photo URL, displayed as your avatar.',
+        'We do not receive your Google account password. We do not request access to, and do not use, your Gmail messages, Google Drive files, Google Calendar, Google Contacts, or any other Google service or data beyond the identity information listed above.',
+        'This limited use of Google user data is governed by the Google API Services User Data Policy, including its Limited Use requirements (https://developers.google.com/terms/api-services-user-data-policy). In particular: (a) data obtained from Google APIs is used only to provide and improve the features described in this policy; (b) we do not transfer or sell this data to third parties for advertising, data brokering, or credit-related purposes; and (c) humans do not read your Google-sourced data except as necessary for security purposes or as required by law.',
+        'Google-sourced identity data (email, name, profile photo URL) is stored in our authentication system (Supabase) and in your account record. You may update your display name and avatar from your profile settings at any time. If you delete your account, this data is removed from our systems subject to any legal retention obligations.',
       ],
     },
     {

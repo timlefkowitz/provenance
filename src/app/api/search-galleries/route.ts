@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { checkRateLimit } from '~/lib/rate-limit';
+import { escapeIlike } from '~/lib/escape-ilike';
 
 const SearchGalleriesQuerySchema = z.object({
   q: z
@@ -14,6 +16,10 @@ const SearchGalleriesQuerySchema = z.object({
 const MAX_LIMIT = 20;
 
 export async function GET(request: NextRequest) {
+  if (!await checkRateLimit(request, { keyPrefix: 'search_galleries', maxPerWindow: 60 })) {
+    return NextResponse.json([], { status: 429 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
 
   const parseResult = SearchGalleriesQuerySchema.safeParse({
@@ -25,6 +31,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { q } = parseResult.data;
+  const escaped = escapeIlike(q);
 
   const client = getSupabaseServerClient();
 
@@ -33,7 +40,7 @@ export async function GET(request: NextRequest) {
     .select('user_id, name, picture_url, location')
     .eq('role', USER_ROLES.GALLERY)
     .eq('is_active', true)
-    .ilike('name', `%${q}%`)
+    .ilike('name', `%${escaped}%`)
     .limit(MAX_LIMIT);
 
   if (profilesError) {
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
   const { data: accounts, error: accountsError } = await client
     .from('accounts')
     .select('id, name, picture_url, public_data')
-    .ilike('name', `%${q}%`)
+    .ilike('name', `%${escaped}%`)
     .limit(MAX_LIMIT);
 
   if (accountsError) {

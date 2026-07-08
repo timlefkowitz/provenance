@@ -28,15 +28,18 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify the request has a secret key to prevent unauthorized access
+    // Verify the request has a secret key to prevent unauthorized access.
+    // EMAIL_API_SECRET must be set in production; if missing the route is closed entirely.
     const authHeader = request.headers.get('authorization');
     const expectedSecret = process.env.EMAIL_API_SECRET;
-    
-    if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+
+    if (!expectedSecret) {
+      console.error('[Email] EMAIL_API_SECRET is not configured — route disabled');
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
+
+    if (authHeader !== `Bearer ${expectedSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();

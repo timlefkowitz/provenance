@@ -111,7 +111,7 @@ export async function submitFeedback(
   const hdrs = await headers();
 
   // 5 submissions / 10 minutes per user — prevents accidental spam.
-  const allowed = checkRateLimit(
+  const allowed = await checkRateLimit(
     { headers: hdrs },
     {
       keyPrefix: `feedback:${user.id}`,
