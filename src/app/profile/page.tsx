@@ -44,10 +44,18 @@ export default async function ProfilePage() {
   const currentLinks = (publicData.links as string[]) || [];
   const currentGalleries = (publicData.galleries as string[]) || [];
   const currentPictureUrl = account?.picture_url || '';
-  const [goals, commits] = await Promise.all([
+  const [goals, commits, foundingBadge] = await Promise.all([
     getMyGoals(),
     getCommitHistory(user.id),
+    client
+      .from('user_badges')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('badge_type', 'founding_artist')
+      .maybeSingle(),
   ]);
+
+  const isFoundingArtist = !!foundingBadge.data;
 
   const roleProfiles = (await getUserProfiles(user.id)).filter(
     (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
@@ -74,7 +82,7 @@ export default async function ProfilePage() {
       </div>
 
       <div className="flex w-full flex-1 flex-col space-y-4">
-        <ArtPracticeSection initialGoals={goals} commits={commits} />
+        <ArtPracticeSection initialGoals={goals} commits={commits} isFoundingArtist={isFoundingArtist} />
 
         {/* Avatar & Photo Change Shortcut */}
         <Card>

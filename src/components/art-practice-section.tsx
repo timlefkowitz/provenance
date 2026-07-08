@@ -18,9 +18,11 @@ const EMOJI_CHOICES = ['🎨', '🖌️', '📸', '🖼️', '✍️', '🧵', '
 export function ArtPracticeSection({
   initialGoals,
   commits,
+  isFoundingArtist = false,
 }: {
   initialGoals: UserGoalView[];
   commits: ContributionDay[];
+  isFoundingArtist?: boolean;
 }) {
   const router = useRouter();
   const [goals, setGoals] = useState(initialGoals);
@@ -141,7 +143,7 @@ export function ArtPracticeSection({
             <div>
               {defaultGoal ? (
                 <div className="flex items-center gap-3">
-                  <StreakStar tier={defaultGoal.starTier} streakDays={defaultGoal.currentStreakDays} />
+                  <StreakStar tier={defaultGoal.starTier} streakDays={defaultGoal.currentStreakDays} isFoundingArtist={isFoundingArtist} />
                   <span className="text-xs text-ink/55 font-serif">
                     Longest streak: {defaultGoal.longestStreakDays} days
                   </span>

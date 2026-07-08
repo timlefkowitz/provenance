@@ -335,7 +335,7 @@ export function ManifestoTemplate(props: ArtistTemplateProps) {
               </span>
             )}
             {streak && (
-              <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+              <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />
             )}
             <SocialRow website={props.website} links={props.links} />
             <div className="flex flex-wrap gap-3 pt-2">
@@ -502,7 +502,7 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
           )}
           {streak && (
             <div className="mt-6 flex justify-center">
-              <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+              <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />
             </div>
           )}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -681,7 +681,7 @@ export function ArchiveTemplate(props: ArtistTemplateProps) {
               cvHref={props.cvHref}
             />
           )}
-          {streak && <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />}
+          {streak && <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />}
         </div>
       </header>
 
@@ -829,7 +829,7 @@ export function KineticTemplate(props: ArtistTemplateProps) {
         )}
         {streak && (
           <div className="mt-6">
-            <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+            <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />
           </div>
         )}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -975,7 +975,7 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
               cvHref={props.cvHref}
             />
           )}
-          {streak && <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />}
+          {streak && <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />}
         </div>
       </header>
 

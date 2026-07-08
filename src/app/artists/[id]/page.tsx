@@ -815,7 +815,7 @@ export default async function ArtistProfilePage({
                   {/* Streak */}
                   {streak && (
                     <div className="mt-3 flex items-center gap-3">
-                      <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} />
+                      <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />
                       {streak.longestStreakDays > 0 && (
                         <span className="text-xs text-ink/45 font-serif">
                           Longest streak: {streak.longestStreakDays} days
