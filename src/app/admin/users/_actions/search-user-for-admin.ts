@@ -71,7 +71,7 @@ export async function searchUserByEmailForAdmin(
 
   const users: AdminUserSearchHit[] = [];
   for (const acc of accounts) {
-    const { data: subs, error: subErr } = await admin
+    const { data: subs, error: subErr } = await (admin as any)
       .from('subscriptions')
       .select(
         'id, user_id, stripe_subscription_id, status, role, current_period_end, trial_end, updated_at',

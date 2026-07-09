@@ -645,7 +645,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('[Taco] chat error', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server error' },
+      { error: 'Something went wrong — please try again.' },
       { status: 500 },
     );
   }

@@ -133,7 +133,7 @@ export async function getDefaultAuthorNameForAdmin(): Promise<string> {
     if (!user) {
       return 'Editorial';
     }
-    const { data: account } = await client
+    const { data: account } = await (client as any)
       .from('accounts')
       .select('name')
       .eq('id', user.id)

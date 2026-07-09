@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the sender's name
-    const { data: account } = await client
+    const { data: account } = await (client as any)
       .from('accounts')
       .select('name')
       .eq('id', user.id)

@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSiteData } from '../../_data/get-site-data';
-import { resolveAccent } from '../../_templates/palette';
-import { ArtworkInquireModal } from '../../_components/artwork-inquire-modal';
-import { ArtworkBuyButton } from '../../_components/artwork-buy-button';
+import { resolveAccent } from '../../../_templates/palette';
+import { ArtworkInquireModal } from '../../../_components/artwork-inquire-modal';
+import { ArtworkBuyButton } from '../../../_components/artwork-buy-button';
 import { isSellingEnabled } from '~/lib/stripe-connect';
 
 export const dynamic = 'force-dynamic';

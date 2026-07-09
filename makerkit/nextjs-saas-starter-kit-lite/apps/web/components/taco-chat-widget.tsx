@@ -71,7 +71,7 @@ const TACO_RESPONSES: { keywords: string[]; replies: string[] }[] = [
     keywords: ['help', 'support', 'stuck', 'problem', 'issue', 'bug'],
     replies: [
       "For real support: team@provenance.app. I would help but I have paws and limited email access.",
-      '*headbutts your screen gently* Contact the actual humans. I'm here for emotional support only.",
+      "*headbutts your screen gently* Contact the actual humans. I'm here for emotional support only.",
       "I don't do tickets. I do comfort. Reach out to the team — they're quite good.",
     ],
   },
@@ -97,7 +97,7 @@ const FALLBACK_REPLIES = [
   "*tilts head* Interesting question. I'll think about it... *sits down and stares into the middle distance*",
   'Hmm. *begins grooming* You should probably ask a human about that. I deal in vibes, not specifics.',
   "*slow blink* I don't have a great answer for that. But I respect the question.",
-  '*chirps* I heard that. I'm thinking. *falls asleep briefly* Sorry, what were we discussing?',
+  "*chirps* I heard that. I'm thinking. *falls asleep briefly* Sorry, what were we discussing?",
   "That's above my pay grade. I don't technically have a pay grade. I have treats.",
 ];
 

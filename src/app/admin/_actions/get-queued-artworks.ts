@@ -27,7 +27,7 @@ export async function getQueuedArtworks() {
     }
 
     // Get all verified, public artworks
-    let query = client
+    let query = (client as any)
       .from('artworks')
       .select('id, title, description, artist_name, image_url, created_at, status, is_public, certificate_number')
       .eq('status', 'verified')
@@ -46,7 +46,7 @@ export async function getQueuedArtworks() {
 
     // Filter out featured artworks to get queued ones
     const queuedArtworks = (allArtworks || []).filter(
-      (artwork) => !featuredArtworkIds.includes(artwork.id)
+      (artwork: any) => !featuredArtworkIds.includes(artwork.id)
     );
 
     return {

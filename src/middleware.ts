@@ -225,8 +225,10 @@ export async function middleware(request: NextRequest) {
   // Content-Security-Policy: restrict script/style/resources. Next.js and Supabase require specific allowances.
   const cspDirectives = [
     "default-src 'self'",
-    // Next.js / React hydration, Google Tag Manager, Google Ads
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.googletagmanager.com https://googleads.g.doubleclick.net",
+    // Next.js / React hydration, Google Tag Manager, Google Ads.
+    // 'strict-dynamic' means modern browsers ignore 'unsafe-inline' (progressive hardening).
+    // 'unsafe-eval' is required by GTM custom HTML tags (remove only when GTM is replaced).
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' https://*.googletagmanager.com https://www.googletagmanager.com https://googleads.g.doubleclick.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",

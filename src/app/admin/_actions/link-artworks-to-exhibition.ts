@@ -31,7 +31,7 @@ export async function linkArtworksToExhibition(
     const adminClient = getSupabaseServerAdminClient();
 
     // Find the exhibition by title (case-insensitive)
-    const { data: exhibitions, error: exhibitionError } = await adminClient
+    const { data: exhibitions, error: exhibitionError } = await (adminClient as any)
       .from('exhibitions')
       .select('id, title, gallery_id')
       .ilike('title', `%${exhibitionTitle}%`);
@@ -47,8 +47,8 @@ export async function linkArtworksToExhibition(
 
     if (exhibitions.length > 1) {
       return {
-        error: `Multiple exhibitions found: ${exhibitions.map(e => e.title).join(', ')}. Please be more specific.`,
-        exhibitions: exhibitions.map(e => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
+        error: `Multiple exhibitions found: ${exhibitions.map((e: any) => e.title).join(', ')}. Please be more specific.`,
+        exhibitions: exhibitions.map((e: any) => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
       };
     }
 
@@ -64,7 +64,7 @@ export async function linkArtworksToExhibition(
 
     if (artworkIds && artworkIds.length > 0) {
       // Use provided artwork IDs
-      const { data: artworks, error: artworksError } = await adminClient
+      const { data: artworks, error: artworksError } = await (adminClient as any)
         .from('artworks')
         .select('id')
         .in('id', artworkIds);
@@ -77,14 +77,14 @@ export async function linkArtworksToExhibition(
     } else {
       // Find artworks by gallery account
       // Get all artworks from the gallery account that aren't already linked to this exhibition
-      const { data: existingLinks } = await adminClient
+      const { data: existingLinks } = await (adminClient as any)
         .from('exhibition_artworks')
         .select('artwork_id')
         .eq('exhibition_id', exhibitionId);
 
       const existingArtworkIds = new Set((existingLinks || []).map((l: any) => l.artwork_id));
 
-      const { data: artworks, error: artworksError } = await adminClient
+      const { data: artworks, error: artworksError } = await (adminClient as any)
         .from('artworks')
         .select('id, status')
         .eq('account_id', targetGalleryId)
@@ -117,7 +117,7 @@ export async function linkArtworksToExhibition(
       artwork_id: artwork.id,
     }));
 
-    const { error: insertError } = await adminClient
+    const { error: insertError } = await (adminClient as any)
       .from('exhibition_artworks')
       .insert(linksToInsert);
 
@@ -131,7 +131,7 @@ export async function linkArtworksToExhibition(
 
         for (const link of linksToInsert) {
           try {
-            const { error: singleInsertError } = await adminClient
+            const { error: singleInsertError } = await (adminClient as any)
               .from('exhibition_artworks')
               .insert(link);
 
@@ -212,7 +212,7 @@ export async function findArtworksForExhibition(
     const adminClient = getSupabaseServerAdminClient();
 
     // Find the exhibition
-    const { data: exhibitions, error: exhibitionError } = await adminClient
+    const { data: exhibitions, error: exhibitionError } = await (adminClient as any)
       .from('exhibitions')
       .select('id, title, gallery_id')
       .ilike('title', `%${exhibitionTitle}%`);
@@ -223,8 +223,8 @@ export async function findArtworksForExhibition(
 
     if (exhibitions.length > 1) {
       return {
-        error: `Multiple exhibitions found: ${exhibitions.map(e => e.title).join(', ')}`,
-        exhibitions: exhibitions.map(e => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
+        error: `Multiple exhibitions found: ${exhibitions.map((e: any) => e.title).join(', ')}`,
+        exhibitions: exhibitions.map((e: any) => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
       };
     }
 
@@ -233,7 +233,7 @@ export async function findArtworksForExhibition(
     const targetGalleryId = galleryAccountId || exhibition.gallery_id;
 
     // Get existing links
-    const { data: existingLinks } = await adminClient
+    const { data: existingLinks } = await (adminClient as any)
       .from('exhibition_artworks')
       .select('artwork_id')
       .eq('exhibition_id', exhibitionId);
@@ -241,7 +241,7 @@ export async function findArtworksForExhibition(
     const existingArtworkIds = new Set((existingLinks || []).map((l: any) => l.artwork_id));
 
     // Find artworks from the gallery that aren't linked
-    const { data: artworks, error: artworksError } = await adminClient
+    const { data: artworks, error: artworksError } = await (adminClient as any)
       .from('artworks')
       .select('id, title, status, created_at')
       .eq('account_id', targetGalleryId)

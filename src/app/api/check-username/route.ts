@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   const client = getSupabaseServerClient();
 
-  const { data: accounts, error } = await client
+  const { data: accounts, error } = await (client as any)
     .from('accounts')
     .select('id')
     .ilike('name', username)

@@ -11,10 +11,11 @@ import { revalidatePath } from 'next/cache';
  * accounts.email is null (e.g. team/gallery accounts or older rows).
  */
 async function resolveOwnerEmail(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adminClient: any,
   accountId: string,
 ): Promise<{ email: string; name: string } | null> {
-  const { data: account } = await adminClient
+  const { data: account } = await (adminClient as any)
     .from('accounts')
     .select('email, name')
     .eq('id', accountId)
@@ -43,7 +44,8 @@ async function resolveOwnerEmail(
  * add-featured flow and the retroactive bulk-send action.
  */
 async function sendFeaturedEmailForArtwork(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adminClient: any,
   artworkId: string,
   accountId: string,
   artistName: string | null,

@@ -42,7 +42,7 @@ export async function fixGalleryNamesForToday(
     }
 
     // First, try to find the FL!GHT profile by name for this account
-    const { data: profilesByName } = await client
+    const { data: profilesByName } = await (client as any)
       .from('user_profiles')
       .select('*')
       .eq('user_id', galleryAccount.id)
@@ -58,7 +58,7 @@ export async function fixGalleryNamesForToday(
     }
 
     // Get all gallery profiles for this account
-    const { data: allProfiles } = await client
+    const { data: allProfiles } = await (client as any)
       .from('user_profiles')
       .select('*')
       .eq('user_id', galleryAccount.id)
@@ -96,7 +96,7 @@ export async function fixGalleryNamesForToday(
     const todayEnd = new Date().toISOString();
 
     // Find all artworks created today by this gallery account
-    const { data: artworks, error } = await client
+    const { data: artworks, error } = await (client as any)
       .from('artworks')
       .select('id, title, account_id, created_at')
       .eq('account_id', galleryAccount.id)
@@ -151,7 +151,7 @@ export async function updateGalleryProfileName(
   try {
     const client = getSupabaseServerAdminClient();
     
-    const { data: updatedProfile, error } = await client
+    const { data: updatedProfile, error } = await (client as any)
       .from('user_profiles')
       .update({ name: newName.trim() })
       .eq('id', profileId)

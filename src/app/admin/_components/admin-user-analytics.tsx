@@ -173,7 +173,7 @@ async function loadOnlineNow() {
     lastEverSeenAt,
   });
 
-  const ids = (data ?? []).map((r) => r.user_id as string);
+  const ids = (data ?? []).map((r: any) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
   return {
@@ -181,7 +181,7 @@ async function loadOnlineNow() {
     totalEverSeen: totalEverSeen ?? 0,
     lastEverSeenAt,
     tableMissing: false,
-    rows: (data ?? []).map((r) => {
+    rows: (data ?? []).map((r: any) => {
       const acc = accounts.get(r.user_id as string);
       return {
         id: r.user_id as string,
@@ -208,10 +208,10 @@ async function loadRecentByLastSeen() {
     return [];
   }
 
-  const ids = (data ?? []).map((r) => r.user_id as string);
+  const ids = (data ?? []).map((r: any) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
-  return (data ?? []).map((r) => {
+  return (data ?? []).map((r: any) => {
     const acc = accounts.get(r.user_id as string);
     return {
       id: r.user_id as string,
@@ -237,10 +237,10 @@ async function loadTopByActiveTime() {
     return [];
   }
 
-  const ids = (data ?? []).map((r) => r.user_id as string);
+  const ids = (data ?? []).map((r: any) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
-  return (data ?? []).map((r) => {
+  return (data ?? []).map((r: any) => {
     const acc = accounts.get(r.user_id as string);
     return {
       id: r.user_id as string,
@@ -352,7 +352,7 @@ async function loadNewestAccounts() {
 
 async function loadStreakLeaders() {
   const admin = getSupabaseServerAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await (admin as any)
     .from('user_goals')
     .select('user_id, longest_streak_days, current_streak_days')
     .eq('is_default', true)
@@ -365,10 +365,10 @@ async function loadStreakLeaders() {
     return [];
   }
 
-  const ids = (data ?? []).map((r) => r.user_id as string);
+  const ids = (data ?? []).map((r: any) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
-  return (data ?? []).map((r) => {
+  return (data ?? []).map((r: any) => {
     const acc = accounts.get(r.user_id as string);
     return {
       id: r.user_id as string,
@@ -512,7 +512,7 @@ export async function AdminUserAnalytics() {
                 )}
                 {online.rows.length > 0 && (
                   <ul className="mt-3 space-y-2">
-                    {online.rows.map((u) => (
+                    {online.rows.map((u: any) => (
                       <li key={u.id} className="flex items-center gap-2">
                         <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
                           <span className="absolute inset-0 animate-ping rounded-full bg-[#1793d1]/50" />
@@ -549,7 +549,7 @@ export async function AdminUserAnalytics() {
                   </p>
                 ) : (
                   <ol className="space-y-2">
-                    {topByTime.map((u, idx) => (
+                    {topByTime.map((u: any, idx: number) => (
                       <li
                         key={u.id}
                         className={cn(
@@ -676,7 +676,7 @@ export async function AdminUserAnalytics() {
                   </p>
                 ) : (
                   <ul className="space-y-2">
-                    {lastSeen.map((u) => (
+                    {lastSeen.map((u: any) => (
                       <li key={u.id} className="flex items-center gap-2">
                         <Avatar label={bestLabel(u)} />
                         <div className="min-w-0 flex-1">
@@ -714,7 +714,7 @@ export async function AdminUserAnalytics() {
                   <p className="font-mono text-[13px] text-slate-500">no streak rows.</p>
                 ) : (
                   <ol className="space-y-2">
-                    {streakLeaders.map((u, idx) => (
+                    {streakLeaders.map((u: any, idx: number) => (
                       <li
                         key={u.id}
                         className={cn(

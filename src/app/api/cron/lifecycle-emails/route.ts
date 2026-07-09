@@ -113,7 +113,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
 }
 
 function buildTrialNudgeHtml(name: string, daysLeft: number): string {
-  const theme = getPresetThemeDefaults('minimal');
+  const theme = getPresetThemeDefaults('mono');
   const { ink, wine, inkMuted, surfaceMuted, fontFamily, fontFamilyHeading } = theme;
 
   const safeName = escapeHtml(name);
@@ -240,7 +240,7 @@ function formatDeadline(deadline: string | null): string {
 }
 
 function buildDigestHtml(name: string, openCalls: any[], grants: any[]): string {
-  const theme = getPresetThemeDefaults('minimal');
+  const theme = getPresetThemeDefaults('mono');
   const { ink, wine, inkMuted, cardBorder, fontFamily, fontFamilyHeading } = theme;
 
   const safeName = escapeHtml(name);

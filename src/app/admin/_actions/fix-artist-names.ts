@@ -41,7 +41,7 @@ export async function fixArtistNames(
       updateData.artist_account_id = artistAccountId;
     }
 
-    const { data: updatedArtworks, error } = await client
+    const { data: updatedArtworks, error } = await (client as any)
       .from('artworks')
       .update(updateData)
       .in('id', artworkIds)

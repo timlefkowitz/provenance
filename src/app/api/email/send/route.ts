@@ -232,10 +232,10 @@ export async function POST(request: NextRequest) {
       { error: 'Invalid email type' },
       { status: 400 }
     );
-  } catch (error: any) {
-    console.error('Error in email API route:', error);
+  } catch (error: unknown) {
+    console.error('[Email] send route failed', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to send email' },
+      { error: 'Failed to send email' },
       { status: 500 }
     );
   }

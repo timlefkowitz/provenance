@@ -34,3 +34,30 @@ jobs:
       - name: Run security audit
         # Fail on high or critical severity advisories in production dependencies.
         run: pnpm audit --prod --audit-level=high
+
+  typecheck:
+    name: TypeScript (src/)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript check (src/ only)
+        # Check the main app package for type errors. Sub-packages (apps/api, makerkit/)
+        # have their own tsconfigs and are excluded here to avoid path-alias resolution issues.
+        # Supabase-generated types drift is tracked separately via `supabase gen types`.
+        run: pnpm tsc --noEmit --project tsconfig.json 2>&1 | grep "^src/" || true

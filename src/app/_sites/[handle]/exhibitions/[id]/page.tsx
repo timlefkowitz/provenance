@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSiteData } from '../../_data/get-site-data';
-import { resolveAccent } from '../../_templates/palette';
+import { resolveAccent } from '../../../_templates/palette';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +82,7 @@ export default async function SiteExhibitionPage({
               Works
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {exhibition.artworks.map((artwork) => (
+              {exhibition.artworks.map((artwork: any) => (
                 <div key={artwork.id}>
                   <div className="relative aspect-square overflow-hidden bg-gray-50 mb-2">
                     {artwork.image_url ? (

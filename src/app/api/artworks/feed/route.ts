@@ -108,7 +108,8 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await client.auth.getUser();
 
-    const db = client as ReturnType<typeof getSupabaseServerClient>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = client as any;
 
     // "Following" requires auth — return empty immediately if signed out
     if (sort === 'following' && !user) {
@@ -193,7 +194,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Fetch favorite counts for all matching artworks
-      const artworkIds = all.map((a) => a.id);
+      const artworkIds = all.map((a: any) => a.id);
       const { data: favRows } = await db
         .from('artwork_favorites')
         .select('artwork_id')

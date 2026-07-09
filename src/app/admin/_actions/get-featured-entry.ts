@@ -35,7 +35,7 @@ export async function getFeaturedEntry() {
     let artwork = null;
 
     if (featuredArtworkIds.length > 0) {
-      const { data: allFeaturedArtworks } = await client
+      const { data: allFeaturedArtworks } = await (client as any)
         .from('artworks')
         .select('id, title, description, image_url, artist_name')
         .in('id', featuredArtworkIds)
@@ -53,7 +53,7 @@ export async function getFeaturedEntry() {
 
     // Fallback to latest verified public artwork
     if (!artwork) {
-      const { data: fallbackArtwork } = await client
+      const { data: fallbackArtwork } = await (client as any)
         .from('artworks')
         .select('id, title, description, image_url, artist_name')
         .eq('status', 'verified')

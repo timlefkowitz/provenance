@@ -1,7 +1,7 @@
 import {
   BarChart2,
   Clock,
-  Map,
+  Map as MapIcon,
   Monitor,
   RefreshCw,
   TrendingUp,
@@ -495,7 +495,7 @@ export async function AdminSiteAnalytics() {
           {/* ── Top Pages ───────────────────────────────────────────────── */}
           <CollapsiblePanel
             id="top-pages"
-            icon={<Map className="h-4 w-4" />}
+            icon={<MapIcon className="h-4 w-4" />}
             title="top_pages"
             description="most time spent + most visited"
             defaultOpen

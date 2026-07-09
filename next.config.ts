@@ -109,8 +109,8 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-function getRemotePatterns() {
-  const remotePatterns = [];
+function getRemotePatterns(): { protocol: 'http' | 'https'; hostname: string }[] {
+  const remotePatterns: { protocol: 'http' | 'https'; hostname: string }[] = [];
 
   if (SUPABASE_URL) {
     try {
@@ -123,7 +123,7 @@ function getRemotePatterns() {
       const hostname = url.hostname;
 
       remotePatterns.push({
-        protocol: url.protocol === 'https:' ? 'https' : 'http',
+        protocol: (url.protocol === 'https:' ? 'https' : 'http') as 'http' | 'https',
         hostname,
       });
     } catch (error) {
@@ -136,11 +136,11 @@ function getRemotePatterns() {
     ? remotePatterns
     : [
         {
-          protocol: 'http',
+          protocol: 'http' as const,
           hostname: '127.0.0.1',
         },
         {
-          protocol: 'http',
+          protocol: 'http' as const,
           hostname: 'localhost',
         },
         ...remotePatterns,

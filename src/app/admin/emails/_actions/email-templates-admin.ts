@@ -153,7 +153,7 @@ export async function saveEmailTheme(
       return { ok: false, error: parsed.error.flatten().formErrors.join(', ') };
     }
 
-    const presetId = parsed.data.layout_preset;
+    const presetId = parsed.data.layout_preset as import('~/lib/email-layout').EmailLayoutPresetId;
     const preset   = getPresetThemeDefaults(presetId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tables not in generated DB types yet
@@ -215,7 +215,7 @@ export async function previewEmailTemplate(
       };
     }
 
-    const theme: EmailTheme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
+    const theme: EmailTheme = resolveEmailThemeFromAdminDraft(parsed.data.theme as AdminEmailThemeDraft);
 
     console.log('[Admin/emails] previewEmailTemplate', parsed.data.template_key, parsed.data.theme.layout_preset);
     const { html, previewSubject } = buildEmailPreviewHtml(
@@ -254,7 +254,7 @@ export async function sendTestEmailTemplate(
       };
     }
 
-    const theme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
+    const theme = resolveEmailThemeFromAdminDraft(parsed.data.theme as AdminEmailThemeDraft);
 
     const { html, previewSubject } = buildEmailPreviewHtml(
       parsed.data.template_key,
@@ -310,7 +310,7 @@ export async function sendEmailTemplateToRecipients(
       new Set(parsed.data.recipients.map((r) => r.trim().toLowerCase())),
     );
 
-    const theme = resolveEmailThemeFromAdminDraft(parsed.data.theme);
+    const theme = resolveEmailThemeFromAdminDraft(parsed.data.theme as AdminEmailThemeDraft);
 
     // Real recipients shouldn't see the preview sample name ("Alex Rivera").
     // Pre-fill greeting placeholders with a generic salutation before rendering.

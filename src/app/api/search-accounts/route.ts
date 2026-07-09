@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   try {
     const merged = new Map<string, SearchAccountResult>();
 
-    const { data: accounts, error: accountsError } = await client
+    const { data: accounts, error: accountsError } = await (client as any)
       .from('accounts')
       .select('id, name, picture_url, public_data')
       .ilike('name', `%${q}%`)
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: profiles, error: profilesError } = await client
+    const { data: profiles, error: profilesError } = await (client as any)
       .from('user_profiles')
       .select('user_id, name, picture_url, location, role, is_active')
       .eq('is_active', true)

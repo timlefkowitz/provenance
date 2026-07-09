@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     let pinnedArtworkIds: string[] | null = null;
 
     if (accountId) {
-      const { data: account, error: accountError } = await client
+      const { data: account, error: accountError } = await (client as any)
         .from('accounts')
         .select('id, name, picture_url, public_data')
         .eq('id', accountId)
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
         if (ids && ids.length > 0) pinnedArtworkIds = ids;
       }
     } else if (posterAccountId) {
-      const { data: account } = await client
+      const { data: account } = await (client as any)
         .from('accounts')
         .select('id, name, picture_url, public_data')
         .eq('id', posterAccountId)

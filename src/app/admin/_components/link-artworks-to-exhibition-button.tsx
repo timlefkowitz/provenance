@@ -45,7 +45,7 @@ export function LinkArtworksToExhibitionButton() {
         exhibitionTitle.trim(),
         galleryAccountId.trim() || undefined
       );
-      setSearchResult(result);
+      setSearchResult(result as any);
       
       if (result.success) {
         toast.success(`Found ${result.unlinkedArtworks || 0} unlinked artwork(s)`);
@@ -87,7 +87,7 @@ export function LinkArtworksToExhibitionButton() {
         artworkIds.length > 0 ? artworkIds : undefined
       );
       
-      setLinkResult(result);
+      setLinkResult(result as any);
       
       if (result.success) {
         toast.success(result.message || `Linked ${result.linkedCount || 0} artwork(s)`);
