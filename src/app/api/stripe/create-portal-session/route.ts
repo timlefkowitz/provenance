@@ -9,7 +9,7 @@ function getStripe(): Stripe | null {
   return new Stripe(key);
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   console.log('[Stripe] createPortalSession started');
   try {
     const client = getSupabaseServerClient();

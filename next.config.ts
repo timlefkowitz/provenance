@@ -55,9 +55,10 @@ const nextConfig: NextConfig = {
     bodySizeLimit: '50mb', // Allow up to 50 MB for multiple high-quality photos
     },
   },
-  /** We already do linting and typechecking as separate tasks in CI */
+  /** TypeScript errors now fail the build (0 errors after full types regeneration). */
+  typescript: { ignoreBuildErrors: false },
+  /** ESLint errors are caught in CI (diff-scoped); build remains unblocked while debt is cleared. */
   eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
 
   /**
    * `/sitemap` (no extension) returns an HTML 404; Search Console treats that as an invalid sitemap.

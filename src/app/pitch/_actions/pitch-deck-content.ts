@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -65,16 +65,8 @@ export async function getPitchDeckContent(): Promise<PitchDeckContent> {
  */
 export async function updatePitchDeckContent(content: PitchDeckContent) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to update pitch deck content' };
     }
 
@@ -83,6 +75,7 @@ export async function updatePitchDeckContent(content: PitchDeckContent) {
       return { error: 'Invalid content structure' };
     }
 
+    const client = getSupabaseServerClient();
     // Upsert to database
     const { error: dbError } = await client
       .from('pitch_deck_content')
@@ -113,18 +106,12 @@ export async function updatePitchDeckContent(content: PitchDeckContent) {
  */
 export async function uploadSlideImage(slideId: number, formData: FormData) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to upload images' };
     }
+
+    const client = getSupabaseServerClient();
 
     const file = formData.get('file') as File;
     if (!file) {
@@ -207,18 +194,12 @@ export async function uploadSlideImage(slideId: number, formData: FormData) {
  */
 export async function deleteSlideImage(slideId: number) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to delete images' };
     }
+
+    const client = getSupabaseServerClient();
 
     // Get the content to find the slide
     const content = await getPitchDeckContent();

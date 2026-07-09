@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { isAdmin } from '~/lib/admin';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { requireAdminUser } from '~/lib/admin';
 import { sendTransactionalEmailStrict, isEmailConfigured } from '~/lib/email';
 import {
   getInviteEmailSubject,
@@ -22,16 +21,6 @@ import {
 
 const MAX_RECIPIENTS = 500;
 
-async function requireAdminUser() {
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user || !(await isAdmin(user.id))) {
-    throw new Error('Unauthorized');
-  }
-  return user;
-}
 
 export type LeadInviteOutreachRow = {
   email: string;
@@ -139,7 +128,7 @@ export async function sendLeadInviteOutreach(
 ): Promise<SendLeadInviteOutreachResult> {
   console.log('[Admin/leads] sendLeadInviteOutreach started');
   try {
-    const user = await requireAdminUser();
+    const { user } = await requireAdminUser();
 
     if (!isEmailConfigured()) {
       return {

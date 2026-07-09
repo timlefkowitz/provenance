@@ -6,6 +6,7 @@ import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles'
 import { USER_ROLES } from '~/lib/user-roles';
 import { extractTextFromCvBuffer } from './extract-text-from-cv';
 import { extractCvToJson } from './extract-cv-to-json';
+import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const ARTIST_CVS_BUCKET = 'artist-cvs';
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -43,6 +44,14 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
 
   if (file.size > MAX_FILE_BYTES) {
     return { success: false, error: 'File size must be less than 10MB' };
+  }
+
+  const signatureCheck = await assertAllowedFileWithAv(file, 'document');
+  if (!signatureCheck.ok) {
+    console.warn('[Grants] uploadArtistCv rejected: file signature check failed', {
+      error: signatureCheck.error,
+    });
+    return { success: false, error: signatureCheck.error };
   }
 
   const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);

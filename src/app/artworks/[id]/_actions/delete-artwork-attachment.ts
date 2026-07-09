@@ -74,7 +74,7 @@ export async function deleteArtworkAttachment(attachmentId: string): Promise<Del
     console.warn('[ArtworkAttachments] could not parse storage path from url', { fileUrl: row.file_url });
   }
 
-  const { error: delErr } = await (client as any).from('artwork_attachments').delete().eq('id', attachmentId);
+  const { error: delErr } = await client.from('artwork_attachments').delete().eq('id', attachmentId);
 
   if (delErr) {
     console.error('[ArtworkAttachments] db delete failed', delErr);

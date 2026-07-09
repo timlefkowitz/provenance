@@ -6,7 +6,7 @@ import { InquiriesTable } from './_components/inquiries-table';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata(_props: { params: Promise<{ id: string }> }) {
   return { title: 'Inquiries | Provenance' };
 }
 

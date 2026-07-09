@@ -7,7 +7,6 @@ import {
   CERTIFICATE_TYPES,
   FEED_PANEL_ARTWORK_MAX,
   GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES,
-  USER_ROLES,
 } from '~/lib/user-roles';
 
 type ActionResult = { success: true } | { success: false; error: string };

@@ -29,7 +29,7 @@ export async function saveArtistGrants(
     raw_response: g.raw_response ?? null,
   }));
 
-  const { data, error } = await (client as any).from('artist_grants').insert(rows).select('id');
+  const { data, error } = await client.from('artist_grants').insert(rows).select('id');
 
   if (error) {
     console.error('[Grants] saveArtistGrants insert failed', error);

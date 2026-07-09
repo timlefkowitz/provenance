@@ -17,7 +17,7 @@ export function AddArtworkPageContent({
   userId,
   defaultArtistName,
   defaultMedium,
-  userRole,
+  userRole: _userRole,
   exhibitions: initialExhibitions,
   pastArtists,
   galleryProfiles,
@@ -36,7 +36,7 @@ export function AddArtworkPageContent({
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
 }) {
-  const router = useRouter();
+  const _router = useRouter();
   const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
   const [exhibitions, setExhibitions] = useState<UserExhibition[]>(initialExhibitions);
 

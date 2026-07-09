@@ -4,7 +4,7 @@ import type { SiteArtwork } from '../types';
 
 export function SiteArtworkCard({
   artwork,
-  handle,
+  handle: _handle,
   accentColor,
 }: {
   artwork: SiteArtwork;

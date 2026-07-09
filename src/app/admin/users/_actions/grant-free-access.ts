@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 
 const FREE_ROLES = ['artist', 'collector', 'gallery', 'institution'] as const;
 export type GrantFreeAccessRole = (typeof FREE_ROLES)[number];
@@ -22,11 +21,8 @@ export async function grantFreeAccess(params: {
     durationDays: params.durationDays,
   });
 
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user || !(await isAdmin(user.id))) {
+  const adminId = await requireAdminUserId();
+  if (!adminId) {
     console.error('[AdminUserAccess] grantFreeAccess unauthorized');
     return { ok: false, error: 'Unauthorized' };
   }
@@ -52,7 +48,7 @@ export async function grantFreeAccess(params: {
   const stripeSubscriptionId = `free_${params.userId}_${Date.now()}`;
 
   const admin = getSupabaseServerAdminClient();
-  const { error } = await (admin as any).from('subscriptions').insert({
+  const { error } = await admin.from('subscriptions').insert({
     user_id: params.userId,
     stripe_customer_id: null,
     stripe_subscription_id: stripeSubscriptionId,

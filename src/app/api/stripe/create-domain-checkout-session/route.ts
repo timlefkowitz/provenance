@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
         metadata: { user_id: user.id },
       });
       customerId = customer.id;
-      await (admin as any).from('stripe_customers').upsert(
+      await admin.from('stripe_customers').upsert(
         {
           user_id: user.id,
           stripe_customer_id: customerId,
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 });
     }
 
-    const { error: insertErr } = await (admin as any).from('domain_purchases').insert({
+    const { error: insertErr } = await admin.from('domain_purchases').insert({
       user_id: user.id,
       profile_id: profileId,
       domain: normalizedDomain,

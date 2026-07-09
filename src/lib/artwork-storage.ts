@@ -6,6 +6,7 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- heic-convert is CJS, no ESM build
 const convert = require('heic-convert') as (opts: { buffer: Buffer; format: 'JPEG' | 'PNG'; quality?: number }) => Promise<Buffer>;
 import sharp from 'sharp';
+import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const ARTWORKS_BUCKET = 'artworks';
 
@@ -59,6 +60,15 @@ export class ArtworkImageUploader {
   ): Promise<string> {
     const fileLabel = `${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`;
 
+    const signatureCheck = await assertAllowedFileWithAv(file, 'image');
+    if (!signatureCheck.ok) {
+      console.warn('[ArtworkUpload] rejected upload: file signature check failed', {
+        file: fileLabel,
+        error: signatureCheck.error,
+      });
+      throw new Error(signatureCheck.error);
+    }
+
     let bytes = await file.arrayBuffer();
     const { extension: origExt, contentType: origContentType } = getContentTypeAndExtension(file);
     let extension = origExt;
@@ -71,6 +81,9 @@ export class ArtworkImageUploader {
       extension = 'jpeg';
       contentType = 'image/jpeg';
       console.info('[ArtworkUpload] Normalized image to JPEG for storage', { original: file.name });
+    } else {
+      console.warn('[ArtworkUpload] rejected upload: image normalization failed', { file: fileLabel });
+      throw new Error('Could not process image. Please upload a JPEG, PNG, WebP, GIF, or HEIC file.');
     }
 
     const signature = getBinarySignature(bytes);

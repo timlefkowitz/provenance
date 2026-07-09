@@ -18,7 +18,7 @@ export async function getFeaturedEntry() {
       .limit(100);
 
     // Collect ALL featured artwork IDs from ALL accounts (consolidated)
-    let featuredArtworkIds: string[] = [];
+    const featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
       const publicData = account.public_data as Record<string, any>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
@@ -99,7 +99,7 @@ export async function getFeaturedArtworksList() {
       .limit(100);
 
     // Collect ALL featured artwork IDs from ALL accounts (consolidated)
-    let featuredArtworkIds: string[] = [];
+    const featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
       const publicData = account.public_data as Record<string, any>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {

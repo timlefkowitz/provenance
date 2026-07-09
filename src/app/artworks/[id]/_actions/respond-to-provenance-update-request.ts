@@ -6,7 +6,6 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { updateProvenance } from '../edit/_actions/update-provenance';
 import { logger } from '~/lib/logger';
-import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { createArtistClaimInviteAfterApproval } from '~/lib/certificate-claims/create-artist-claim-invite';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 

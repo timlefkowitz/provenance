@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const PROFILES_BUCKET = 'profiles';
 
@@ -31,6 +32,14 @@ export async function uploadProfilePicture(
     // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       return { url: null, error: 'Image size must be less than 5MB' };
+    }
+
+    const signatureCheck = await assertAllowedFileWithAv(file, 'image');
+    if (!signatureCheck.ok) {
+      console.warn('[Profiles] uploadProfilePicture rejected: file signature check failed', {
+        error: signatureCheck.error,
+      });
+      return { url: null, error: signatureCheck.error };
     }
     
     // Ensure bucket exists using admin client

@@ -1,8 +1,7 @@
 'use server';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -15,16 +14,8 @@ export async function linkArtworksToExhibition(
   artworkIds?: string[]
 ) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to link artworks to exhibitions' };
     }
 
@@ -196,16 +187,8 @@ export async function findArtworksForExhibition(
   galleryAccountId?: string
 ) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to search artworks' };
     }
 

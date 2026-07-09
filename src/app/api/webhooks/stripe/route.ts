@@ -129,7 +129,7 @@ async function upsertFromSubscription(
     ? new Date(subscription.trial_end * 1000).toISOString()
     : null;
 
-  const { error } = await (admin as any).from('subscriptions').upsert(
+  const { error } = await admin.from('subscriptions').upsert(
     {
       user_id: userId,
       stripe_customer_id: customerId,

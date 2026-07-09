@@ -177,7 +177,7 @@ async function loadDauSeries(days: number): Promise<DauRow[]> {
   try {
     const admin = getSupabaseServerAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (admin as any).rpc('admin_dau_series', { p_days: days });
+    const { data, error } = await admin.rpc('admin_dau_series', { p_days: days });
     if (error) {
       console.error('[AdminSiteAnalytics] admin_dau_series failed', error);
       return [];
@@ -193,7 +193,7 @@ async function loadTopPages(limit = 20): Promise<PageRow[]> {
   try {
     const admin = getSupabaseServerAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (admin as any).rpc('admin_top_pages', { p_limit: limit });
+    const { data, error } = await admin.rpc('admin_top_pages', { p_limit: limit });
     if (error) {
       console.error('[AdminSiteAnalytics] admin_top_pages failed', error);
       return [];
@@ -209,7 +209,7 @@ async function loadSessionStats(): Promise<SessionStats | null> {
   try {
     const admin = getSupabaseServerAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (admin as any).rpc('admin_session_stats');
+    const { data, error } = await admin.rpc('admin_session_stats');
     if (error) {
       console.error('[AdminSiteAnalytics] admin_session_stats failed', error);
       return null;
@@ -233,7 +233,7 @@ async function loadDeviceBreakdown(): Promise<DeviceRow[]> {
   try {
     const admin = getSupabaseServerAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (admin as any).rpc('admin_device_breakdown');
+    const { data, error } = await admin.rpc('admin_device_breakdown');
     if (error) {
       console.error('[AdminSiteAnalytics] admin_device_breakdown failed', error);
       return [];
@@ -249,7 +249,7 @@ async function loadRetention(): Promise<RetentionRow[]> {
   try {
     const admin = getSupabaseServerAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (admin as any).rpc('admin_retention');
+    const { data, error } = await admin.rpc('admin_retention');
     if (error) {
       console.error('[AdminSiteAnalytics] admin_retention failed', error);
       return [];

@@ -2,7 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { USER_ROLES } from '~/lib/user-roles';
 import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
 import {
   createExhibitionArtistInvites,

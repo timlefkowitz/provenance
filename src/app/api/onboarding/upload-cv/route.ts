@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { extractTextFromCvBuffer } from '~/app/grants/_actions/extract-text-from-cv';
 import { extractCvToJson } from '~/app/grants/_actions/extract-cv-to-json';
+import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const ARTIST_CVS_BUCKET = 'artist-cvs';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -53,6 +54,14 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'File must be under 10 MB' },
         { status: 400 },
       );
+    }
+
+    const signatureCheck = await assertAllowedFileWithAv(file, 'document');
+    if (!signatureCheck.ok) {
+      console.warn('[Onboarding] upload-cv rejected: file signature check failed', {
+        error: signatureCheck.error,
+      });
+      return NextResponse.json({ success: false, error: signatureCheck.error }, { status: 400 });
     }
 
     const admin = getSupabaseServerAdminClient();

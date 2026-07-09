@@ -66,7 +66,7 @@ export function ArtworkCard({
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [_pending, startTransition] = useTransition();
   const [visibilityPending, startVisibilityTransition] = useTransition();
   const [optimisticIsPublic, setOptimisticIsPublic] = useState<boolean | null>(
     artwork.is_public ?? null,

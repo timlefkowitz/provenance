@@ -33,7 +33,7 @@ export async function insertProvenanceEventForOperations(input: {
   metadata?: Record<string, unknown>;
 }) {
   const admin = getSupabaseServerAdminClient();
-  const { error } = await (admin as any).from('provenance_events').insert({
+  const { error } = await admin.from('provenance_events').insert({
     artwork_id: input.artworkId,
     event_type: input.eventType,
     actor_account_id: input.actorAccountId,

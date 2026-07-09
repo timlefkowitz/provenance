@@ -42,7 +42,6 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
-const FROM = process.env.RESEND_FROM || 'Provenance <noreply@provenance.guru>';
 
 // ─── Trial nudge ─────────────────────────────────────────────────────────────
 
@@ -114,7 +113,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
 
 function buildTrialNudgeHtml(name: string, daysLeft: number): string {
   const theme = getPresetThemeDefaults('mono');
-  const { ink, wine, inkMuted, surfaceMuted, fontFamily, fontFamilyHeading } = theme;
+  const { ink, wine, inkMuted, fontFamily, fontFamilyHeading } = theme;
 
   const safeName = escapeHtml(name);
   const dayWord = daysLeft === 1 ? 'day' : 'days';

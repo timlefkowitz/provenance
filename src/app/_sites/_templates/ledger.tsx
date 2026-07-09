@@ -73,7 +73,7 @@ export function LedgerTemplate({ site }: { site: SiteData }) {
                 <span className="hidden md:block w-40 text-right">Artist</span>
               </div>
               <ul>
-                {sorted.map((artwork, i) => {
+                {sorted.map((artwork) => {
                   const year = new Date(artwork.created_at).getFullYear();
                   return (
                     <li

@@ -35,12 +35,18 @@ jobs:
         # Fail on high or critical severity advisories in production dependencies.
         run: pnpm audit --prod --audit-level=high
 
-  typecheck:
-    name: TypeScript (src/)
+  lint-changed:
+    name: ESLint & TypeScript (changed files)
     runs-on: ubuntu-latest
+    # Diff-scoped checks on PRs and pushes to main — prevents new errors without
+    # requiring the full baseline (~660 TS / ~1 473 ESLint pre-existing debt) to be fixed first.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history is not needed; fetch enough for changed-files to diff.
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -56,8 +62,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: TypeScript check (src/ only)
-        # Check the main app package for type errors. Sub-packages (apps/api, makerkit/)
-        # have their own tsconfigs and are excluded here to avoid path-alias resolution issues.
-        # Supabase-generated types drift is tracked separately via `supabase gen types`.
-        run: pnpm tsc --noEmit --project tsconfig.json 2>&1 | grep "^src/" || true
+      - name: Get changed TS/TSX files
+        id: changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            src/**/*.ts
+            src/**/*.tsx
+
+      - name: Lint changed files
+        # Prevents new ESLint errors from being introduced without requiring the
+        # existing baseline of ~1 473 errors (pre-existing debt) to be fixed first.
+        # Exits 0 when there are no changed TS/TSX files.
+        if: steps.changed.outputs.any_changed == 'true'
+        run: |
+          echo "Linting: ${{ steps.changed.outputs.all_changed_files }}"
+          npx eslint --max-warnings=0 ${{ steps.changed.outputs.all_changed_files }}
+
+      - name: TypeScript check (changed files only)
+        # Catches new type errors introduced by the PR without requiring the full
+        # baseline (~660 errors in pre-existing code) to be fixed first.
+        if: steps.changed.outputs.any_changed == 'true'
+        run: |
+          pnpm tsc --noEmit --project tsconfig.json 2>&1 \
+            | grep -E "^(${{ steps.changed.outputs.all_changed_files_sep_by_pipe }})" \
+            | tee /tmp/tsc-changed.txt
+          # Fail if any type errors exist in changed files.
+          if [ -s /tmp/tsc-changed.txt ]; then
+            echo "::error::TypeScript errors in changed files. See above."
+            exit 1
+          fi

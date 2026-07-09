@@ -33,13 +33,13 @@ function log(level: LogLevel, event: string, data: Record<string, unknown> = {})
   };
   const line = JSON.stringify(entry);
   if (level === 'error') {
-    // eslint-disable-next-line no-console
+     
     console.error(line);
   } else if (level === 'warn') {
-    // eslint-disable-next-line no-console
+     
     console.warn(line);
   } else {
-    // eslint-disable-next-line no-console
+     
     console.log(line);
   }
 }

@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getActiveSubscription } from '~/lib/subscription';
+import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const OPEN_CALL_BUCKET = 'open-call-submissions';
 
@@ -73,6 +74,23 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
 
   const uploadedArtworks: UploadedArtwork[] = [];
   for (const file of files) {
+    const signatureCheck = await assertAllowedFileWithAv(file, 'image');
+    if (!signatureCheck.ok) {
+      console.warn('[OpenCalls] submitOpenCall rejected artwork: file signature check failed', {
+        filename: file.name,
+        error: signatureCheck.error,
+      });
+      return { error: signatureCheck.error };
+    }
+
+    if (!file.type.startsWith('image/')) {
+      return { error: 'All uploaded files must be images.' };
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      return { error: 'Each artwork image must be under 10 MB.' };
+    }
+
     const upload = await uploadArtworkFile(admin, openCallId, file);
     uploadedArtworks.push(upload);
   }

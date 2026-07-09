@@ -102,7 +102,7 @@ export async function createOwnerInviteFromCoa(
       return { success: false, error: 'Could not create invite' };
     }
 
-    const { data: account } = await client.from('accounts').select('name').eq('id', user.id).single();
+    await client.from('accounts').select('name').eq('id', user.id).single();
     const artworkTitle = (artwork.title as string) || 'Your artwork';
 
     try {

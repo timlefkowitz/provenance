@@ -3,7 +3,7 @@ import type { SiteExhibition } from '../types';
 
 export function SiteExhibitionList({
   exhibitions,
-  handle,
+  handle: _handle,
 }: {
   exhibitions: SiteExhibition[];
   handle: string;

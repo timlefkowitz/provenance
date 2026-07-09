@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { JwtPayload } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text } from "next/font/google";
 import "./globals.css";
 
@@ -97,6 +97,11 @@ export default async function RootLayout({
   const themeCookie = cookieStore.get('theme')?.value;
   const currentTheme = themeCookie && VALID_THEMES.has(themeCookie) ? themeCookie : 'light';
 
+  // Read the per-request nonce forwarded by middleware so it can be passed to
+  // GoogleTagManager (and Next.js will propagate it to its own inline scripts).
+  const headerStore = await headers();
+  const nonce = headerStore.get('x-nonce') ?? undefined;
+
   try {
     const i18n = await createI18nServerInstance();
     currentLang = i18n.language || 'en';
@@ -132,7 +137,7 @@ export default async function RootLayout({
       className={cn(currentTheme)}
       suppressHydrationWarning
     >
-      <GoogleTagManager />
+      <GoogleTagManager nonce={nonce} />
       <body
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased overflow-x-hidden`}
       >

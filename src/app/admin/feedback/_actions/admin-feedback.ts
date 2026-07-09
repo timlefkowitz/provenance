@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 
 export type FeedbackTicketStatus = 'open' | 'reviewing' | 'resolved' | 'archived';
 
@@ -30,15 +29,6 @@ export type FeedbackStatusCounts = Record<FeedbackTicketStatus, number> & {
   total: number;
 };
 
-async function requireAdminUserId(): Promise<string | null> {
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) return null;
-  const ok = await isAdmin(user.id);
-  return ok ? user.id : null;
-}
 
 export async function listFeedbackTickets(
   filter: FeedbackTicketStatus | 'all' = 'all',

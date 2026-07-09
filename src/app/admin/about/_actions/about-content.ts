@@ -3,8 +3,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { revalidatePath } from 'next/cache';
-import { isAdmin } from '~/lib/admin';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { requireAdminUserId } from '~/lib/admin';
 
 const ABOUT_CONTENT_PATH = path.join(process.cwd(), 'data', 'about-content.json');
 const ABOUT_PHOTOS_DIR = path.join(process.cwd(), 'public', 'data', 'about-photos');
@@ -176,7 +175,7 @@ export async function getAboutContent(): Promise<AboutContent> {
       // Ensure data directory exists
       try {
         await fs.mkdir(path.dirname(ABOUT_CONTENT_PATH), { recursive: true });
-      } catch (mkdirError) {
+      } catch {
         // Directory might already exist, ignore
       }
       
@@ -195,16 +194,8 @@ export async function getAboutContent(): Promise<AboutContent> {
  */
 export async function updateAboutContent(content: AboutContent) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to update about content' };
     }
 
@@ -243,16 +234,8 @@ export async function updateAboutContent(content: AboutContent) {
  */
 export async function uploadFounderPhoto(founderIndex: number, formData: FormData) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to upload photos' };
     }
 
@@ -310,16 +293,8 @@ export async function uploadFounderPhoto(founderIndex: number, formData: FormDat
  */
 export async function deleteFounderPhoto(founderIndex: number) {
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to delete photos' };
     }
 
@@ -334,7 +309,7 @@ export async function deleteFounderPhoto(founderIndex: number) {
         const filePath = path.join(ABOUT_PHOTOS_DIR, fileName);
         try {
           await fs.unlink(filePath);
-        } catch (unlinkError) {
+        } catch {
           // File might not exist, continue anyway
           console.warn('Photo file not found:', filePath);
         }

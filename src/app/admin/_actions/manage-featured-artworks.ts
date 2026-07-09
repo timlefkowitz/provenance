@@ -1,8 +1,7 @@
 'use server';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 import { sendArtworkFeaturedEmail } from '~/lib/email';
 import { revalidatePath } from 'next/cache';
 
@@ -143,16 +142,8 @@ export async function isArtworkFeatured(artworkId: string): Promise<boolean> {
 export async function addFeaturedArtwork(artworkId: string) {
   console.log('[FeaturedArtworks] addFeaturedArtwork started', { artworkId });
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to manage featured artworks' };
     }
 
@@ -268,7 +259,7 @@ export async function addFeaturedArtwork(artworkId: string) {
     for (const otherAccount of otherAccounts || []) {
       const otherPublicData = (otherAccount.public_data as Record<string, any>) || {};
       if (otherPublicData?.featured_artworks && Array.isArray(otherPublicData.featured_artworks)) {
-        const { featured_artworks, ...restPublicData } = otherPublicData;
+        const { featured_artworks: _featured_artworks, ...restPublicData } = otherPublicData;
         await adminClient
           .from('accounts')
           .update({
@@ -300,16 +291,8 @@ export async function addFeaturedArtwork(artworkId: string) {
 export async function removeFeaturedArtwork(artworkId: string) {
   console.log('[FeaturedArtworks] removeFeaturedArtwork started', { artworkId });
   try {
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-
-    if (!user) {
-      return { error: 'You must be signed in' };
-    }
-
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { error: 'You do not have permission to manage featured artworks' };
     }
 
@@ -407,15 +390,8 @@ export async function sendFeaturedNotificationsToAll(): Promise<{
 }> {
   console.log('[FeaturedArtworks] sendFeaturedNotificationsToAll started');
   try {
-    const client = getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-
-    if (!user) return { sent: 0, skipped: 0, errors: 0, error: 'You must be signed in' };
-
-    const userIsAdmin = await isAdmin(user.id);
-    if (!userIsAdmin) {
+    const adminId = await requireAdminUserId();
+    if (!adminId) {
       return { sent: 0, skipped: 0, errors: 0, error: 'You do not have permission' };
     }
 

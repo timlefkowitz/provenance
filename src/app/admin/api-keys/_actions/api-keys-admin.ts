@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 import { isValidPlanet } from '@provenance/core/types';
 
 const createSchema = z
@@ -58,27 +58,19 @@ export async function createAdminApiKey(input: {
     };
   }
 
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-
-  if (!user) {
-    console.error('[Admin/API keys] createAdminApiKey not authenticated');
-    return { ok: false, error: 'Not signed in' };
-  }
-
-  if (!(await isAdmin(user.id))) {
-    console.error('[Admin/API keys] createAdminApiKey forbidden', { userId: user.id });
+  const adminId = await requireAdminUserId();
+  if (!adminId) {
+    console.error('[Admin/API keys] createAdminApiKey forbidden');
     return { ok: false, error: 'Forbidden' };
   }
 
+  const client = getSupabaseServerClient();
   const plainSecret = `pk_prov_${randomBytes(24).toString('base64url')}`;
   const key_hash = hashApiKeySecret(plainSecret);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- api_keys not in generated DB types yet
-  const { error } = await (client as any).from('api_keys').insert({
-    account_id: user.id,
+  const { error } = await client.from('api_keys').insert({
+    account_id: adminId,
     key_hash,
     name: parsed.data.name,
     scopes: ['verify', 'assets:write'],
@@ -110,27 +102,19 @@ export async function revokeAdminApiKey(
     return { ok: false, error: 'Invalid key id' };
   }
 
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-
-  if (!user) {
-    console.error('[Admin/API keys] revokeAdminApiKey not authenticated');
-    return { ok: false, error: 'Not signed in' };
-  }
-
-  if (!(await isAdmin(user.id))) {
-    console.error('[Admin/API keys] revokeAdminApiKey forbidden', { userId: user.id });
+  const adminId = await requireAdminUserId();
+  if (!adminId) {
+    console.error('[Admin/API keys] revokeAdminApiKey forbidden');
     return { ok: false, error: 'Forbidden' };
   }
 
+  const client = getSupabaseServerClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- api_keys not in generated DB types yet
   const { data: updated, error } = await (client as any)
     .from('api_keys')
     .update({ is_active: false })
     .eq('id', parsed.data.id)
-    .eq('account_id', user.id)
+    .eq('account_id', adminId)
     .select('id');
 
   if (error) {

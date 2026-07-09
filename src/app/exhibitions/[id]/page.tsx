@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES } from '~/lib/user-roles';
 import appConfig from '~/config/app.config';

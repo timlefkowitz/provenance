@@ -3,7 +3,6 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
-import { createNotification } from '~/lib/notifications';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
 import { artworkImageUploader } from '~/lib/artwork-storage';

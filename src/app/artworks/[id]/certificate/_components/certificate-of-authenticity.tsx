@@ -395,7 +395,7 @@ export function CertificateOfAuthenticity({
             } catch (error) {
               console.error('[CertificateScan] Error recording scan location:', error);
             }
-          } catch (geoError) {
+          } catch {
             // Reverse geocoding failed — store raw coordinates only
             const location = { latitude, longitude };
 
@@ -875,7 +875,7 @@ export function CertificateOfAuthenticity({
                       } else {
                         toast.error(result.error || 'Failed to verify certificate');
                       }
-                    } catch (e) {
+                    } catch {
                       toast.error('Failed to verify certificate');
                     } finally {
                       setVerifying(false);

@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   // record_user_heartbeat is a custom RPC that is not yet present in the
   // generated Database types.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (client as any).rpc('record_user_heartbeat', {
+  const { data, error } = await client.rpc('record_user_heartbeat', {
     p_user_id: user.id,
     p_path:    path,
     p_device:  device,

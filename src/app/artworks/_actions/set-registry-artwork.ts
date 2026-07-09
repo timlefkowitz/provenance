@@ -302,7 +302,7 @@ export async function toggleGalleryDirectoryCertificate(args: {
   }
 
   const fromArray = (profileRow.registry_artwork_ids as string[] | null) ?? [];
-  let current: string[] =
+  const current: string[] =
     fromArray.length > 0
       ? [...fromArray]
       : profileRow.registry_artwork_id

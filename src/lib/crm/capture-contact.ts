@@ -96,7 +96,7 @@ export async function captureCrmContacts(
         continue;
       }
 
-      const { error: insertError } = await (client as any).from('artist_leads').insert({
+      const { error: insertError } = await client.from('artist_leads').insert({
         artist_user_id: artistUserId,
         contact_name: name,
         contact_email: email,

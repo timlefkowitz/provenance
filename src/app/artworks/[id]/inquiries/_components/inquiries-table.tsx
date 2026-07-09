@@ -13,12 +13,6 @@ const STATUS_LABELS: Record<Inquiry['status'], string> = {
   closed: 'Closed',
 };
 
-const STATUS_BADGE_CLASS: Record<Inquiry['status'], string> = {
-  pending: 'bg-amber-100 text-amber-800 border-amber-200',
-  contacted: 'bg-blue-100 text-blue-800 border-blue-200',
-  sold: 'bg-green-100 text-green-800 border-green-200',
-  closed: 'bg-gray-100 text-gray-600 border-gray-200',
-};
 
 function InquiryRow({ inquiry, artworkId }: { inquiry: Inquiry; artworkId: string }) {
   const [status, setStatus] = useState<Inquiry['status']>(inquiry.status);

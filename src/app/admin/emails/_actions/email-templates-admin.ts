@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { isAdmin } from '~/lib/admin';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { requireAdminUser } from '~/lib/admin';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { sendTransactionalEmailStrict } from '~/lib/email';
 import { logAdminOutreachSend } from '~/lib/admin-outreach-sends';
@@ -62,16 +61,6 @@ const recipientsPayloadSchema = previewPayloadSchema.extend({
     .max(MAX_RECIPIENTS_PER_SEND, `Limit ${MAX_RECIPIENTS_PER_SEND} recipients per send.`),
 });
 
-async function requireAdminUser() {
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user || !(await isAdmin(user.id))) {
-    throw new Error('Unauthorized');
-  }
-  return user;
-}
 
 function dbRowToDraft(row: Record<string, unknown>): AdminEmailThemeDraft {
   const d = defaultAdminEmailThemeDraft();
@@ -239,7 +228,7 @@ export async function sendTestEmailTemplate(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   console.log('[Admin/emails] sendTestEmailTemplate started');
   try {
-    const user = await requireAdminUser();
+    const { user } = await requireAdminUser();
     const to = user.email;
     if (!to) {
       console.error('[Admin/emails] sendTestEmailTemplate: user has no email');
@@ -298,7 +287,7 @@ export async function sendEmailTemplateToRecipients(
 ): Promise<SendToRecipientsResult> {
   console.log('[Admin/emails] sendEmailTemplateToRecipients started');
   try {
-    const user = await requireAdminUser();
+    const { user } = await requireAdminUser();
 
     const parsed = recipientsPayloadSchema.safeParse(input);
     if (!parsed.success) {

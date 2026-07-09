@@ -53,7 +53,7 @@ export async function retrieveArtKnowledge(
 
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any).rpc('match_knowledge_chunks', {
+  const { data, error } = await client.rpc('match_knowledge_chunks', {
     query_embedding: embedding,
     match_count: matchCount,
     match_threshold: matchThreshold,

@@ -28,7 +28,7 @@ async function checkAndNotifyMilestone(client: ReturnType<typeof getSupabaseServ
     const label = FAVORITE_MILESTONES.includes(total as any) ? milestoneLabel(total) : null;
     if (!label) return;
 
-    await (client as any).from('notifications').insert({
+    await client.from('notifications').insert({
       user_id: userId,
       type: 'artwork_favorited',
       title: `You reached ${label}!`,

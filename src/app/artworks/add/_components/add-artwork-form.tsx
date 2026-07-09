@@ -54,7 +54,7 @@ async function maybeCompressImage(file: File): Promise<File> {
   try {
     const bitmap = await createImageBitmap(file);
     const maxDim = 2000;
-    let { width, height } = bitmap;
+    const { width, height } = bitmap;
     let targetWidth = width;
     let targetHeight = height;
 

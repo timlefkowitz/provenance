@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 
 /**
  * Revoke a single admin-granted free row (stripe_subscription_id starts with `free_`).
@@ -13,11 +12,8 @@ export async function revokeFreeAccess(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   console.log('[AdminUserAccess] revokeFreeAccess started', { subscriptionRowId });
 
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user || !(await isAdmin(user.id))) {
+  const adminId = await requireAdminUserId();
+  if (!adminId) {
     console.error('[AdminUserAccess] revokeFreeAccess unauthorized');
     return { ok: false, error: 'Unauthorized' };
   }

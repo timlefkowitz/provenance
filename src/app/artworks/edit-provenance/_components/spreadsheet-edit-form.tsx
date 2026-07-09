@@ -427,7 +427,7 @@ function CertificatePreviewPanel({
 }
 
 function ExhibitionCombobox({
-  artworkId,
+  artworkId: _artworkId,
   value,
   options,
   onChange,

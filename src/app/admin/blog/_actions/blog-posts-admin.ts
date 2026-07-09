@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 
 const slugSchema = z
   .string()
@@ -60,13 +60,8 @@ export async function listBlogPostsForAdmin(): Promise<
 > {
   console.log('[Admin/blog] listBlogPostsForAdmin started');
   try {
-    const client = getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-    if (!user || !(await isAdmin(user.id))) {
-      return { ok: false, error: 'Unauthorized' };
-    }
+    const adminId = await requireAdminUserId();
+    if (!adminId) return { ok: false, error: 'Unauthorized' };
 
     const admin = getSupabaseServerAdminClient() as any;
     const { data, error } = await admin
@@ -94,13 +89,8 @@ export async function getBlogPostForAdmin(
   { ok: true; post: BlogPostAdminRow & { body_markdown: string; og_image_url: string | null; canonical_path: string | null } } | { ok: false; error: string }
 > {
   try {
-    const client = getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-    if (!user || !(await isAdmin(user.id))) {
-      return { ok: false, error: 'Unauthorized' };
-    }
+    const adminId = await requireAdminUserId();
+    if (!adminId) return { ok: false, error: 'Unauthorized' };
 
     const admin = getSupabaseServerAdminClient() as any;
     const { data, error } = await admin
@@ -151,13 +141,8 @@ export async function saveBlogPost(
 ): Promise<{ ok: true; id: string; slug: string } | { ok: false; error: string }> {
   console.log('[Admin/blog] saveBlogPost started', { hasId: Boolean(input.id) });
   try {
-    const client = getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-    if (!user || !(await isAdmin(user.id))) {
-      return { ok: false, error: 'Unauthorized' };
-    }
+    const adminId = await requireAdminUserId();
+    if (!adminId) return { ok: false, error: 'Unauthorized' };
 
     const parsed = saveBlogPostSchema.safeParse(input);
     if (!parsed.success) {
@@ -201,7 +186,7 @@ export async function saveBlogPost(
       status: v.status,
       published_at: publishedAt,
       author_name: v.author_name.trim(),
-      author_user_id: user.id,
+      author_user_id: adminId,
       og_image_url: ogUrl,
       canonical_path: canonical,
     };
@@ -252,13 +237,8 @@ export async function deleteBlogPost(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   console.log('[Admin/blog] deleteBlogPost started', { id });
   try {
-    const client = getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-    if (!user || !(await isAdmin(user.id))) {
-      return { ok: false, error: 'Unauthorized' };
-    }
+    const adminId = await requireAdminUserId();
+    if (!adminId) return { ok: false, error: 'Unauthorized' };
 
     const admin = getSupabaseServerAdminClient() as any;
     const { data: row } = await admin

@@ -7,7 +7,6 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { sendWelcomeEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
-import pathsConfig from '~/config/paths.config';
 
 export async function GET(request: NextRequest) {
   const service = createAuthCallbackService(getSupabaseServerClient());
@@ -69,7 +68,7 @@ export async function GET(request: NextRequest) {
         const hasExistingTrialRow = (existingTrialRows?.length ?? 0) > 0;
 
         if (!hasEligibleSubscription && !hasExistingTrialRow) {
-          await (admin as any).from('subscriptions').insert({
+          await admin.from('subscriptions').insert({
             user_id: user.id,
             stripe_customer_id: null,
             stripe_subscription_id: trialStripeSubscriptionId,

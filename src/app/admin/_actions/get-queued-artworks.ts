@@ -13,7 +13,7 @@ export async function getQueuedArtworks() {
       .limit(100);
 
     // Collect ALL featured artwork IDs from ALL accounts (consolidated)
-    let featuredArtworkIds: string[] = [];
+    const featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
       const publicData = account.public_data as Record<string, any>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
@@ -27,7 +27,7 @@ export async function getQueuedArtworks() {
     }
 
     // Get all verified, public artworks
-    let query = (client as any)
+    const query = (client as any)
       .from('artworks')
       .select('id, title, description, artist_name, image_url, created_at, status, is_public, certificate_number')
       .eq('status', 'verified')

@@ -53,7 +53,7 @@ export async function POST(_req: NextRequest) {
       metadata: { user_id: user.id },
     });
 
-    const { error: insertError } = await (admin as any).from('stripe_connect_accounts').insert({
+    const { error: insertError } = await admin.from('stripe_connect_accounts').insert({
       user_id: user.id,
       stripe_account_id: account.id,
       charges_enabled: account.charges_enabled,

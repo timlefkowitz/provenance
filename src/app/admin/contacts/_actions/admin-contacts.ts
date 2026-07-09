@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { isAdmin } from '~/lib/admin';
+import { requireAdminUserId } from '~/lib/admin';
 
 export type AdminContactRow = {
   id: string;
@@ -18,16 +17,6 @@ export type AdminContactRow = {
   created_at: string;
   updated_at: string;
 };
-
-async function requireAdminUserId(): Promise<string | null> {
-  const client = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) return null;
-  const ok = await isAdmin(user.id);
-  return ok ? user.id : null;
-}
 
 export async function listAdminContacts(): Promise<
   { ok: true; contacts: AdminContactRow[] } | { ok: false; error: string }
@@ -86,7 +75,7 @@ export async function createAdminContact(input: {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin as any).from('admin_contacts').insert(row);
+  const { error } = await admin.from('admin_contacts').insert(row);
 
   if (error) {
     console.error('[AdminContacts] create failed', error);
@@ -107,7 +96,7 @@ export async function deleteAdminContact(
 
   const admin = getSupabaseServerAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin as any).from('admin_contacts').delete().eq('id', contactId);
+  const { error } = await admin.from('admin_contacts').delete().eq('id', contactId);
 
   if (error) {
     console.error('[AdminContacts] delete failed', error);
@@ -146,7 +135,7 @@ export async function importLeadRowsToContacts(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (admin as any).from('admin_contacts').insert({
+    const { error } = await admin.from('admin_contacts').insert({
       display_name,
       email,
       phone,
@@ -278,7 +267,7 @@ export async function importContactsFromJsonText(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (admin as any).from('admin_contacts').insert({
+    const { error } = await admin.from('admin_contacts').insert({
       display_name: mapped.display_name,
       email: mapped.email,
       phone: mapped.phone,

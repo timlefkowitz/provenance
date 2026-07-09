@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         metadata: { user_id: user.id },
       });
       customerId = customer.id;
-      await (admin as any).from('stripe_customers').upsert(
+      await admin.from('stripe_customers').upsert(
         {
           user_id: user.id,
           stripe_customer_id: customerId,

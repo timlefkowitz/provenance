@@ -98,7 +98,7 @@ export async function createLead(input: {
   const intel =
     input.intel && intelHasContent(input.intel) ? input.intel : ({} as Record<string, unknown>);
 
-  const { error } = await (client as any).from('artist_leads').insert({
+  const { error } = await client.from('artist_leads').insert({
     artist_user_id: artistUserId,
     contact_name:    input.contact_name    || null,
     contact_email:   input.contact_email   || null,
@@ -148,7 +148,7 @@ export async function createContact(input: {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
-  const { error } = await (client as any).from('artist_leads').insert({
+  const { error } = await client.from('artist_leads').insert({
     artist_user_id: artistUserId,
     contact_name: name,
     contact_email: email,

@@ -6,6 +6,10 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 /**
  * Renders Google Tag Manager, Google Ads gtag, and Consent Mode v2 defaults.
  *
+ * nonce — the per-request CSP nonce forwarded by middleware via the x-nonce
+ * request header. Passing it to every <Script> allows browsers enforcing a
+ * nonce-based CSP to execute these inline/external scripts without 'unsafe-inline'.
+ *
  * Mount order matters — the consent-defaults script uses `strategy="beforeInteractive"`
  * so it runs in the HTML head before any other script. Tag loaders use
  * `strategy="afterInteractive"` to avoid blocking page paint.
@@ -13,7 +17,7 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
  * Renders nothing when neither NEXT_PUBLIC_GTM_ID nor NEXT_PUBLIC_GOOGLE_ADS_ID
  * is set (dev / CI environments).
  */
-export function GoogleTagManager() {
+export function GoogleTagManager({ nonce }: { nonce?: string }) {
   if (!GTM_ID && !GOOGLE_ADS_ID) return null;
 
   const adsConfigLine = GOOGLE_ADS_ID
@@ -26,6 +30,7 @@ export function GoogleTagManager() {
       <Script
         id="gtm-consent-defaults"
         strategy="beforeInteractive"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `
             window.dataLayer = window.dataLayer || [];
@@ -50,6 +55,7 @@ export function GoogleTagManager() {
           id="google-ads-gtag"
           src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
           strategy="afterInteractive"
+          nonce={nonce}
         />
       ) : null}
 
@@ -58,6 +64,7 @@ export function GoogleTagManager() {
         <Script
           id="gtm-loader"
           strategy="afterInteractive"
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
             (function(w,d,s,l,i){

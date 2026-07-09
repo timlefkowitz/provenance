@@ -5,7 +5,7 @@ type Props = {
   medium: string | null;
 };
 
-export function SiteContactBlock({ name, website, location, medium }: Props) {
+export function SiteContactBlock({ name: _name, website, location, medium }: Props) {
   return (
     <div className="space-y-2" style={{ fontFamily: 'system-ui, sans-serif' }}>
       {location && (

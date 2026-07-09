@@ -1,5 +1,4 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { getOpenCallsList } from '~/app/open-calls/_actions/get-open-calls-list';
 import { computeValuationInputs } from '~/lib/valuation/compute-valuation-inputs';
@@ -1171,7 +1170,7 @@ export async function handleCreateArtworkDraft(
 
 export async function handleSearchComparableSales(
   args: { medium?: string; artist_name?: string },
-  userId: string,
+  _userId: string,
 ): Promise<unknown> {
   console.log('[Taco] handleSearchComparableSales', args);
 
@@ -1254,7 +1253,7 @@ export async function handleFindGrantsForMe(userId: string): Promise<unknown> {
   const medium = (profile?.medium as string | null) ?? null;
   const location = (profile?.location as string | null) ?? null;
 
-  let query = (client as any)
+  const query = (client as any)
     .from('artist_grants')
     .select('id, name, type, description, deadline, amount, url, eligible_locations, discipline')
     .eq('user_id', userId)
@@ -1292,7 +1291,7 @@ export async function handleFindGrantsForMe(userId: string): Promise<unknown> {
   };
 }
 
-function scorGrantRelevance(grant: any, medium: string | null, location: string | null): number {
+function scorGrantRelevance(grant: any, medium: string | null, _location: string | null): number {
   let score = 0;
   if (medium && Array.isArray(grant.discipline)) {
     const med = medium.toLowerCase();

@@ -60,7 +60,7 @@ export async function createOpenCall(formData: FormData) {
     throw new Error('Gallery profile not found');
   }
 
-  const { data: canManage } = await (client as any).rpc('is_gallery_owner_or_admin', {
+  const { data: canManage } = await client.rpc('is_gallery_owner_or_admin', {
     p_gallery_profile_id: galleryProfileId,
   });
 

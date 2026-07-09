@@ -158,7 +158,7 @@ export async function inviteCrmMemberByEmail(
     return { success: false, error: 'You cannot add yourself as a team member.' };
   }
 
-  const { error: insertErr } = await (client as any).from('crm_members').insert({
+  const { error: insertErr } = await client.from('crm_members').insert({
     artist_user_id: user.id,
     member_user_id: found.id,
     invited_by:     user.id,
@@ -244,7 +244,7 @@ export async function updateCrmColumnLabel(
     delete merged[stage];
   }
 
-  const { error } = await (client as any).from('crm_settings').upsert({
+  const { error } = await client.from('crm_settings').upsert({
     artist_user_id: user.id,
     column_labels: merged,
     updated_at: new Date().toISOString(),

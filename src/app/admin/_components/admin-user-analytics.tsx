@@ -385,7 +385,7 @@ type RpcUploadRow = { user_id: string; upload_count: number | string };
 async function loadTopUploaders() {
   const admin = getSupabaseServerAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc('admin_top_artwork_uploaders', {
+  const { data, error } = await admin.rpc('admin_top_artwork_uploaders', {
     p_limit: TOP_UPLOADERS_LIMIT,
   });
 

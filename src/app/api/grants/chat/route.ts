@@ -121,7 +121,7 @@ When the user asks for grants or opportunities, search your knowledge for real o
     console.log('[Grants] chat OpenAI response received');
     const choice = completion.choices[0];
     const msg = choice?.message;
-    let reply = (msg?.content || '').trim() || 'I couldn’t find specific grants this time. Try asking for a discipline or location.';
+    const reply = (msg?.content || '').trim() || 'I couldn’t find specific grants this time. Try asking for a discipline or location.';
 
     const newGrants: Grant[] = [];
     const toolCalls = msg?.tool_calls;

@@ -40,7 +40,7 @@ export function ExhibitionSelector({
   });
 
   // If there's a current exhibition that's not in the list, we should still show it
-  const [hasCurrentExhibition, setHasCurrentExhibition] = useState(false);
+  const [_hasCurrentExhibition, setHasCurrentExhibition] = useState(false);
 
   useEffect(() => {
     if (currentExhibitionId && !exhibitions.find(e => e.id === currentExhibitionId)) {

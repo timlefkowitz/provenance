@@ -141,9 +141,79 @@ function getPlanetRewritePath(hostname: string, pathname: string): string | null
   return `/collectibles${pathname}`;
 }
 
+/**
+ * Build the Content-Security-Policy header value for a given request context.
+ *
+ * Nonce-based script-src:
+ * - The nonce is generated per-request and forwarded to Server Components via
+ *   the x-nonce request header so the root layout can pass it to GoogleTagManager.
+ * - 'strict-dynamic' lets nonce-trusted scripts dynamically inject further scripts
+ *   (e.g. GTM loading gtm.js), making host allowlists progressive hardening.
+ * - 'unsafe-eval' is intentionally omitted — no app code uses eval().
+ *   Set NEXT_PUBLIC_CSP_ALLOW_EVAL=1 as a temporary escape hatch if a GTM tag
+ *   relies on eval() while that container is being audited.
+ *
+ * Style-src 'unsafe-inline' is kept:
+ * - React's inline style={} attributes cannot be nonce'd and are pervasive.
+ * - Inline styles cannot execute script; this is an accepted, low-risk exception.
+ */
+function buildCsp(nonce: string, isPreview: boolean): string {
+  const allowEval = process.env.NEXT_PUBLIC_CSP_ALLOW_EVAL === '1';
+  const evalClause = allowEval ? " 'unsafe-eval'" : '';
+
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${evalClause} https://*.googletagmanager.com https://www.googletagmanager.com https://googleads.g.doubleclick.net`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://auth.provenance.guru https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://ad.doubleclick.net https://www.google.com https://googleads.g.doubleclick.net",
+    "frame-src 'self' https://bid.g.doubleclick.net https://td.doubleclick.net",
+    isPreview ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ];
+
+  return directives.join('; ');
+}
+
+/** Apply the full baseline security headers to any response. */
+function applySecurityHeaders(
+  response: NextResponse,
+  opts: { isProduction: boolean; isHttps: boolean; isPreview: boolean; nonce: string },
+): void {
+  const { isProduction, isHttps, isPreview, nonce } = opts;
+
+  if (isProduction && isHttps) {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(self), payment=(), usb=()',
+  );
+  response.headers.set('X-Frame-Options', isPreview ? 'SAMEORIGIN' : 'DENY');
+  response.headers.set('Content-Security-Policy', buildCsp(nonce, isPreview));
+}
+
 export async function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const hostname = host.split(':')[0];
+  const pathname = request.nextUrl.pathname;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isHttps = request.nextUrl.protocol === 'https:';
+  const isPreview = pathname.startsWith('/profile/site/preview');
+
+  // Generate a cryptographically random per-request nonce for the CSP.
+  // Buffer.from(uuid).toString('base64') is safe in Node/Edge; uuid contains only
+  // hex and hyphens so base64-encoding it produces a URL-safe alphanumeric string.
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+
+  // Forward the nonce to Server Components so they can pass it to GoogleTagManager.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+
   let siteHandle = getSiteHandle(request);
 
   // ── Custom domain rewrite ─────────────────────────────────────────────────
@@ -157,33 +227,29 @@ export async function middleware(request: NextRequest) {
   // ── Creator-site subdomain rewrite ────────────────────────────────────────
   // Rewrite <handle>.provenance.app/path → /_sites/<handle>/path on the same
   // deployment, so the chromeless site layout takes over without a redirect.
+  // Now also applies full security headers including nonce-based CSP.
   if (siteHandle) {
     const url = request.nextUrl.clone();
     const originalPath = url.pathname;
     url.pathname = `/_sites/${siteHandle}${originalPath === '/' ? '' : originalPath}`;
 
-    const rewriteResponse = NextResponse.rewrite(url);
+    const rewriteResponse = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     rewriteResponse.headers.set('x-site-handle', siteHandle);
-    // Pass original host through so canonical URLs can be built server-side
     rewriteResponse.headers.set('x-forwarded-host', request.headers.get('host') || '');
+    applySecurityHeaders(rewriteResponse, { isProduction, isHttps, isPreview, nonce });
     return rewriteResponse;
   }
 
-  // ── Planet subdomain on main deployment (e.g. collc.provenance.guru) ────────
-  const planetPath = getPlanetRewritePath(hostname, request.nextUrl.pathname);
+  // ── Planet subdomain on main deployment (e.g. collc.provenance.guru) ─────
+  const planetPath = getPlanetRewritePath(hostname, pathname);
   if (planetPath) {
     const url = request.nextUrl.clone();
     url.pathname = planetPath;
-    const response = NextResponse.rewrite(url);
+    const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     response.headers.set('x-pathname', planetPath);
     response.headers.set('x-forwarded-host', request.headers.get('host') || '');
 
-    if (process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:') {
-      response.headers.set(
-        'Strict-Transport-Security',
-        'max-age=31536000; includeSubDomains; preload',
-      );
-    }
+    applySecurityHeaders(response, { isProduction, isHttps, isPreview, nonce });
 
     try {
       const supabase = createMiddlewareClient(request, response);
@@ -196,64 +262,20 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Main-app request ───────────────────────────────────────────────────────
-  const response = NextResponse.next();
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // Prefer HTTPS in production (Vercel already redirects HTTP→HTTPS; this adds HSTS)
-  if (process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:') {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload',
-    );
-  }
-
-  // Baseline security headers applied to all non-static, non-API routes
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set(
-    'Permissions-Policy',
-    // geolocation=(self) allows our own pages to prompt for GPS (QR scan tracking).
-    // All other high-risk features remain blocked.
-    'camera=(), microphone=(), geolocation=(self), payment=(), usb=()',
-  );
-  // The site preview route is intentionally embedded same-origin in the editor iframe.
-  // Relax X-Frame-Options and frame-ancestors for that route only.
-  const pathname = request.nextUrl.pathname;
-  const isPreviewRoute = pathname.startsWith('/profile/site/preview');
-
-  response.headers.set('X-Frame-Options', isPreviewRoute ? 'SAMEORIGIN' : 'DENY');
-
-  // Content-Security-Policy: restrict script/style/resources. Next.js and Supabase require specific allowances.
-  const cspDirectives = [
-    "default-src 'self'",
-    // Next.js / React hydration, Google Tag Manager, Google Ads.
-    // 'strict-dynamic' means modern browsers ignore 'unsafe-inline' (progressive hardening).
-    // 'unsafe-eval' is required by GTM custom HTML tags (remove only when GTM is replaced).
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' https://*.googletagmanager.com https://www.googletagmanager.com https://googleads.g.doubleclick.net",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",
-    // Supabase (direct + custom auth domain), Vercel analytics, Google Analytics / Ads, DoubleClick remarketing
-    "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://auth.provenance.guru https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.bigdatacloud.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://ad.doubleclick.net https://www.google.com https://googleads.g.doubleclick.net",
-    // Google Ads remarketing iframes (Floodlight / DoubleClick)
-    "frame-src 'self' https://bid.g.doubleclick.net https://td.doubleclick.net",
-    // Preview route: allow same-origin embedding. All other routes deny framing entirely.
-    isPreviewRoute ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ];
-  response.headers.set('Content-Security-Policy', cspDirectives.join('; '));
+  applySecurityHeaders(response, { isProduction, isHttps, isPreview, nonce });
 
   try {
     const supabase = createMiddlewareClient(request, response);
     await supabase.auth.getUser();
   } catch (error) {
     // If Supabase connection fails (e.g., invalid env vars), log but don't crash
-    // This allows the app to still function even if Supabase is misconfigured
     console.error('Middleware Supabase error:', error);
   }
 
   // Pass pathname to layout via headers for conditional checks
-  response.headers.set('x-pathname', request.nextUrl.pathname);
+  response.headers.set('x-pathname', pathname);
 
   return response;
 }

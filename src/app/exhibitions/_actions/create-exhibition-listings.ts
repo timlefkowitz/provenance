@@ -178,7 +178,7 @@ export async function createQuickExhibitionListings(
       continue;
     }
 
-    const { error: linkErr } = await (client as any).from('exhibition_artworks').insert({
+    const { error: linkErr } = await client.from('exhibition_artworks').insert({
       exhibition_id: exhibitionId,
       artwork_id: inserted.id,
     });

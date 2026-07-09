@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@kit/ui/input';
-import { Button } from '@kit/ui/button';
 import { X, Search, Plus } from 'lucide-react';
 
 type Gallery = {
@@ -16,7 +15,7 @@ type Gallery = {
 export function GallerySelector({
   value,
   onChange,
-  placeholder = 'Search for galleries or type manually...',
+  placeholder: _placeholder = 'Search for galleries or type manually...',
 }: {
   value: string;
   onChange: (value: string) => void;

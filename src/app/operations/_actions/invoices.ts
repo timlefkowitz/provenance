@@ -117,11 +117,11 @@ export async function createInvoice(raw: z.infer<typeof createInvoiceSchema>) {
     sort_order: i,
   }));
 
-  const { error: lineErr } = await (client as any).from('invoice_line_items').insert(lineRows);
+  const { error: lineErr } = await client.from('invoice_line_items').insert(lineRows);
 
   if (lineErr) {
     console.error('[Operations/invoices] createInvoice line items failed', lineErr);
-    await (client as any).from('invoices').delete().eq('id', invoiceId).eq('account_id', user.id);
+    await client.from('invoices').delete().eq('id', invoiceId).eq('account_id', user.id);
     return { success: false as const, error: 'Could not save line items.' };
   }
 
@@ -193,7 +193,7 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
       unit_amount_cents: l.unit_amount_cents,
       sort_order: i,
     }));
-    const { error: insErr } = await (client as any).from('invoice_line_items').insert(lineRows);
+    const { error: insErr } = await client.from('invoice_line_items').insert(lineRows);
     if (insErr) {
       console.error('[Operations/invoices] updateInvoice insert lines failed', insErr);
       return { success: false as const, error: 'Could not save line items.' };
@@ -266,10 +266,10 @@ export async function duplicateInvoice(id: string) {
       unit_amount_cents: l.unit_amount_cents,
       sort_order: i,
     }));
-    const { error: lineErr } = await (client as any).from('invoice_line_items').insert(lineRows);
+    const { error: lineErr } = await client.from('invoice_line_items').insert(lineRows);
     if (lineErr) {
       console.error('[Operations/invoices] duplicateInvoice lines failed', lineErr);
-      await (client as any).from('invoices').delete().eq('id', newId).eq('account_id', user.id);
+      await client.from('invoices').delete().eq('id', newId).eq('account_id', user.id);
       return { success: false as const, error: 'Could not copy line items.' };
     }
   }
