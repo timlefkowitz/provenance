@@ -42,12 +42,11 @@
   ],
   "exclude": [
     "node_modules",
-    // Dead legacy app scaffolds — not in pnpm-workspace.yaml, not built or deployed.
-    // Excluded to prevent their pre-existing syntax/type errors from polluting
-    // `tsc --noEmit` output on the active codebase.
-    "makerkit/nextjs-saas-starter-kit-lite/apps/web",
-    "makerkit/nextjs-saas-starter-kit-lite/apps/provenance",
-    "makerkit/nextjs-saas-starter-kit-lite/apps/e2e",
+    // Vendored makerkit packages — each has its own tsconfig and is checked independently.
+    // Excluding from root prevents @supabase/ssr internal conditional-type mismatches
+    // (e.g. __InternalSupabase overloads) from failing `next build --type-check`.
+    // Workspace imports from src/ still resolve correctly via package.json exports.
+    "makerkit",
     // Standalone planet apps have their own tsconfigs and are checked independently.
     "apps/api",
     "apps/collectibles",

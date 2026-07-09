@@ -97,7 +97,7 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
     console.error('[Grants] uploadArtistCv bucket check/create', e);
   }
 
-  const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
+  const { error: uploadError } = await bucket.upload(fileName, bytes, {
     contentType: file.type,
     upsert: false,
   });
