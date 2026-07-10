@@ -20,6 +20,7 @@ import { Building2, GalleryHorizontal, Palette, User, Plus } from 'lucide-react'
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { createExhibition } from '~/app/exhibitions/_actions/create-exhibition';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const MODE_ICONS: Record<string, React.ElementType> = {
   [USER_ROLES.ARTIST]: Palette,
   [USER_ROLES.COLLECTOR]: User,
@@ -113,7 +114,7 @@ export function NewExhibitionDialog({
         // Land on edit so metadata and draft artwork tools are in one place.
         router.push(`/exhibitions/${result.exhibitionId}/edit#artworks`);
         router.refresh();
-      } catch (e: any) {
+      } catch (e) {
         console.error('[Collection] NewExhibitionDialog failed', e);
         const errorMessage = e?.message || 'Failed to create exhibition';
         setError(errorMessage);

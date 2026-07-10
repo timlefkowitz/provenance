@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { checkRateLimit } from '~/lib/rate-limit';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * POST /api/heartbeat
  * Lightweight presence ping. The client component <PresenceTracker />
@@ -15,7 +16,7 @@ import { checkRateLimit } from '~/lib/rate-limit';
  * User-Agent is parsed server-side to derive device + browser for session analytics.
  */
 export async function POST(req: NextRequest) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();

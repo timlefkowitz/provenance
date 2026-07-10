@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
@@ -12,7 +13,7 @@ export async function deleteExhibition(exhibitionId: string) {
   }
 
   // Verify user owns this exhibition
-  const { data: exhibition } = await (client as any)
+  const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
@@ -23,7 +24,7 @@ export async function deleteExhibition(exhibitionId: string) {
   }
 
   // Delete exhibition (cascade will handle junction tables)
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('exhibitions')
     .delete()
     .eq('id', exhibitionId);

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
   try {
     const merged = new Map<string, SearchAccountResult>();
 
-    const { data: accounts, error: accountsError } = await (client as any)
+    const { data: accounts, error: accountsError } = await asUntyped(client)
       .from('accounts')
       .select('id, name, picture_url, public_data')
       .ilike('name', `%${q}%`)
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     if (accounts) {
       for (const acct of accounts) {
-        const role = getUserRole(acct.public_data as Record<string, any>);
+        const role = getUserRole(acct.public_data as Record<string, unknown>);
         if (normalizedRoleFilter && role !== normalizedRoleFilter) continue;
         merged.set(acct.id as string, {
           id: acct.id as string,
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: profiles, error: profilesError } = await (client as any)
+    const { data: profiles, error: profilesError } = await asUntyped(client)
       .from('user_profiles')
       .select('user_id, name, picture_url, location, role, is_active')
       .eq('is_active', true)

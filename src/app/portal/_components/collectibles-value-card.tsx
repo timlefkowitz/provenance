@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -10,7 +11,7 @@ import { formatMoneyCents, sumCollectibleValueCents } from '~/lib/collectibles/v
  */
 export async function CollectiblesValueCard({ userId }: { userId: string }) {
   const client = getSupabaseServerClient();
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('collectibles')
     .select('value')
     .eq('account_id', userId);

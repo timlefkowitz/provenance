@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getOpenCallsList } from '~/app/open-calls/_actions/get-open-calls-list';
 import type { Grant, OpportunityType } from '~/lib/grants';
@@ -124,7 +125,7 @@ export async function handleRecommendOpportunities(
     ...r,
   }));
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artist_grants')
     .insert(insertRows)
     .select('id');
@@ -216,7 +217,7 @@ export async function handleDraftProposal(
   // Resolve artist profile id
   const artistProfile = await getUserProfileByRole(userId, USER_ROLES.ARTIST);
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('grant_proposals')
     .insert({
       user_id: userId,

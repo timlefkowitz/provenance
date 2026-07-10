@@ -36,6 +36,7 @@ import type { ArtworkLocationRow, OperationsArtworkOption } from '../page';
 import { createArtworkLocation, deleteArtworkLocation, updateArtworkLocation } from '../_actions/artwork-locations';
 import { LoanArtworkPicker } from './loan-artwork-picker';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const locTypes = ['storage', 'exhibition', 'loan', 'on_display', 'transport', 'studio'] as const;
 const locStatuses = ['current', 'historical'] as const;
 
@@ -132,7 +133,7 @@ export function InventoryTab({ locations, artworks, artworkTitleById }: Props) {
           crate_label: crate,
           custodian_name: custName,
           custodian_email: custEmail.trim() || undefined,
-          moved_at: moved || null,
+          moved_at: moved || undefined,
           status: status as (typeof locStatuses)[number],
           notes: notes,
         });

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { createHash, randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -64,12 +65,12 @@ export async function createAdminApiKey(input: {
     return { ok: false, error: 'Forbidden' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const plainSecret = `pk_prov_${randomBytes(24).toString('base64url')}`;
   const key_hash = hashApiKeySecret(plainSecret);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- api_keys not in generated DB types yet
-  const { error } = await client.from('api_keys').insert({
+  const { error } = await asUntyped(client).from('api_keys').insert({
     account_id: adminId,
     key_hash,
     name: parsed.data.name,
@@ -108,9 +109,9 @@ export async function revokeAdminApiKey(
     return { ok: false, error: 'Forbidden' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- api_keys not in generated DB types yet
-  const { data: updated, error } = await (client as any)
+  const { data: updated, error } = await asUntyped(client)
     .from('api_keys')
     .update({ is_active: false })
     .eq('id', parsed.data.id)

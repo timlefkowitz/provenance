@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type {
   TemplateId,
@@ -56,7 +57,7 @@ async function userCanManageProfile(
   profileId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const client = getSupabaseServerClient();
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, role')
     .eq('id', profileId)
@@ -180,7 +181,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
 
   console.log('[Sites] upsertSiteAction attempting full payload', { handle: handleResult.normalized });
 
-  let { error: upsertErr } = await (client as any)
+  let { error: upsertErr } = await asUntyped(client)
     .from('profile_sites')
     .upsert(fullPayload, { onConflict: 'profile_id' });
 
@@ -195,7 +196,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     if (isColumnMissing(upsertErr)) {
       // display_name column may not exist yet (migration 20260531) — try mid payload
       console.warn('[Sites] upsertSiteAction full payload failed — trying mid payload', upsertErr.message);
-      const mid = await (client as any)
+      const mid = await asUntyped(client)
         .from('profile_sites')
         .upsert(midPayload, { onConflict: 'profile_id' });
       upsertErr = mid.error ?? null;
@@ -204,7 +205,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     if (upsertErr && isColumnMissing(upsertErr)) {
       // Extra columns (migration 20260514) also missing — fall back to base payload
       console.warn('[Sites] upsertSiteAction mid payload failed — falling back to base payload', upsertErr.message);
-      const fallback = await (client as any)
+      const fallback = await asUntyped(client)
         .from('profile_sites')
         .upsert(basePayload, { onConflict: 'profile_id' });
       upsertErr = fallback.error ?? null;

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Link from 'next/link';
 import { requireAdmin } from '~/lib/admin';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -98,8 +99,8 @@ function Avatar({ label }: { label: string }) {
 async function fetchAccountsByIds(ids: string[]): Promise<Map<string, AccountRow>> {
   const map = new Map<string, AccountRow>();
   if (ids.length === 0) return map;
-  const admin = getSupabaseServerAdminClient();
-  const { data, error } = await admin.from('accounts').select('id, email, name').in('id', ids);
+  const admin = asUntyped(getSupabaseServerAdminClient());
+  const { data, error } = await asUntyped(admin).from('accounts').select('id, email, name').in('id', ids);
   if (error) {
     console.error('[AdminTaco] accounts fetch failed', error);
     return map;
@@ -111,7 +112,7 @@ async function fetchAccountsByIds(ids: string[]): Promise<Map<string, AccountRow
 }
 
 async function loadAggregates() {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
   const startOfMonth = new Date();
   startOfMonth.setUTCDate(1);
@@ -119,10 +120,10 @@ async function loadAggregates() {
   const monthIso = startOfMonth.toISOString();
 
   const [allTime, thisMonth] = await Promise.all([
-    (admin as any)
+    asUntyped(admin)
       .from('taco_usage_logs')
       .select('total_tokens, estimated_cost_usd, user_id', { count: 'exact' }),
-    (admin as any)
+    asUntyped(admin)
       .from('taco_usage_logs')
       .select('total_tokens, estimated_cost_usd, user_id', { count: 'exact' })
       .gte('created_at', monthIso),
@@ -145,9 +146,9 @@ async function loadAggregates() {
 }
 
 async function loadTopUsers(limit = 10) {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('taco_usage_logs')
     .select('user_id, total_tokens, estimated_cost_usd')
     .order('created_at', { ascending: false })
@@ -190,9 +191,9 @@ async function loadTopUsers(limit = 10) {
 }
 
 async function loadUnhandledRequests(limit = 50): Promise<UnhandledRow[]> {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('taco_unhandled_requests')
     .select('id, user_id, user_message, taco_summary, pathname, resolved, admin_note, created_at')
     .order('created_at', { ascending: false })
@@ -213,9 +214,9 @@ async function loadUnhandledRequests(limit = 50): Promise<UnhandledRow[]> {
 }
 
 async function loadRecentRows(limit = 20) {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('taco_usage_logs')
     .select(
       'user_id, created_at, prompt_tokens, completion_tokens, total_tokens, agent_iterations, had_images, had_docs, estimated_cost_usd',

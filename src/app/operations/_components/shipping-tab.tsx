@@ -43,6 +43,7 @@ import { uploadOperationsDocument } from '~/lib/operations/operations-document-u
 import { LoanArtworkPicker } from './loan-artwork-picker';
 import { Upload, X } from 'lucide-react';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const statuses = ['draft', 'booked', 'in_transit', 'delivered', 'cancelled'] as const;
 
 type Props = {
@@ -156,16 +157,16 @@ export function ShippingTab({ shipments, artworks, artworkTitleById }: Props) {
           courier_contact_email: courierEmail.trim(),
           origin_location: origin,
           destination_location: dest,
-          ship_date: shipDate || null,
-          estimated_arrival: estArrival || null,
-          actual_arrival: actArrival || null,
+          ship_date: shipDate || undefined,
+          estimated_arrival: estArrival || undefined,
+          actual_arrival: actArrival || undefined,
           tracking_number: tracking,
-          transit_insurance_policy: transitIns || null,
+          transit_insurance_policy: transitIns || undefined,
           transit_insurance_value_cents:
             transitVal === '' || Number.isNaN(Number.parseFloat(transitVal))
               ? null
               : Math.round(Number.parseFloat(transitVal) * 100),
-          crating_notes: crating || null,
+          crating_notes: crating || undefined,
           document_storage_path: path,
           status: status as (typeof statuses)[number],
         });

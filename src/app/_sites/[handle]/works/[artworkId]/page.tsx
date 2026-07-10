@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -193,12 +194,9 @@ export default async function SiteArtworkPage({
 
 async function fetchArtwork(artworkId: string) {
   const admin = getSupabaseServerAdminClient();
-  const { data } = await (admin as any)
+  const { data } = await asUntyped(admin)
     .from('artworks')
-    .select(
-      'id, account_id, title, artist_name, image_url, description, dimensions, created_at, ' +
-      'inquire_enabled, for_sale, sale_price, sale_currency, stripe_price_id, sold_at',
-    )
+    .select('id, account_id, title, artist_name, image_url, description, dimensions, created_at, inquire_enabled, for_sale, sale_price, sale_currency, stripe_price_id, sold_at')
     .eq('id', artworkId)
     .eq('status', 'verified')
     .eq('is_public', true)

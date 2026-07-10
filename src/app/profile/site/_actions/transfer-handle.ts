@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type TransferHandleResult =
   | { success: true; handle: string }
   | { success: false; error: string };
@@ -24,13 +25,14 @@ export async function transferHandleAction(
     return { success: false, error: 'Source and destination are the same profile.' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user }, error: authErr } = await client.auth.getUser();
   if (authErr || !user) {
     return { success: false, error: 'Not authenticated' };
   }
 
-  const sb = client as any;
+  const sb = client as import('~/lib/supabase-untyped').UntypedSupabaseClient;
+  const userId = user.id;
 
   // Verify access to both profiles
   async function canManageProfile(profileId: string): Promise<boolean> {
@@ -40,8 +42,8 @@ export async function transferHandleAction(
       .eq('id', profileId)
       .maybeSingle();
     if (!p) return false;
-    if (p.user_id === user.id) return true;
-    if (p.role === 'gallery') return canManageGallery(user.id, profileId);
+    if (p.user_id === userId) return true;
+    if (p.role === 'gallery') return canManageGallery(userId, profileId);
     return false;
   }
 

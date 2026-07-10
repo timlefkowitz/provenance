@@ -28,6 +28,7 @@ import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { updateUserRole } from '~/app/onboarding/_actions/update-user-role';
 import { USER_ROLES, getRoleLabel, getUserRole } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const ROLES = [
   { value: USER_ROLES.COLLECTOR, label: getRoleLabel(USER_ROLES.COLLECTOR) },
   { value: USER_ROLES.ARTIST, label: getRoleLabel(USER_ROLES.ARTIST) },
@@ -66,7 +67,7 @@ export function RoleSelectionModal() {
     }
     let cancelled = false;
     fetchAccount().then((data) => {
-      if (!cancelled && data) setAccount(data);
+      if (!cancelled && data) setAccount(data as { public_data?: Record<string, unknown> });
     });
     return () => { cancelled = true; };
   }, [user?.sub, fetchAccount]);
@@ -74,7 +75,7 @@ export function RoleSelectionModal() {
   // Check if user needs to select a role
   useEffect(() => {
     if (user?.sub && account) {
-      const userRole = getUserRole(account.public_data as Record<string, any>);
+      const userRole = getUserRole(account.public_data as Record<string, unknown>);
       setOpen(!userRole);
     } else {
       setOpen(false);

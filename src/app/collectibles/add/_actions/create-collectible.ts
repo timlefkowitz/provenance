@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -17,7 +18,7 @@ export async function createCollectible(formData: FormData, userId: string) {
   console.log('[Collectibles] createCollectible started', { userId });
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const adminClient = getSupabaseServerAdminClient();
 
     const images = formData.getAll('images') as File[];
@@ -109,7 +110,7 @@ export async function createCollectible(formData: FormData, userId: string) {
     };
 
     // Use the authenticated client so RLS (account_id = auth.uid()) applies.
-    const { data: collectible, error } = await (client as any)
+    const { data: collectible, error } = await asUntyped(client)
       .from('collectibles')
       .insert(insertData)
       .select('id')

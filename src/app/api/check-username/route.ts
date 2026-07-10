@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   const client = getSupabaseServerClient();
 
-  const { data: accounts, error } = await (client as any)
+  const { data: accounts, error } = await asUntyped(client)
     .from('accounts')
     .select('id')
     .ilike('name', username)

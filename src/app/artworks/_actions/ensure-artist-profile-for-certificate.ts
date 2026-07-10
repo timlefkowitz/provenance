@@ -1,6 +1,7 @@
 'use server';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- user_profiles not in generated Supabase Database type */
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES, type UserRole } from '~/lib/user-roles';
 
@@ -40,7 +41,7 @@ export async function ensureArtistProfileForCertificate(params: {
   });
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
 
     let artistAccountId: string | null = null;
 
@@ -59,7 +60,7 @@ export async function ensureArtistProfileForCertificate(params: {
     }
 
     if (artistAccountId) {
-      const { data: claimedProfile } = await (client as any)
+      const { data: claimedProfile } = await asUntyped(client)
         .from('user_profiles')
         .select('id')
         .eq('user_id', artistAccountId)
@@ -81,7 +82,7 @@ export async function ensureArtistProfileForCertificate(params: {
       return { artistAccountId, artistProfileId: null };
     }
 
-    const { data: existingByName } = await (client as any)
+    const { data: existingByName } = await asUntyped(client)
       .from('user_profiles')
       .select('id, user_id, is_claimed')
       .eq('name', trimmed)
@@ -106,7 +107,7 @@ export async function ensureArtistProfileForCertificate(params: {
       };
     }
 
-    const { data: inserted, error: insertError } = await (client as any)
+    const { data: inserted, error: insertError } = await asUntyped(client)
       .from('user_profiles')
       .insert({
         user_id: null,
@@ -122,7 +123,7 @@ export async function ensureArtistProfileForCertificate(params: {
 
     if (insertError) {
       if (insertError.code === '23505') {
-        const { data: again } = await (client as any)
+        const { data: again } = await asUntyped(client)
           .from('user_profiles')
           .select('id, user_id')
           .eq('name', trimmed)

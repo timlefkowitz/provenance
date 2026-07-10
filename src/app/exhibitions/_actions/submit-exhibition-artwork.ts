@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -149,7 +150,7 @@ function parseArtworkInputs(formData: FormData): ParsedArtworkInput[] | { error:
 }
 
 async function uploadExtraAttachment(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  adminClient: UntypedSupabaseClient,
   userId: string,
   coaId: string,
   file: File,
@@ -184,7 +185,7 @@ async function uploadExtraAttachment(
   }
 
   const fileUrl = getArtworkImagePublicUrl(storagePath);
-  const { error: insertError } = await (adminClient as any)
+  const { error: insertError } = await asUntyped(adminClient)
     .from('artwork_attachments')
     .insert({
       artwork_id: coaId,
@@ -203,7 +204,7 @@ async function uploadExtraAttachment(
 }
 
 async function validateInvite(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  adminClient: UntypedSupabaseClient,
   token: string,
 ): Promise<{ invite: InviteRow } | { error: string }> {
   const trimmed = token?.trim();
@@ -212,7 +213,7 @@ async function validateInvite(
   }
 
   const tokenHash = hashClaimToken(trimmed);
-  const { data: invite, error } = await (adminClient as any)
+  const { data: invite, error } = await asUntyped(adminClient)
     .from('exhibition_artist_invites')
     .select(
       'id, exhibition_id, invitee_email, invitee_name, artist_account_id, status, expires_at',
@@ -235,7 +236,7 @@ async function validateInvite(
 
   const expiresAt = new Date(invite.expires_at);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
-    await (adminClient as any)
+    await asUntyped(adminClient)
       .from('exhibition_artist_invites')
       .update({ status: 'expired' })
       .eq('id', invite.id);
@@ -246,12 +247,12 @@ async function validateInvite(
 }
 
 async function verifyExistingCoa(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  adminClient: UntypedSupabaseClient,
   userId: string,
   coaId: string,
   exhibitionId: string,
 ): Promise<boolean> {
-  const { data: artwork, error } = await (adminClient as any)
+  const { data: artwork, error } = await asUntyped(adminClient)
     .from('artworks')
     .select('id, account_id, metadata')
     .eq('id', coaId)
@@ -285,7 +286,7 @@ export async function submitExhibitionArtwork(
   });
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
@@ -334,7 +335,7 @@ export async function submitExhibitionArtwork(
       count: artworks.length,
     });
 
-    const { data: exhibition, error: exhibitionError } = await (adminClient as any)
+    const { data: exhibition, error: exhibitionError } = await asUntyped(adminClient)
       .from('exhibitions')
       .select('id, gallery_id, title, owner_role')
       .eq('id', invite.exhibition_id)
@@ -363,7 +364,7 @@ export async function submitExhibitionArtwork(
         ? USER_ROLES.INSTITUTION
         : USER_ROLES.GALLERY;
 
-    const { data: galleryProfile } = await (adminClient as any)
+    const { data: galleryProfile } = await asUntyped(adminClient)
       .from('user_profiles')
       .select('id')
       .eq('user_id', exhibition.gallery_id)
@@ -476,7 +477,7 @@ export async function submitExhibitionArtwork(
         },
       };
 
-      const { data: coaArtwork, error: coaError } = await (adminClient as any)
+      const { data: coaArtwork, error: coaError } = await asUntyped(adminClient)
         .from('artworks')
         .insert(coaPayload)
         .select('id, *')
@@ -496,7 +497,7 @@ export async function submitExhibitionArtwork(
       createdCoaIds.push(coaId);
       if (!batchFirstCoaId) batchFirstCoaId = coaId;
 
-      await (adminClient as any).from('exhibition_artworks').insert({
+      await asUntyped(adminClient).from('exhibition_artworks').insert({
         exhibition_id: invite.exhibition_id,
         artwork_id: coaId,
       });
@@ -533,7 +534,7 @@ export async function submitExhibitionArtwork(
       createdCosIds.push(cosArtworkId);
       if (!batchFirstCosId) batchFirstCosId = cosArtworkId;
 
-      await (adminClient as any).from('exhibition_artworks').insert({
+      await asUntyped(adminClient).from('exhibition_artworks').insert({
         exhibition_id: invite.exhibition_id,
         artwork_id: cosArtworkId,
       });
@@ -546,7 +547,7 @@ export async function submitExhibitionArtwork(
       });
     }
 
-    const { error: artistLinkError } = await (adminClient as any)
+    const { error: artistLinkError } = await asUntyped(adminClient)
       .from('exhibition_artists')
       .insert({
         exhibition_id: invite.exhibition_id,
@@ -562,7 +563,7 @@ export async function submitExhibitionArtwork(
 
     if (batch.finalize) {
       const now = new Date().toISOString();
-      await (adminClient as any)
+      await asUntyped(adminClient)
         .from('exhibition_artist_invites')
         .update({
           status: 'consumed',
@@ -643,7 +644,7 @@ export async function submitExhibitionArtwork(
 export async function validateExhibitionSubmitAccess(
   token: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
@@ -37,7 +38,7 @@ export async function submitArtworkInquiry(
 
     const admin = getSupabaseServerAdminClient();
 
-    const { error: insertError } = await (admin as any)
+    const { error: insertError } = await asUntyped(admin)
       .from('artwork_inquiries')
       .insert({
         artwork_id: input.artworkId,

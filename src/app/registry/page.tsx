@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
 import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
@@ -37,7 +38,7 @@ type PreviewCandidate = {
 export default async function RegistryPage() {
   console.log('[Registry] RegistryPage load started');
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data: accounts, error } = await client
     .from('accounts')
@@ -52,7 +53,7 @@ export default async function RegistryPage() {
   const accountsList = accounts || [];
 
   // Fetch gallery profiles — include registry picks so we can honor explicit selections
-  const { data: galleryProfiles, error: profilesError } = await (client as any)
+  const { data: galleryProfiles, error: profilesError } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, name, picture_url, role, created_at, slug, registry_artwork_id, registry_artwork_ids')
     .eq('role', USER_ROLES.GALLERY)
@@ -65,10 +66,10 @@ export default async function RegistryPage() {
   }
 
   const listedGalleryProfiles =
-    (galleryProfiles as any[] ?? []).filter((p: any) =>
+    (galleryProfiles as Record<string, unknown>[] ?? []).filter((p) =>
       isPublicDirectoryGallery({
-        name: p.name,
-        slug: p.slug,
+        name: (p.name as string) ?? '',
+        slug: p.slug as string | null | undefined,
       }),
     );
 
@@ -93,8 +94,8 @@ export default async function RegistryPage() {
   });
 
   accountsList.forEach((account) => {
-    const hasAnyGalleryProfile = (galleryProfiles as any[] ?? []).some((p: any) => p.user_id === account.id);
-    const hasListedGalleryProfile = listedGalleryProfiles.some((p: any) => p.user_id === account.id);
+    const hasAnyGalleryProfile = (galleryProfiles as Record<string, unknown>[] ?? []).some((p) => p.user_id === account.id);
+    const hasListedGalleryProfile = listedGalleryProfiles.some((p) => p.user_id === account.id);
     const accountRole = getUserRole(account.public_data as Record<string, unknown> | null);
 
     if (!hasAnyGalleryProfile) {
@@ -163,7 +164,7 @@ export default async function RegistryPage() {
   try {
     // ── Gallery previews: COS / COO / COA (most recent with image fallback) ──────────────
     if (galleryProfileIds.length > 0) {
-      const { data: galleryArtRows, error: gErr } = await (client as any)
+      const { data: galleryArtRows, error: gErr } = await asUntyped(client)
         .from('artworks')
         .select('gallery_profile_id, image_url, created_at')
         .in('gallery_profile_id', galleryProfileIds)
@@ -195,7 +196,7 @@ export default async function RegistryPage() {
 
       // Override with user-selected registry artwork(s): ordered list (max 5) or legacy single id
       const pickIdsOrderedByProfile = new Map<string, string[]>();
-      for (const p of listedGalleryProfiles as any[]) {
+      for (const p of listedGalleryProfiles as Record<string, unknown>[]) {
         const multi = (p.registry_artwork_ids as string[] | null)?.filter(Boolean) ?? [];
         if (multi.length > 0) {
           pickIdsOrderedByProfile.set(p.id as string, multi);
@@ -206,7 +207,7 @@ export default async function RegistryPage() {
 
       const allPickIds = [...new Set([...pickIdsOrderedByProfile.values()].flat())];
       if (allPickIds.length > 0) {
-        const { data: pickedRows } = await (client as any)
+        const { data: pickedRows } = await asUntyped(client)
           .from('artworks')
           .select('id, gallery_profile_id, image_url')
           .in('id', allPickIds)
@@ -247,7 +248,7 @@ export default async function RegistryPage() {
     if (nonGalleryAccountIds.length > 0) {
       const candidates: PreviewCandidate[] = [];
 
-      const { data: byUploader, error: uErr } = await (client as any)
+      const { data: byUploader, error: uErr } = await asUntyped(client)
         .from('artworks')
         .select('account_id, gallery_profile_id, image_url, created_at')
         .in('account_id', nonGalleryAccountIds)
@@ -272,7 +273,7 @@ export default async function RegistryPage() {
         });
       }
 
-      const { data: byCredit, error: cErr } = await (client as any)
+      const { data: byCredit, error: cErr } = await asUntyped(client)
         .from('artworks')
         .select('artist_account_id, image_url, created_at')
         .in('artist_account_id', nonGalleryAccountIds)
@@ -309,7 +310,7 @@ export default async function RegistryPage() {
       }
 
       // Override with user-selected registry artwork where set
-      const { data: artistProfilesWithPick } = await (client as any)
+      const { data: artistProfilesWithPick } = await asUntyped(client)
         .from('user_profiles')
         .select('user_id, registry_artwork_id')
         .in('user_id', nonGalleryAccountIds)
@@ -318,8 +319,8 @@ export default async function RegistryPage() {
         .not('registry_artwork_id', 'is', null);
 
       if (artistProfilesWithPick && artistProfilesWithPick.length > 0) {
-        const pickIds = artistProfilesWithPick.map((p: any) => p.registry_artwork_id as string);
-        const { data: pickedArtworks } = await (client as any)
+        const pickIds = artistProfilesWithPick.map((p: Record<string, unknown>) => p.registry_artwork_id as string);
+        const { data: pickedArtworks } = await asUntyped(client)
           .from('artworks')
           .select('id, account_id, artist_account_id, image_url')
           .in('id', pickIds)
@@ -328,7 +329,7 @@ export default async function RegistryPage() {
           .eq('certificate_type', 'authenticity')
           .not('image_url', 'is', null);
 
-        const artworkById: Record<string, any> = {};
+        const artworkById: Record<string, Record<string, unknown>> = {};
         for (const a of pickedArtworks || []) {
           artworkById[a.id] = a;
         }

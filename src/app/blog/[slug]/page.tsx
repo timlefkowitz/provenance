@@ -16,6 +16,7 @@ import { formatBlogDate } from '~/lib/blog/format-date';
 import { getPublishedPostBySlug } from '~/lib/blog/posts';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const revalidate = 120;
 
 type PageProps = { params: Promise<{ slug: string }> };

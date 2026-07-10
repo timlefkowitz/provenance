@@ -9,6 +9,7 @@ import {
 } from '~/lib/email-layout';
 import { getPresetThemeDefaults } from '~/lib/email-layout-presets';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const runtime = 'nodejs';
 
 /**
@@ -46,7 +47,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
 // ─── Trial nudge ─────────────────────────────────────────────────────────────
 
 async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
-  const admin = getSupabaseServerAdminClient() as any;
+  const admin = asUntyped(getSupabaseServerAdminClient()) as any;
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -71,7 +72,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
   let skipped = 0;
 
   for (const sub of trials ?? []) {
-    const meta = (sub.metadata as Record<string, any>) ?? {};
+    const meta = (sub.metadata as Record<string, unknown>) ?? {};
     if (meta.trial_nudge_sent_day7) {
       skipped++;
       continue;
@@ -154,7 +155,7 @@ async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number }> {
     return { sent: 0, skipped: 0 };
   }
 
-  const admin = getSupabaseServerAdminClient() as any;
+  const admin = asUntyped(getSupabaseServerAdminClient()) as any;
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // Active / trialing artist subscribers who were seen in the last 30 days
@@ -168,14 +169,14 @@ async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number }> {
   if (!subs?.length) return { sent: 0, skipped: 0 };
 
   // Filter to users who were active in the last 30 days via user_presence
-  const userIds = (subs as any[]).map((s) => s.user_id);
+  const userIds = (subs as { user_id: string }[]).map((s) => s.user_id);
   const { data: activePresence } = await admin
     .from('user_presence')
     .select('user_id')
     .in('user_id', userIds)
     .gte('last_seen_at', thirtyDaysAgo);
 
-  const activeUserIds = new Set((activePresence ?? []).map((p: any) => p.user_id));
+  const activeUserIds = new Set((activePresence ?? []).map((p: Record<string, unknown>) => p.user_id));
 
   if (!activeUserIds.size) return { sent: 0, skipped: 0 };
 
@@ -195,7 +196,7 @@ async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number }> {
     .order('deadline', { ascending: true })
     .limit(5)
     .maybeSingle()
-    .then(() => admin.from('artist_grants').select('id, title, deadline, description').gte('deadline', now.toISOString()).order('deadline', { ascending: true }).limit(5));
+    .then(() => asUntyped(admin).from('artist_grants').select('id, title, deadline, description').gte('deadline', now.toISOString()).order('deadline', { ascending: true }).limit(5));
 
   // Get accounts for active users
   const activeUserIdsList = [...activeUserIds];
@@ -238,7 +239,7 @@ function formatDeadline(deadline: string | null): string {
   }
 }
 
-function buildDigestHtml(name: string, openCalls: any[], grants: any[]): string {
+function buildDigestHtml(name: string, openCalls: unknown[], grants: unknown[]): string {
   const theme = getPresetThemeDefaults('mono');
   const { ink, wine, inkMuted, cardBorder, fontFamily, fontFamilyHeading } = theme;
 
@@ -246,7 +247,7 @@ function buildDigestHtml(name: string, openCalls: any[], grants: any[]): string 
 
   const buildSection = (
     sectionTitle: string,
-    items: any[],
+    items: { title: string; deadline?: string | null }[],
     browseHref: string,
     browseLabel: string,
   ): string => {

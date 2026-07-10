@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
@@ -25,7 +26,7 @@ export async function publishSiteAction(
   }
 
   // Verify ownership OR gallery team management access
-  const { data: profile, error: profileErr } = await (client as any)
+  const { data: profile, error: profileErr } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, role')
     .eq('id', profileId)
@@ -45,7 +46,7 @@ export async function publishSiteAction(
   }
 
   // Fetch current site row to get handle
-  const { data: siteRow, error: siteErr } = await (client as any)
+  const { data: siteRow, error: siteErr } = await asUntyped(client)
     .from('profile_sites')
     .select('handle, published_at')
     .eq('profile_id', profileId)
@@ -56,7 +57,7 @@ export async function publishSiteAction(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await (client as any)
+  const { error: updateErr } = await asUntyped(client)
     .from('profile_sites')
     .update({ published_at: published ? now : null, updated_at: now })
     .eq('profile_id', profileId);

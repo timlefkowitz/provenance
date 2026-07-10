@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -41,7 +42,7 @@ export async function saveOnboardingAnswers(
 
   try {
     // Check for existing artist profile
-    const { data: existing } = await (client as any)
+    const { data: existing } = await asUntyped(client)
       .from('user_profiles')
       .select('id')
       .eq('user_id', user.id)
@@ -57,7 +58,7 @@ export async function saveOnboardingAnswers(
       console.log('[Onboarding] existing artist profile found', profileId);
 
       // Update onboarding answers on existing profile
-      const { error: updateErr } = await (admin as any)
+      const { error: updateErr } = await asUntyped(admin)
         .from('user_profiles')
         .update({
           medium: answers.medium || undefined,
@@ -73,7 +74,7 @@ export async function saveOnboardingAnswers(
       }
     } else {
       // Fetch the user's display name from accounts
-      const { data: account } = await (admin as any)
+      const { data: account } = await asUntyped(admin)
         .from('accounts')
         .select('name')
         .eq('id', user.id)
@@ -83,7 +84,7 @@ export async function saveOnboardingAnswers(
 
       console.log('[Onboarding] creating new artist profile for', user.id);
 
-      const { data: inserted, error: insertErr } = await (admin as any)
+      const { data: inserted, error: insertErr } = await asUntyped(admin)
         .from('user_profiles')
         .insert({
           user_id: user.id,

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 /**
@@ -20,7 +21,7 @@ export async function getFeaturedEntry() {
     // Collect ALL featured artwork IDs from ALL accounts (consolidated)
     const featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
-      const publicData = account.public_data as Record<string, any>;
+      const publicData = account.public_data as Record<string, unknown>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
         // Merge all IDs from all accounts (avoid duplicates)
         for (const id of publicData.featured_artworks) {
@@ -35,7 +36,7 @@ export async function getFeaturedEntry() {
     let artwork = null;
 
     if (featuredArtworkIds.length > 0) {
-      const { data: allFeaturedArtworks } = await (client as any)
+      const { data: allFeaturedArtworks } = await asUntyped(client)
         .from('artworks')
         .select('id, title, description, image_url, artist_name')
         .in('id', featuredArtworkIds)
@@ -53,7 +54,7 @@ export async function getFeaturedEntry() {
 
     // Fallback to latest verified public artwork
     if (!artwork) {
-      const { data: fallbackArtwork } = await (client as any)
+      const { data: fallbackArtwork } = await asUntyped(client)
         .from('artworks')
         .select('id, title, description, image_url, artist_name')
         .eq('status', 'verified')
@@ -101,7 +102,7 @@ export async function getFeaturedArtworksList() {
     // Collect ALL featured artwork IDs from ALL accounts (consolidated)
     const featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
-      const publicData = account.public_data as Record<string, any>;
+      const publicData = account.public_data as Record<string, unknown>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
         // Merge all IDs from all accounts (avoid duplicates)
         for (const id of publicData.featured_artworks) {
@@ -119,7 +120,7 @@ export async function getFeaturedArtworksList() {
       };
     }
 
-    const { data: artworks, error } = await (client as any)
+    const { data: artworks, error } = await asUntyped(client)
       .from('artworks')
       .select('id, title, artist_name, image_url')
       .in('id', featuredArtworkIds)

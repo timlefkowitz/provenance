@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 export async function getQueuedArtworks() {
@@ -15,7 +16,7 @@ export async function getQueuedArtworks() {
     // Collect ALL featured artwork IDs from ALL accounts (consolidated)
     const featuredArtworkIds: string[] = [];
     for (const account of allAccounts || []) {
-      const publicData = account.public_data as Record<string, any>;
+      const publicData = account.public_data as Record<string, unknown>;
       if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
         // Merge all IDs from all accounts (avoid duplicates)
         for (const id of publicData.featured_artworks) {
@@ -27,7 +28,7 @@ export async function getQueuedArtworks() {
     }
 
     // Get all verified, public artworks
-    const query = (client as any)
+    const query = asUntyped(client)
       .from('artworks')
       .select('id, title, description, artist_name, image_url, created_at, status, is_public, certificate_number')
       .eq('status', 'verified')

@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- memories rows use loosely typed Supabase rows */
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -25,9 +26,9 @@ export async function getExhibitionMemories(
   exhibitionId: string,
 ): Promise<ExhibitionMemory[]> {
   console.log('[Exhibitions] getExhibitionMemories started', { exhibitionId });
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('exhibition_memories')
     .select('*')
     .eq('exhibition_id', exhibitionId)
@@ -43,7 +44,7 @@ export async function getExhibitionMemories(
     count: (data || []).length,
   });
 
-  return (data || []).map((row: any) => ({
+  return (data || []).map((row: Record<string, unknown>) => ({
     id: row.id,
     exhibition_id: row.exhibition_id,
     user_id: row.user_id,
@@ -71,7 +72,7 @@ export async function postExhibitionMemory(
     return { success: false, error: 'Missing exhibition.' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -82,7 +83,7 @@ export async function postExhibitionMemory(
   }
 
   // Ensure the exhibition exists and is visible (published) or owned by the user.
-  const { data: exhibition, error: exErr } = await (client as any)
+  const { data: exhibition, error: exErr } = await asUntyped(client)
     .from('exhibitions')
     .select('id, gallery_id, published_at')
     .eq('id', exhibitionId)
@@ -138,7 +139,7 @@ export async function postExhibitionMemory(
     authorAvatar = (account as any).picture_url ?? null;
   }
 
-  const { data: inserted, error: insErr } = await (client as any)
+  const { data: inserted, error: insErr } = await asUntyped(client)
     .from('exhibition_memories')
     .insert({
       exhibition_id: exhibitionId,
@@ -184,7 +185,7 @@ export async function deleteExhibitionMemory(
   memoryId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   console.log('[Exhibitions] deleteExhibitionMemory started', { memoryId });
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -193,13 +194,13 @@ export async function deleteExhibitionMemory(
     return { success: false, error: 'You must be signed in.' };
   }
 
-  const { data: memory } = await (client as any)
+  const { data: memory } = await asUntyped(client)
     .from('exhibition_memories')
     .select('exhibition_id')
     .eq('id', memoryId)
     .maybeSingle();
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('exhibition_memories')
     .delete()
     .eq('id', memoryId);

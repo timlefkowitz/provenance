@@ -5,6 +5,7 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { checkRateLimit } from '~/lib/rate-limit';
 import { escapeIlike } from '~/lib/escape-ilike';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const SearchGalleriesQuerySchema = z.object({
   q: z
     .string()
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   const { q } = parseResult.data;
   const escaped = escapeIlike(q);
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data: profiles, error: profilesError } = await client
     .from('user_profiles')
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
   if (accounts) {
     accounts.forEach((account) => {
-      const role = getUserRole(account.public_data as Record<string, any>);
+      const role = getUserRole(account.public_data as Record<string, unknown>);
       if (role === USER_ROLES.GALLERY && !galleryMap.has(account.id)) {
         galleryMap.set(account.id, {
           id: account.id,

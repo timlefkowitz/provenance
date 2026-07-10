@@ -55,7 +55,7 @@ export function RoleSwitcher() {
 
   const currentRole = useMemo(() => {
     if (!account?.public_data) return null;
-    return getUserRole(account.public_data as Record<string, any>);
+    return getUserRole(account.public_data as Record<string, unknown>);
   }, [account]);
 
   const roleChanged = useCallback(

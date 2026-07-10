@@ -16,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Trans } from '@kit/ui/trans';
 
 import { updateUserRole } from '../_actions/update-user-role';
-import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 import { gtmService } from '~/lib/gtm';
 
 const ROLES = [
@@ -52,7 +52,7 @@ export function OnboardingForm() {
         } else {
           router.push('/artworks/add?first_run=1');
         }
-      } catch (e) {
+      } catch {
         setError('Something went wrong. Please try again.');
       }
     });

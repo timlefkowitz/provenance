@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -39,7 +40,7 @@ async function assertArtworkOwned(
   userId: string,
   artworkId: string,
 ): Promise<boolean> {
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('id', artworkId)
@@ -163,7 +164,7 @@ export async function createLoanAgreement(raw: z.infer<typeof createLoanSchema>)
     status: 'draft' as const,
   };
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .insert(row)
     .select('id')
@@ -213,7 +214,7 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
     }
   }
 
-  const { data: prior, error: priorErr } = await (client as any)
+  const { data: prior, error: priorErr } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .select(
       'id, status, artwork_id, borrower_name, end_date, borrower_email, lender_email, borrower_user_id, lender_user_id',
@@ -244,7 +245,7 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
   if (rest.status !== undefined) patch.status = rest.status;
   if (rest.signature_notes !== undefined) patch.signature_notes = rest.signature_notes ?? null;
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .update(patch)
     .eq('id', id)
@@ -343,7 +344,7 @@ export async function duplicateLoanAgreement(id: string) {
     return { success: false as const, error: 'You must be logged in.' };
   }
 
-  const { data: row, error } = await (client as any)
+  const { data: row, error } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .select('*')
     .eq('id', id)
@@ -376,7 +377,7 @@ export async function duplicateLoanAgreement(id: string) {
     alert_sent_at: null,
   };
 
-  const { data: created, error: insErr } = await (client as any)
+  const { data: created, error: insErr } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .insert(insert)
     .select('id')
@@ -416,7 +417,7 @@ export async function markLoanAgreementSigned(id: string, signatureNotes?: strin
     return { success: false as const, error: 'You must be logged in.' };
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .update({
       status: 'signed',
@@ -431,7 +432,7 @@ export async function markLoanAgreementSigned(id: string, signatureNotes?: strin
     return { success: false as const, error: 'Could not update status.' };
   }
 
-  const { data: row2, error: load2 } = await (client as any)
+  const { data: row2, error: load2 } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .select(
       'artwork_id, borrower_email, lender_email, borrower_user_id, lender_user_id',
@@ -472,7 +473,7 @@ export async function renewLoanAgreement(id: string) {
     return { success: false as const, error: 'You must be logged in.' };
   }
 
-  const { data: row, error } = await (client as any)
+  const { data: row, error } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .select('*')
     .eq('id', id)
@@ -506,7 +507,7 @@ export async function renewLoanAgreement(id: string) {
     alert_sent_at: null,
   };
 
-  const { data: created, error: insErr } = await (client as any)
+  const { data: created, error: insErr } = await asUntyped(client)
     .from('artwork_loan_agreements')
     .insert(insert)
     .select('id')

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { formatCategoryLabel, type CollectibleRow } from '~/lib/collectibles/constants';
@@ -19,8 +20,8 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const client = getSupabaseServerClient();
-  const { data: collectible } = await (client as any)
+  const client = asUntyped(getSupabaseServerClient());
+  const { data: collectible } = await asUntyped(client)
     .from('collectibles')
     .select('title, category, image_url')
     .eq('id', id)
@@ -59,7 +60,7 @@ export default async function CollectibleCertificatePage({
   const { id } = await params;
   console.log('[Collectibles] Certificate page loading', { collectibleId: id });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -67,7 +68,7 @@ export default async function CollectibleCertificatePage({
   let collectible: CollectibleRow | null = null;
 
   if (user) {
-    const { data } = await (client as any)
+    const { data } = await asUntyped(client)
       .from('collectibles')
       .select(COLLECTIBLE_SELECT)
       .eq('id', id)
@@ -75,7 +76,7 @@ export default async function CollectibleCertificatePage({
       .maybeSingle();
     collectible = (data as CollectibleRow) ?? null;
   } else {
-    const { data } = await (client as any)
+    const { data } = await asUntyped(client)
       .from('collectibles')
       .select(COLLECTIBLE_SELECT)
       .eq('id', id)

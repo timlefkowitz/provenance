@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { SubscriptionContent } from './_components/subscription-content';
@@ -16,7 +17,7 @@ export default async function SubscriptionPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -40,7 +41,7 @@ export default async function SubscriptionPage({
   );
 
   const nowIso = new Date().toISOString();
-  const { data: subscriptionRows } = await (client as any)
+  const { data: subscriptionRows } = await asUntyped(client)
     .from('subscriptions')
     .select('id, role, status, current_period_end, trial_end')
     .eq('user_id', user.id)
@@ -63,7 +64,7 @@ export default async function SubscriptionPage({
     subscription.role &&
     isValidRole(subscription.role)
       ? (subscription.role as SubscriptionRole)
-      : accountDefaultRole);
+      : (accountDefaultRole as SubscriptionRole | null));
 
   return (
     <div className="container py-10">

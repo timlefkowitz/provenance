@@ -6,12 +6,13 @@ import { UnclaimedProfilesList } from '../_components/unclaimed-profiles-list';
 import { PendingClaimsList } from '../_components/pending-claims-list';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Profile Claims | Provenance',
 };
 
 export default async function ProfileClaimsPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -29,7 +30,7 @@ export default async function ProfileClaimsPage() {
     redirect('/profile');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
 
   // For artists: show unclaimed profiles
   // For galleries: show pending claims

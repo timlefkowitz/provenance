@@ -22,6 +22,7 @@ import {
 } from '~/lib/email-layout';
 import { getPresetThemeDefaults } from '~/lib/email-layout-presets';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type { SummaryItem } from '~/lib/email-defaults';
 
 const DEFAULT_FROM = 'Provenance <noreply@provenance.guru>';
@@ -294,7 +295,7 @@ export async function sendCertificateInviteEmail(
   },
 ): Promise<void> {
   const subject = `${params.senderName} shared a certificate with you`;
-  const theme = getPresetThemeDefaults('minimal');
+  const theme = getPresetThemeDefaults('gallery');
   const { ink, wine, inkMuted, surfaceMuted, fontFamily, fontFamilyHeading } = theme;
 
   const artwork = escapeHtml(params.artworkTitle || 'an artwork');

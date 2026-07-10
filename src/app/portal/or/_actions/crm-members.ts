@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -25,12 +26,12 @@ export async function getCrmOwnerContext(): Promise<{
   isOwner: boolean;
 } | null> {
   console.log('[CrmMembers] getCrmOwnerContext started');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   if (!user) return null;
 
   // Check if user has their own artist profile
-  const { data: artistProfile } = await (client as any)
+  const { data: artistProfile } = await asUntyped(client)
     .from('user_profiles')
     .select('id')
     .eq('user_id', user.id)
@@ -42,7 +43,7 @@ export async function getCrmOwnerContext(): Promise<{
   }
 
   // Check for CRM membership
-  const { data: membership, error: membershipErr } = await (client as any)
+  const { data: membership, error: membershipErr } = await asUntyped(client)
     .from('crm_members')
     .select('artist_user_id')
     .eq('member_user_id', user.id)
@@ -65,11 +66,11 @@ export async function getCrmOwnerContext(): Promise<{
 
 export async function getCrmMembers(): Promise<CrmMember[]> {
   console.log('[CrmMembers] getCrmMembers started');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('crm_members')
     .select('member_user_id, invited_by, created_at')
     .eq('artist_user_id', user.id)
@@ -81,10 +82,10 @@ export async function getCrmMembers(): Promise<CrmMember[]> {
   }
 
   // Enrich with email/name from accounts via service-role client
-  const admin = getSupabaseServerAdminClient();
-  const memberIds: string[] = data.map((m: any) => m.member_user_id);
+  const admin = asUntyped(getSupabaseServerAdminClient());
+  const memberIds: string[] = data.map((m: Record<string, unknown>) => m.member_user_id as string);
 
-  const { data: accounts, error: accErr } = await (admin as any)
+  const { data: accounts, error: accErr } = await asUntyped(admin)
     .from('accounts')
     .select('id, email, name')
     .in('id', memberIds);
@@ -92,15 +93,15 @@ export async function getCrmMembers(): Promise<CrmMember[]> {
   if (accErr) console.error('[CrmMembers] enrichment failed', accErr);
 
   const accountMap = new Map<string, { email: string | null; name: string | null }>(
-    (accounts ?? []).map((a: any) => [a.id, { email: a.email, name: a.name }]),
+    (accounts ?? []).map((a: Record<string, unknown>) => [a.id as string, { email: (a.email ?? null) as string | null, name: (a.name ?? null) as string | null }]),
   );
 
-  const members: CrmMember[] = data.map((m: any) => ({
-    member_user_id: m.member_user_id,
-    invited_by:     m.invited_by,
-    created_at:     m.created_at,
-    email:          accountMap.get(m.member_user_id)?.email ?? null,
-    name:           accountMap.get(m.member_user_id)?.name  ?? null,
+  const members: CrmMember[] = data.map((m: Record<string, unknown>) => ({
+    member_user_id: m.member_user_id as string,
+    invited_by:     m.invited_by as string,
+    created_at:     m.created_at as string,
+    email:          accountMap.get(m.member_user_id as string)?.email ?? null,
+    name:           accountMap.get(m.member_user_id as string)?.name  ?? null,
   }));
 
   console.log('[CrmMembers] getCrmMembers success', members.length, 'members');
@@ -117,12 +118,12 @@ export async function inviteCrmMemberByEmail(
 
   if (!trimmed) return { success: false, error: 'Email is required.' };
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   if (!user) return { success: false, error: 'You must be logged in.' };
 
   // Verify caller is an artist (owner)
-  const { data: artistProfile } = await (client as any)
+  const { data: artistProfile } = await asUntyped(client)
     .from('user_profiles')
     .select('id')
     .eq('user_id', user.id)
@@ -134,8 +135,8 @@ export async function inviteCrmMemberByEmail(
   }
 
   // Look up the invited user by exact email via admin client
-  const admin = getSupabaseServerAdminClient();
-  const { data: accounts, error: lookupErr } = await (admin as any)
+  const admin = asUntyped(getSupabaseServerAdminClient());
+  const { data: accounts, error: lookupErr } = await asUntyped(admin)
     .from('accounts')
     .select('id, email')
     .eq('email', trimmed)
@@ -158,7 +159,7 @@ export async function inviteCrmMemberByEmail(
     return { success: false, error: 'You cannot add yourself as a team member.' };
   }
 
-  const { error: insertErr } = await client.from('crm_members').insert({
+  const { error: insertErr } = await asUntyped(client).from('crm_members').insert({
     artist_user_id: user.id,
     member_user_id: found.id,
     invited_by:     user.id,
@@ -187,14 +188,14 @@ export type ColumnLabels = Partial<Record<string, string>>;
  */
 export async function getCrmColumnLabels(): Promise<ColumnLabels> {
   console.log('[CrmMembers] getCrmColumnLabels started');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   if (!user) return {};
 
   const ctx = await getCrmOwnerContext();
   if (!ctx) return {};
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('crm_settings')
     .select('column_labels')
     .eq('artist_user_id', ctx.ownerUserId)
@@ -213,12 +214,12 @@ export async function updateCrmColumnLabel(
   label: string,
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[CrmMembers] updateCrmColumnLabel', stage, label);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   if (!user) return { success: false, error: 'You must be logged in.' };
 
   // Only the artist owner may rename columns
-  const { data: artistProfile } = await (client as any)
+  const { data: artistProfile } = await asUntyped(client)
     .from('user_profiles')
     .select('id')
     .eq('user_id', user.id)
@@ -230,7 +231,7 @@ export async function updateCrmColumnLabel(
   const trimmed = label.trim();
 
   // Read current labels, merge in the change, then upsert — preserves other custom labels
-  const { data: existing } = await (client as any)
+  const { data: existing } = await asUntyped(client)
     .from('crm_settings')
     .select('column_labels')
     .eq('artist_user_id', user.id)
@@ -244,7 +245,7 @@ export async function updateCrmColumnLabel(
     delete merged[stage];
   }
 
-  const { error } = await client.from('crm_settings').upsert({
+  const { error } = await asUntyped(client).from('crm_settings').upsert({
     artist_user_id: user.id,
     column_labels: merged,
     updated_at: new Date().toISOString(),
@@ -265,11 +266,11 @@ export async function removeCrmMember(
   memberUserId: string,
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[CrmMembers] removeCrmMember', memberUserId);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   if (!user) return { success: false, error: 'You must be logged in.' };
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('crm_members')
     .delete()
     .eq('artist_user_id', user.id)

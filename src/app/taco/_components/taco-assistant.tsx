@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { Paperclip, Send, Loader2, X, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@kit/ui/button';

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -21,7 +22,7 @@ import { createArtworkStripeListing } from './create-artwork-stripe-listing';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     
     // Get form data
     const debugUserAgent = formData.get('debugUserAgent') as string | null;
@@ -135,7 +136,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         .single();
       accountEmail = account?.email || null;
       accountName = account?.name || null;
-      accountRole = getUserRole(account?.public_data as Record<string, any>);
+      accountRole = getUserRole(account?.public_data as Record<string, unknown>);
       if (posterRoleRaw && isValidRole(posterRoleRaw)) {
         posterRole = posterRoleRaw as UserRole;
       }
@@ -153,7 +154,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       if (effectiveRole !== USER_ROLES.GALLERY) {
         return { error: 'Linking to an existing Certificate of Authenticity is only available when posting as a gallery.' };
       }
-      const { data: src, error: srcErr } = await (client as any)
+      const { data: src, error: srcErr } = await asUntyped(client)
         .from('artworks')
         .select('*')
         .eq('certificate_number', sourceCoaCertificateNumber)
@@ -266,7 +267,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         } else if (effectiveRole === USER_ROLES.ARTIST) {
           artistAccountId = userId;
           try {
-            const { data: ownArtistProfile } = await (client as any)
+            const { data: ownArtistProfile } = await asUntyped(client)
               .from('user_profiles')
               .select('id')
               .eq('user_id', userId)
@@ -329,7 +330,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         if (galleryProfileId && effectiveRole === USER_ROLES.GALLERY) {
           // Verify the gallery profile belongs to this user OR user is a gallery member
           try {
-            const { data: profile } = await (client as any)
+            const { data: profile } = await asUntyped(client)
               .from('user_profiles')
               .select('id, user_id, role')
               .eq('id', galleryProfileId)
@@ -342,7 +343,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               let isMember = false;
               
               if (!isOwner) {
-                const { data: member } = await (client as any)
+                const { data: member } = await asUntyped(client)
                   .from('gallery_members')
                   .select('id')
                   .eq('gallery_profile_id', galleryProfileId)
@@ -362,7 +363,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         }
 
         if (sourceCoaRow) {
-          const s = sourceCoaRow as Record<string, any>;
+          const s = sourceCoaRow as Record<string, unknown>;
           insertData.source_artwork_id = s.id;
           insertData.title = title.trim() || s.title || insertData.title;
           insertData.description = description || s.description || '';
@@ -391,7 +392,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           insertData.metadata = { ...metaB, ...metaA };
         }
 
-        const { data: artwork, error } = await (client as any)
+        const { data: artwork, error } = await asUntyped(client)
           .from('artworks')
           .insert(insertData)
           .select('id')
@@ -467,7 +468,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           if ((effectiveRole === USER_ROLES.GALLERY || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
             try {
               // Check if unclaimed profile already exists for this artist name
-              const { data: existingProfile } = await (client as any)
+              const { data: existingProfile } = await asUntyped(client)
                 .from('user_profiles')
                 .select('id')
                 .eq('name', artistName.trim())
@@ -478,7 +479,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               
               // Only create if it doesn't exist
               if (!existingProfile) {
-                const { error: profileError } = await (client as any)
+                const { error: profileError } = await asUntyped(client)
                   .from('user_profiles')
                   .insert({
                     user_id: null, // Unclaimed profile
@@ -539,7 +540,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           if (exhibitionId && artwork.id) {
             try {
               // Verify user owns this exhibition
-              const { data: exhibition } = await (client as any)
+              const { data: exhibition } = await asUntyped(client)
                 .from('exhibitions')
                 .select('gallery_id')
                 .eq('id', exhibitionId)
@@ -547,7 +548,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
               if (exhibition && exhibition.gallery_id === userId) {
                 // Add artwork to exhibition
-                const { error: exhibitionInsertError } = await (client as any)
+                const { error: exhibitionInsertError } = await asUntyped(client)
                   .from('exhibition_artworks')
                   .insert({
                     exhibition_id: exhibitionId,
@@ -606,14 +607,14 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             }
           }
         }
-      } catch (error: any) {
+      } catch (error) {
         logger.error('create_artworks_batch_artwork_fatal', {
           index: i,
           userId,
           fileName: imageFile?.name,
           error,
         });
-        errors.push(`Error processing artwork ${i + 1}: ${error?.message || 'Unknown error'}`);
+        errors.push(`Error processing artwork ${i + 1}: ${(error as Error)?.message || 'Unknown error'}`);
       }
     }
 
@@ -655,11 +656,11 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       artworkIds,
       errors: errors.length > 0 ? errors : undefined
     };
-  } catch (error: any) {
+  } catch (error) {
     logger.error('artwork_post_fatal', {
       userId,
-      message: error?.message ?? String(error),
-      stack: error?.stack,
+      message: (error as Error)?.message ?? String(error),
+      stack: (error as Error)?.stack,
     });
     return { error: 'An unexpected error occurred' };
   }

@@ -4,9 +4,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { logger } from '~/lib/logger';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export async function toggleFollow(artistId: string, currentUserId: string) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
 
     // Check if already following
     const { data: existing } = await client

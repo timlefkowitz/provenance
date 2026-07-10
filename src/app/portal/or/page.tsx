@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -32,7 +33,7 @@ export default async function OpportunitiesPage() {
   let needsProfile = false;
 
   if (!artistProfile) {
-    const { data: membership, error: membershipErr } = await (client as any)
+    const { data: membership, error: membershipErr } = await asUntyped(client)
       .from('crm_members')
       .select('artist_user_id')
       .eq('member_user_id', user.id)
@@ -100,7 +101,7 @@ export default async function OpportunitiesPage() {
 
   const [leads, artworksResult, initialCrmMembers, initialColumnLabels] = await Promise.all([
     getLeadsForArtist(),
-    (client as any)
+    asUntyped(client)
       .from('artworks')
       .select('id, title, image_url')
       .eq('account_id', ownerUserId)

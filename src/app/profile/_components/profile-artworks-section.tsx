@@ -60,7 +60,7 @@ export function ProfileArtworksSection({ artworks }: { artworks: Artwork[] }) {
         </CardHeader>
         <CardContent>
           <p className="text-ink/70 font-serif text-center py-8">
-            You haven't added any artworks yet.
+            You haven&apos;t added any artworks yet.
           </p>
         </CardContent>
       </Card>

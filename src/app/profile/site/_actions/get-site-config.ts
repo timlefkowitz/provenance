@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type {
   TemplateId,
@@ -48,7 +49,7 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
   console.log('[Sites] getSiteConfig query', { profileId });
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('profile_sites')
     .select('*')
     .eq('profile_id', profileId)

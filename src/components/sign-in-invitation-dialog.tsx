@@ -72,7 +72,7 @@ export function SignInInvitationDialog({
           </Button>
         </DialogFooter>
         <div className="text-center text-sm text-ink/60 pt-2">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link
             href="/auth/sign-up"
             className="text-wine hover:text-wine/80 underline font-semibold"

@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export async function OnboardingGuard({ children }: { children: React.ReactNode }) {
   try {
     const headersList = await headers();
@@ -22,7 +23,7 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
       return <>{children}</>;
     }
 
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
 
     // Use getClaims() instead of getSession() to avoid "Auth session missing!" errors
     // This is the same approach used in middleware and other server components
@@ -59,9 +60,9 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
         redirect('/onboarding');
       }
     }
-  } catch (error: any) {
+  } catch (error) {
     // Re-throw redirect errors - they're expected and handled by Next.js
-    if (error?.digest?.startsWith('NEXT_REDIRECT')) {
+    if ((error as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
     

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { Grant } from '~/lib/grants';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Insert new grants for the current user. Used by the chat API after OpenAI returns recommendations.
  */
@@ -14,7 +15,7 @@ export async function saveArtistGrants(
   if (!grants.length) return { saved: 0, error: null };
 
   console.log('[Grants] saveArtistGrants', grants.length, 'grants');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const rows = grants.map((g) => ({
     user_id: userId,
     artist_profile_id: artistProfileId,

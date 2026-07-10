@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
@@ -26,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Subscription required' }, { status: 403 });
     }
 
-    const { data: inv, error: invErr } = await (client as any)
+    const { data: inv, error: invErr } = await asUntyped(client)
       .from('invoices')
       .select(
         'id, invoice_number, client_name, client_email, status, currency, due_date, tax_cents, notes, account_id',
@@ -40,7 +41,7 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const { data: lines, error: lineErr } = await (client as any)
+    const { data: lines, error: lineErr } = await asUntyped(client)
       .from('invoice_line_items')
       .select('description, quantity, unit_amount_cents')
       .eq('invoice_id', id)

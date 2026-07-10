@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Upload, X, FileText, Loader2, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { saveOnboardingAnswers, type OnboardingAnswers } from '../_actions/save-onboarding-answers';
 
@@ -293,7 +293,7 @@ export function TacoOnboardingChat() {
             {step === 'welcome' && (
               <div className="flex gap-2">
                 <Button onClick={handleWelcomeReady} className="flex-1 font-serif bg-wine text-parchment hover:bg-wine/80">
-                  Ready — let's go
+                  Ready — let&apos;s go
                 </Button>
                 <Button variant="outline" onClick={() => router.push('/artworks/add?first_run=1')} className="font-serif text-ink/50 border-wine/20 hover:bg-wine/5">
                   Skip all

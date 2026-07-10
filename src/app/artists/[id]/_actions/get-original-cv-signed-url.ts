@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -32,7 +33,7 @@ export async function getOriginalCvSignedUrl(
   }
 
   // Fetch the profile row — must belong to the authenticated user
-  const { data: profileRow, error: profileErr } = await (client as any)
+  const { data: profileRow, error: profileErr } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, artist_cv_file_path')
     .eq('id', profileId)

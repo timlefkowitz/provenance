@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Link from 'next/link';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -17,7 +18,7 @@ export default async function AdminApiKeysPage() {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- api_keys not in generated DB types yet
-  const { data: keys, error } = await (client as any)
+  const { data: keys, error } = await asUntyped(client)
     .from('api_keys')
     .select('id, name, scopes, planet, is_active, last_used_at, created_at, expires_at')
     .eq('account_id', user.id)

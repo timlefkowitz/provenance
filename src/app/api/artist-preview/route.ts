@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     let pinnedArtworkIds: string[] | null = null;
 
     if (accountId) {
-      const { data: account, error: accountError } = await (client as any)
+      const { data: account, error: accountError } = await asUntyped(client)
         .from('accounts')
         .select('id, name, picture_url, public_data')
         .eq('id', accountId)
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
         if (ids && ids.length > 0) pinnedArtworkIds = ids;
       }
     } else if (posterAccountId) {
-      const { data: account } = await (client as any)
+      const { data: account } = await asUntyped(client)
         .from('accounts')
         .select('id, name, picture_url, public_data')
         .eq('id', posterAccountId)
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
         // poster account name is the owner's personal name (e.g. "timothy lefkowitz").
         // Prefer the gallery profile (e.g. "FL!GHT") so the artist panel shows the
         // gallery that posted it, mirroring the certificate page's "Uploaded by Gallery".
-        const posterRole = getUserRole(publicData as Record<string, any> | null);
+        const posterRole = getUserRole(publicData as Record<string, unknown> | null);
         if (posterRole === USER_ROLES.GALLERY) {
           const { data: galleryProfiles } = await sb
             .from('user_profiles')

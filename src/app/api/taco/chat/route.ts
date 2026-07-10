@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // -- Auth --
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
       error: authError,
@@ -268,7 +269,7 @@ export async function POST(request: NextRequest) {
     // Optionally enrich with artist profile context for personalized responses
     let profileContext: string | null = null;
     try {
-      const { data: artistProfile } = await (client as any)
+      const { data: artistProfile } = await asUntyped(client)
         .from('user_profiles')
         .select('medium, has_sold_work, onboarding_answers')
         .eq('user_id', user.id)
@@ -538,7 +539,7 @@ export async function POST(request: NextRequest) {
                 void (async () => {
                   try {
                     const adminClient = getSupabaseServerAdminClient();
-                    const { error: flagErr } = await (adminClient as any)
+                    const { error: flagErr } = await asUntyped(adminClient)
                       .from('taco_unhandled_requests')
                       .insert({
                         user_id: user.id,
@@ -611,7 +612,7 @@ export async function POST(request: NextRequest) {
     void (async () => {
       try {
         const adminClient = getSupabaseServerAdminClient();
-        const { error: logError } = await (adminClient as any)
+        const { error: logError } = await asUntyped(adminClient)
           .from('taco_usage_logs')
           .insert({
             user_id: user.id,

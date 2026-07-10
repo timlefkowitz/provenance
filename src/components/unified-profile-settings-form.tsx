@@ -12,6 +12,7 @@ import { toast } from '@kit/ui/sonner';
 import { useTranslation } from 'react-i18next';
 import { updateMedium } from '~/app/settings/_actions/update-medium';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export function UnifiedProfileSettingsForm({
   userId,
   currentName,
@@ -123,8 +124,8 @@ export function UnifiedProfileSettingsForm({
         setSuccess(true);
         toast.success(t('updateProfileSuccess'));
         setTimeout(() => setSuccess(false), 3000);
-      } catch (e: any) {
-        const errorMessage = e?.message || t('updateProfileError');
+      } catch (e) {
+        const errorMessage = (e as Error)?.message || t('updateProfileError');
         setError(errorMessage);
         toast.error(errorMessage);
       }

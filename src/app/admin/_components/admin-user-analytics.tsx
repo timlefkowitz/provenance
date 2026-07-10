@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import {
   Activity,
   Clock,
@@ -125,7 +126,7 @@ async function loadOnlineNow() {
 
   // 1) Active users in the heartbeat window.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error, count } = await (admin as any)
+  const { data, error, count } = await asUntyped(admin)
     .from('user_presence')
     .select('user_id, last_seen_at, total_active_minutes', {
       count: 'exact',
@@ -147,7 +148,7 @@ async function loadOnlineNow() {
 
   // 2) Diagnostic counters so the panel can explain a "0 online" state.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count: totalEverSeen, error: totalErr } = await (admin as any)
+  const { count: totalEverSeen, error: totalErr } = await asUntyped(admin)
     .from('user_presence')
     .select('user_id', { count: 'exact', head: true });
   if (totalErr) {
@@ -155,7 +156,7 @@ async function loadOnlineNow() {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: lastEverRows, error: lastErr } = await (admin as any)
+  const { data: lastEverRows, error: lastErr } = await asUntyped(admin)
     .from('user_presence')
     .select('last_seen_at')
     .order('last_seen_at', { ascending: false })
@@ -173,7 +174,7 @@ async function loadOnlineNow() {
     lastEverSeenAt,
   });
 
-  const ids = (data ?? []).map((r: any) => r.user_id as string);
+  const ids = (data ?? []).map((r: Record<string, unknown>) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
   return {
@@ -181,7 +182,7 @@ async function loadOnlineNow() {
     totalEverSeen: totalEverSeen ?? 0,
     lastEverSeenAt,
     tableMissing: false,
-    rows: (data ?? []).map((r: any) => {
+    rows: (data ?? []).map((r: Record<string, unknown>) => {
       const acc = accounts.get(r.user_id as string);
       return {
         id: r.user_id as string,
@@ -197,7 +198,7 @@ async function loadOnlineNow() {
 async function loadRecentByLastSeen() {
   const admin = getSupabaseServerAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('user_presence')
     .select('user_id, last_seen_at, total_active_minutes')
     .order('last_seen_at', { ascending: false })
@@ -208,10 +209,10 @@ async function loadRecentByLastSeen() {
     return [];
   }
 
-  const ids = (data ?? []).map((r: any) => r.user_id as string);
+  const ids = (data ?? []).map((r: Record<string, unknown>) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
-  return (data ?? []).map((r: any) => {
+  return (data ?? []).map((r: Record<string, unknown>) => {
     const acc = accounts.get(r.user_id as string);
     return {
       id: r.user_id as string,
@@ -226,7 +227,7 @@ async function loadRecentByLastSeen() {
 async function loadTopByActiveTime() {
   const admin = getSupabaseServerAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('user_presence')
     .select('user_id, total_active_minutes, last_seen_at')
     .order('total_active_minutes', { ascending: false })
@@ -237,10 +238,10 @@ async function loadTopByActiveTime() {
     return [];
   }
 
-  const ids = (data ?? []).map((r: any) => r.user_id as string);
+  const ids = (data ?? []).map((r: Record<string, unknown>) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
-  return (data ?? []).map((r: any) => {
+  return (data ?? []).map((r: Record<string, unknown>) => {
     const acc = accounts.get(r.user_id as string);
     return {
       id: r.user_id as string,
@@ -352,7 +353,7 @@ async function loadNewestAccounts() {
 
 async function loadStreakLeaders() {
   const admin = getSupabaseServerAdminClient();
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('user_goals')
     .select('user_id, longest_streak_days, current_streak_days')
     .eq('is_default', true)
@@ -365,10 +366,10 @@ async function loadStreakLeaders() {
     return [];
   }
 
-  const ids = (data ?? []).map((r: any) => r.user_id as string);
+  const ids = (data ?? []).map((r: Record<string, unknown>) => r.user_id as string);
   const accounts = await fetchAccountsByIds(ids);
 
-  return (data ?? []).map((r: any) => {
+  return (data ?? []).map((r: Record<string, unknown>) => {
     const acc = accounts.get(r.user_id as string);
     return {
       id: r.user_id as string,

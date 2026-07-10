@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
@@ -22,7 +23,7 @@ async function loadGalleryRegistryArtworkForValidate(
   client: any,
   artworkId: string,
 ) {
-  const { data: artwork, error: artworkError } = await (client as any)
+  const { data: artwork, error: artworkError } = await asUntyped(client)
     .from('artworks')
     .select('id, account_id, artist_account_id, gallery_profile_id, status, is_public, certificate_type')
     .eq('id', artworkId)
@@ -80,7 +81,7 @@ export async function setRegistryArtwork(args: SetRegistryArtworkArgs): Promise<
     galleryProfileId: args.galleryProfileId,
   });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -112,7 +113,7 @@ export async function setRegistryArtwork(args: SetRegistryArtworkArgs): Promise<
     const galleryErr = assertGalleryRegistryArtworkEligible(artwork, args.galleryProfileId);
     if (galleryErr) return galleryErr;
 
-    const { error: updateError } = await (client as any)
+    const { error: updateError } = await asUntyped(client)
       .from('user_profiles')
       .update({
         registry_artwork_id: args.artworkId,
@@ -154,7 +155,7 @@ export async function setRegistryArtwork(args: SetRegistryArtworkArgs): Promise<
       .eq('id', user.id)
       .single();
 
-    const { error: upsertError } = await (client as any)
+    const { error: upsertError } = await asUntyped(client)
       .from('user_profiles')
       .upsert(
         {
@@ -198,7 +199,7 @@ export async function setGalleryDirectoryCertificates(args: {
     count: args.artworkIds.length,
   });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -240,7 +241,7 @@ export async function setGalleryDirectoryCertificates(args: {
   }
 
   const primary = orderedUnique[0] ?? null;
-  const { error: updateError } = await (client as any)
+  const { error: updateError } = await asUntyped(client)
     .from('user_profiles')
     .update({
       registry_artwork_id: primary,
@@ -275,7 +276,7 @@ export async function toggleGalleryDirectoryCertificate(args: {
 }): Promise<ActionResult> {
   console.log('[Registry] toggleGalleryDirectoryCertificate started', args);
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -289,7 +290,7 @@ export async function toggleGalleryDirectoryCertificate(args: {
     return { success: false, error: 'You do not have permission to manage this gallery' };
   }
 
-  const { data: profileRow, error: profileErr } = await (client as any)
+  const { data: profileRow, error: profileErr } = await asUntyped(client)
     .from('user_profiles')
     .select('registry_artwork_id, registry_artwork_ids')
     .eq('id', args.galleryProfileId)
@@ -333,7 +334,7 @@ export async function toggleGalleryDirectoryCertificate(args: {
   }
 
   const primary = next[0] ?? null;
-  const { error: updateError } = await (client as any)
+  const { error: updateError } = await asUntyped(client)
     .from('user_profiles')
     .update({
       registry_artwork_id: primary,
@@ -369,7 +370,7 @@ export async function clearRegistryArtwork(args: {
 }): Promise<ActionResult> {
   console.log('[Registry] clearRegistryArtwork started', args);
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -388,7 +389,7 @@ export async function clearRegistryArtwork(args: {
       return { success: false, error: 'You do not have permission to manage this gallery' };
     }
 
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('user_profiles')
       .update({ registry_artwork_id: null, registry_artwork_ids: null })
       .eq('id', args.galleryProfileId)
@@ -399,7 +400,7 @@ export async function clearRegistryArtwork(args: {
       return { success: false, error: 'Failed to clear registry photo' };
     }
   } else {
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('user_profiles')
       .update({ registry_artwork_id: null })
       .eq('user_id', user.id)

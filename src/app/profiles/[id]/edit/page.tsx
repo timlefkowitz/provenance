@@ -6,6 +6,7 @@ import { GalleryMembersManager } from '../../_components/gallery-members-manager
 import { DeleteProfileButton } from '../../_components/delete-profile-button';
 import { USER_ROLES } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Edit Profile | Provenance',
 };
@@ -15,7 +16,7 @@ export default async function EditProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {

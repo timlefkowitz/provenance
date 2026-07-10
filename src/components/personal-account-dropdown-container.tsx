@@ -1,5 +1,6 @@
 'use client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -170,7 +171,7 @@ export function ProfileAccountDropdownContainer(props: {
         }));
 
         // 2. Gallery team memberships
-        const { data: memberRows, error: memberError } = await (client as any)
+        const { data: memberRows, error: memberError } = await asUntyped(client)
           .from('gallery_members')
           .select('gallery_profile_id, role')
           .eq('user_id', userId);
@@ -191,7 +192,7 @@ export function ProfileAccountDropdownContainer(props: {
         let teamProfiles: ProfileWithSource[] = [];
 
         if (memberProfileIds.length > 0) {
-          const { data: teamData, error: teamError } = await (client as any)
+          const { data: teamData, error: teamError } = await asUntyped(client)
             .from('user_profiles')
             .select('*')
             .in('id', memberProfileIds)

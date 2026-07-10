@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -67,7 +68,7 @@ export async function addArtworkAttachment(
     return { success: false, error: 'Only images (JPEG, PNG, WebP, GIF) or PDF are allowed' };
   }
 
-  const { data: artwork, error: artErr } = await (client as any)
+  const { data: artwork, error: artErr } = await asUntyped(client)
     .from('artworks')
     .select('id, account_id, gallery_profile_id')
     .eq('id', artworkId)
@@ -116,7 +117,7 @@ export async function addArtworkAttachment(
 
   const fileUrl = getArtworkImagePublicUrl(storagePath);
 
-  const { data: row, error: insertError } = await (client as any)
+  const { data: row, error: insertError } = await asUntyped(client)
     .from('artwork_attachments')
     .insert({
       artwork_id: artworkId,

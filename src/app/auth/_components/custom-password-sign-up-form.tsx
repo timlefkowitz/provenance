@@ -23,6 +23,7 @@ import { Trans } from '@kit/ui/trans';
 import { RefinedPasswordSchema, refineRepeatPassword } from '../../../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth/src/schemas/password.schema';
 import { TermsAndConditionsFormField } from '../../../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth/src/components/terms-and-conditions-form-field';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const CustomPasswordSignUpSchema = z
   .object({
     username: z.string()

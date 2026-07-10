@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   const { q } = parseResult.data;
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const artistUserId = await resolveArtistUserId(client, user.id);
     const pattern = `%${escapeIlike(q)}%`;
 
-    const { data: contacts, error } = await (client as any)
+    const { data: contacts, error } = await asUntyped(client)
       .from('artist_leads')
       .select('id, contact_name, contact_email')
       .eq('artist_user_id', artistUserId)

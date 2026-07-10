@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { EditProvenanceForm } from './_components/edit-provenance-form';
@@ -21,7 +22,7 @@ export default async function EditProvenancePage({
   }
 
   // Fetch artwork - only the owner can edit
-  const { data: artwork, error } = await (client as any)
+  const { data: artwork, error } = await asUntyped(client)
     .from('artworks')
     .select('*')
     .eq('id', id)
@@ -42,7 +43,7 @@ export default async function EditProvenancePage({
           Edit Provenance Information
         </h1>
         <p className="text-ink/70 font-serif">
-          Update the provenance details for "{artwork.title}"
+          Update the provenance details for &quot;{artwork.title}&quot;
         </p>
       </div>
 

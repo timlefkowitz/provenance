@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES } from '~/lib/user-roles';
@@ -12,7 +13,7 @@ export async function GET() {
     }
 
     // Check if user owns an active gallery profile
-    const { data: ownedProfile } = await (client as any)
+    const { data: ownedProfile } = await asUntyped(client)
       .from('user_profiles')
       .select('id')
       .eq('user_id', user.id)
@@ -27,7 +28,7 @@ export async function GET() {
     }
 
     // Check if user is a member of any gallery team
-    const { data: memberRows } = await (client as any)
+    const { data: memberRows } = await asUntyped(client)
       .from('gallery_members')
       .select('gallery_profile_id')
       .eq('user_id', user.id)
@@ -36,7 +37,7 @@ export async function GET() {
     if (memberRows && memberRows.length > 0) {
       const galleryProfileId = (memberRows[0] as { gallery_profile_id: string }).gallery_profile_id;
 
-      const { data: teamProfile } = await (client as any)
+      const { data: teamProfile } = await asUntyped(client)
         .from('user_profiles')
         .select('name')
         .eq('id', galleryProfileId)

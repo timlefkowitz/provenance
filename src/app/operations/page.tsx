@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
@@ -295,7 +296,7 @@ export default async function OperationsPage() {
     vendorsRes,
     userExhibitionsRes,
   ] = await Promise.all([
-    (client as any)
+    asUntyped(client)
       .from('artwork_loan_agreements')
       .select(
         `
@@ -326,7 +327,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('invoices')
       .select(
         `
@@ -350,7 +351,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('artworks')
       .select(
         `
@@ -365,7 +366,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('title'),
-    (client as any)
+    asUntyped(client)
       .from('consignments')
       .select(
         `
@@ -393,7 +394,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('condition_reports')
       .select(
         `
@@ -415,7 +416,7 @@ export default async function OperationsPage() {
       .eq('account_id', user.id)
       .order('created_at', { ascending: false })
       .limit(200),
-    (client as any)
+    asUntyped(client)
       .from('artwork_shipments')
       .select(
         `
@@ -444,7 +445,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('insurance_valuations')
       .select(
         `
@@ -474,7 +475,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('acquisitions')
       .select(
         `
@@ -501,7 +502,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('exhibition_object_plans')
       .select(
         `
@@ -533,7 +534,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('artwork_locations')
       .select(
         `
@@ -558,7 +559,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('vendors')
       .select(
         `
@@ -580,7 +581,7 @@ export default async function OperationsPage() {
       )
       .eq('account_id', user.id)
       .order('created_at', { ascending: false }),
-    (client as any)
+    asUntyped(client)
       .from('exhibitions')
       .select('id, title, start_date, end_date, location')
       .eq('gallery_id', user.id)
@@ -692,7 +693,7 @@ export default async function OperationsPage() {
   const artworkIdList = rawArtworks.map((a) => a.id);
   let provRes: { data: unknown; error: unknown } = { data: null, error: null };
   if (artworkIdList.length) {
-    provRes = await (client as any)
+    provRes = await asUntyped(client)
       .from('provenance_events')
       .select(`id, artwork_id, event_type, event_date, metadata, artwork:artworks(id, title)`)
       .in('artwork_id', artworkIdList)

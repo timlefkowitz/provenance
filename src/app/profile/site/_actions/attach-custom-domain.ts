@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
 
@@ -56,7 +57,7 @@ export async function attachCustomDomainAction(
   }
 
   // Ownership check
-  const { data: siteRow, error: siteErr } = await (client as any)
+  const { data: siteRow, error: siteErr } = await asUntyped(client)
     .from('profile_sites')
     .select('profile_id, handle')
     .eq('profile_id', profileId)
@@ -66,7 +67,7 @@ export async function attachCustomDomainAction(
     return { success: false, error: 'Site not found. Save your site first.' };
   }
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('user_id')
     .eq('id', profileId)
@@ -112,7 +113,7 @@ export async function attachCustomDomainAction(
 
   // Persist to DB
   const now = new Date().toISOString();
-  const { error: updateErr } = await (client as any)
+  const { error: updateErr } = await asUntyped(client)
     .from('profile_sites')
     .update({
       custom_domain: normalizedDomain,
@@ -151,7 +152,7 @@ export async function pollCustomDomainVerification(
 
   const client = getSupabaseServerClient();
 
-  const { data: siteRow } = await (client as any)
+  const { data: siteRow } = await asUntyped(client)
     .from('profile_sites')
     .select('custom_domain, custom_domain_verified_at')
     .eq('profile_id', profileId)
@@ -178,7 +179,7 @@ export async function pollCustomDomainVerification(
   const data = await res.json();
   if (data.verified) {
     const now = new Date().toISOString();
-    await (client as any)
+    await asUntyped(client)
       .from('profile_sites')
       .update({ custom_domain_verified_at: now, updated_at: now })
       .eq('profile_id', profileId);

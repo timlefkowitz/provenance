@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -10,7 +11,7 @@ export async function getArtworksFromGalleryExhibitions(galleryId: string, limit
 
   try {
     // First, get all exhibition IDs for this gallery
-    const { data: exhibitions, error: exhibitionsError } = await (client as any)
+    const { data: exhibitions, error: exhibitionsError } = await asUntyped(client)
       .from('exhibitions')
       .select('id')
       .eq('gallery_id', galleryId);
@@ -25,10 +26,10 @@ export async function getArtworksFromGalleryExhibitions(galleryId: string, limit
       return [];
     }
 
-    const exhibitionIds = exhibitions.map((e: any) => e.id);
+    const exhibitionIds = exhibitions.map((e: Record<string, unknown>) => e.id);
 
     // Get all artwork IDs linked to these exhibitions
-    const { data: exhibitionArtworks, error: artworksError } = await (client as any)
+    const { data: exhibitionArtworks, error: artworksError } = await asUntyped(client)
       .from('exhibition_artworks')
       .select('artwork_id')
       .in('exhibition_id', exhibitionIds);
@@ -51,7 +52,7 @@ export async function getArtworksFromGalleryExhibitions(galleryId: string, limit
     }
 
     // Fetch the actual artworks
-    const { data: artworks, error: artworksFetchError } = await (client as any)
+    const { data: artworks, error: artworksFetchError } = await asUntyped(client)
       .from('artworks')
       .select(
         'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status'

@@ -34,7 +34,7 @@ export function ShopfrontTemplate({ site }: { site: SiteData }) {
               </div>
             )}
             {site.logo_image_url ? (
-              <img src={site.logo_image_url} alt={site.display_name ?? site.name} className="h-7 w-auto object-contain" />
+              <Image src={site.logo_image_url} alt={site.display_name ?? site.name} width={0} height={0} sizes="100vw" className="h-7 w-auto object-contain" />
             ) : (
               <span className="font-bold text-base" style={{ fontFamily: headingFont }}>{site.display_name ?? site.name}</span>
             )}

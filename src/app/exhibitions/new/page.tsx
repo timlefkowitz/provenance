@@ -3,12 +3,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, getRoleLabel, USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { ExhibitionForm } from '../_components/exhibition-form';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'New Exhibition | Provenance',
 };
 
 export default async function NewExhibitionPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -25,7 +26,7 @@ export default async function NewExhibitionPage() {
     redirect('/registry');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
   const allowedRoles = new Set<UserRole>([USER_ROLES.GALLERY, USER_ROLES.INSTITUTION]);
   if (!userRole || !allowedRoles.has(userRole)) {
     console.warn('[Exhibitions] NewExhibitionPage access denied', { userRole });

@@ -2,9 +2,10 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export async function checkIsFollowing(artistId: string, currentUserId: string): Promise<boolean> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
 
     const { data } = await client
       .from('user_follows')

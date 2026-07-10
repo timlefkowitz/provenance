@@ -30,9 +30,12 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center" style={{ color: accentColor }}>
             {site.logo_image_url ? (
-              <img
+              <Image
                 src={site.logo_image_url}
                 alt={site.display_name ?? site.name}
+                width={0}
+                height={0}
+                sizes="100vw"
                 className="h-8 w-auto object-contain"
               />
             ) : (
@@ -87,9 +90,12 @@ export function EditorialTemplate({ site }: { site: SiteData }) {
             {site.medium || site.role}
           </p>
           {site.logo_image_url ? (
-            <img
+            <Image
               src={site.logo_image_url}
               alt={site.display_name ?? site.name}
+              width={0}
+              height={0}
+              sizes="100vw"
               className="max-h-32 md:max-h-48 w-auto object-contain"
               style={heroBg ? { filter: 'brightness(0) invert(1)' } : undefined}
             />

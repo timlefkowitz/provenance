@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { Grant } from '~/lib/grants';
 
@@ -28,7 +29,7 @@ export async function getArtistGrants(userId: string): Promise<ArtistGrantRow[]>
   const client = getSupabaseServerClient();
 
   // Fetch grants — RLS policy already covers the OR logic; still explicit for clarity
-  const { data: grants, error: grantsError } = await (client as any)
+  const { data: grants, error: grantsError } = await asUntyped(client)
     .from('artist_grants')
     .select('*')
     .or(`user_id.eq.${userId},user_id.is.null,is_community.eq.true`)
@@ -54,7 +55,7 @@ export async function getArtistGrants(userId: string): Promise<ArtistGrantRow[]>
 
   // Fetch the viewer's upvotes for these grants
   const grantIds = rows.map((g) => g.id);
-  const { data: upvotes } = await (client as any)
+  const { data: upvotes } = await asUntyped(client)
     .from('grant_upvotes')
     .select('grant_id')
     .eq('user_id', userId)

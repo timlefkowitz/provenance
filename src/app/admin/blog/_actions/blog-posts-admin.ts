@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -123,7 +124,7 @@ export async function getDefaultAuthorNameForAdmin(): Promise<string> {
     if (!user) {
       return 'Editorial';
     }
-    const { data: account } = await (client as any)
+    const { data: account } = await asUntyped(client)
       .from('accounts')
       .select('name')
       .eq('id', user.id)

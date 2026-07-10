@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -18,7 +19,7 @@ export async function findProfileWithSite(
   console.log('[Sites] findProfileWithSite', { count: profileIds.length });
 
   const client = getSupabaseServerClient();
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('profile_sites')
     .select('profile_id, updated_at, published_at')
     .in('profile_id', profileIds)

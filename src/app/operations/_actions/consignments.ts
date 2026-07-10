@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -38,7 +39,7 @@ async function assertArtworkOwned(
   userId: string,
   artworkId: string,
 ): Promise<boolean> {
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('id', artworkId)
@@ -124,7 +125,7 @@ export async function createConsignment(raw: z.infer<typeof createSchema>) {
     notes: parsed.data.notes ?? null,
     status: 'draft' as const,
   };
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('consignments')
     .insert(row)
     .select('id')
@@ -168,7 +169,7 @@ export async function updateConsignment(raw: z.infer<typeof updateSchema>) {
     }
   }
 
-  const { data: prior, error: priorErr } = await (client as any)
+  const { data: prior, error: priorErr } = await asUntyped(client)
     .from('consignments')
     .select('id, status, artwork_id, consignee_name, end_date, consignee_email, consignee_user_id')
     .eq('id', id)
@@ -200,7 +201,7 @@ export async function updateConsignment(raw: z.infer<typeof updateSchema>) {
     patch.sold_at = new Date().toISOString();
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('consignments')
     .update(patch)
     .eq('id', id)
@@ -299,7 +300,7 @@ export async function duplicateConsignment(consignmentId: string) {
   if (!user) {
     return { success: false as const, error: 'You must be logged in.' };
   }
-  const { data: row, error } = await (client as any)
+  const { data: row, error } = await asUntyped(client)
     .from('consignments')
     .select('*')
     .eq('id', consignmentId)
@@ -325,7 +326,7 @@ export async function duplicateConsignment(consignmentId: string) {
     sale_price_cents: null,
     alert_sent_at: null,
   };
-  const { data: created, error: ins } = await (client as any)
+  const { data: created, error: ins } = await asUntyped(client)
     .from('consignments')
     .insert(insert)
     .select('id')
@@ -355,7 +356,7 @@ export async function deleteConsignment(consignmentId: string) {
   if (!user) {
     return { success: false as const, error: 'You must be logged in.' };
   }
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('consignments')
     .delete()
     .eq('id', consignmentId)

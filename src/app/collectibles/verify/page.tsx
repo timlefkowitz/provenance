@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Link from 'next/link';
 import { CheckCircle2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -27,7 +28,7 @@ export default async function VerifyCollectiblePage({
     const client = getSupabaseServerClient();
     console.log('[Collectibles] verify lookup', { cert });
     // Only public, verified collectibles are discoverable by certificate number.
-    const { data, error } = await (client as any)
+    const { data, error } = await asUntyped(client)
       .from('collectibles')
       .select('id, title, category, is_public, status')
       .eq('certificate_number', cert)

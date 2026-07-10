@@ -59,7 +59,7 @@ export async function getExhibitionShareMeta(
       ownerName = account?.name ?? null;
 
       const accountRole = getUserRole(
-        (account?.public_data as Record<string, any>) ?? {},
+        (account?.public_data as Record<string, unknown>) ?? {},
       );
       const isGallery =
         accountRole === USER_ROLES.GALLERY ||

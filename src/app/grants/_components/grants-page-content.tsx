@@ -24,7 +24,7 @@ export function GrantsPageContent({
   userId,
   initialGrants,
   hasCv,
-  artistProfileId,
+  artistProfileId: _artistProfileId,
   artistLocation,
 }: GrantsPageContentProps) {
   const [grants, setGrants] = useState<ArtistGrantRow[]>(initialGrants);

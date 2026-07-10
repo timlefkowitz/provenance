@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user owns the exhibition
-    const { data: exhibition } = await (client as any)
+    const { data: exhibition } = await asUntyped(client)
       .from('exhibitions')
       .select('gallery_id')
       .eq('id', exhibitionId)

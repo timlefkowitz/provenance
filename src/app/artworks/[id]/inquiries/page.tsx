@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -24,7 +25,7 @@ export default async function ArtworkInquiriesPage({
   }
 
   // Verify ownership
-  const { data: artwork } = await (client as any)
+  const { data: artwork } = await asUntyped(client)
     .from('artworks')
     .select('id, title, artist_name, account_id, inquire_enabled, for_sale, sold_at')
     .eq('id', id)
@@ -37,7 +38,7 @@ export default async function ArtworkInquiriesPage({
 
   // Fetch inquiries via admin client to bypass RLS inconsistencies
   const admin = getSupabaseServerAdminClient();
-  const { data: inquiries, error: inqErr } = await (admin as any)
+  const { data: inquiries, error: inqErr } = await asUntyped(admin)
     .from('artwork_inquiries')
     .select('id, name, email, message, inquiry_type, stripe_session_id, status, created_at')
     .eq('artwork_id', id)

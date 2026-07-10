@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import {
@@ -35,7 +36,7 @@ export async function batchSendGalleryCoSInvites(
     return { sent: 0, errors: ['Please enter a valid email address'] };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -50,7 +51,7 @@ export async function batchSendGalleryCoSInvites(
   // artworks posted by any team member under those gallery profiles.
   let allowedGalleryProfileIds: string[] = [];
   try {
-    const { data: memberRows } = await (adminClient as any)
+    const { data: memberRows } = await asUntyped(adminClient)
       .from('gallery_members')
       .select('gallery_profile_id')
       .eq('user_id', user.id);

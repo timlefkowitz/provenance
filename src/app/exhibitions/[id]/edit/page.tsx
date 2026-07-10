@@ -8,6 +8,7 @@ import { ExhibitionDetails } from '../../_components/exhibition-details';
 import { ExhibitionInvitesPanel } from '../../_components/exhibition-invites-panel';
 import { getExhibitionInvites } from '../../_actions/manage-exhibition-invites';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Edit Exhibition | Provenance',
 };
@@ -18,7 +19,7 @@ export default async function EditExhibitionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -36,7 +37,7 @@ export default async function EditExhibitionPage({
     redirect('/registry');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
   const allowedRoles = new Set([
     USER_ROLES.GALLERY,
     USER_ROLES.INSTITUTION,

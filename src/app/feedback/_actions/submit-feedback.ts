@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { headers } from 'next/headers';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -43,7 +44,7 @@ async function notifyAdmins(ticketId: string, summary: string, isAnonymous: bool
     // public_data may not be in the typed columns set for accounts in
     // every environment; cast to any to keep this resilient.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: adminAccounts, error } = await (admin as any)
+    const { data: adminAccounts, error } = await asUntyped(admin)
       .from('accounts')
       .select('id, public_data');
 

@@ -1,6 +1,6 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -31,7 +31,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function PortalPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -55,7 +55,7 @@ export default async function PortalPage() {
   const galleryOwnerIds = Array.from(
     new Set(
       (galleryProfiles || [])
-        .map((p: any) => p.user_id)
+        .map((p: Record<string, unknown>) => p.user_id)
         .filter((id: unknown): id is string => typeof id === 'string'),
     ),
   );
@@ -67,16 +67,16 @@ export default async function PortalPage() {
 
   // Gallery profile ids for the Gallery Market Cap card
   const galleryProfileIds = (galleryProfiles || [])
-    .map((p: any) => p.id)
+    .map((p: Record<string, unknown>) => p.id)
     .filter((id: unknown): id is string => typeof id === 'string');
   const firstGalleryName: string | null = (galleryProfiles?.[0] as any)?.name ?? null;
 
   // Get user's artworks count and recent artworks
   // Uses admin client so "Your Artworks" shows correctly for gallery owners and team members.
   let artworksCount: number | null = null;
-  let recentArtworks: any[] | null = null;
+  let recentArtworks: unknown[] | null = null;
   try {
-    const admin = getSupabaseServerAdminClient() as any;
+    const admin = asUntyped(getSupabaseServerAdminClient()) as any;
     const [countRes, recentRes] = await Promise.all([
       admin
         .from('artworks')
@@ -95,11 +95,11 @@ export default async function PortalPage() {
     recentArtworks = recentRes.data ?? null;
   } catch {
     const [countRes, recentRes] = await Promise.all([
-      (client as any)
+      asUntyped(client)
         .from('artworks')
         .select('*', { count: 'exact', head: true })
         .in('account_id', primaryAccountIds),
-      (client as any)
+      asUntyped(client)
         .from('artworks')
         .select(
           'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status, artist_account_id, artist_profile_id',
@@ -113,7 +113,7 @@ export default async function PortalPage() {
   }
 
   // Get users they're following
-  const { data: followingData } = await (client as any)
+  const { data: followingData } = await asUntyped(client)
     .from('user_follows')
     .select('following_id')
     .eq('follower_id', user.id)
@@ -137,7 +137,7 @@ export default async function PortalPage() {
   }
 
   // Get recent notifications (prioritize unread)
-  const { data: allNotifications } = await (client as any)
+  const { data: allNotifications } = await asUntyped(client)
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
@@ -157,11 +157,11 @@ export default async function PortalPage() {
 
   const favoriteList = favoriteArtworks ?? [];
   const recentList = recentArtworks ?? [];
-  const recentArtworkIds = [...new Set(recentList.map((a: { id: string }) => a.id))];
+  const recentArtworkIds = [...new Set((recentList as { id: string }[]).map((a) => a.id))];
 
   let favoritedRecentIdSet = new Set<string>();
   if (recentArtworkIds.length > 0) {
-    const { data: favRows, error: favBatchError } = await (client as any)
+    const { data: favRows, error: favBatchError } = await asUntyped(client)
       .from('artwork_favorites')
       .select('artwork_id')
       .eq('user_id', user.id)
@@ -185,7 +185,7 @@ export default async function PortalPage() {
 
   let followingArtistIdSet = new Set<string>();
   if (artistIdsForFollow.length > 0) {
-    const { data: folRows, error: folBatchError } = await (client as any)
+    const { data: folRows, error: folBatchError } = await asUntyped(client)
       .from('user_follows')
       .select('following_id')
       .eq('follower_id', user.id)
@@ -435,7 +435,7 @@ export default async function PortalPage() {
               <div className="text-center py-8">
                 <Heart className="h-12 w-12 text-wine/30 mx-auto mb-4" />
                 <p className="text-ink/60 font-serif mb-4">
-                  You haven't favorited any artworks yet
+                  You haven&apos;t favorited any artworks yet
                 </p>
                 <Button
                   asChild
@@ -489,7 +489,7 @@ export default async function PortalPage() {
             ) : (
               <div className="text-center py-8">
                 <p className="text-ink/60 font-serif mb-4">
-                  You haven't added any artworks yet
+                  You haven&apos;t added any artworks yet
                 </p>
                 <Button
                   asChild
@@ -549,7 +549,7 @@ export default async function PortalPage() {
             ) : (
               <div className="text-center py-8">
                 <p className="text-ink/60 font-serif mb-4">
-                  You're not following anyone yet
+                  You&apos;re not following anyone yet
                 </p>
                 <Button
                   asChild

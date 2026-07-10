@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
@@ -25,7 +26,7 @@ export async function fixArtistNames(
     let artistAccountId: string | null = null;
     
     if (artistAccount) {
-      const artistRole = getUserRole(artistAccount.public_data as Record<string, any>);
+      const artistRole = getUserRole(artistAccount.public_data as Record<string, unknown>);
       if (artistRole === USER_ROLES.ARTIST) {
         artistAccountId = artistAccount.id;
         console.log(`Found artist account for "${correctArtistName}": ${artistAccountId}`);
@@ -41,7 +42,7 @@ export async function fixArtistNames(
       updateData.artist_account_id = artistAccountId;
     }
 
-    const { data: updatedArtworks, error } = await (client as any)
+    const { data: updatedArtworks, error } = await asUntyped(client)
       .from('artworks')
       .update(updateData)
       .in('id', artworkIds)

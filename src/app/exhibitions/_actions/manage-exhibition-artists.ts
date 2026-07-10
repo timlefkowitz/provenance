@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
@@ -12,7 +13,7 @@ export async function addArtistToExhibition(exhibitionId: string, artistAccountI
   }
 
   // Verify user owns this exhibition
-  const { data: exhibition } = await (client as any)
+  const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
@@ -23,7 +24,7 @@ export async function addArtistToExhibition(exhibitionId: string, artistAccountI
   }
 
   // Add artist to exhibition
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('exhibition_artists')
     .insert({
       exhibition_id: exhibitionId,
@@ -53,7 +54,7 @@ export async function removeArtistFromExhibition(exhibitionId: string, artistAcc
   }
 
   // Verify user owns this exhibition
-  const { data: exhibition } = await (client as any)
+  const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
@@ -64,7 +65,7 @@ export async function removeArtistFromExhibition(exhibitionId: string, artistAcc
   }
 
   // Remove artist from exhibition
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('exhibition_artists')
     .delete()
     .eq('exhibition_id', exhibitionId)

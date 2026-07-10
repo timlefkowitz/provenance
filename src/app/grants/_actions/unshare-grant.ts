@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -19,7 +20,7 @@ export async function unshareGrant(grantId: string) {
     return { success: false, error: 'Not authenticated' };
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artist_grants')
     .update({
       is_community: false,

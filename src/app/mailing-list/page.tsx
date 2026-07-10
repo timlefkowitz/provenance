@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -30,7 +31,7 @@ export default async function MailingListPage() {
   let needsProfile = false;
 
   if (!artistProfile) {
-    const { data: membership, error: membershipErr } = await (client as any)
+    const { data: membership, error: membershipErr } = await asUntyped(client)
       .from('crm_members')
       .select('artist_user_id')
       .eq('member_user_id', user.id)

@@ -19,6 +19,7 @@ import { toast } from '@kit/ui/sonner';
 import { getRoleLabel } from '~/lib/user-roles';
 import { deleteProfile } from '../_actions/delete-profile';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 interface Props {
   profileId: string;
   profileName: string;
@@ -56,7 +57,7 @@ export function DeleteProfileButton({ profileId, profileName, profileRole }: Pro
         Remove Profile
       </h3>
       <p className="text-sm font-serif text-ink/60 mb-4">
-        Remove this {getRoleLabel(profileRole).toLowerCase()} profile from your account. All your
+        Remove this {getRoleLabel(profileRole as import('~/lib/user-roles').UserRole).toLowerCase()} profile from your account. All your
         data — exhibitions, artworks, open calls — is kept safe and will not be deleted.
       </p>
 
@@ -75,7 +76,7 @@ export function DeleteProfileButton({ profileId, profileName, profileRole }: Pro
 
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {getRoleLabel(profileRole)} Profile</AlertDialogTitle>
+            <AlertDialogTitle>Remove {getRoleLabel(profileRole as import('~/lib/user-roles').UserRole)} Profile</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>

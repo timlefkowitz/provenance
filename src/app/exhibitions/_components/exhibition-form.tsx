@@ -12,6 +12,7 @@ import { createExhibition } from '../_actions/create-exhibition';
 import { updateExhibition } from '../_actions/update-exhibition';
 import { ParticipantSelector, type ExhibitionArtistInvite } from './participant-selector';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 type Artist = {
   id: string;
   name: string;
@@ -94,7 +95,7 @@ export function ExhibitionForm({
         }
 
         router.refresh();
-      } catch (e: any) {
+      } catch (e) {
         console.error('[ExhibitionForm] Error saving exhibition', e);
         const errorMessage = e?.message || 'Failed to save exhibition';
         setError(errorMessage);

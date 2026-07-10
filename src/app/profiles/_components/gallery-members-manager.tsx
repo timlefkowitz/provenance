@@ -6,7 +6,6 @@ import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { Badge } from '@kit/ui/badge';
 import { Alert, AlertDescription } from '@kit/ui/alert';
@@ -210,7 +209,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
     }
   };
 
-  const getRoleIcon = (role: string) => {
+  const _getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
         return <Shield className="h-4 w-4" />;

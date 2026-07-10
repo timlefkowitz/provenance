@@ -10,6 +10,7 @@ import { Trans } from '@kit/ui/trans';
 import pathsConfig from '~/config/paths.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 interface AuthCallbackErrorPageProps {
   searchParams: Promise<{
     error: string;

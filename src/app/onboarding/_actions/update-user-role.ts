@@ -1,12 +1,13 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { isValidRole, type UserRole } from '~/lib/user-roles';
 
 export async function updateUserRole(role: string) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -25,7 +26,7 @@ export async function updateUserRole(role: string) {
     .eq('id', user.id)
     .single();
 
-  const currentPublicData = (account?.public_data as Record<string, any>) || {};
+  const currentPublicData = (account?.public_data as Record<string, unknown>) || {};
 
   // Update public_data with new role
   const { error } = await client
@@ -45,12 +46,12 @@ export async function updateUserRole(role: string) {
   // Keep the user's free trial role in sync for UI consistency.
   // (Trial entitlement uses deterministic `stripe_subscription_id = trial_<userId>`.)
   try {
-    const admin = getSupabaseServerAdminClient();
+    const admin = asUntyped(getSupabaseServerAdminClient());
     const trialStripeSubscriptionId = `trial_${user.id}`;
 
     console.log('[Billing] sync trial role', { userId: user.id, role });
 
-    await (admin as any)
+    await asUntyped(admin)
       .from('subscriptions')
       .update({ role: role as UserRole })
       .eq('user_id', user.id)

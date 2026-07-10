@@ -71,9 +71,12 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
         {/* Hero name */}
         <div className="relative z-10 max-w-4xl mx-auto w-full px-8 pb-16">
           {site.logo_image_url ? (
-            <img
+            <Image
               src={site.logo_image_url}
               alt={site.display_name ?? site.name}
+              width={0}
+              height={0}
+              sizes="100vw"
               className="max-h-28 md:max-h-40 w-auto object-contain"
               style={{ filter: 'brightness(0) invert(1)' }}
             />

@@ -25,7 +25,7 @@ import { Edit, ExternalLink, User, Palette, Building2, Trash2 } from 'lucide-rea
 
 export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [_pending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const getRoleIcon = (role: string) => {
@@ -41,7 +41,7 @@ export function ProfilesList({ profiles }: { profiles: UserProfile[] }) {
     }
   };
 
-  const handleDelete = async (profileId: string, profileName: string, role: string) => {
+  const handleDelete = async (profileId: string, profileName: string, _role: string) => {
     setDeletingId(profileId);
     startTransition(async () => {
       try {

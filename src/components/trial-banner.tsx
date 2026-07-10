@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { TrialBannerClient } from './trial-banner-client';
@@ -18,7 +19,7 @@ export async function TrialBanner() {
     } = await client.auth.getUser();
     if (!user) return null;
 
-    const { data: rows } = await (client as any)
+    const { data: rows } = await asUntyped(client)
       .from('subscriptions')
       .select('id, status, stripe_subscription_id, current_period_end')
       .eq('user_id', user.id)

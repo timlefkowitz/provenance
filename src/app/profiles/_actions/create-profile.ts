@@ -6,6 +6,7 @@ import { USER_ROLES, isValidRole, type UserRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export interface CreateProfileInput {
   role: string;
   name: string;
@@ -29,7 +30,7 @@ export interface CreateProfileInput {
  */
 export async function createProfile(input: CreateProfileInput) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {

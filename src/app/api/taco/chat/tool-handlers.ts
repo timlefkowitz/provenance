@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { getOpenCallsList } from '~/app/open-calls/_actions/get-open-calls-list';
@@ -35,9 +36,7 @@ export async function handleSearchArtworks(
 
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as ReturnType<typeof getSupabaseServerClient> & {
-    from(table: string): any;
-  })
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id, title, artist_name, image_url, status, is_public')
     .or(`title.ilike.%${query}%,artist_name.ilike.%${query}%`)
@@ -50,7 +49,7 @@ export async function handleSearchArtworks(
     return { results: [], error: error.message };
   }
 
-  const results = (data ?? []).map((row: any) => ({
+  const results = (data ?? []).map((row: Record<string, unknown>) => ({
     id: row.id,
     title: row.title,
     artist_name: row.artist_name,
@@ -76,7 +75,7 @@ export async function handleSearchArtists(args: { query?: string }): Promise<unk
   const client = getSupabaseServerClient();
 
   // Search user_profiles with role=artist
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('user_profiles')
     .select('id, name, location, bio, medium')
     .eq('role', 'artist')
@@ -88,7 +87,7 @@ export async function handleSearchArtists(args: { query?: string }): Promise<unk
     return { results: [], error: error.message };
   }
 
-  const results = (data ?? []).map((row: any) => ({
+  const results = (data ?? []).map((row: Record<string, unknown>) => ({
     id: row.id,
     name: row.name,
     location: row.location,
@@ -108,7 +107,7 @@ export async function handleGetMyCollection(userId: string): Promise<unknown> {
 
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id, title, artist_name, creation_date, medium, image_url, status, certificate_type, is_public')
     .eq('account_id', userId)
@@ -120,11 +119,11 @@ export async function handleGetMyCollection(userId: string): Promise<unknown> {
     return { artworks: [], error: error.message };
   }
 
-  const artworks = (data ?? []).map((row: any) => ({
+  const artworks = (data ?? []).map((row: Record<string, unknown>) => ({
     id: row.id,
     title: row.title,
     artist_name: row.artist_name,
-    year: row.creation_date ? new Date(row.creation_date).getFullYear() : null,
+    year: row.creation_date ? new Date(row.creation_date as string).getFullYear() : null,
     medium: row.medium,
     status: row.status,
     certificate_type: row.certificate_type,
@@ -185,7 +184,7 @@ export async function handleGetMyGrants(userId: string): Promise<unknown> {
   console.log('[Taco] handleGetMyGrants userId=', userId);
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artist_grants')
     .select('id, name, type, description, deadline, amount, url, bookmarked, created_at')
     .eq('user_id', userId)
@@ -197,7 +196,7 @@ export async function handleGetMyGrants(userId: string): Promise<unknown> {
     return { grants: [], error: error.message };
   }
 
-  const grants = (data ?? []).map((g: any) => ({
+  const grants = (data ?? []).map((g: Record<string, unknown>) => ({
     id: g.id,
     name: g.name,
     type: g.type,
@@ -220,7 +219,7 @@ export async function handleGetMyProfile(userId: string): Promise<unknown> {
   console.log('[Taco] handleGetMyProfile userId=', userId);
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('user_profiles')
     .select('id, role, name, bio, medium, location, website, links, has_sold_work, artist_cv_json, onboarding_answers, onboarding_completed_at')
     .eq('user_id', userId)
@@ -232,7 +231,7 @@ export async function handleGetMyProfile(userId: string): Promise<unknown> {
     return { profiles: [], error: error.message };
   }
 
-  const profiles = (data ?? []).map((p: any) => ({
+  const profiles = (data ?? []).map((p: Record<string, unknown>) => ({
     id: p.id,
     role: p.role,
     name: p.name,
@@ -258,19 +257,19 @@ export async function handleGetMySales(userId: string): Promise<unknown> {
   console.log('[Taco] handleGetMySales userId=', userId);
   const client = getSupabaseServerClient();
 
-  const { data: artworkIds } = await (client as any)
+  const { data: artworkIds } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('account_id', userId)
     .limit(200);
 
-  const ids = Array.isArray(artworkIds) ? (artworkIds as any[]).map((a) => a.id as string) : [];
+  const ids = Array.isArray(artworkIds) ? (artworkIds as Record<string, unknown>[]).map((a) => a.id as string) : [];
 
   if (!ids.length) {
     return { sales: [], total_count: 0, total_revenue_cents: 0 };
   }
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('sales_ledger')
     .select('id, artwork_id, price_cents, currency, sold_at, artworks(title, artist_name)')
     .in('artwork_id', ids)
@@ -282,9 +281,9 @@ export async function handleGetMySales(userId: string): Promise<unknown> {
     return { sales: [], error: error.message };
   }
 
-  const sales = (data ?? []).map((s: any) => ({
-    artwork_title: s.artworks?.title ?? 'Untitled',
-    artist_name: s.artworks?.artist_name ?? null,
+  const sales = (data ?? []).map((s: Record<string, unknown>) => ({
+    artwork_title: (s.artworks as { title?: string; artist_name?: string } | null)?.title ?? 'Untitled',
+    artist_name: (s.artworks as { title?: string; artist_name?: string } | null)?.artist_name ?? null,
     price_cents: s.price_cents,
     currency: s.currency ?? 'USD',
     sold_at: s.sold_at,
@@ -304,7 +303,7 @@ export async function handleGetPortalStats(userId: string): Promise<unknown> {
   console.log('[Taco] handleGetPortalStats userId=', userId);
   const client = getSupabaseServerClient();
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('entity_stats')
     .select('*')
     .eq('entity_account_id', userId)
@@ -341,7 +340,7 @@ export async function handleGetOpenCalls(userId: string): Promise<unknown> {
 
   // Get the user's medium + location for filtering
   const client = getSupabaseServerClient();
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('medium, location')
     .eq('user_id', userId)
@@ -382,7 +381,7 @@ export async function handleSummarizePractice(userId: string, apiKey: string): P
   console.log('[Taco] handleSummarizePractice userId=', userId);
   const client = getSupabaseServerClient();
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('name, bio, medium, artist_cv_json, has_sold_work')
     .eq('user_id', userId)
@@ -390,7 +389,7 @@ export async function handleSummarizePractice(userId: string, apiKey: string): P
     .eq('is_active', true)
     .maybeSingle();
 
-  const { count: artworkCount } = await (client as any)
+  const { count: artworkCount } = await asUntyped(client)
     .from('artworks')
     .select('id', { count: 'exact', head: true })
     .eq('account_id', userId);
@@ -437,7 +436,7 @@ export async function handleCreateExhibition(
 
   const client = getSupabaseServerClient();
 
-  const { data: account } = await (client as any)
+  const { data: account } = await asUntyped(client)
     .from('accounts')
     .select('public_data')
     .eq('id', userId)
@@ -449,7 +448,7 @@ export async function handleCreateExhibition(
       ? (userRole as 'artist' | 'gallery' | 'collector' | 'institution')
       : 'artist';
 
-  const { data: exhibition, error } = await (client as any)
+  const { data: exhibition, error } = await asUntyped(client)
     .from('exhibitions')
     .insert({
       gallery_id: userId,
@@ -496,7 +495,7 @@ export async function handleAddCvEntry(
 
   const client = getSupabaseServerClient();
 
-  const { data: profile, error: fetchErr } = await (client as any)
+  const { data: profile, error: fetchErr } = await asUntyped(client)
     .from('user_profiles')
     .select('id, artist_cv_json')
     .eq('user_id', userId)
@@ -539,7 +538,7 @@ export async function handleAddCvEntry(
     }
   }
 
-  const { error: updateErr } = await (client as any)
+  const { error: updateErr } = await asUntyped(client)
     .from('user_profiles')
     .update({ artist_cv_json: cvJson })
     .eq('id', profile.id);
@@ -572,7 +571,7 @@ export async function handleUpdateArtistBio(
   const client = getSupabaseServerClient();
   const role = args.role ?? 'artist';
 
-  const { data: profile, error: fetchErr } = await (client as any)
+  const { data: profile, error: fetchErr } = await asUntyped(client)
     .from('user_profiles')
     .select('id')
     .eq('user_id', userId)
@@ -585,7 +584,7 @@ export async function handleUpdateArtistBio(
     return { success: false, error: `No ${role} profile found.` };
   }
 
-  const { error: updateErr } = await (client as any)
+  const { error: updateErr } = await asUntyped(client)
     .from('user_profiles')
     .update({ bio: args.bio.trim() })
     .eq('id', profile.id);
@@ -616,7 +615,7 @@ export async function handleSearchPress(
 
   if (!artistName) {
     const client = getSupabaseServerClient();
-    const { data: profile } = await (client as any)
+    const { data: profile } = await asUntyped(client)
       .from('user_profiles')
       .select('name')
       .eq('user_id', userId)
@@ -670,8 +669,8 @@ Return up to 10 real items with actual URLs. Only include genuine press coverage
     }
 
     const items = Array.isArray(parsed.items)
-      ? (parsed.items as any[])
-          .filter((item) => typeof item.title === 'string' && typeof item.url === 'string' && item.url.startsWith('http'))
+      ? (parsed.items as Record<string, unknown>[])
+          .filter((item) => typeof item.title === 'string' && typeof item.url === 'string' && (item.url as string).startsWith('http'))
           .slice(0, 10)
       : [];
 
@@ -708,7 +707,7 @@ export async function handleSavePressToProfile(
 
   const client = getSupabaseServerClient();
 
-  const { data: profile, error: fetchErr } = await (client as any)
+  const { data: profile, error: fetchErr } = await asUntyped(client)
     .from('user_profiles')
     .select('id, news_publications')
     .eq('user_id', userId)
@@ -728,7 +727,7 @@ export async function handleSavePressToProfile(
 
   const merged = mergeNewsPublicationsDeduped(existing, args.items);
 
-  const { error: updateErr } = await (client as any)
+  const { error: updateErr } = await asUntyped(client)
     .from('user_profiles')
     .update({ news_publications: merged })
     .eq('id', profile.id);
@@ -765,7 +764,7 @@ export async function handleDraftArtistStatement(
   console.log('[Taco] handleDraftArtistStatement', { focus: args.focus });
 
   const client = getSupabaseServerClient();
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('name, bio, medium, artist_cv_json')
     .eq('user_id', userId)
@@ -809,16 +808,16 @@ export async function handleDraftExhibitionText(
 
   const client = getSupabaseServerClient();
 
-  let exhibition: any = null;
+  let exhibition: unknown = null;
   if (args.exhibition_id) {
-    const { data } = await (client as any)
+    const { data } = await asUntyped(client)
       .from('exhibitions')
       .select('id, title, description, start_date, end_date, location')
       .eq('id', args.exhibition_id)
       .maybeSingle();
     exhibition = data;
   } else if (args.exhibition_title) {
-    const { data } = await (client as any)
+    const { data } = await asUntyped(client)
       .from('exhibitions')
       .select('id, title, description, start_date, end_date, location')
       .eq('gallery_id', userId)
@@ -836,24 +835,32 @@ export async function handleDraftExhibitionText(
   }
 
   // Fetch artworks and artist names from the exhibition
+  const exhRecord = exhibition as Record<string, unknown> | null;
   let artworkTitles: string[] = [];
   let artistNames: string[] = [];
-  if (exhibition?.id) {
-    const { data: artworks } = await (client as any)
+  if (exhRecord?.id) {
+    const { data: artworks } = await asUntyped(client)
       .from('exhibition_artworks')
       .select('artworks(title, artist_name)')
-      .eq('exhibition_id', exhibition.id)
+      .eq('exhibition_id', exhRecord.id as string)
       .limit(20);
 
     if (Array.isArray(artworks)) {
-      artworkTitles = (artworks as any[])
-        .map((a) => (Array.isArray(a.artworks) ? a.artworks[0]?.title : a.artworks?.title))
-        .filter(Boolean);
+      type ArtworkRef = { title?: string; artist_name?: string };
+      artworkTitles = (artworks as Record<string, unknown>[])
+        .map((a) => {
+          const art = a.artworks as ArtworkRef[] | ArtworkRef | null;
+          return Array.isArray(art) ? art[0]?.title : art?.title;
+        })
+        .filter(Boolean) as string[];
       artistNames = [
         ...new Set(
-          (artworks as any[])
-            .map((a) => (Array.isArray(a.artworks) ? a.artworks[0]?.artist_name : a.artworks?.artist_name))
-            .filter(Boolean),
+          (artworks as Record<string, unknown>[])
+            .map((a) => {
+              const art = a.artworks as ArtworkRef[] | ArtworkRef | null;
+              return Array.isArray(art) ? art[0]?.artist_name : art?.artist_name;
+            })
+            .filter(Boolean) as string[],
         ),
       ];
     }
@@ -861,11 +868,11 @@ export async function handleDraftExhibitionText(
 
   const format = args.format ?? 'press_release';
   const { text, error } = await generateExhibitionText(apiKey, {
-    exhibitionTitle: exhibition?.title ?? 'Untitled Exhibition',
-    description: exhibition?.description ?? null,
-    location: exhibition?.location ?? null,
-    startDate: exhibition?.start_date ?? null,
-    endDate: exhibition?.end_date ?? null,
+    exhibitionTitle: (exhRecord?.title as string) ?? 'Untitled Exhibition',
+    description: (exhRecord?.description as string) ?? null,
+    location: (exhRecord?.location as string) ?? null,
+    startDate: (exhRecord?.start_date as string) ?? null,
+    endDate: (exhRecord?.end_date as string) ?? null,
     artworkTitles,
     artistNames,
     format,
@@ -876,7 +883,7 @@ export async function handleDraftExhibitionText(
   }
 
   console.log('[Taco] handleDraftExhibitionText done format=', format);
-  return { text, format, exhibition_title: exhibition?.title ?? null };
+  return { text, format, exhibition_title: (exhRecord?.title as string) ?? null };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -896,7 +903,7 @@ export async function handleDraftOpenCallSubmission(
   let openCallDescription: string | null = null;
 
   if (args.open_call_id) {
-    const { data: oc } = await (client as any)
+    const { data: oc } = await asUntyped(client)
       .from('open_calls')
       .select('id, exhibitions(title, description)')
       .eq('id', args.open_call_id)
@@ -908,7 +915,7 @@ export async function handleDraftOpenCallSubmission(
     }
   }
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('name, bio, medium, artist_cv_json')
     .eq('user_id', userId)
@@ -951,7 +958,7 @@ export async function handleDraftCollectorOutreach(
 
   const client = getSupabaseServerClient();
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('name')
     .eq('user_id', userId)
@@ -960,7 +967,7 @@ export async function handleDraftCollectorOutreach(
     .maybeSingle();
 
   // Try to find this contact in the CRM
-  const { data: leads } = await (client as any)
+  const { data: leads } = await asUntyped(client)
     .from('artist_leads')
     .select('contact_name, notes, stage')
     .eq('artist_user_id', userId)
@@ -1001,7 +1008,7 @@ export async function handleGenerateWebsiteBio(
   console.log('[Taco] handleGenerateWebsiteBio', { length: args.length });
 
   const client = getSupabaseServerClient();
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('name, bio, medium, location, artist_cv_json')
     .eq('user_id', userId)
@@ -1041,19 +1048,19 @@ export async function handleSuggestPricing(
   console.log('[Taco] handleSuggestPricing', { artwork_title: args.artwork_title });
 
   const client = getSupabaseServerClient();
-  const { data: artworks } = await (client as any)
+  const { data: artworks } = await asUntyped(client)
     .from('artworks')
     .select('id, title, medium, creation_date')
     .eq('account_id', userId)
     .ilike('title', `%${args.artwork_title}%`)
     .limit(5);
 
-  if (!Array.isArray(artworks) || !(artworks as any[]).length) {
+  if (!Array.isArray(artworks) || !(artworks as unknown[]).length) {
     return { estimate: null, error: `No artwork found matching "${args.artwork_title}" in your collection.` };
   }
 
-  const artwork = (artworks as any[])[0];
-  const { inputs, error } = await computeValuationInputs(artwork.id);
+  const artwork = (artworks as Record<string, unknown>[])[0];
+  const { inputs, error } = await computeValuationInputs(artwork.id as string);
 
   if (error || !inputs) {
     return { estimate: null, error: error ?? 'Could not compute valuation.' };
@@ -1063,7 +1070,7 @@ export async function handleSuggestPricing(
   const fmt = (cents: number) =>
     cents > 0 ? `$${(cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null;
 
-  console.log('[Taco] handleSuggestPricing done', artwork.title);
+  console.log('[Taco] handleSuggestPricing done', artwork.title as string);
   return {
     artwork_title: artwork.title,
     estimate: fmt(det.estimated_value_cents),
@@ -1088,7 +1095,7 @@ export async function handleGetCollectorContacts(userId: string): Promise<unknow
   console.log('[Taco] handleGetCollectorContacts userId=', userId);
 
   const client = getSupabaseServerClient();
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artist_leads')
     .select('id, contact_name, contact_email, contact_phone, notes, stage, follow_up_date, source, updated_at')
     .eq('artist_user_id', userId)
@@ -1100,7 +1107,7 @@ export async function handleGetCollectorContacts(userId: string): Promise<unknow
     return { contacts: [], error: error.message };
   }
 
-  const contacts = (data ?? []).map((c: any) => ({
+  const contacts = (data ?? []).map((c: Record<string, unknown>) => ({
     id: c.id,
     name: c.contact_name,
     email: c.contact_email,
@@ -1134,7 +1141,7 @@ export async function handleCreateArtworkDraft(
 
   const client = getSupabaseServerClient();
 
-  const { data: artwork, error } = await (client as any)
+  const { data: artwork, error } = await asUntyped(client)
     .from('artworks')
     .insert({
       account_id: userId,
@@ -1176,20 +1183,20 @@ export async function handleSearchComparableSales(
 
   const client = getSupabaseServerClient();
 
-  let query = (client as any)
+  let query = asUntyped(client)
     .from('sales_ledger')
     .select('id, price_cents, currency, sold_at, artworks(title, artist_name, medium)')
     .order('sold_at', { ascending: false })
     .limit(20);
 
   if (args.artist_name) {
-    const { data: artistArtworks } = await (client as any)
+    const { data: artistArtworks } = await asUntyped(client)
       .from('artworks')
       .select('id')
       .ilike('artist_name', `%${args.artist_name}%`)
       .limit(100);
     const ids = Array.isArray(artistArtworks)
-      ? (artistArtworks as any[]).map((a) => a.id as string)
+      ? (artistArtworks as Record<string, unknown>[]).map((a) => a.id as string)
       : [];
     if (ids.length) {
       query = query.in('artwork_id', ids);
@@ -1203,7 +1210,7 @@ export async function handleSearchComparableSales(
     return { sales: [], error: error.message };
   }
 
-  let sales = (data ?? []).map((s: any) => {
+  let sales = (data ?? []).map((s: Record<string, unknown>) => {
     const artwork = Array.isArray(s.artworks) ? s.artworks[0] : s.artworks;
     return {
       artwork_title: artwork?.title ?? 'Untitled',
@@ -1217,7 +1224,7 @@ export async function handleSearchComparableSales(
 
   if (args.medium) {
     const med = args.medium.toLowerCase();
-    sales = sales.filter((s: any) => s.medium?.toLowerCase().includes(med));
+    sales = sales.filter((s: Record<string, unknown>) => (s.medium as string | null)?.toLowerCase().includes(med));
   }
 
   const avgCents = sales.length
@@ -1242,7 +1249,7 @@ export async function handleFindGrantsForMe(userId: string): Promise<unknown> {
 
   const client = getSupabaseServerClient();
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('medium, location')
     .eq('user_id', userId)
@@ -1253,7 +1260,7 @@ export async function handleFindGrantsForMe(userId: string): Promise<unknown> {
   const medium = (profile?.medium as string | null) ?? null;
   const location = (profile?.location as string | null) ?? null;
 
-  const query = (client as any)
+  const query = asUntyped(client)
     .from('artist_grants')
     .select('id, name, type, description, deadline, amount, url, eligible_locations, discipline')
     .eq('user_id', userId)
@@ -1269,7 +1276,7 @@ export async function handleFindGrantsForMe(userId: string): Promise<unknown> {
   }
 
   // Prioritize grants that match the artist's medium or have no location restriction
-  const grants = (data ?? []).map((g: any) => ({
+  const grants = (data ?? []).map((g: Record<string, unknown>) => ({
     id: g.id,
     name: g.name,
     type: g.type,
@@ -1316,7 +1323,7 @@ export async function handleGetMyWebsite(userId: string): Promise<unknown> {
   console.log('[Taco] handleGetMyWebsite userId=', userId);
   const client = getSupabaseServerClient();
 
-  const { data: profiles, error: profileErr } = await (client as any)
+  const { data: profiles, error: profileErr } = await asUntyped(client)
     .from('user_profiles')
     .select('id, name, role')
     .eq('user_id', userId)
@@ -1328,8 +1335,8 @@ export async function handleGetMyWebsite(userId: string): Promise<unknown> {
     return { error: 'No active profiles found for this account.' };
   }
 
-  const profileIds = profiles.map((p: any) => p.id);
-  const { data: sites, error: siteErr } = await (client as any)
+  const profileIds = profiles.map((p: Record<string, unknown>) => p.id);
+  const { data: sites, error: siteErr } = await asUntyped(client)
     .from('profile_sites')
     .select('profile_id, handle, template_id, theme, sections, surface_color, tagline, display_name, about_override, published_at, featured_artwork_ids')
     .in('profile_id', profileIds);
@@ -1343,8 +1350,8 @@ export async function handleGetMyWebsite(userId: string): Promise<unknown> {
   const rawHost = new URL(baseUrl).hostname;
   const siteDomain = rawHost.startsWith('www.') ? rawHost.slice(4) : rawHost;
 
-  const results = (sites ?? []).map((row: any) => {
-    const profile = profiles.find((p: any) => p.id === row.profile_id);
+  const results = (sites ?? []).map((row: Record<string, unknown>) => {
+    const profile = profiles.find((p: Record<string, unknown>) => p.id === row.profile_id);
     const theme = { ...DEFAULT_THEME, ...(row.theme ?? {}) };
     const sections = { ...DEFAULT_SECTIONS, ...(row.sections ?? {}) };
     return {
@@ -1370,13 +1377,13 @@ export async function handleGetMyWebsite(userId: string): Promise<unknown> {
 
   // If no site exists yet, return profiles so Taco knows which profile_id to use
   const profilesWithoutSites = profiles.filter(
-    (p: any) => !(sites ?? []).some((s: any) => s.profile_id === p.id),
+    (p: Record<string, unknown>) => !(sites ?? []).some((s: Record<string, unknown>) => s.profile_id === p.id),
   );
 
   console.log('[Taco] handleGetMyWebsite returned', results.length, 'sites,', profilesWithoutSites.length, 'profiles without sites');
   return {
     sites: results,
-    profiles_without_sites: profilesWithoutSites.map((p: any) => ({ profile_id: p.id, name: p.name, role: p.role })),
+    profiles_without_sites: profilesWithoutSites.map((p: Record<string, unknown>) => ({ profile_id: p.id, name: p.name, role: p.role })),
     valid_options: {
       templates: SITE_TEMPLATES.map((t) => ({ id: t.id, name: t.name, description: t.description, category: t.category })),
       accents: SITE_ACCENTS.map((a) => ({ key: a.key, label: a.label })),
@@ -1411,7 +1418,7 @@ export async function handleUpdateMyWebsite(
   const client = getSupabaseServerClient();
 
   // Verify the profile belongs to this user
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, role, name')
     .eq('id', args.profile_id)
@@ -1423,7 +1430,7 @@ export async function handleUpdateMyWebsite(
   }
 
   // Fetch existing site row for defaults
-  const { data: existing } = await (client as any)
+  const { data: existing } = await asUntyped(client)
     .from('profile_sites')
     .select('*')
     .eq('profile_id', args.profile_id)
@@ -1493,7 +1500,7 @@ export async function handlePublishMyWebsite(
   console.log('[Taco] handlePublishMyWebsite', { profileId: args.profile_id, published: args.published });
 
   const client = getSupabaseServerClient();
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('user_id')
     .eq('id', args.profile_id)

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 type ProfileExtrasPayload = {
   medium?: string;
   links?: string[];
@@ -11,7 +12,7 @@ type ProfileExtrasPayload = {
 
 export async function updateMedium(input: string | ProfileExtrasPayload) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -40,8 +41,8 @@ export async function updateMedium(input: string | ProfileExtrasPayload) {
 
     // Update public_data with medium and extras
     const currentPublicData =
-      (account?.public_data as Record<string, any>) || {};
-    const updatedPublicData: Record<string, any> = {
+      (account?.public_data as Record<string, unknown>) || {};
+    const updatedPublicData: Record<string, unknown> = {
       ...currentPublicData,
       medium: medium.trim() || null,
     };

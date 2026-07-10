@@ -5,13 +5,14 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { sendSummaryEmail } from '~/lib/email';
 import type { SummaryItem } from '~/lib/email';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Send the current user an activity summary email (example call site for summary emails).
  * Fetches their artworks count and recent activity to build the summary.
  */
 export async function sendActivitySummaryEmail(): Promise<{ success: boolean; error: string | null }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -28,7 +29,7 @@ export async function sendActivitySummaryEmail(): Promise<{ success: boolean; er
       return { success: false, error: 'No email on file for your account' };
     }
 
-    const admin = getSupabaseServerAdminClient();
+    const admin = asUntyped(getSupabaseServerAdminClient());
     const [artworksRes, recentRes] = await Promise.all([
       admin.from('artworks').select('*', { count: 'exact', head: true }).eq('account_id', user.id),
       admin

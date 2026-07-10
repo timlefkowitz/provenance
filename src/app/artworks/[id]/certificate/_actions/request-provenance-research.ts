@@ -11,6 +11,7 @@ import { createNotification } from '~/lib/notifications';
 import { getPublicSiteOrigin } from '~/lib/seo/public-site-origin';
 import { CERTIFICATE_TYPES, getCertificateTypeLabel } from '~/lib/user-roles';
 
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 export type RequestProvenanceResearchResult =
   | { success: true }
   | { success: false; error: string };
@@ -36,7 +37,7 @@ export async function requestProvenanceResearch(
   console.log('[ProvenanceRequest] requestProvenanceResearch started', { artworkId });
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
@@ -90,7 +91,7 @@ export async function requestProvenanceResearch(
       };
     }
 
-    let adminClient: ReturnType<typeof getSupabaseServerAdminClient>;
+    let adminClient: UntypedSupabaseClient;
     try {
       adminClient = getSupabaseServerAdminClient();
     } catch (err) {

@@ -43,6 +43,7 @@ import { uploadOperationsDocument } from '~/lib/operations/operations-document-u
 import { LoanArtworkPicker } from './loan-artwork-picker';
 import { Upload, X } from 'lucide-react';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const statuses = ['pending', 'active', 'expired', 'cancelled'] as const;
 
 type Props = {
@@ -174,10 +175,10 @@ export function InsuranceTab({ rows, artworks, artworkTitleById }: Props) {
           currency: currency || 'USD',
           appraiser_name: apprName,
           appraiser_email: apprEmail,
-          appraisal_date: apprDate || null,
-          policy_start_date: polStart || null,
-          policy_end_date: polEnd || null,
-          valuation_notes: notes || null,
+          appraisal_date: apprDate || undefined,
+          policy_start_date: polStart || undefined,
+          policy_end_date: polEnd || undefined,
+          valuation_notes: notes || undefined,
           document_storage_path: path,
           status: status as (typeof statuses)[number],
         });

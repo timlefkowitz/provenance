@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
@@ -32,7 +33,7 @@ export async function fixGalleryNamesForToday(
       };
     }
 
-    const galleryRole = getUserRole(galleryAccount.public_data as Record<string, any>);
+    const galleryRole = getUserRole(galleryAccount.public_data as Record<string, unknown>);
     if (galleryRole !== USER_ROLES.GALLERY) {
       return {
         success: false,
@@ -42,7 +43,7 @@ export async function fixGalleryNamesForToday(
     }
 
     // First, try to find the FL!GHT profile by name for this account
-    const { data: profilesByName } = await (client as any)
+    const { data: profilesByName } = await asUntyped(client)
       .from('user_profiles')
       .select('*')
       .eq('user_id', galleryAccount.id)
@@ -58,7 +59,7 @@ export async function fixGalleryNamesForToday(
     }
 
     // Get all gallery profiles for this account
-    const { data: allProfiles } = await (client as any)
+    const { data: allProfiles } = await asUntyped(client)
       .from('user_profiles')
       .select('*')
       .eq('user_id', galleryAccount.id)
@@ -96,7 +97,7 @@ export async function fixGalleryNamesForToday(
     const todayEnd = new Date().toISOString();
 
     // Find all artworks created today by this gallery account
-    const { data: artworks, error } = await (client as any)
+    const { data: artworks, error } = await asUntyped(client)
       .from('artworks')
       .select('id, title, account_id, created_at')
       .eq('account_id', galleryAccount.id)
@@ -151,7 +152,7 @@ export async function updateGalleryProfileName(
   try {
     const client = getSupabaseServerAdminClient();
     
-    const { data: updatedProfile, error } = await (client as any)
+    const { data: updatedProfile, error } = await asUntyped(client)
       .from('user_profiles')
       .update({ name: newName.trim() })
       .eq('id', profileId)

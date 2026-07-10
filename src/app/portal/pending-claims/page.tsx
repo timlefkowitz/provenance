@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -27,7 +28,7 @@ export default async function PendingClaimsPage() {
   const inviteeEmail = normalizeInviteEmail(user.email);
   const adminClient = getSupabaseServerAdminClient();
 
-  const { data: invites, error } = await (adminClient as any)
+  const { data: invites, error } = await asUntyped(adminClient)
     .from('certificate_claim_invites')
     .select('id, batch_id, source_artwork_id, claim_kind, expires_at, created_at')
     .eq('invitee_email', inviteeEmail)
@@ -43,7 +44,7 @@ export default async function PendingClaimsPage() {
   const titleBySourceId = new Map<string, string>();
 
   if (sourceIds.length > 0) {
-    const { data: arts } = await (adminClient as any)
+    const { data: arts } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, title')
       .in('id', sourceIds);

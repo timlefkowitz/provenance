@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useObject } from '@ai-sdk/react';
+import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
@@ -34,6 +34,7 @@ import {
   type ParsedProfileFields,
   type ParsedProfilePayload,
 } from '../_actions/parse-profile-input';
+import { asUntyped } from '~/lib/supabase-untyped';
 
 /* -------------------------------------------------------------------------- */
 /*  Question script per role                                                  */
@@ -242,9 +243,10 @@ export function TacoProfileChatbot({
         return;
       }
 
+      const obj = object as Record<string, unknown>;
       const finalReply =
-        typeof object.taco_reply === 'string' && object.taco_reply.trim()
-          ? object.taco_reply.trim().slice(0, 280)
+        typeof obj.taco_reply === 'string' && obj.taco_reply.trim()
+          ? obj.taco_reply.trim().slice(0, 280)
           : '*slow blink* Got it.';
 
       // Promote the streaming preview into a permanent Taco message.
@@ -660,7 +662,8 @@ export function TacoProfileChatbot({
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Chat column */}
       <Card
-        ref={dropZoneRef}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ref={dropZoneRef as any}
         className="border-wine/20 bg-parchment/60 relative flex flex-col overflow-hidden"
         onDragEnter={handleDragOver}
         onDragOver={handleDragOver}

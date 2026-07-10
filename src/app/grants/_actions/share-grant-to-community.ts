@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
@@ -24,7 +25,7 @@ export async function shareGrantToCommunity(grantId: string) {
   const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);
   const sharedByName = artistProfile?.name ?? 'An artist';
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artist_grants')
     .update({
       is_community: true,

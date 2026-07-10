@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
 
@@ -67,7 +68,7 @@ export async function searchUserByEmailForAdmin(
 
   const users: AdminUserSearchHit[] = [];
   for (const acc of accounts) {
-    const { data: subs, error: subErr } = await (admin as any)
+    const { data: subs, error: subErr } = await asUntyped(admin)
       .from('subscriptions')
       .select(
         'id, user_id, stripe_subscription_id, status, role, current_period_end, trial_end, updated_at',

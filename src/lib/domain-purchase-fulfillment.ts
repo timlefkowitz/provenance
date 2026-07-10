@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import {
   configureGoDaddyDnsForVercel,
@@ -22,7 +23,7 @@ export async function fulfillDomainPurchase(
 
   const admin = getSupabaseServerAdminClient();
 
-  const { data: purchase, error: fetchErr } = await (admin as any)
+  const { data: purchase, error: fetchErr } = await asUntyped(admin)
     .from('domain_purchases')
     .select('*')
     .eq('stripe_checkout_session_id', checkoutSessionId)
@@ -53,7 +54,7 @@ export async function fulfillDomainPurchase(
     const vercelVerified = await registerDomainWithVercel(domain);
 
     const now = new Date().toISOString();
-    const { error: siteErr } = await (admin as any)
+    const { error: siteErr } = await asUntyped(admin)
       .from('profile_sites')
       .update({
         custom_domain: domain,
@@ -66,7 +67,7 @@ export async function fulfillDomainPurchase(
       throw new Error(siteErr.message);
     }
 
-    const { error: updateErr } = await (admin as any)
+    const { error: updateErr } = await asUntyped(admin)
       .from('domain_purchases')
       .update({ status: 'purchased', error: null, updated_at: now })
       .eq('id', row.id)
@@ -82,7 +83,7 @@ export async function fulfillDomainPurchase(
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[Sites] fulfillDomainPurchase failed', { domain, err });
 
-    await (admin as any)
+    await asUntyped(admin)
       .from('domain_purchases')
       .update({ status: 'failed', error: message, updated_at: new Date().toISOString() })
       .eq('id', row.id);

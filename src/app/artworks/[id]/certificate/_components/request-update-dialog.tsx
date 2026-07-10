@@ -68,7 +68,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
           return;
         }
 
-        const userRole = getUserRole(account.public_data as Record<string, any>);
+        const userRole = getUserRole(account.public_data as Record<string, unknown>);
         const nameMatches = account.name.toLowerCase() === artwork.artist_name!.toLowerCase();
 
         setCanRequestOwnership(userRole === USER_ROLES.ARTIST && nameMatches);
@@ -110,7 +110,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
         }
 
         // For provenance updates, build update fields object (only include fields that have changed)
-        const updateFields: Record<string, any> = {};
+        const updateFields: Record<string, unknown> = {};
         
         if (formData.title !== (artwork.title || '')) updateFields.title = formData.title;
         if (formData.description !== (artwork.description || '')) updateFields.description = formData.description;
@@ -155,7 +155,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
             request_message: '',
           });
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error submitting update request:', error);
         toast.error('Failed to submit update request');
       }

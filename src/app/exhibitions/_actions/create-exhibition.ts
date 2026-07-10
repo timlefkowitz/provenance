@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES, type UserRole } from '~/lib/user-roles';
@@ -11,7 +12,7 @@ import {
 
 export async function createExhibition(formData: FormData) {
   console.log('[Exhibitions] createExhibition started');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -29,7 +30,7 @@ export async function createExhibition(formData: FormData) {
     throw new Error('Account not found');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
   const allowedRoles = new Set<UserRole>([
     USER_ROLES.GALLERY,
     USER_ROLES.INSTITUTION,
@@ -83,7 +84,7 @@ export async function createExhibition(formData: FormData) {
   }
 
   // Build metadata object
-  const metadata: Record<string, any> = {};
+  const metadata: Record<string, unknown> = {};
   if (curator?.trim()) {
     metadata.curator = curator.trim();
   }
@@ -91,7 +92,7 @@ export async function createExhibition(formData: FormData) {
     metadata.theme = theme.trim();
   }
 
-  const { data: exhibition, error } = await (client as any)
+  const { data: exhibition, error } = await asUntyped(client)
     .from('exhibitions')
     .insert({
       gallery_id: user.id,
@@ -124,7 +125,7 @@ export async function createExhibition(formData: FormData) {
       artist_account_id: artistId,
     }));
 
-    const { error: artistsError } = await (client as any)
+    const { error: artistsError } = await asUntyped(client)
       .from('exhibition_artists')
       .insert(artistInserts);
 

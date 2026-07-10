@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -20,10 +21,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- artworks table not fully typed on client
-  const { data: artwork } = await (client as any)
+  const { data: artwork } = await asUntyped(client)
     .from('artworks')
     .select('title, artist_name, image_url, status, certificate_type')
     .eq('id', id)
@@ -77,7 +78,7 @@ export default async function CertificatePage({
   
   const resolvedSearchParams = await searchParams;
   const showVerifyCta = resolvedSearchParams?.verify === '1';
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
   console.log('[v0] [Certificate] User authenticated:', !!user, user?.id ? `(${user.id.slice(0, 8)}...)` : '');
 
@@ -89,7 +90,7 @@ export default async function CertificatePage({
 
   if (user) {
     // Authenticated users can see their own artworks or verified artworks
-    const { data, error: err } = await (client as any)
+    const { data, error: err } = await asUntyped(client)
       .from('artworks')
       .select(`
         id,
@@ -134,7 +135,7 @@ export default async function CertificatePage({
     error = err;
   } else {
     // Anonymous users can only see verified artworks
-    const { data, error: err } = await (client as any)
+    const { data, error: err } = await asUntyped(client)
       .from('artworks')
       .select(`
         id,
@@ -205,7 +206,7 @@ export default async function CertificatePage({
 
   let attachments: ArtworkAttachmentRow[] = [];
   if (artwork?.id) {
-    const { data: attRows, error: attErr } = await (client as any)
+    const { data: attRows, error: attErr } = await asUntyped(client)
       .from('artwork_attachments')
       .select('id, file_url, file_name, file_type, created_at')
       .eq('artwork_id', artwork.id)
@@ -269,7 +270,7 @@ export default async function CertificatePage({
     
     // Process creator info
     if (creatorAccountResult.data) {
-      const creatorRole = getUserRole(creatorAccountResult.data.public_data as Record<string, any>);
+      const creatorRole = getUserRole(creatorAccountResult.data.public_data as Record<string, unknown>);
       
       // For galleries, fetch the gallery profile name instead of account name
       let creatorName = creatorAccountResult.data.name;
@@ -322,7 +323,7 @@ export default async function CertificatePage({
     
     // Check admin status
     if (currentUserAccountResult.data?.public_data) {
-      const publicData = currentUserAccountResult.data.public_data as Record<string, any>;
+      const publicData = currentUserAccountResult.data.public_data as Record<string, unknown>;
       userIsAdmin = publicData.admin === true;
     }
   } catch (error) {
@@ -337,8 +338,8 @@ export default async function CertificatePage({
   // Latest provenance valuation (public for non-owners, latest for owners).
   let latestValuation: ProvenanceValuation | null = null;
   try {
-    const admin = getSupabaseServerAdminClient();
-    let query = (admin as any)
+    const admin = asUntyped(getSupabaseServerAdminClient());
+    let query = asUntyped(admin)
       .from('artwork_valuations')
       .select(
         'id, artwork_id, generated_at, engine_version, llm_model, estimated_value_cents, confidence_low_cents, confidence_high_cents, cultural_importance_score, liquidity_score, forgery_risk_score, rarity_index, former_owners_count, notable_collectors_count, museum_count, exhibition_count, scholarly_citations_count, artist_market_cap_cents, auction_history_summary, market_signals, narrative, is_public',

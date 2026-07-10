@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { Images } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -26,7 +27,7 @@ export default async function MyArtworksPage({
       : null;
   const isAssignFlow = resolvedSearchParams.assign === '1' && assignExhibitionIdParam !== null;
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -43,7 +44,7 @@ export default async function MyArtworksPage({
     .eq('id', user.id)
     .single();
   const accountRole: UserRole | null = getUserRole(
-    (accountRow?.public_data ?? {}) as Record<string, any>,
+    (accountRow?.public_data ?? {}) as Record<string, unknown>,
   );
   const activeRole: UserRole | null = perspective ?? accountRole;
   const ownerRole = perspectiveToOwnerRole(activeRole);
@@ -94,7 +95,7 @@ export default async function MyArtworksPage({
     // Gallery / institution mode: fetch COS rows across all gallery profiles
     // the user belongs to (owned + team). account_id is NOT filtered because
     // different team members post under their own account_id.
-    const { data, error } = await (client as any)
+    const { data, error } = await asUntyped(client)
       .from('artworks')
       .select(artworkCollectionSelect)
       .in('gallery_profile_id', galleryProfileIds)
@@ -106,7 +107,7 @@ export default async function MyArtworksPage({
   } else {
     // Artist / collector mode (or gallery mode with no profiles yet): fetch
     // by account_id filtered to the cert type matching the perspective.
-    const { data, error } = await (client as any)
+    const { data, error } = await asUntyped(client)
       .from('artworks')
       .select(artworkCollectionSelect)
       .eq('account_id', user.id)
@@ -141,7 +142,7 @@ export default async function MyArtworksPage({
     : [user.id];
 
   /** Draft listings linked to shows you own (`exhibition_artworks` → exhibitions.gallery_id). */
-  const { data: ownedExhibitions } = await (client as any)
+  const { data: ownedExhibitions } = await asUntyped(client)
     .from('exhibitions')
     .select('id')
     .in('gallery_id', exhibitionOwnerIds);
@@ -166,7 +167,7 @@ export default async function MyArtworksPage({
     if (showArtworkIds.length > 0) {
       // For draft rows in gallery mode, match by gallery_profile_id; for
       // personal modes, match by account_id.
-      let draftQuery = (client as any)
+      let draftQuery = asUntyped(client)
         .from('artworks')
         .select(artworkCollectionSelect)
         .in('id', showArtworkIds)
@@ -328,7 +329,7 @@ export default async function MyArtworksPage({
   }
 
   if (missingExhibitionIds.length > 0) {
-    const { data: extraRows } = await (client as any)
+    const { data: extraRows } = await asUntyped(client)
       .from('exhibitions')
       .select('id, title, start_date, end_date')
       .in('id', missingExhibitionIds);
@@ -349,7 +350,7 @@ export default async function MyArtworksPage({
   const assignExhibitionTitle = assignExhibition?.title ?? null;
 
   // Fetch user_profiles for registry directory picks (artist: one COA; gallery: up to 5).
-  const { data: profilesWithPick } = await (client as any)
+  const { data: profilesWithPick } = await asUntyped(client)
     .from('user_profiles')
     .select('id, role, registry_artwork_id, registry_artwork_ids')
     .eq('user_id', user.id)

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES } from '~/lib/user-roles';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
@@ -14,7 +15,7 @@ export async function getUserGalleryProfiles(userId: string): Promise<UserProfil
     const client = getSupabaseServerClient();
 
     // Profiles this user owns
-    const { data: ownedProfiles, error: ownedError } = await (client as any)
+    const { data: ownedProfiles, error: ownedError } = await asUntyped(client)
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
@@ -32,7 +33,7 @@ export async function getUserGalleryProfiles(userId: string): Promise<UserProfil
     }
 
     // Profiles this user is a member of (gallery team)
-    const { data: memberRows, error: memberError } = await (client as any)
+    const { data: memberRows, error: memberError } = await asUntyped(client)
       .from('gallery_members')
       .select('gallery_profile_id')
       .eq('user_id', userId);
@@ -49,7 +50,7 @@ export async function getUserGalleryProfiles(userId: string): Promise<UserProfil
     const memberProfileIds = Array.from(
       new Set(
         (memberRows || [])
-          .map((row: any) => row.gallery_profile_id)
+          .map((row: Record<string, unknown>) => row.gallery_profile_id)
           .filter((id: unknown): id is string => typeof id === 'string'),
       ),
     );
@@ -57,7 +58,7 @@ export async function getUserGalleryProfiles(userId: string): Promise<UserProfil
     let memberProfiles: UserProfile[] = [];
 
     if (memberProfileIds.length > 0) {
-      const { data: profilesForMembership, error: profilesError } = await (client as any)
+      const { data: profilesForMembership, error: profilesError } = await asUntyped(client)
         .from('user_profiles')
         .select('*')
         .in('id', memberProfileIds)

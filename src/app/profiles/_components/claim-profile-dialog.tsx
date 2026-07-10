@@ -54,9 +54,9 @@ export function ClaimProfileDialog({
           setMessage('');
           router.refresh();
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('[ClaimProfileDialog] Error submitting claim request', error);
-        toast.error(error.message || 'Failed to submit claim request');
+        toast.error((error as Error).message || 'Failed to submit claim request');
       }
     });
   };

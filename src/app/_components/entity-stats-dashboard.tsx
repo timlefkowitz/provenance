@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
@@ -85,7 +86,7 @@ async function loadStats(
 ): Promise<EntityStatsRow | null> {
   const admin = getSupabaseServerAdminClient();
   try {
-    const { data, error } = await (admin as any)
+    const { data, error } = await asUntyped(admin)
       .from('entity_stats')
       .select('*')
       .eq('entity_account_id', accountId)
@@ -105,7 +106,7 @@ async function loadStats(
 async function loadRecentSales(accountId: string): Promise<RecentSaleRow[]> {
   const admin = getSupabaseServerAdminClient();
   try {
-    const { data, error } = await (admin as any)
+    const { data, error } = await asUntyped(admin)
       .from('sales_ledger')
       .select(
         'id, artwork_id, sold_at, price_cents, currency, sold_to_account_id, sold_to_email, sold_to_name, notes',

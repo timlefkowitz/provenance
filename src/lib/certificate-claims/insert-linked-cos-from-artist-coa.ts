@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
@@ -23,7 +24,7 @@ export async function insertLinkedCoSFromArtistCoa(
   const certNumber = await generateCertificateNumber(adminClient);
   const sourceId = sourceCoA.id as string;
 
-  const { data, error } = await (adminClient as any)
+  const { data, error } = await asUntyped(adminClient)
     .from('artworks')
     .insert({
       account_id: params.galleryAccountId,

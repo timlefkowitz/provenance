@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -23,7 +24,7 @@ export async function editArtwork(
   isCreator: boolean,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -31,7 +32,7 @@ export async function editArtwork(
     }
 
     // Verify artwork exists and get owner
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, title, gallery_profile_id')
       .eq('id', artworkId)
@@ -122,7 +123,7 @@ export async function editArtwork(
 
       // Update image_url directly if provided
       if (updateFields.image_url) {
-        const { error: imageUpdateError } = await (client as any)
+        const { error: imageUpdateError } = await asUntyped(client)
           .from('artworks')
           .update({ image_url: updateFields.image_url })
           .eq('id', artworkId);
@@ -139,7 +140,7 @@ export async function editArtwork(
 
       // Update created_at directly if provided
       if (updateFields.created_at) {
-        const { error: dateUpdateError } = await (client as any)
+        const { error: dateUpdateError } = await asUntyped(client)
           .from('artworks')
           .update({ created_at: updateFields.created_at })
           .eq('id', artworkId);
@@ -164,7 +165,7 @@ export async function editArtwork(
 
       if (exhibitionId && exhibitionId !== '__none__' && exhibitionTitle) {
         // Verify user owns this exhibition
-        const { data: exhibition } = await (client as any)
+        const { data: exhibition } = await asUntyped(client)
           .from('exhibitions')
           .select('gallery_id')
           .eq('id', exhibitionId)
@@ -186,7 +187,7 @@ export async function editArtwork(
             exhibitionUpdate.gallery_id = exhibitionGalleryId;
           }
 
-          const { error: exhibitionUpdateError } = await (client as any)
+          const { error: exhibitionUpdateError } = await asUntyped(client)
             .from('exhibitions')
             .update(exhibitionUpdate)
             .eq('id', exhibitionId);
@@ -275,13 +276,13 @@ export async function editArtwork(
 
       return { success: true };
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error('edit_artwork_failed', {
       artworkId,
       isCreator,
       error,
     });
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    return { success: false, error: (error as Error).message || 'An unexpected error occurred' };
   }
 }
 

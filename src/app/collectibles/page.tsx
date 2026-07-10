@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import Link from 'next/link';
 import { Plus, Package, ShieldCheck } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -31,7 +32,7 @@ export default async function CollectiblesPage({
     data: { user },
   } = await client.auth.getUser();
 
-  let query = (client as any)
+  let query = asUntyped(client)
     .from('collectibles')
     .select(
       'id, account_id, title, category, subcategory, image_url, certificate_number, value, value_is_public, is_public, status, created_at',

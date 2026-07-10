@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { logger } from '~/lib/logger';
@@ -21,7 +22,7 @@ export async function createOwnerInviteFromCoa(
 ): Promise<CreateOwnerInviteResult> {
   console.log('[Certificates] createOwnerInviteFromCoa started', { artworkId });
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
@@ -35,7 +36,7 @@ export async function createOwnerInviteFromCoa(
       return { success: false, error: 'Enter a valid email address' };
     }
 
-    const { data: artwork, error: artError } = await (client as any)
+    const { data: artwork, error: artError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, title, certificate_type')
       .eq('id', artworkId)
@@ -56,7 +57,7 @@ export async function createOwnerInviteFromCoa(
     const adminClient = getSupabaseServerAdminClient();
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     try {
-      const { count, error: countError } = await (adminClient as any)
+      const { count, error: countError } = await asUntyped(adminClient)
         .from('certificate_claim_invites')
         .select('id', { count: 'exact', head: true })
         .eq('created_by', user.id)
@@ -69,7 +70,7 @@ export async function createOwnerInviteFromCoa(
       console.error('[Certificates] createOwnerInviteFromCoa rate limit check failed', rateErr);
     }
 
-    const { data: existingOpen } = await (adminClient as any)
+    const { data: existingOpen } = await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .select('id')
       .eq('source_artwork_id', artworkId)
@@ -86,7 +87,7 @@ export async function createOwnerInviteFromCoa(
     const tokenHash = hashClaimToken(token);
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
 
-    const { error: insertError } = await (adminClient as any).from('certificate_claim_invites').insert({
+    const { error: insertError } = await asUntyped(adminClient).from('certificate_claim_invites').insert({
       source_artwork_id: artworkId,
       claim_kind: 'owner_coownership_from_coa',
       invitee_email: inviteeEmail,

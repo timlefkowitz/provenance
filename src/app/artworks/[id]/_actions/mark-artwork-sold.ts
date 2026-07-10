@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -23,7 +24,7 @@ export interface MarkArtworkSoldInput {
   soldAt?: string | null;
   notes?: string | null;
   soldByDisplay?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MarkArtworkSoldResult {
@@ -52,7 +53,7 @@ export async function markArtworkSold(
       return { success: false, error: 'You must be signed in to mark an artwork as sold' };
     }
 
-    const { data: artwork, error: fetchError } = await (client as any)
+    const { data: artwork, error: fetchError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, gallery_profile_id, title')
       .eq('id', input.artworkId)
@@ -83,7 +84,7 @@ export async function markArtworkSold(
 
     const admin = getSupabaseServerAdminClient();
 
-    const { error: updateError } = await (admin as any)
+    const { error: updateError } = await asUntyped(admin)
       .from('artworks')
       .update({
         is_sold: true,
@@ -109,7 +110,7 @@ export async function markArtworkSold(
 
     let saleId: string | undefined;
     try {
-      const { data: sale, error: saleError } = await (admin as any)
+      const { data: sale, error: saleError } = await asUntyped(admin)
         .from('sales_ledger')
         .insert({
           artwork_id: input.artworkId,
@@ -145,7 +146,7 @@ export async function markArtworkSold(
     }
 
     try {
-      const { error: eventError } = await (admin as any)
+      const { error: eventError } = await asUntyped(admin)
         .from('provenance_events')
         .insert({
           artwork_id: input.artworkId,

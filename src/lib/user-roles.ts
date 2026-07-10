@@ -45,7 +45,7 @@ export function getRoleLabel(role: UserRole): string {
 /**
  * Get role from account public_data
  */
-export function getUserRole(publicData: Record<string, any> | null | undefined): UserRole | null {
+export function getUserRole(publicData: Record<string, unknown> | null | undefined): UserRole | null {
   if (!publicData?.role) return null;
   const role = publicData.role as string;
   return isValidRole(role) ? role : null;

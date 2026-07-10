@@ -68,9 +68,9 @@ export function ExhibitionsList({
       await deleteExhibition(exhibitionId);
       toast.success('Exhibition removed');
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ExhibitionsList] Error deleting exhibition', error);
-      toast.error(error.message || 'Failed to delete exhibition');
+      toast.error((error as Error).message || 'Failed to delete exhibition');
     } finally {
       setDeletingId(null);
     }

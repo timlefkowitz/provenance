@@ -100,6 +100,7 @@ import {
 } from '../_actions/leads-constants';
 import { CrmDealIntelFields } from './crm-deal-intel-fields';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function fmt(value: number) {
@@ -240,8 +241,9 @@ function DealArtifactStrip({ intel }: { intel: CrmLeadIntel }) {
 }
 
 function leadIntelSearchBlob(l: ArtistLead): string {
-  const i = l.intel;
-  if (!i) return '';
+  const raw = l.intel;
+  if (!raw) return '';
+  const i = raw as import('../_actions/leads-constants').CrmLeadIntel;
   return [
     i.account_name,
     i.current_system_notes,
@@ -250,7 +252,7 @@ function leadIntelSearchBlob(l: ArtistLead): string {
     ...(i.key_insights ?? []),
     ...(i.positives ?? []),
     ...(i.negatives ?? []),
-    ...(i.stakeholders ?? []).flatMap((s) => [s.name, s.role, s.email]),
+    ...(i.stakeholders ?? []).flatMap((s: import('../_actions/leads-constants').CrmStakeholder) => [s.name, s.role, s.email]),
   ]
     .filter(Boolean)
     .join(' ')
@@ -591,7 +593,7 @@ function DroppableColumn({ stage, leads, onMove, onDelete, onOpenEdit, columnLab
 
 // ─── List view ───────────────────────────────────────────────────────────────
 
-function ListView({ leads, onMove, onDelete, onOpenEdit, stageLabels }: {
+function ListView({ leads, onMove: _onMove, onDelete, onOpenEdit, stageLabels }: {
   leads: ArtistLead[];
   onMove: (leadId: string, stage: LeadStage) => void;
   onDelete: (leadId: string) => void;

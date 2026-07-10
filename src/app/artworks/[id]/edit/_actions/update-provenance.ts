@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
@@ -42,7 +43,7 @@ export async function updateProvenance(
   }
 ) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -50,7 +51,7 @@ export async function updateProvenance(
     }
 
     // Fetch current artwork state — includes all provenance fields + existing history
-    const { data: artwork, error: fetchError } = await (client as any)
+    const { data: artwork, error: fetchError } = await asUntyped(client)
       .from('artworks')
       .select(`
         account_id,
@@ -234,7 +235,7 @@ export async function updateProvenance(
       updateData.display_order = provenance.displayOrder ?? null;
     }
 
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('artworks')
       .update(updateData)
       .eq('id', artworkId);
@@ -252,7 +253,7 @@ export async function updateProvenance(
     if (provenance.exhibitionId !== undefined) {
       try {
         // Get current exhibition link
-        const { data: currentLink } = await (client as any)
+        const { data: currentLink } = await asUntyped(client)
           .from('exhibition_artworks')
           .select('exhibition_id')
           .eq('artwork_id', artworkId)
@@ -265,7 +266,7 @@ export async function updateProvenance(
         if (currentExhibitionId !== newExhibitionId) {
           // Remove from current exhibition if linked
           if (currentExhibitionId) {
-            await (client as any)
+            await asUntyped(client)
               .from('exhibition_artworks')
               .delete()
               .eq('artwork_id', artworkId)
@@ -275,7 +276,7 @@ export async function updateProvenance(
           // Add to new exhibition if provided
           if (newExhibitionId) {
             // Verify the user owns this exhibition
-            const { data: exhibition } = await (client as any)
+            const { data: exhibition } = await asUntyped(client)
               .from('exhibitions')
               .select('gallery_id')
               .eq('id', newExhibitionId)
@@ -287,7 +288,7 @@ export async function updateProvenance(
 
             if (exhibition && canLink) {
               // Add artwork to exhibition (ignore duplicate errors)
-              await (client as any)
+              await asUntyped(client)
                 .from('exhibition_artworks')
                 .insert({
                   exhibition_id: newExhibitionId,
@@ -364,7 +365,7 @@ export async function updateProvenance(
 
     if (exhibitionDisplayFieldsChanged) {
       try {
-        const { data: exhibitionLinks } = await (client as any)
+        const { data: exhibitionLinks } = await asUntyped(client)
           .from('exhibition_artworks')
           .select('exhibition_id')
           .eq('artwork_id', artworkId);

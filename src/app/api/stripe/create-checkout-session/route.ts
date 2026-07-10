@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
     const cancelUrl = `${siteUrl}/subscription?canceled=1`;
 
     const admin = getSupabaseServerAdminClient();
-    const { data: existing } = await (admin as any)
+    const { data: existing } = await asUntyped(admin)
       .from('stripe_customers')
       .select('stripe_customer_id')
       .eq('user_id', user.id)

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -21,7 +22,7 @@ export async function toggleGrantUpvote(grantId: string, currentlyUpvoted: boole
 
   if (currentlyUpvoted) {
     // Remove upvote
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('grant_upvotes')
       .delete()
       .eq('grant_id', grantId)
@@ -33,7 +34,7 @@ export async function toggleGrantUpvote(grantId: string, currentlyUpvoted: boole
     }
   } else {
     // Add upvote (ignore conflict — idempotent)
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('grant_upvotes')
       .insert({ grant_id: grantId, user_id: user.id });
 

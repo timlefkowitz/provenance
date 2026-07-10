@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid price' }, { status: 400 });
     }
 
-    const { data: siteRow, error: siteErr } = await (client as any)
+    const { data: siteRow, error: siteErr } = await asUntyped(client)
       .from('profile_sites')
       .select('profile_id, handle, custom_domain')
       .eq('profile_id', profileId)
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: profile } = await (client as any)
+    const { data: profile } = await asUntyped(client)
       .from('user_profiles')
       .select('user_id')
       .eq('id', profileId)
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
     const cancelUrl = `${siteUrl}/profile/site?profileId=${profileId}&domain_canceled=1`;
 
     const admin = getSupabaseServerAdminClient();
-    const { data: existing } = await (admin as any)
+    const { data: existing } = await asUntyped(admin)
       .from('stripe_customers')
       .select('stripe_customer_id')
       .eq('user_id', user.id)

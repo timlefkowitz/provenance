@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type PendingClaim = {
   id: string;
   profile_id: string;
@@ -30,7 +31,7 @@ export type PendingClaim = {
  */
 export async function getPendingClaims(galleryId: string): Promise<PendingClaim[]> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     
     // Verify user is a gallery
     const { data: account } = await client
@@ -43,7 +44,7 @@ export async function getPendingClaims(galleryId: string): Promise<PendingClaim[
       return [];
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, any>);
+    const userRole = getUserRole(account.public_data as Record<string, unknown>);
     if (userRole !== USER_ROLES.GALLERY) {
       return [];
     }
@@ -123,7 +124,7 @@ export async function getPendingClaims(galleryId: string): Promise<PendingClaim[
  */
 export async function getUnclaimedProfiles(artistUserId: string) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     
     // Verify user is an artist
     const { data: account } = await client
@@ -136,7 +137,7 @@ export async function getUnclaimedProfiles(artistUserId: string) {
       return [];
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, any>);
+    const userRole = getUserRole(account.public_data as Record<string, unknown>);
     if (userRole !== USER_ROLES.ARTIST) {
       return [];
     }
@@ -187,16 +188,16 @@ export async function getUnclaimedProfiles(artistUserId: string) {
     const claimedProfileIds = new Set(existingClaims?.map(c => c.profile_id) || []);
 
     const availableProfiles = (profiles || [])
-      .filter((p: any) => !claimedProfileIds.has(p.id))
-      .map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        medium: p.medium,
-        created_by_gallery_id: p.created_by_gallery_id,
-        created_at: p.created_at,
+      .filter((p: Record<string, unknown>) => !claimedProfileIds.has(p.id as string))
+      .map((p: Record<string, unknown>) => ({
+        id: p.id as string,
+        name: p.name as string,
+        medium: (p.medium ?? null) as string | null,
+        created_by_gallery_id: (p.created_by_gallery_id ?? null) as string | null,
+        created_at: p.created_at as string,
         gallery: p.gallery ? {
-          id: p.gallery.id,
-          name: p.gallery.name,
+          id: (p.gallery as Record<string, unknown>).id as string,
+          name: (p.gallery as Record<string, unknown>).name as string,
         } : null,
       }));
 

@@ -22,6 +22,7 @@
 
 import { fileTypeFromBuffer } from 'file-type';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type AllowedUploadGroup = 'image' | 'pdf' | 'document';
 
 const ALLOWED_MIME_BY_GROUP: Record<AllowedUploadGroup, readonly string[]> = {
@@ -131,10 +132,15 @@ export async function assertAllowedFile(
  * Uses the Web Crypto API, available in Node.js ≥15 and Edge runtimes.
  */
 async function sha256Hex(buffer: ArrayBuffer | Buffer | Uint8Array): Promise<string> {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(
-    buffer instanceof Buffer ? buffer.buffer : buffer,
-  );
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  let arrayBuffer: ArrayBuffer;
+  if (buffer instanceof Uint8Array) {
+    arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+  } else if (buffer instanceof Buffer) {
+    arrayBuffer = Buffer.from(buffer).buffer as ArrayBuffer;
+  } else {
+    arrayBuffer = buffer as ArrayBuffer;
+  }
+  const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { StarTier } from '~/lib/streak-service';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type UserStreakView = {
   currentStreakDays: number;
   longestStreakDays: number;
@@ -12,7 +13,7 @@ export type UserStreakView = {
 };
 
 export async function getUserStreak(userId: string): Promise<UserStreakView | null> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const [goalResult, badgeResult] = await Promise.all([
     client

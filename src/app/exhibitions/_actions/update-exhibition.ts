@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { USER_ROLES } from '~/lib/user-roles';
@@ -10,7 +11,7 @@ import {
 } from './manage-exhibition-invites';
 
 export async function updateExhibition(exhibitionId: string, formData: FormData) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -18,7 +19,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   }
 
   // Verify user is a gallery and owns this exhibition or is a gallery member
-  const { data: exhibition } = await (client as any)
+  const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
@@ -71,16 +72,16 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   }
 
   // Get existing metadata
-  const { data: existingExhibition } = await (client as any)
+  const { data: existingExhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('metadata')
     .eq('id', exhibitionId)
     .single();
 
-  const existingMetadata = (existingExhibition?.metadata as Record<string, any>) || {};
+  const existingMetadata = (existingExhibition?.metadata as Record<string, unknown>) || {};
 
   // Build updated metadata object
-  const metadata: Record<string, any> = { ...existingMetadata };
+  const metadata: Record<string, unknown> = { ...existingMetadata };
   if (curator?.trim()) {
     metadata.curator = curator.trim();
   } else {
@@ -93,7 +94,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   }
 
   // Update exhibition
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('exhibitions')
     .update({
       title: title.trim(),
@@ -118,7 +119,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
       const artistIds = JSON.parse(artistIdsJson) as string[];
 
       // Remove all existing artists
-      await (client as any)
+      await asUntyped(client)
         .from('exhibition_artists')
         .delete()
         .eq('exhibition_id', exhibitionId);
@@ -130,7 +131,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
           artist_account_id: artistId,
         }));
 
-        const { error: artistsError } = await (client as any)
+        const { error: artistsError } = await asUntyped(client)
           .from('exhibition_artists')
           .insert(artistInserts);
 

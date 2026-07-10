@@ -49,9 +49,12 @@ export function StudioTemplate({ site }: { site: SiteData }) {
             )}
             <div>
               {site.logo_image_url ? (
-                <img
+                <Image
                   src={site.logo_image_url}
                   alt={site.display_name ?? site.name}
+                  width={0}
+                  height={0}
+                  sizes="100vw"
                   className="h-7 w-auto object-contain"
                 />
               ) : (

@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type UserProfile = {
   id: string;
   user_id: string;
@@ -46,7 +47,7 @@ export type NewsPublication = {
  * Get all profiles for the current user
  */
 export async function getUserProfiles(userId: string): Promise<UserProfile[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data, error } = await client
     .from('user_profiles')
@@ -71,7 +72,7 @@ export async function getUserProfileByRole(
   userId: string,
   role: UserRole
 ): Promise<UserProfile | null> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   // For galleries, we can have multiple, so get the first one
   // For artist/collector, there should only be one
@@ -99,7 +100,7 @@ export async function getUserProfileByRole(
 export async function getUserProfileById(
   profileId: string
 ): Promise<UserProfile | null> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data, error } = await client
     .from('user_profiles')
@@ -125,7 +126,7 @@ export async function getUserProfileById(
  * Used to ignore forged ?role=gallery on public profile URLs.
  */
 export async function accountHasActiveGalleryProfile(userId: string): Promise<boolean> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data, error } = await client
     .from('user_profiles')

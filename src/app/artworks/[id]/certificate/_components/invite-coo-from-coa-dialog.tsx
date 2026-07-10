@@ -16,6 +16,7 @@ import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
 import { createOwnerInviteFromCoa } from '~/app/claim/certificate/_actions/create-owner-invite-from-coa';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export function InviteCooFromCoaDialog({
   artworkId,
   artworkTitle,

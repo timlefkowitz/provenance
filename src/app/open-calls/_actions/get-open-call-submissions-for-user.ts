@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 export type OpenCallSubmission = {
@@ -19,9 +20,9 @@ export type OpenCallSubmission = {
 };
 
 export async function getOpenCallSubmissionsForUser(userId: string) {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('open_call_submissions')
     .select(
       'id, created_at, artworks, open_call:open_call_id (id, slug, exhibition:exhibition_id (id, title, start_date, end_date))',

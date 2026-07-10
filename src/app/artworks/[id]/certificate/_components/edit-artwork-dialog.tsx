@@ -234,7 +234,7 @@ export function EditArtworkDialog({
           // Refresh the page to show updated data
           window.location.reload();
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error submitting edit:', error);
         toast.error('Failed to submit edit request');
       }
@@ -516,10 +516,13 @@ export function EditArtworkDialog({
                                 className="w-full px-4 py-2 text-left hover:bg-wine/10 transition-colors flex items-center gap-3"
                               >
                                 {gallery.picture_url && (
-                                  <img
+                                  <Image
                                     src={gallery.picture_url}
                                     alt={gallery.name}
-                                    className="w-8 h-8 rounded-full object-cover"
+                                    width={32}
+                                    height={32}
+                                    className="rounded-full object-cover"
+                                    unoptimized
                                   />
                                 )}
                                 <span className="text-sm font-serif text-ink">{gallery.name}</span>

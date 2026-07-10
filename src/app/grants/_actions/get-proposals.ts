@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export type ProposalRow = {
@@ -23,7 +24,7 @@ export type ProposalRow = {
  */
 export async function getProposals(): Promise<ProposalRow[]> {
   console.log('[Proposals] getProposals');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
     error: authError,
@@ -34,7 +35,7 @@ export async function getProposals(): Promise<ProposalRow[]> {
     return [];
   }
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('grant_proposals')
     .select('*, artist_grants(name)')
     .eq('user_id', user.id)
@@ -45,9 +46,9 @@ export async function getProposals(): Promise<ProposalRow[]> {
     return [];
   }
 
-  return ((data as any[]) || []).map((row) => ({
+  return ((data as Record<string, unknown>[]) || []).map((row) => ({
     ...row,
-    grant_name: row.artist_grants?.name ?? null,
+    grant_name: (row.artist_grants as { name?: string } | null)?.name ?? null,
     artist_grants: undefined,
   }));
 }
@@ -57,7 +58,7 @@ export async function getProposals(): Promise<ProposalRow[]> {
  */
 export async function getProposal(id: string): Promise<ProposalRow | null> {
   console.log('[Proposals] getProposal', id);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
     error: authError,
@@ -68,7 +69,7 @@ export async function getProposal(id: string): Promise<ProposalRow | null> {
     return null;
   }
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('grant_proposals')
     .select('*, artist_grants(name)')
     .eq('id', id)

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -13,7 +14,7 @@ export async function adminDeleteArtwork(artworkId: string) {
   console.log('[AdminDeleteArtwork] started', { artworkId });
 
   // Verify the caller is authenticated
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -42,7 +43,7 @@ export async function adminDeleteArtwork(artworkId: string) {
   // Use the service-role admin client so RLS is bypassed — the regular
   // authed client would silently no-op because the admin is not the owner.
   const adminClient = getSupabaseServerAdminClient();
-  const { error: deleteError } = await (adminClient as any)
+  const { error: deleteError } = await asUntyped(adminClient)
     .from('artworks')
     .delete()
     .eq('id', artworkId);

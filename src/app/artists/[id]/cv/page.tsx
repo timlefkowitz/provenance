@@ -11,6 +11,7 @@ import { mergeCvExhibitions } from './_helpers/merge-exhibitions';
 import { ArtistCvView } from '../_components/artist-cv-view';
 import type { ExhibitionSummary } from '../_components/unclaimed-artist-public-view';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Artist CV | Provenance',
 };
@@ -28,7 +29,7 @@ export default async function ArtistCvPage({
 
   console.log('[ArtistCV] page started', { id, requestedProfileId });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -119,7 +120,7 @@ export default async function ArtistCvPage({
     }));
 
     const merged = mergeCvExhibitions(cvJson, fakeExhibitions);
-    const newsPublications = (profileRow.news_publications as any[]) ?? [];
+    const newsPublications = (profileRow.news_publications as unknown[]) ?? [];
 
     console.log('[ArtistCV] unclaimed profile cv loaded', {
       profileId: profileRow.id,
@@ -143,7 +144,7 @@ export default async function ArtistCvPage({
 
   // ── CLAIMED ACCOUNT PATH ──────────────────────────────────────────────────
   const isOwner = user?.id === account.id;
-  const primaryRole = getUserRole(account.public_data as Record<string, any>);
+  const primaryRole = getUserRole(account.public_data as Record<string, unknown>);
 
   // CV is only for artists, not galleries
   if (primaryRole === USER_ROLES.GALLERY) {
@@ -185,7 +186,7 @@ export default async function ArtistCvPage({
   const location = roleProfile?.location ?? null;
   const uploadedAt = (roleProfile?.artist_cv_uploaded_at as string | null | undefined) ?? null;
   const hasOriginalFile = Boolean(roleProfile?.artist_cv_file_path);
-  const newsPublications = (roleProfile?.news_publications as any[]) ?? [];
+  const newsPublications = (roleProfile?.news_publications as unknown[]) ?? [];
 
   console.log('[ArtistCV] claimed account cv loaded', {
     accountId: account.id,

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
@@ -14,7 +15,7 @@ async function findRootId(
 ): Promise<string> {
   let current = artworkId;
   for (let i = 0; i < 64; i++) {
-    const { data, error } = await (adminClient as any)
+    const { data, error } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, source_artwork_id')
       .eq('id', current)
@@ -42,7 +43,7 @@ async function collectChainArtworkIds(
   let frontier: string[] = [rootId];
 
   for (let depth = 0; depth < 64; depth++) {
-    const { data: children, error } = await (adminClient as any)
+    const { data: children, error } = await asUntyped(adminClient)
       .from('artworks')
       .select('id')
       .in('source_artwork_id', frontier);
@@ -106,7 +107,7 @@ export async function propagateProvenanceAfterLinkedCertificate(
     const dbEventType: 'coo_issued' | 'cos_issued' | 'coa_issued' = eventKind;
 
     for (const artworkId of chainIds) {
-      const { error: insertEvErr } = await (adminClient as any)
+      const { error: insertEvErr } = await asUntyped(adminClient)
         .from('provenance_events')
         .insert({
           artwork_id: artworkId,
@@ -124,7 +125,7 @@ export async function propagateProvenanceAfterLinkedCertificate(
         });
       }
 
-      const { data: row, error: fetchErr } = await (adminClient as any)
+      const { data: row, error: fetchErr } = await asUntyped(adminClient)
         .from('artworks')
         .select('former_owners, exhibition_history, historic_context')
         .eq('id', artworkId)
@@ -149,7 +150,7 @@ export async function propagateProvenanceAfterLinkedCertificate(
         historic_context = appendIfMissing(historic_context, line);
       }
 
-      const { error: updErr } = await (adminClient as any)
+      const { error: updErr } = await asUntyped(adminClient)
         .from('artworks')
         .update({
           former_owners,
@@ -165,7 +166,7 @@ export async function propagateProvenanceAfterLinkedCertificate(
 
     const accountIds = new Set<string>();
     for (const artworkId of chainIds) {
-      const { data: a } = await (adminClient as any)
+      const { data: a } = await asUntyped(adminClient)
         .from('artworks')
         .select('account_id')
         .eq('id', artworkId)
@@ -204,7 +205,7 @@ export async function getAccountDisplayName(
   adminClient: SupabaseClient,
   accountId: string,
 ): Promise<string> {
-  const { data } = await (adminClient as any)
+  const { data } = await asUntyped(adminClient)
     .from('accounts')
     .select('name')
     .eq('id', accountId)

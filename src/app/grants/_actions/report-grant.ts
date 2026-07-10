@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -18,7 +19,7 @@ export async function reportGrant(grantId: string, reason: string) {
     return { success: false, error: 'Not authenticated' };
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('grant_reports')
     .insert({ grant_id: grantId, user_id: user.id, reason: reason.trim() });
 

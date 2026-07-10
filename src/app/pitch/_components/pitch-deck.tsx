@@ -341,7 +341,7 @@ export function PitchDeck({ founderData, initialSlides, isAdmin = false }: Pitch
           </style>
         </head>
         <body>
-          ${slides.map((slide, idx) => {
+          ${slides.map((slide) => {
             if (slide.type === 'title') {
               return `
                 <div class="slide">

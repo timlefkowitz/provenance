@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation';
 
 import { TacoOnboardingChat } from '../_components/taco-onboarding-chat';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Meet Taco — Provenance Onboarding',
 };
 
 export default async function OnboardingChatPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();

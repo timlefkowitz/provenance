@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- artworks/exhibitions RLS queries use loosely typed Supabase rows */
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import {
@@ -18,7 +19,7 @@ import type { ExhibitionPosterContext } from '../_helpers/gallery-posting-helper
 export async function getExhibitionPosterContext(
   posterAccountId: string,
 ): Promise<ExhibitionPosterContext> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: account } = await client
     .from('accounts')
     .select('public_data')
@@ -47,9 +48,9 @@ export async function canAttachGalleryProfile(
   posterUserId: string,
   galleryProfileId: string,
 ): Promise<boolean> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   try {
-    const { data: profile } = await (client as any)
+    const { data: profile } = await asUntyped(client)
       .from('user_profiles')
       .select('id, user_id, role')
       .eq('id', galleryProfileId)
@@ -65,7 +66,7 @@ export async function canAttachGalleryProfile(
     // Institution profiles are not shared via gallery_members in the typical model.
     if (profile.role === USER_ROLES.INSTITUTION) return false;
 
-    const { data: member } = await (client as any)
+    const { data: member } = await asUntyped(client)
       .from('gallery_members')
       .select('id')
       .eq('gallery_profile_id', galleryProfileId)

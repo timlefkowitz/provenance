@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
@@ -23,7 +24,7 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   console.log('[Settings] SettingsPage started');
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -40,7 +41,7 @@ export default async function SettingsPage() {
         .single(),
       getUserProfiles(user.id),
       getUserGalleryProfiles(user.id),
-      (client as any)
+      asUntyped(client)
         .from('subscriptions')
         .select('id, role, status, current_period_end, trial_end')
         .eq('user_id', user.id)
@@ -54,7 +55,7 @@ export default async function SettingsPage() {
     ]);
 
   const account = accountResult.data;
-  const publicData = (account?.public_data as Record<string, any>) || {};
+  const publicData = (account?.public_data as Record<string, unknown>) || {};
   const subscription = subscriptionResult.data?.[0] ?? null;
   const hasPaidPlan = !!(subscription?.status === 'active' || subscription?.status === 'trialing');
   const connectStatus = connectAccount
@@ -98,7 +99,7 @@ export default async function SettingsPage() {
             email={user.email || ''}
             name={account?.name || ''}
             pictureUrl={account?.picture_url || ''}
-            medium={publicData.medium || ''}
+            medium={(publicData.medium as string) || ''}
             links={(publicData.links as string[]) || []}
             galleries={(publicData.galleries as string[]) || []}
             firstProfileId={firstEditableProfile?.id ?? null}

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -47,7 +48,7 @@ async function assertArtworkOwnedOptional(
   artworkId: string | null | undefined,
 ): Promise<boolean> {
   if (!artworkId) return true;
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('id', artworkId)
@@ -68,7 +69,7 @@ export async function createInvoice(raw: z.infer<typeof createInvoiceSchema>) {
     return { success: false as const, error: 'Invalid invoice data.' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -86,7 +87,7 @@ export async function createInvoice(raw: z.infer<typeof createInvoiceSchema>) {
   }
 
   const invoice_number = makeInvoiceNumber();
-  const { data: inv, error: invErr } = await (client as any)
+  const { data: inv, error: invErr } = await asUntyped(client)
     .from('invoices')
     .insert({
       account_id: user.id,
@@ -117,11 +118,11 @@ export async function createInvoice(raw: z.infer<typeof createInvoiceSchema>) {
     sort_order: i,
   }));
 
-  const { error: lineErr } = await client.from('invoice_line_items').insert(lineRows);
+  const { error: lineErr } = await asUntyped(client).from('invoice_line_items').insert(lineRows);
 
   if (lineErr) {
     console.error('[Operations/invoices] createInvoice line items failed', lineErr);
-    await client.from('invoices').delete().eq('id', invoiceId).eq('account_id', user.id);
+    await asUntyped(client).from('invoices').delete().eq('id', invoiceId).eq('account_id', user.id);
     return { success: false as const, error: 'Could not save line items.' };
   }
 
@@ -138,7 +139,7 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
     return { success: false as const, error: 'Invalid update.' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -166,7 +167,7 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
   if (rest.status !== undefined) patch.status = rest.status;
 
   if (Object.keys(patch).length > 0) {
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('invoices')
       .update(patch)
       .eq('id', id)
@@ -178,7 +179,7 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
   }
 
   if (line_items) {
-    const { error: delErr } = await (client as any)
+    const { error: delErr } = await asUntyped(client)
       .from('invoice_line_items')
       .delete()
       .eq('invoice_id', id);
@@ -193,7 +194,7 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
       unit_amount_cents: l.unit_amount_cents,
       sort_order: i,
     }));
-    const { error: insErr } = await client.from('invoice_line_items').insert(lineRows);
+    const { error: insErr } = await asUntyped(client).from('invoice_line_items').insert(lineRows);
     if (insErr) {
       console.error('[Operations/invoices] updateInvoice insert lines failed', insErr);
       return { success: false as const, error: 'Could not save line items.' };
@@ -206,7 +207,7 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
 
 export async function duplicateInvoice(id: string) {
   console.log('[Operations/invoices] duplicateInvoice started', id);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -214,7 +215,7 @@ export async function duplicateInvoice(id: string) {
     return { success: false as const, error: 'You must be logged in.' };
   }
 
-  const { data: inv, error } = await (client as any)
+  const { data: inv, error } = await asUntyped(client)
     .from('invoices')
     .select('*')
     .eq('id', id)
@@ -226,14 +227,14 @@ export async function duplicateInvoice(id: string) {
     return { success: false as const, error: 'Invoice not found.' };
   }
 
-  const { data: lines } = await (client as any)
+  const { data: lines } = await asUntyped(client)
     .from('invoice_line_items')
     .select('description, quantity, unit_amount_cents, sort_order')
     .eq('invoice_id', id)
     .order('sort_order', { ascending: true });
 
   const invoice_number = makeInvoiceNumber();
-  const { data: created, error: insErr } = await (client as any)
+  const { data: created, error: insErr } = await asUntyped(client)
     .from('invoices')
     .insert({
       account_id: user.id,
@@ -266,10 +267,10 @@ export async function duplicateInvoice(id: string) {
       unit_amount_cents: l.unit_amount_cents,
       sort_order: i,
     }));
-    const { error: lineErr } = await client.from('invoice_line_items').insert(lineRows);
+    const { error: lineErr } = await asUntyped(client).from('invoice_line_items').insert(lineRows);
     if (lineErr) {
       console.error('[Operations/invoices] duplicateInvoice lines failed', lineErr);
-      await client.from('invoices').delete().eq('id', newId).eq('account_id', user.id);
+      await asUntyped(client).from('invoices').delete().eq('id', newId).eq('account_id', user.id);
       return { success: false as const, error: 'Could not copy line items.' };
     }
   }
@@ -280,7 +281,7 @@ export async function duplicateInvoice(id: string) {
 
 export async function markInvoiceSent(id: string) {
   console.log('[Operations/invoices] markInvoiceSent', id);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -288,7 +289,7 @@ export async function markInvoiceSent(id: string) {
     return { success: false as const, error: 'You must be logged in.' };
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('invoices')
     .update({
       status: 'sent',
@@ -308,7 +309,7 @@ export async function markInvoiceSent(id: string) {
 
 export async function markInvoicePaid(id: string) {
   console.log('[Operations/invoices] markInvoicePaid', id);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -316,7 +317,7 @@ export async function markInvoicePaid(id: string) {
     return { success: false as const, error: 'You must be logged in.' };
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('invoices')
     .update({
       status: 'paid',

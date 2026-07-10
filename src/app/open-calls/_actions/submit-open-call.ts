@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
@@ -17,8 +18,8 @@ type UploadedArtwork = {
 };
 
 export async function submitOpenCall(openCallId: string, formData: FormData) {
-  const client = getSupabaseServerClient();
-  const admin = getSupabaseServerAdminClient();
+  const client = asUntyped(getSupabaseServerClient());
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
   const { data: { user } } = await client.auth.getUser();
 
@@ -47,7 +48,7 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
     return { error: 'Please upload at least one artwork image.' };
   }
 
-  const { data: openCall, error: openCallError } = await (admin as any)
+  const { data: openCall, error: openCallError } = await asUntyped(admin)
     .from('open_calls')
     .select('id, submission_closing_date')
     .eq('id', openCallId)
@@ -95,7 +96,7 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
     uploadedArtworks.push(upload);
   }
 
-  const { error: insertError } = await (admin as any)
+  const { error: insertError } = await asUntyped(admin)
     .from('open_call_submissions')
     .insert({
       open_call_id: openCallId,
@@ -115,7 +116,7 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
   return { success: true };
 }
 
-async function ensureBucketExists(admin: ReturnType<typeof getSupabaseServerAdminClient>) {
+async function ensureBucketExists(admin: UntypedSupabaseClient) {
   const { data: buckets } = await admin.storage.listBuckets();
   const bucketExists = buckets?.some((bucket) => bucket.id === OPEN_CALL_BUCKET);
 
@@ -133,7 +134,7 @@ async function ensureBucketExists(admin: ReturnType<typeof getSupabaseServerAdmi
 }
 
 async function uploadArtworkFile(
-  admin: ReturnType<typeof getSupabaseServerAdminClient>,
+  admin: UntypedSupabaseClient,
   openCallId: string,
   file: File,
 ): Promise<UploadedArtwork> {

@@ -7,6 +7,7 @@ import {
 } from '~/lib/certificate-claims/create-invite-batch';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type BatchSendArtistClaimInvitesResult = {
   sent: number;
   errors: string[];
@@ -26,7 +27,7 @@ export async function batchSendArtistClaimInvites(
     inviteEmail,
   });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();

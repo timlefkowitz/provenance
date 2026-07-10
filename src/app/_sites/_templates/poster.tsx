@@ -25,7 +25,7 @@ export function PosterTemplate({ site }: { site: SiteData }) {
       <header className="border-b-4 px-6 md:px-12 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={{ borderColor: surface.ink }}>
         <div>
           {site.logo_image_url ? (
-            <img src={site.logo_image_url} alt={site.display_name ?? site.name} className="h-10 w-auto object-contain" />
+            <Image src={site.logo_image_url} alt={site.display_name ?? site.name} width={0} height={0} sizes="100vw" className="h-10 w-auto object-contain" />
           ) : (
             <h1
               className="text-3xl md:text-4xl font-black uppercase"

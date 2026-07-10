@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '~/lib/logger';
 import { checkRateLimit } from '~/lib/rate-limit';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 function sanitizeClientErrorPayload(input: unknown): Record<string, unknown> {
   if (!input || typeof input !== 'object') {
     return {};
@@ -56,11 +57,11 @@ export async function POST(req: NextRequest) {
     logger.error('client_error', data);
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     logger.error('client_error_route_failed', {
       scope: 'artworks_add',
-      message: error?.message ?? String(error),
-      stack: error?.stack,
+      message: (error as Error)?.message ?? String(error),
+      stack: (error as Error)?.stack,
     });
     return NextResponse.json({ ok: false }, { status: 500 });
   }

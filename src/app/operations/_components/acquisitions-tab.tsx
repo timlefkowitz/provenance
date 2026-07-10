@@ -43,6 +43,7 @@ import { uploadOperationsDocument } from '~/lib/operations/operations-document-u
 import { LoanArtworkPicker } from './loan-artwork-picker';
 import { Upload, X } from 'lucide-react';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const acqTypes = ['purchase', 'gift', 'bequest', 'exchange', 'transfer'] as const;
 const legalStatuses = ['clear', 'under_review', 'encumbered'] as const;
 const statuses = ['under_review', 'approved', 'accessioned', 'deaccessioned'] as const;

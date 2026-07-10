@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
@@ -110,7 +111,7 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
   const { data: urlData } = bucket.getPublicUrl(fileName);
   const fileUrl = urlData?.publicUrl ?? null;
 
-  const { error: updateError } = await (client as any)
+  const { error: updateError } = await asUntyped(client)
     .from('user_profiles')
     .update({
       artist_cv_json: cvJson,

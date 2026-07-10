@@ -39,7 +39,7 @@ export function LedgerTemplate({ site }: { site: SiteData }) {
       >
         <div>
           {site.logo_image_url ? (
-            <img src={site.logo_image_url} alt={site.display_name ?? site.name} className="h-6 w-auto object-contain" />
+            <Image src={site.logo_image_url} alt={site.display_name ?? site.name} width={0} height={0} sizes="100vw" className="h-6 w-auto object-contain" />
           ) : (
             <h1 className="text-sm font-semibold tracking-tight" style={{ fontFamily: headingFont }}>{site.display_name ?? site.name}</h1>
           )}

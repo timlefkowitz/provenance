@@ -1,3 +1,4 @@
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { randomUUID } from 'crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -33,7 +34,7 @@ export type CommitInviteBatchResult = {
 };
 
 async function notifyInviteeIfUserExists(params: {
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>;
+  adminClient: UntypedSupabaseClient;
   inviteeEmail: string;
   batchId: string;
   createdByUserId: string;
@@ -41,7 +42,7 @@ async function notifyInviteeIfUserExists(params: {
 }): Promise<void> {
   const { adminClient, inviteeEmail, batchId, createdByUserId, workCount } = params;
   try {
-    const { data: userId, error } = await (adminClient as any).rpc(
+    const { data: userId, error } = await asUntyped(adminClient).rpc(
       'get_user_id_by_email_for_notifications',
       { p_email: inviteeEmail },
     );
@@ -101,7 +102,7 @@ export async function commitCertificateInviteBatch(params: {
   if (enforceOwnerRateLimit) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     try {
-      const { count, error: countError } = await (adminClient as any)
+      const { count, error: countError } = await asUntyped(adminClient)
         .from('certificate_claim_invites')
         .select('id', { count: 'exact', head: true })
         .eq('created_by', createdByUserId)
@@ -137,7 +138,7 @@ export async function commitCertificateInviteBatch(params: {
     provenance_update_request_id: r.provenance_update_request_id ?? null,
   }));
 
-  const { error: insertError } = await (adminClient as any)
+  const { error: insertError } = await asUntyped(adminClient)
     .from('certificate_claim_invites')
     .insert(insertPayload);
 
@@ -209,7 +210,7 @@ export async function commitCertificateInviteBatch(params: {
  * Build artist invite rows from selected artwork IDs (CoS / CoO → CoA flow).
  */
 export async function buildArtistInviteRows(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: UntypedSupabaseClient,
   userId: string,
   artworkIds: string[],
 ): Promise<{
@@ -223,7 +224,7 @@ export async function buildArtistInviteRows(
 
   for (const artworkId of artworkIds) {
     try {
-      const { data: artwork, error: artworkError } = await (client as any)
+      const { data: artwork, error: artworkError } = await asUntyped(client)
         .from('artworks')
         .select('id, account_id, title, artist_name, certificate_type, certificate_status')
         .eq('id', artworkId)
@@ -252,7 +253,7 @@ export async function buildArtistInviteRows(
       } else if (certType === CERTIFICATE_TYPES.OWNERSHIP) {
         claimKind = 'artist_coa_from_coo';
       } else if (artwork.certificate_status === 'pending_artist_claim') {
-        const { data: ownerAccount } = await (client as any)
+        const { data: ownerAccount } = await asUntyped(client)
           .from('accounts')
           .select('public_data')
           .eq('id', artwork.account_id)
@@ -293,8 +294,8 @@ export async function buildArtistInviteRows(
  * Build owner (collector COO) invite rows; each source must be an authenticity cert.
  */
 export async function buildOwnerInviteRows(
-  client: ReturnType<typeof getSupabaseServerClient>,
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  client: UntypedSupabaseClient,
+  adminClient: UntypedSupabaseClient,
   userId: string,
   artworkIds: string[],
   inviteeEmail: string,
@@ -309,7 +310,7 @@ export async function buildOwnerInviteRows(
   const normalizedEmail = normalizeInviteEmail(inviteeEmail);
 
   for (const artworkId of artworkIds) {
-    const { data: artwork, error: artError } = await (adminClient as any)
+    const { data: artwork, error: artError } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, account_id, title, certificate_type')
       .eq('id', artworkId)
@@ -339,7 +340,7 @@ export async function buildOwnerInviteRows(
       ? 'owner_coownership_from_cos'
       : 'owner_coownership_from_coa';
     
-    const { data: existingOpen } = await (adminClient as any)
+    const { data: existingOpen } = await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .select('id')
       .eq('source_artwork_id', artworkId)
@@ -372,7 +373,7 @@ export async function buildOwnerInviteRows(
  *   Artworks linked to these profiles are treated as authorized even if account_id differs.
  */
 export async function buildGalleryCoSInviteRows(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  adminClient: UntypedSupabaseClient,
   userId: string,
   artworkIds: string[],
   allowedGalleryProfileIds: string[] = [],
@@ -387,7 +388,7 @@ export async function buildGalleryCoSInviteRows(
 
   const allowedProfileSet = new Set(allowedGalleryProfileIds);
 
-  const { data: artworks, error: artworksError } = await (adminClient as any)
+  const { data: artworks, error: artworksError } = await asUntyped(adminClient)
     .from('artworks')
     .select('id, title, artist_name, certificate_type, account_id, gallery_profile_id')
     .in('id', artworkIds);

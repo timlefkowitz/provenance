@@ -140,21 +140,21 @@ async function fetchExhibition(exhibitionId: string) {
     .limit(24);
 
   const linkedArtworks = (artworkLinks ?? [])
-    .map((r: any) => r.artworks)
+    .map((r: Record<string, unknown>) => r.artworks)
     .filter(Boolean);
 
   const missingAccountIds = Array.from(
     new Set(
       linkedArtworks
-        .filter((a: any) => !a.artist_name && a.artist_account_id)
-        .map((a: any) => a.artist_account_id as string),
+        .filter((a: Record<string, unknown>) => !a.artist_name && a.artist_account_id)
+        .map((a: Record<string, unknown>) => a.artist_account_id as string),
     ),
   );
   const missingProfileIds = Array.from(
     new Set(
       linkedArtworks
-        .filter((a: any) => !a.artist_name && !a.artist_account_id && a.artist_profile_id)
-        .map((a: any) => a.artist_profile_id as string),
+        .filter((a: Record<string, unknown>) => !a.artist_name && !a.artist_account_id && a.artist_profile_id)
+        .map((a: Record<string, unknown>) => a.artist_profile_id as string),
     ),
   );
 

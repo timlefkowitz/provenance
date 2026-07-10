@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getMediumLabel } from './open-call-constants';
 
@@ -47,7 +48,7 @@ const EXHIBITION_CALL_TYPES = ['exhibition', 'art'];
 export async function getOpenCallsList(
   filters?: OpenCallsListFilters,
 ): Promise<OpenCallListEntry[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const todayIso = new Date().toISOString().split('T')[0];
   console.log('[OpenCalls] getOpenCallsList started', {
@@ -57,7 +58,7 @@ export async function getOpenCallsList(
     today: todayIso,
   });
 
-  let query = (client as any)
+  let query = asUntyped(client)
     .from('open_calls')
     .select(
       'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, eligible_locations, exhibition:exhibition_id (id, title, start_date, end_date, location, description)',

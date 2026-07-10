@@ -22,6 +22,7 @@ import {
   getEligibleSiteArtworks,
   getFeaturedSiteArtworks,
 } from '~/app/_sites/_data/get-eligible-site-artworks';
+import { asUntyped } from '~/lib/supabase-untyped';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ export default async function SitePreviewPage({
   const profileId = params.profileId;
   const embedMode = params.embed === '1';
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -127,7 +128,7 @@ export default async function SitePreviewPage({
     ? (config.featuredArtworkIds as string[]).filter(Boolean)
     : [];
 
-  let artworkRows: any[];
+  let artworkRows: unknown[];
   if (featuredIds.length > 0) {
     console.log('[SitePreview] artworks: curated mode', { count: featuredIds.length });
     artworkRows = await getFeaturedSiteArtworks(sb, featuredIds);
@@ -167,19 +168,19 @@ export default async function SitePreviewPage({
     picture_url: profile.picture_url ?? null,
     medium: profile.medium ?? null,
     role: profile.role,
-    artworks: (artworkRows ?? []).map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      artist_name: r.artist_name ?? null,
-      image_url: r.image_url ?? null,
-      created_at: r.created_at,
-      certificate_number: r.certificate_number,
-      for_sale: r.for_sale ?? false,
-      sale_price: r.sale_price ?? null,
-      sale_currency: r.sale_currency ?? null,
-      sold_at: r.sold_at ?? null,
+    artworks: ((artworkRows ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      title: r.title as string,
+      artist_name: (r.artist_name ?? null) as string | null,
+      image_url: (r.image_url ?? null) as string | null,
+      created_at: r.created_at as string,
+      certificate_number: r.certificate_number as string,
+      for_sale: (r.for_sale ?? false) as boolean,
+      sale_price: (r.sale_price ?? null) as number | null,
+      sale_currency: (r.sale_currency ?? null) as string | null,
+      sold_at: (r.sold_at ?? null) as string | null,
     })),
-    exhibitions: (exhibitionRows ?? []).map((r: any) => ({
+    exhibitions: (exhibitionRows ?? []).map((r: Record<string, unknown>) => ({
       id: r.id,
       title: r.title,
       start_date: r.start_date,

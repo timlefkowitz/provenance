@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation';
 import { NotificationsList } from './_components/notifications-list';
 import { markAllNotificationsAsRead } from '~/lib/notifications';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Notifications | Provenance',
 };
 
 export default async function NotificationsPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {

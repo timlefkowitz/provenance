@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { NewsPublicationInput } from '~/lib/news-publications';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type PressArticleSuggestion = NewsPublicationInput;
 
 /** Chat Completions web-search model (see OpenAI web search docs; Responses API uses different model IDs). */
@@ -69,7 +70,7 @@ export async function findPressArticles(profileId: string): Promise<{
     return { articles: [], error: 'Article discovery is not configured.' };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = asUntyped(getSupabaseServerClient());
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('name, role, location')

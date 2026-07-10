@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -21,7 +22,7 @@ export type DeleteArtworkAttachmentResult = { success: true } | { success: false
 export async function deleteArtworkAttachment(attachmentId: string): Promise<DeleteArtworkAttachmentResult> {
   console.log('[ArtworkAttachments] deleteArtworkAttachment started', { attachmentId });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -30,7 +31,7 @@ export async function deleteArtworkAttachment(attachmentId: string): Promise<Del
     return { success: false, error: 'You must be signed in' };
   }
 
-  const { data: row, error: fetchErr } = await (client as any)
+  const { data: row, error: fetchErr } = await asUntyped(client)
     .from('artwork_attachments')
     .select('id, artwork_id, file_url, account_id')
     .eq('id', attachmentId)
@@ -41,7 +42,7 @@ export async function deleteArtworkAttachment(attachmentId: string): Promise<Del
     return { success: false, error: 'Attachment not found' };
   }
 
-  const { data: artwork, error: artErr } = await (client as any)
+  const { data: artwork, error: artErr } = await asUntyped(client)
     .from('artworks')
     .select('account_id, gallery_profile_id')
     .eq('id', row.artwork_id)
@@ -64,7 +65,7 @@ export async function deleteArtworkAttachment(attachmentId: string): Promise<Del
   // If uploader is not the artwork owner, storage path may be under uploader's prefix — use admin for storage
   const storagePath = storagePathFromPublicUrl(row.file_url);
   if (storagePath) {
-    const admin = getSupabaseServerAdminClient();
+    const admin = asUntyped(getSupabaseServerAdminClient());
     const { error: rmErr } = await admin.storage.from(ARTWORKS_BUCKET).remove([storagePath]);
     if (rmErr) {
       console.error('[ArtworkAttachments] storage remove failed', rmErr);

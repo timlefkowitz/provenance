@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -22,7 +23,7 @@ export async function updateArtworkImage(
       return { success: false, error: 'You must be signed in to upload a photo' };
     }
 
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, gallery_profile_id')
       .eq('id', artworkId)
@@ -63,7 +64,7 @@ export async function updateArtworkImage(
       return { success: false, error: 'Image upload failed' };
     }
 
-    const { error: updateError } = await (client as any)
+    const { error: updateError } = await asUntyped(client)
       .from('artworks')
       .update({ image_url: imageUrl })
       .eq('id', artworkId);

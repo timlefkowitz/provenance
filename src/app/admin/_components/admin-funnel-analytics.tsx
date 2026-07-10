@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import {
   Card,
@@ -84,7 +85,7 @@ async function fetchFunnelData(since: string) {
   // Step 3: of those, how many uploaded at least one artwork
   const accountIds = (accounts ?? []).map((a) => a.id);
 
-  const { data: artworkRows, error: artErr } = await (admin as any)
+  const { data: artworkRows, error: artErr } = await asUntyped(admin)
     .from('artworks')
     .select('account_id')
     .in('account_id', accountIds);
@@ -94,7 +95,7 @@ async function fetchFunnelData(since: string) {
     return { signups, withRole, withArtwork: null };
   }
 
-  const artistsWithArtwork = new Set((artworkRows ?? []).map((r: any) => r.account_id)).size;
+  const artistsWithArtwork = new Set((artworkRows ?? []).map((r: Record<string, unknown>) => r.account_id)).size;
 
   return { signups, withRole, withArtwork: artistsWithArtwork };
 }

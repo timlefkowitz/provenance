@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
@@ -20,7 +21,7 @@ export async function createArtistClaimRequest(
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[ArtistClaim] createArtistClaimRequest started', { artworkId });
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -37,12 +38,12 @@ export async function createArtistClaimRequest(
       return { success: false, error: 'Account not found' };
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, any>);
+    const userRole = getUserRole(account.public_data as Record<string, unknown>);
     if (userRole !== USER_ROLES.ARTIST) {
       return { success: false, error: 'Only artists can claim certificates as artist' };
     }
 
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, title, artist_name, certificate_type')
       .eq('id', artworkId)
@@ -78,7 +79,7 @@ export async function createArtistClaimRequest(
       return { success: false, error: 'Provide an email address to receive your certificate completion link' };
     }
 
-    const { data: existingRequest } = await (client as any)
+    const { data: existingRequest } = await asUntyped(client)
       .from('provenance_update_requests')
       .select('id')
       .eq('artwork_id', artworkId)
@@ -91,7 +92,7 @@ export async function createArtistClaimRequest(
       return { success: false, error: 'You already have a pending claim as artist request for this certificate' };
     }
 
-    const { error: insertError } = await (client as any)
+    const { error: insertError } = await asUntyped(client)
       .from('provenance_update_requests')
       .insert({
         artwork_id: artworkId,
@@ -131,9 +132,9 @@ export async function createArtistClaimRequest(
 
     console.log('[ArtistClaim] createArtistClaimRequest success', { artworkId });
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ArtistClaim] createArtistClaimRequest failed', error);
     logger.error('artist_claim_request_failed', { artworkId, error });
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    return { success: false, error: (error as Error).message || 'An unexpected error occurred' };
   }
 }

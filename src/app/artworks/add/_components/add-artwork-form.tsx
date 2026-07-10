@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { track } from '@vercel/analytics';
 import exifr from 'exifr';
 import { Button } from '@kit/ui/button';
@@ -25,6 +26,7 @@ import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { UpgradePrompt } from '~/components/upgrade-prompt';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 type ImagePreview = {
   id?: string;
   file: File;
@@ -254,9 +256,13 @@ function PreviewFromFile({
     return <div className={className} style={{ minHeight: '12rem' }} aria-hidden />;
   }
   return (
-    <img
+    <Image
       src={url}
       alt={alt}
+      width={0}
+      height={0}
+      sizes="100vw"
+      unoptimized
       className={className}
       onError={handleError}
     />
@@ -492,8 +498,8 @@ export function AddArtworkForm({
       }
 
       setImagePreviews(prev => [...prev, ...newPreviews]);
-    } catch (err: any) {
-      console.error('[AddArtworkForm] Error processing selected images:', err?.message ?? err, err?.stack);
+    } catch (err) {
+      console.error('[AddArtworkForm] Error processing selected images:', (err as Error)?.message ?? err, (err as Error)?.stack);
       setError('Failed to process images. Please try again.');
     } finally {
       if (fileInputRef.current) {

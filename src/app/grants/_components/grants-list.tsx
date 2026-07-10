@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Card, CardContent } from '@kit/ui/card';
-import { Button } from '@kit/ui/button';
 import {
   ExternalLink,
   Calendar,

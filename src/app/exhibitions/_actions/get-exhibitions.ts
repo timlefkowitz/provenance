@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 
@@ -40,9 +41,9 @@ export async function getExhibitionsForGallery(
   galleryId: string,
   options?: { ownerRole?: 'gallery' | 'institution'; publishedOnly?: boolean },
 ): Promise<Exhibition[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
-  let query = (client as any)
+  let query = asUntyped(client)
     .from('exhibitions')
     .select('*')
     .eq('gallery_id', galleryId)
@@ -84,14 +85,14 @@ export async function getExhibitionsForArtistAccount(
     excludeGalleryId: options?.excludeGalleryId ?? null,
   });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const profileId = options?.artistProfileId ?? null;
   const excludeGalleryId = options?.excludeGalleryId ?? null;
 
   const byId = new Map<string, Exhibition>();
 
   // 1. Exhibitions where the artist is explicitly credited
-  const { data: creditedRows, error: creditedErr } = await (client as any)
+  const { data: creditedRows, error: creditedErr } = await asUntyped(client)
     .from('exhibition_artists')
     .select(
       `
@@ -133,7 +134,7 @@ export async function getExhibitionsForArtistAccount(
     orParts.push(`artist_profile_id.eq.${profileId}`);
   }
 
-  const { data: artworkRows, error: artworkErr } = await (client as any)
+  const { data: artworkRows, error: artworkErr } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('status', 'verified')
@@ -147,7 +148,7 @@ export async function getExhibitionsForArtistAccount(
   const artworkIds = (artworkRows || []).map((a: { id: string }) => a.id).filter(Boolean);
 
   if (artworkIds.length > 0) {
-    const { data: linkRows, error: linkErr } = await (client as any)
+    const { data: linkRows, error: linkErr } = await asUntyped(client)
       .from('exhibition_artworks')
       .select(
         `
@@ -205,10 +206,10 @@ export async function getExhibitionWithDetails(
   options?: { viewerUserId?: string | null },
 ): Promise<ExhibitionWithDetails | null> {
   console.log('[Exhibitions] getExhibitionWithDetails started', { exhibitionId });
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   // Get exhibition
-  const { data: exhibition, error: exhibitionError } = await (client as any)
+  const { data: exhibition, error: exhibitionError } = await asUntyped(client)
     .from('exhibitions')
     .select('*')
     .eq('id', exhibitionId)
@@ -233,7 +234,7 @@ export async function getExhibitionWithDetails(
   const canSeeDraftListings = canManage;
 
   // Get artists
-  const { data: artists } = await (client as any)
+  const { data: artists } = await asUntyped(client)
     .from('exhibition_artists')
     .select(`
       artist_account_id,
@@ -244,7 +245,7 @@ export async function getExhibitionWithDetails(
       )
     `)
     .eq('exhibition_id', exhibitionId);
-  const { data: artworkLinks, error: linksError } = await (client as any)
+  const { data: artworkLinks, error: linksError } = await asUntyped(client)
     .from('exhibition_artworks')
     .select('artwork_id, exhibition_id')
     .eq('exhibition_id', exhibitionId);
@@ -258,7 +259,7 @@ export async function getExhibitionWithDetails(
 
   let rawArtworkRows: Array<Record<string, unknown>> = [];
   if (linkedArtworkIds.length > 0) {
-    const { data: rows, error: artworksError } = await (client as any)
+    const { data: rows, error: artworksError } = await asUntyped(client)
       .from('artworks')
       .select(`
         id,
@@ -308,7 +309,7 @@ export async function getExhibitionWithDetails(
   const accountNameMap = new Map<string, string>();
   if (missingNameAccountIds.length > 0) {
     console.log('[Exhibitions] resolving artist names from accounts', { count: missingNameAccountIds.length });
-    const { data: accountRows, error: accountErr } = await (client as any)
+    const { data: accountRows, error: accountErr } = await asUntyped(client)
       .from('accounts')
       .select('id, name')
       .in('id', missingNameAccountIds);
@@ -324,7 +325,7 @@ export async function getExhibitionWithDetails(
   const profileNameMap = new Map<string, string>();
   if (missingNameProfileIds.length > 0) {
     console.log('[Exhibitions] resolving artist names from profiles', { count: missingNameProfileIds.length });
-    const { data: profileRows, error: profileErr } = await (client as any)
+    const { data: profileRows, error: profileErr } = await asUntyped(client)
       .from('user_profiles')
       .select('id, name')
       .in('id', missingNameProfileIds);

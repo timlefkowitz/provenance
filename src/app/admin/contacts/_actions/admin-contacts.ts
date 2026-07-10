@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
@@ -27,7 +28,7 @@ export async function listAdminContacts(): Promise<
 
   const admin = getSupabaseServerAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('admin_contacts')
     .select(
       'id, display_name, email, phone, company, website, notes, source, created_by, created_at, updated_at',

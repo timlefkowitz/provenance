@@ -96,7 +96,7 @@ export default async function MarketCapBreakdownPage({ params }: PageProps) {
     console.log('[MarketCapPage] loading gallery scope', { userId: user.id });
     const galleryProfiles = await getUserGalleryProfiles(user.id);
     const galleryProfileIds = galleryProfiles
-      .map((p: any) => p.id)
+      .map((p: Record<string, unknown>) => p.id)
       .filter((id: unknown): id is string => typeof id === 'string');
     console.log('[MarketCapPage] gallery profile ids resolved', { galleryProfileIds });
     [rows, series] = await Promise.all([

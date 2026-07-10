@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
@@ -50,7 +51,7 @@ export async function insertLinkedCertificateOfOwnership(
   const certNumber = await generateCertificateNumber(adminClient);
   const sourceId = source.id as string;
 
-  const { data, error } = await (adminClient as any)
+  const { data, error } = await asUntyped(adminClient)
     .from('artworks')
     .insert({
       account_id: params.ownerAccountId,
@@ -122,7 +123,7 @@ export async function insertArtistCoaFromSourceCertificate(
   const now = new Date().toISOString();
   const artistId = params.artistAccountId;
 
-  const { data: newArtwork, error: insertError } = await (adminClient as any)
+  const { data: newArtwork, error: insertError } = await asUntyped(adminClient)
     .from('artworks')
     .insert({
       account_id: artistId,
@@ -164,7 +165,7 @@ export async function insertArtistCoaFromSourceCertificate(
     throw new Error(insertError?.message || 'Failed to create Certificate of Authenticity');
   }
 
-  const { error: updateSourceError } = await (adminClient as any)
+  const { error: updateSourceError } = await asUntyped(adminClient)
     .from('artworks')
     .update({
       artist_account_id: artistId,

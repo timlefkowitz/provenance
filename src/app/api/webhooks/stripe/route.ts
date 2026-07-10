@@ -1,3 +1,4 @@
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -51,7 +52,7 @@ function toSubscriptionStatus(s: string): SubscriptionStatus {
  * where checkout failed to attach metadata to subscription_data.
  */
 async function resolveUserAndRole(
-  admin: ReturnType<typeof getSupabaseServerAdminClient>,
+  admin: UntypedSupabaseClient,
   subscription: Stripe.Subscription,
 ): Promise<{ userId: string; role: string } | null> {
   const metaUserId = (subscription.metadata?.user_id as string) || null;
@@ -67,7 +68,7 @@ async function resolveUserAndRole(
       : subscription.customer?.id ?? null;
   if (!customerId) return null;
 
-  const { data: customerRow } = await (admin as any)
+  const { data: customerRow } = await asUntyped(admin)
     .from('stripe_customers')
     .select('user_id')
     .eq('stripe_customer_id', customerId)
@@ -80,7 +81,7 @@ async function resolveUserAndRole(
   // from a previously-synced subscription row for this user (best-effort).
   let role = metaRole && (ALLOWED_ROLES as readonly string[]).includes(metaRole) ? metaRole : null;
   if (!role) {
-    const { data: priorSub } = await (admin as any)
+    const { data: priorSub } = await asUntyped(admin)
       .from('subscriptions')
       .select('role')
       .eq('user_id', userId)
@@ -96,7 +97,7 @@ async function resolveUserAndRole(
 }
 
 async function upsertFromSubscription(
-  admin: ReturnType<typeof getSupabaseServerAdminClient>,
+  admin: UntypedSupabaseClient,
   subscription: Stripe.Subscription,
   options?: { forceStatus?: 'canceled' },
 ): Promise<{ ok: boolean; reason?: string }> {
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
     id: event.id,
   });
 
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
   try {
     switch (event.type) {
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        await (admin as any)
+        await asUntyped(admin)
           .from('subscriptions')
           .update({
             status: 'canceled',
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
 
           try {
             // Mark artwork as sold
-            const { error: updateErr } = await (admin as any)
+            const { error: updateErr } = await asUntyped(admin)
               .from('artworks')
               .update({ sold_at: new Date().toISOString() })
               .eq('id', artworkId);
@@ -253,7 +254,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Record purchase in artwork_inquiries
-            const { error: inquiryErr } = await (admin as any)
+            const { error: inquiryErr } = await asUntyped(admin)
               .from('artwork_inquiries')
               .insert({
                 artwork_id: artworkId,
@@ -367,7 +368,7 @@ export async function POST(request: NextRequest) {
         // Notify the user in-app.
         const resolved = await resolveUserAndRole(admin, subscription);
         if (resolved) {
-          const { error: notifErr } = await (admin as any)
+          const { error: notifErr } = await asUntyped(admin)
             .from('notifications')
             .insert({
               user_id: resolved.userId,

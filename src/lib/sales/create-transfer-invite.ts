@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -26,9 +27,9 @@ export interface CreateArtworkTransferInviteResult {
 }
 
 async function lookupEmailForAccount(accountId: string): Promise<string | null> {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
   try {
-    const { data: acct } = await (admin as any)
+    const { data: acct } = await asUntyped(admin)
       .from('accounts')
       .select('email')
       .eq('id', accountId)
@@ -40,7 +41,7 @@ async function lookupEmailForAccount(accountId: string): Promise<string | null> 
     console.error('[Sales] lookupEmailForAccount accounts failed', err);
   }
   try {
-    const { data: profile } = await (admin as any)
+    const { data: profile } = await asUntyped(admin)
       .from('user_profiles')
       .select('email')
       .eq('user_id', accountId)
@@ -92,8 +93,8 @@ export async function createArtworkTransferInvite(
   }
 
   try {
-    const client = getSupabaseServerClient();
-    const admin = getSupabaseServerAdminClient();
+    const client = asUntyped(getSupabaseServerClient());
+    const admin = asUntyped(getSupabaseServerAdminClient());
 
     const { rows, titles, errors: buildErrors } = await buildOwnerInviteRows(
       client,

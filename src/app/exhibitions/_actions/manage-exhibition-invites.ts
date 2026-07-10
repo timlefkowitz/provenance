@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -39,8 +40,8 @@ async function assertCanManageExhibition(
   userId: string,
   exhibitionId: string,
 ): Promise<{ galleryId: string; title: string }> {
-  const client = getSupabaseServerClient();
-  const { data: exhibition, error } = await (client as any)
+  const client = asUntyped(getSupabaseServerClient());
+  const { data: exhibition, error } = await asUntyped(client)
     .from('exhibitions')
     .select('id, gallery_id, title')
     .eq('id', exhibitionId)
@@ -59,7 +60,7 @@ async function assertCanManageExhibition(
 }
 
 async function getSenderName(userId: string): Promise<string | undefined> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: account } = await client
     .from('accounts')
     .select('name')
@@ -77,7 +78,7 @@ export async function createExhibitionArtistInvites(
     count: invites.length,
   });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -114,7 +115,7 @@ export async function createExhibitionArtistInvites(
     const name = raw.name?.trim() || null;
 
     try {
-      const { data: existing } = await (adminClient as any)
+      const { data: existing } = await asUntyped(adminClient)
         .from('exhibition_artist_invites')
         .select('id')
         .eq('exhibition_id', exhibitionId)
@@ -131,7 +132,7 @@ export async function createExhibitionArtistInvites(
       const tokenHash = hashClaimToken(token);
       const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
 
-      const { error: insertError } = await (adminClient as any)
+      const { error: insertError } = await asUntyped(adminClient)
         .from('exhibition_artist_invites')
         .insert({
           exhibition_id: exhibitionId,
@@ -194,7 +195,7 @@ export async function createExhibitionArtistInvites(
 export async function getExhibitionInvites(
   exhibitionId: string,
 ): Promise<ExhibitionArtistInviteRow[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -206,7 +207,7 @@ export async function getExhibitionInvites(
   await assertCanManageExhibition(user.id, exhibitionId);
 
   const adminClient = getSupabaseServerAdminClient();
-  const { data, error } = await (adminClient as any)
+  const { data, error } = await asUntyped(adminClient)
     .from('exhibition_artist_invites')
     .select(
       'id, exhibition_id, invitee_email, invitee_name, artist_account_id, status, expires_at, consumed_at, result_artwork_id, result_cos_artwork_id, created_at',
@@ -227,7 +228,7 @@ export async function resendExhibitionInvite(
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[Exhibitions] resendExhibitionInvite started', { inviteId });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -237,7 +238,7 @@ export async function resendExhibitionInvite(
   }
 
   const adminClient = getSupabaseServerAdminClient();
-  const { data: invite, error: fetchError } = await (adminClient as any)
+  const { data: invite, error: fetchError } = await asUntyped(adminClient)
     .from('exhibition_artist_invites')
     .select('id, exhibition_id, invitee_email, invitee_name, status')
     .eq('id', inviteId)
@@ -262,7 +263,7 @@ export async function resendExhibitionInvite(
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
     const senderName = await getSenderName(user.id);
 
-    const { error: updateError } = await (adminClient as any)
+    const { error: updateError } = await asUntyped(adminClient)
       .from('exhibition_artist_invites')
       .update({
         token_hash: tokenHash,
@@ -302,7 +303,7 @@ export async function cancelExhibitionInvite(
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[Exhibitions] cancelExhibitionInvite started', { inviteId });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -312,7 +313,7 @@ export async function cancelExhibitionInvite(
   }
 
   const adminClient = getSupabaseServerAdminClient();
-  const { data: invite, error: fetchError } = await (adminClient as any)
+  const { data: invite, error: fetchError } = await asUntyped(adminClient)
     .from('exhibition_artist_invites')
     .select('id, exhibition_id, status')
     .eq('id', inviteId)
@@ -329,7 +330,7 @@ export async function cancelExhibitionInvite(
   try {
     await assertCanManageExhibition(user.id, invite.exhibition_id);
 
-    const { error: updateError } = await (adminClient as any)
+    const { error: updateError } = await asUntyped(adminClient)
       .from('exhibition_artist_invites')
       .update({ status: 'cancelled' })
       .eq('id', inviteId);
@@ -370,7 +371,7 @@ export async function getExhibitionInviteContext(token: string): Promise<
   const adminClient = getSupabaseServerAdminClient();
   const tokenHash = hashClaimToken(trimmed);
 
-  const { data: invite, error } = await (adminClient as any)
+  const { data: invite, error } = await asUntyped(adminClient)
     .from('exhibition_artist_invites')
     .select(
       'id, invitee_email, invitee_name, status, expires_at, exhibition_id',
@@ -392,14 +393,14 @@ export async function getExhibitionInviteContext(token: string): Promise<
 
   const expiresAt = new Date(invite.expires_at);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
-    await (adminClient as any)
+    await asUntyped(adminClient)
       .from('exhibition_artist_invites')
       .update({ status: 'expired' })
       .eq('id', invite.id);
     return { valid: false, error: 'This invitation has expired' };
   }
 
-  const { data: exhibition } = await (adminClient as any)
+  const { data: exhibition } = await asUntyped(adminClient)
     .from('exhibitions')
     .select('title, gallery_id')
     .eq('id', invite.exhibition_id)
@@ -407,7 +408,7 @@ export async function getExhibitionInviteContext(token: string): Promise<
 
   let galleryName: string | null = null;
   if (exhibition?.gallery_id) {
-    const { data: galleryAccount } = await (adminClient as any)
+    const { data: galleryAccount } = await asUntyped(adminClient)
       .from('accounts')
       .select('name')
       .eq('id', exhibition.gallery_id)

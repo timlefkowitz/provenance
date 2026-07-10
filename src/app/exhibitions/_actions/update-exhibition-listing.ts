@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- artworks/exhibitions RLS queries use loosely typed Supabase rows */
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
@@ -37,7 +38,7 @@ export async function updateExhibitionListing(params: {
     return { success: false, error: 'You must be signed in.' };
   }
 
-  const { data: exhibition, error: exErr } = await (client as any)
+  const { data: exhibition, error: exErr } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
@@ -48,7 +49,7 @@ export async function updateExhibitionListing(params: {
     return { success: false, error: 'Exhibition not found or access denied.' };
   }
 
-  const { data: link, error: linkErr } = await (client as any)
+  const { data: link, error: linkErr } = await asUntyped(client)
     .from('exhibition_artworks')
     .select('artwork_id')
     .eq('exhibition_id', exhibitionId)
@@ -60,7 +61,7 @@ export async function updateExhibitionListing(params: {
     return { success: false, error: 'This artwork is not part of this exhibition.' };
   }
 
-  const { data: artwork, error: artErr } = await (client as any)
+  const { data: artwork, error: artErr } = await asUntyped(client)
     .from('artworks')
     .select('id, account_id, status')
     .eq('id', artworkId)
@@ -97,7 +98,7 @@ export async function updateExhibitionListing(params: {
     updatePayload.artist_name = artistName ? artistName.slice(0, 200) : null;
   }
 
-  const { error: upErr } = await (client as any)
+  const { error: upErr } = await asUntyped(client)
     .from('artworks')
     .update(updatePayload)
     .eq('id', artworkId)

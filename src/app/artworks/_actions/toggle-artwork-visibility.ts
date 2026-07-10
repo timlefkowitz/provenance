@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type ToggleArtworkVisibilityResult =
   | { success: true; isPublic: boolean }
   | { success: false; error: string };
@@ -20,7 +21,7 @@ export async function toggleArtworkVisibility(
   nextIsPublic: boolean,
 ): Promise<ToggleArtworkVisibilityResult> {
   console.log('[Artworks] toggleVisibility started', { artworkId, nextIsPublic });
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();

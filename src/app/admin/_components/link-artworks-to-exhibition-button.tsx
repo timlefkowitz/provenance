@@ -146,7 +146,7 @@ export function LinkArtworksToExhibitionButton() {
             className="font-serif"
           />
           <p className="text-xs text-ink/50 font-serif mt-1">
-            If provided, will search for artworks from this gallery account. Otherwise uses the exhibition's gallery.
+            If provided, will search for artworks from this gallery account. Otherwise uses the exhibition&apos;s gallery.
           </p>
         </div>
 

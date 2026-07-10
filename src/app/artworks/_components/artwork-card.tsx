@@ -119,9 +119,9 @@ export function ArtworkCard({
         await deleteArtwork(artwork.id);
         toast.success('Artwork deleted successfully');
         router.refresh();
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error deleting artwork:', error);
-        toast.error(error.message || 'Failed to delete artwork');
+        toast.error((error as Error).message || 'Failed to delete artwork');
         setDeletePending(false);
       }
     });
@@ -170,7 +170,7 @@ export function ArtworkCard({
                         Delete Artwork
                       </AlertDialogTitle>
                       <AlertDialogDescription className="font-serif">
-                        Are you sure you want to delete "{artwork.title}"? This action cannot be undone. 
+                        Are you sure you want to delete &quot;{artwork.title}&quot;? This action cannot be undone. 
                         The certificate and all associated data will be permanently removed.
                       </AlertDialogDescription>
                     </AlertDialogHeader>

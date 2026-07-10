@@ -41,7 +41,7 @@ export async function getManageableProfiles(): Promise<ManageableProfile[]> {
     console.error('[Sites] getManageableProfiles own profiles failed', ownErr);
   }
 
-  const result: ManageableProfile[] = (ownProfiles ?? []).map((p: any) => ({
+  const result: ManageableProfile[] = (ownProfiles ?? []).map((p: Record<string, unknown>) => ({
     id: p.id,
     name: p.name,
     role: p.role as UserRole,
@@ -59,7 +59,7 @@ export async function getManageableProfiles(): Promise<ManageableProfile[]> {
     console.error('[Sites] getManageableProfiles memberships failed', memErr);
   }
 
-  const teamProfileIds = (memberships ?? []).map((m: any) => m.gallery_profile_id);
+  const teamProfileIds = (memberships ?? []).map((m: Record<string, unknown>) => m.gallery_profile_id);
   const teamRoleByProfileId = new Map<string, 'owner' | 'admin' | 'member'>();
   for (const m of memberships ?? []) {
     teamRoleByProfileId.set(m.gallery_profile_id, m.role);

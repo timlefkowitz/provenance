@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { ArtworkTags } from './_components/artwork-tags';
 import { PrintButton } from './_components/print-button';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Artwork Tags | Provenance',
 };
@@ -13,7 +14,7 @@ export default async function ArtworkTagsPage({
   searchParams: Promise<{ ids?: string }>;
 }) {
   const params = await searchParams;
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -50,7 +51,7 @@ export default async function ArtworkTagsPage({
           Artwork Tags
         </h1>
         <p className="text-ink/70 font-serif mb-4">
-          Click "Edit" on any tag to customize fields before printing. You can edit existing fields or add custom fields like Medium, Dimensions, Price, etc. Print this page and cut along the dotted lines to create tags for your artworks.
+          Click &quot;Edit&quot; on any tag to customize fields before printing. You can edit existing fields or add custom fields like Medium, Dimensions, Price, etc. Print this page and cut along the dotted lines to create tags for your artworks.
         </p>
         <PrintButton />
       </div>

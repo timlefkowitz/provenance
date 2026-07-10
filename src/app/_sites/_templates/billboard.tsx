@@ -29,7 +29,7 @@ export function BillboardTemplate({ site }: { site: SiteData }) {
       >
         <header className="flex items-center justify-between mb-16">
           {site.logo_image_url ? (
-            <img src={site.logo_image_url} alt={site.display_name ?? site.name} className="h-7 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+            <Image src={site.logo_image_url} alt={site.display_name ?? site.name} width={0} height={0} sizes="100vw" className="h-7 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
           ) : (
             <span className="text-sm uppercase tracking-[0.2em] opacity-80" style={{ fontFamily: headingFont }}>{site.display_name ?? site.name}</span>
           )}

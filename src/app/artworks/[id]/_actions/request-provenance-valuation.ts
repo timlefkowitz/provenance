@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -31,7 +32,7 @@ export async function requestProvenanceValuation(
   console.log('[Valuation] requestProvenanceValuation started', { artworkId });
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
@@ -40,7 +41,7 @@ export async function requestProvenanceValuation(
       return { success: false, error: 'You must be signed in to request a valuation' };
     }
 
-    const { data: artwork, error: fetchError } = await (client as any)
+    const { data: artwork, error: fetchError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, gallery_profile_id')
       .eq('id', artworkId)
@@ -58,9 +59,9 @@ export async function requestProvenanceValuation(
       return { success: false, error: 'You do not have permission to request a valuation' };
     }
 
-    const admin = getSupabaseServerAdminClient();
+    const admin = asUntyped(getSupabaseServerAdminClient());
 
-    const { data: existing } = await (admin as any)
+    const { data: existing } = await asUntyped(admin)
       .from('artwork_valuations')
       .select('generated_at')
       .eq('artwork_id', artworkId)
@@ -113,7 +114,7 @@ export async function requestProvenanceValuation(
 
     const llmResult = await runLlmValuationPass(inputsWithResearch);
 
-    const { data: inserted, error: insertError } = await (admin as any)
+    const { data: inserted, error: insertError } = await asUntyped(admin)
       .from('artwork_valuations')
       .insert({
         artwork_id: artworkId,
@@ -185,14 +186,14 @@ export async function setValuationPublic(
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[Valuation] setValuationPublic', { valuationId, makePublic });
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
     if (!user) return { success: false, error: 'Not signed in' };
 
-    const admin = getSupabaseServerAdminClient();
-    const { data: valuation, error: lookupError } = await (admin as any)
+    const admin = asUntyped(getSupabaseServerAdminClient());
+    const { data: valuation, error: lookupError } = await asUntyped(admin)
       .from('artwork_valuations')
       .select('id, artwork_id')
       .eq('id', valuationId)
@@ -202,7 +203,7 @@ export async function setValuationPublic(
       return { success: false, error: 'Valuation not found' };
     }
 
-    const { data: artwork } = await (admin as any)
+    const { data: artwork } = await asUntyped(admin)
       .from('artworks')
       .select('account_id, gallery_profile_id')
       .eq('id', valuation.artwork_id)
@@ -220,7 +221,7 @@ export async function setValuationPublic(
       return { success: false, error: 'Not permitted' };
     }
 
-    const { error: updateError } = await (admin as any)
+    const { error: updateError } = await asUntyped(admin)
       .from('artwork_valuations')
       .update({ is_public: makePublic })
       .eq('id', valuationId);

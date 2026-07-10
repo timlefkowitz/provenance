@@ -5,6 +5,7 @@ import { requireAdminUserId } from '~/lib/admin';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const PITCH_DECK_KEY = 'main';
 const PITCH_DECK_IMAGES_BUCKET = 'pitch-deck-images';
 
@@ -35,7 +36,7 @@ export type PitchDeckContent = {
  */
 export async function getPitchDeckContent(): Promise<PitchDeckContent> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     
     const { data, error } = await client
       .from('pitch_deck_content')
@@ -75,7 +76,7 @@ export async function updatePitchDeckContent(content: PitchDeckContent) {
       return { error: 'Invalid content structure' };
     }
 
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     // Upsert to database
     const { error: dbError } = await client
       .from('pitch_deck_content')
@@ -111,7 +112,7 @@ export async function uploadSlideImage(slideId: number, formData: FormData) {
       return { error: 'You do not have permission to upload images' };
     }
 
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
 
     const file = formData.get('file') as File;
     if (!file) {
@@ -199,7 +200,7 @@ export async function deleteSlideImage(slideId: number) {
       return { error: 'You do not have permission to delete images' };
     }
 
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
 
     // Get the content to find the slide
     const content = await getPitchDeckContent();

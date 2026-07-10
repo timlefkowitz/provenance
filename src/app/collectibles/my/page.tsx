@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Package, Plus } from 'lucide-react';
@@ -22,7 +23,7 @@ export default async function MyCollectiblesPage() {
     redirect('/auth/sign-in');
   }
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('collectibles')
     .select(
       'id, account_id, title, description, category, subcategory, manufacturer, year, condition, grading_service, grading_score, serial_number, image_url, certificate_number, certificate_status, metadata, status, is_public, value, value_is_public, created_at',

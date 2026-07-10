@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- artworks/exhibitions RLS queries use loosely typed Supabase rows */
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -53,7 +54,7 @@ export async function createQuickExhibitionListings(
     return { success: false, error: 'Invalid listing data.' };
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -61,7 +62,7 @@ export async function createQuickExhibitionListings(
     return { success: false, error: 'You must be signed in.' };
   }
 
-  const { data: exhibition, error: exErr } = await (client as any)
+  const { data: exhibition, error: exErr } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
@@ -167,7 +168,7 @@ export async function createQuickExhibitionListings(
       insertPayload.gallery_profile_id = galleryProfileId;
     }
 
-    const { data: inserted, error: insErr } = await (client as any)
+    const { data: inserted, error: insErr } = await asUntyped(client)
       .from('artworks')
       .insert(insertPayload)
       .select('id')

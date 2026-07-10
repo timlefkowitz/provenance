@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
 import { sendArtworkFeaturedEmail } from '~/lib/email';
@@ -14,7 +15,7 @@ async function resolveOwnerEmail(
   adminClient: any,
   accountId: string,
 ): Promise<{ email: string; name: string } | null> {
-  const { data: account } = await (adminClient as any)
+  const { data: account } = await asUntyped(adminClient)
     .from('accounts')
     .select('email, name')
     .eq('id', accountId)
@@ -89,7 +90,7 @@ async function getAllFeaturedArtworkIds(): Promise<string[]> {
   const seenIds = new Set<string>(); // Use Set for O(1) lookup instead of includes
   
   for (const account of allAccounts || []) {
-    const publicData = account.public_data as Record<string, any>;
+    const publicData = account.public_data as Record<string, unknown>;
     if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
       // Add all IDs from this account (avoid duplicates)
       for (const id of publicData.featured_artworks) {
@@ -117,7 +118,7 @@ async function getFeaturedArtworksAccountId(): Promise<string | null> {
 
   // Find the first account with featured_artworks array
   for (const account of allAccounts || []) {
-    const publicData = account.public_data as Record<string, any>;
+    const publicData = account.public_data as Record<string, unknown>;
     if (publicData?.featured_artworks && Array.isArray(publicData.featured_artworks)) {
       return account.id;
     }
@@ -150,7 +151,7 @@ export async function addFeaturedArtwork(artworkId: string) {
     const adminClient = getSupabaseServerAdminClient();
 
     // Verify artwork exists and is verified — also fetch fields needed for email and featured update
-    const { data: artwork, error: artworkError } = await (adminClient as any)
+    const { data: artwork, error: artworkError } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, status, title, artist_name, account_id')
       .eq('id', artworkId)
@@ -196,7 +197,7 @@ export async function addFeaturedArtwork(artworkId: string) {
       return { error: 'Account not found' };
     }
 
-    const currentPublicData = (account.public_data as Record<string, any>) || {};
+    const currentPublicData = (account.public_data as Record<string, unknown>) || {};
 
     // Consolidate: use all featured IDs from all accounts, then add the new one
     // This ensures we don't lose any artworks that might be in other accounts
@@ -231,7 +232,7 @@ export async function addFeaturedArtwork(artworkId: string) {
     }
 
     // Mark artwork as featured in the artworks table (non-fatal if it fails)
-    const { error: featuredFlagError } = await (adminClient as any)
+    const { error: featuredFlagError } = await asUntyped(adminClient)
       .from('artworks')
       .update({ featured: true, featured_at: new Date().toISOString() })
       .eq('id', artworkId);
@@ -257,7 +258,7 @@ export async function addFeaturedArtwork(artworkId: string) {
       .limit(100);
 
     for (const otherAccount of otherAccounts || []) {
-      const otherPublicData = (otherAccount.public_data as Record<string, any>) || {};
+      const otherPublicData = (otherAccount.public_data as Record<string, unknown>) || {};
       if (otherPublicData?.featured_artworks && Array.isArray(otherPublicData.featured_artworks)) {
         const { featured_artworks: _featured_artworks, ...restPublicData } = otherPublicData;
         await adminClient
@@ -319,7 +320,7 @@ export async function removeFeaturedArtwork(artworkId: string) {
       return { error: 'Account not found' };
     }
 
-    const currentPublicData = (account.public_data as Record<string, any>) || {};
+    const currentPublicData = (account.public_data as Record<string, unknown>) || {};
     const featuredArtworks = (currentPublicData.featured_artworks as string[]) || [];
 
     // Remove from list
@@ -355,7 +356,7 @@ export async function removeFeaturedArtwork(artworkId: string) {
     );
 
     // Clear featured flag on the artwork (non-fatal)
-    const { error: clearFlagError } = await (adminClient as any)
+    const { error: clearFlagError } = await asUntyped(adminClient)
       .from('artworks')
       .update({ featured: false, featured_at: null })
       .eq('id', artworkId);
@@ -403,7 +404,7 @@ export async function sendFeaturedNotificationsToAll(): Promise<{
       return { sent: 0, skipped: 0, errors: 0 };
     }
 
-    const { data: artworks } = await (adminClient as any)
+    const { data: artworks } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, title, artist_name, account_id')
       .in('id', featuredIds);

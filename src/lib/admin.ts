@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { User } from '@supabase/supabase-js';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Check if a user is an admin
  * Uses public_data.admin field in accounts table (no database changes needed)
@@ -14,7 +15,7 @@ export async function isAdmin(userId: string | null | undefined): Promise<boolea
   }
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: account } = await client
       .from('accounts')
       .select('public_data')
@@ -38,7 +39,7 @@ export async function isAdmin(userId: string | null | undefined): Promise<boolea
  */
 export async function getCurrentUserAdminStatus(): Promise<boolean> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
     
     if (!user) {
@@ -65,7 +66,7 @@ export async function getCurrentUserAdminStatus(): Promise<boolean> {
 async function checkAdminMfa(
   user: User,
 ): Promise<{ user: User; requiresMfaSetup: boolean }> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   try {
     const { data: aalData } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -101,7 +102,7 @@ async function checkAdminMfa(
  * conditionally render the AdminMfaSetupBanner.
  */
 export async function requireAdmin(): Promise<{ user: User; requiresMfaSetup: boolean }> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -123,7 +124,7 @@ export async function requireAdmin(): Promise<{ user: User; requiresMfaSetup: bo
 export async function requireAdminApi(): Promise<
   { user: User; requiresMfaSetup: boolean } | NextResponse
 > {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -164,7 +165,7 @@ export async function requireAdminApi(): Promise<
  * Use this in place of the local requireAdminUser() helpers in server action files.
  */
 export async function requireAdminUser(): Promise<{ user: User; requiresMfaSetup: boolean }> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -200,7 +201,7 @@ export async function requireAdminUser(): Promise<{ user: User; requiresMfaSetup
  * Returns null if not authenticated or not admin (caller checks and returns early).
  */
 export async function requireAdminUserId(): Promise<string | null> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) return null;

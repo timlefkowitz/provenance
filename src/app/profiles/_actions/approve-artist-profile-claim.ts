@@ -5,6 +5,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Approve or reject an artist profile claim
  * The account that created the placeholder profile (e.g. gallery or collector) approves or rejects.
@@ -15,7 +16,7 @@ export async function approveArtistProfileClaim(
   galleryResponse?: string
 ) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -129,7 +130,7 @@ export async function approveArtistProfileClaim(
       try {
         await createNotification({
           userId: claim.artist_user_id,
-          type: 'artist_profile_claim_approved',
+          type: 'artist_claim_approved',
           title: `Profile Claim Approved: ${profile.name}`,
           message: `${account.name || 'The profile creator'} has approved your claim for the artist profile "${profile.name}". The profile is now linked to your account.`,
           relatedUserId: user.id,
@@ -157,7 +158,7 @@ export async function approveArtistProfileClaim(
       try {
         await createNotification({
           userId: claim.artist_user_id,
-          type: 'artist_profile_claim_rejected',
+          type: 'artist_claim_denied',
           title: `Profile Claim Rejected: ${profile.name}`,
           message: `${account.name || 'The profile creator'} has rejected your claim for the artist profile "${profile.name}".`,
           relatedUserId: user.id,

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 
   const escaped = escapeIlike(q);
 
-  let artworksQuery = (client as any)
+  let artworksQuery = asUntyped(client)
     .from('artworks')
     .select('id, title, image_url, artist_name, account_id, is_public, status')
     .or(`title.ilike.%${escaped}%,artist_name.ilike.%${escaped}%`)

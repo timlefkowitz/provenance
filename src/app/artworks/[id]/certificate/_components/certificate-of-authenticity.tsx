@@ -339,7 +339,7 @@ export function CertificateOfAuthenticity({
           setCanClaimAsArtist(false);
           return;
         }
-        const userRole = getUserRole(account.public_data as Record<string, any>);
+        const userRole = getUserRole(account.public_data as Record<string, unknown>);
         // Any artist can request; the certificate owner approves identity. Email completes the CoA.
         setCanClaimAsArtist(userRole === USER_ROLES.ARTIST);
       } catch (error) {

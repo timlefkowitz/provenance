@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseServerAdminClient();
 
     // Fetch artwork
-    const { data: artwork, error: artworkErr } = await (admin as any)
+    const { data: artwork, error: artworkErr } = await asUntyped(admin)
       .from('artworks')
       .select('id, account_id, title, for_sale, stripe_price_id, sold_at, sale_price, sale_currency')
       .eq('id', artworkId)

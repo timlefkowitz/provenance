@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getActiveSubscription } from '~/lib/subscription';
@@ -76,7 +77,7 @@ export async function createArtworkStripeListing(input: Input): Promise<Result> 
     });
 
     const admin = getSupabaseServerAdminClient();
-    const { error: updateErr } = await (admin as any)
+    const { error: updateErr } = await asUntyped(admin)
       .from('artworks')
       .update({
         stripe_product_id: product.id,

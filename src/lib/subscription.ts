@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -14,7 +15,7 @@ export async function getActiveSubscription(userId: string): Promise<{
 } | null> {
   const client = getSupabaseServerClient();
   const now = new Date().toISOString();
-  const { data: rows } = await (client as any)
+  const { data: rows } = await asUntyped(client)
     .from('subscriptions')
     .select('id, role, status, current_period_end')
     .eq('user_id', userId)
@@ -38,7 +39,7 @@ export async function hasWhiteLabelWebsiteAccess(userId: string): Promise<boolea
   try {
     const admin = getSupabaseServerAdminClient();
     const now = new Date().toISOString();
-    const { data: rows, error } = await (admin as any)
+    const { data: rows, error } = await asUntyped(admin)
       .from('subscriptions')
       .select('id')
       .eq('user_id', userId)
@@ -75,7 +76,7 @@ export async function hasCustomDomainAddon(userId: string): Promise<boolean> {
   const now = new Date().toISOString();
   const priceIds = [monthlyPriceId, yearlyPriceId].filter(Boolean) as string[];
 
-  const { data: rows } = await (client as any)
+  const { data: rows } = await asUntyped(client)
     .from('subscriptions')
     .select('id')
     .eq('user_id', userId)

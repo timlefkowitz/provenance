@@ -1,3 +1,4 @@
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -7,10 +8,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * - Falls back to the caller's own id (RLS will enforce access).
  */
 export async function resolveArtistUserId(
-  client: ReturnType<typeof getSupabaseServerClient>,
+  client: UntypedSupabaseClient,
   userId: string,
 ): Promise<string> {
-  const { data: artistProfile } = await (client as any)
+  const { data: artistProfile } = await asUntyped(client)
     .from('user_profiles')
     .select('id')
     .eq('user_id', userId)
@@ -19,7 +20,7 @@ export async function resolveArtistUserId(
 
   if (artistProfile) return userId;
 
-  const { data: membership } = await (client as any)
+  const { data: membership } = await asUntyped(client)
     .from('crm_members')
     .select('artist_user_id')
     .eq('member_user_id', userId)

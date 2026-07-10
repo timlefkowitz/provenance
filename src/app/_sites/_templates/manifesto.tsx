@@ -36,7 +36,7 @@ export function ManifestoTemplate({ site }: { site: SiteData }) {
         <header className="flex items-start justify-between gap-6">
           <div>
             {site.logo_image_url ? (
-              <img src={site.logo_image_url} alt={site.display_name ?? site.name} className="h-8 w-auto object-contain" />
+              <Image src={site.logo_image_url} alt={site.display_name ?? site.name} width={0} height={0} sizes="100vw" className="h-8 w-auto object-contain" />
             ) : (
               <span
                 className="text-xs uppercase tracking-[0.25em]"

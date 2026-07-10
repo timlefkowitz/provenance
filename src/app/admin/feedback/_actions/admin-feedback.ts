@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
@@ -43,8 +44,7 @@ export async function listFeedbackTickets(
 
   // feedback_tickets is not yet present in the generated Database types
   // (added in scripts/2026-04-27_feedback_and_presence.sql).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query: any = (admin as any)
+  let query = asUntyped(admin)
     .from('feedback_tickets')
     .select(
       'id, submitted_by, is_anonymous, submitter_email, submitter_name, category, subject, message, page_url, user_agent, status, admin_notes, resolved_by, resolved_at, created_at, updated_at',
@@ -75,7 +75,7 @@ export async function listFeedbackTickets(
   await Promise.all(
     buckets.map(async (b) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { count } = await (admin as any)
+      const { count } = await asUntyped(admin)
         .from('feedback_tickets')
         .select('id', { count: 'exact', head: true })
         .eq('status', b);
@@ -110,7 +110,7 @@ export async function updateFeedbackTicketStatus(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin as any)
+  const { error } = await asUntyped(admin)
     .from('feedback_tickets')
     .update(patch)
     .eq('id', ticketId);
@@ -133,7 +133,7 @@ export async function saveFeedbackTicketNotes(
 
   const admin = getSupabaseServerAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin as any)
+  const { error } = await asUntyped(admin)
     .from('feedback_tickets')
     .update({ admin_notes: notes.slice(0, 4000) })
     .eq('id', ticketId);

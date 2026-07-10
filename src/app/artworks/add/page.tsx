@@ -9,12 +9,13 @@ import { getUserGalleryProfiles } from './_actions/get-user-gallery-profiles';
 import { getActiveSubscription } from '~/lib/subscription';
 import { isSellingEnabled } from '~/lib/stripe-connect';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Add Artwork | Provenance',
 };
 
 export default async function AddArtworkPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -30,7 +31,7 @@ export default async function AddArtworkPage() {
 
   const artistName = account?.name || '';
   const defaultMedium = (account?.public_data as any)?.medium || '';
-  const userRole = getUserRole(account?.public_data as Record<string, any>);
+  const userRole = getUserRole(account?.public_data as Record<string, unknown>);
   
   // Get exhibitions for galleries
   const exhibitions = await getUserExhibitions(user.id);

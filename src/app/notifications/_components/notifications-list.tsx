@@ -26,7 +26,7 @@ type Notification = {
   related_user_id: string | null;
   read: boolean;
   created_at: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 };
 
 export function NotificationsList({ 
@@ -79,9 +79,9 @@ export function NotificationsList({
         setTimeout(() => {
           router.push('/notifications');
         }, 300);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error claiming certificate:', error);
-        alert(error.message || 'Failed to claim certificate');
+        alert((error as Error).message || 'Failed to claim certificate');
         inFlightRequests.current.delete(requestKey);
         setClaimingNotificationId(null);
       }

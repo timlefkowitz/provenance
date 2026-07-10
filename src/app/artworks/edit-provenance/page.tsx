@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
@@ -15,7 +16,7 @@ export default async function MassEditProvenancePage({
   searchParams: Promise<{ ids?: string }>;
 }) {
   const params = await searchParams;
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -37,7 +38,7 @@ export default async function MassEditProvenancePage({
 
   let galleryProfiles: { id: string; name: string; role: string }[] = [];
   if (profileRole) {
-    const { data: profileRows } = await (client as any)
+    const { data: profileRows } = await asUntyped(client)
       .from('user_profiles')
       .select('id, name, role')
       .eq('user_id', user.id)
@@ -100,7 +101,7 @@ export default async function MassEditProvenancePage({
   const missingExhibitionIds = [...linkedIds].filter((id) => !linkableIds.has(id));
 
   if (missingExhibitionIds.length > 0) {
-    const { data: extraRows } = await (client as any)
+    const { data: extraRows } = await asUntyped(client)
       .from('exhibitions')
       .select('id, title, start_date, end_date')
       .in('id', missingExhibitionIds);

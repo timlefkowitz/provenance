@@ -20,6 +20,7 @@ import { Plus } from 'lucide-react';
 import { getPerspective } from '~/components/perspective-switcher';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 type UserExhibition = {
   id: string;
   title: string;
@@ -114,7 +115,7 @@ export function CreateExhibitionDialog({
         } else {
           throw new Error('Failed to create exhibition');
         }
-      } catch (e: any) {
+      } catch (e) {
         console.error('[CreateExhibitionDialog] Error creating exhibition', e);
         const errorMessage = e?.message || 'Failed to create exhibition';
         setError(errorMessage);

@@ -151,22 +151,6 @@ function insuranceSnippet(text: string | null) {
   return t.length > 48 ? `${t.slice(0, 48)}…` : t;
 }
 
-function ComingSoonTab({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="max-w-2xl rounded-md border border-wine/15 bg-parchment/40 p-8">
-      <Badge variant="secondary" className="mb-4 font-serif">
-        Coming soon
-      </Badge>
-      <div className="flex gap-4">
-        <Clock className="h-10 w-10 shrink-0 text-wine/40" aria-hidden />
-        <div>
-          <h3 className="font-display text-lg text-wine">{title}</h3>
-          <p className="mt-2 font-serif text-sm text-ink/70">{description}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const loanStatuses = ['draft', 'sent', 'signed', 'active', 'closed', 'expired'] as const;
 const invoiceStatuses = ['draft', 'sent', 'partial', 'paid', 'overdue'] as const;

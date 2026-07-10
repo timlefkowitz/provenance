@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
@@ -26,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Subscription required' }, { status: 403 });
     }
 
-    const { data: row, error } = await (client as any)
+    const { data: row, error } = await asUntyped(client)
       .from('artwork_loan_agreements')
       .select(
         `

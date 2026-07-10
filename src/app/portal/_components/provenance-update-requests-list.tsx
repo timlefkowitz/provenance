@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@kit/ui/textarea';
 import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
-import { Check, X, ExternalLink } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { respondToProvenanceUpdateRequest } from '../../artworks/[id]/_actions/respond-to-provenance-update-request';
 import type { ProvenanceUpdateRequest } from '../../artworks/[id]/_actions/get-provenance-update-requests';
 
@@ -41,7 +41,7 @@ export function ProvenanceUpdateRequestsList({
           setReviewMessage('');
           window.location.reload();
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error responding to request:', error);
         toast.error('Failed to respond to request');
       }

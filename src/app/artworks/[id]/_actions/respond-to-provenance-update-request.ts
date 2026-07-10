@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -23,7 +24,7 @@ export async function respondToProvenanceUpdateRequest(
     }
 
     // Get the request and verify ownership
-    const { data: request, error: requestError } = await (client as any)
+    const { data: request, error: requestError } = await asUntyped(client)
       .from('provenance_update_requests')
       .select(`
         *,
@@ -50,7 +51,7 @@ export async function respondToProvenanceUpdateRequest(
     if (action === 'approve') {
       // Handle artist claim: create email invite; artist completes CoA via /claim/certificate
       if (request.request_type === 'artist_claim') {
-        const { data: sourceArtwork, error: sourceError } = await (client as any)
+        const { data: sourceArtwork, error: sourceError } = await asUntyped(client)
           .from('artworks')
           .select('*')
           .eq('id', request.artworks.id)
@@ -83,7 +84,7 @@ export async function respondToProvenanceUpdateRequest(
         inviteeEmail = normalizeInviteEmail(inviteeEmail);
 
         const reviewedAt = new Date().toISOString();
-        const { error: approveFirstError } = await (client as any)
+        const { error: approveFirstError } = await asUntyped(client)
           .from('provenance_update_requests')
           .update({
             status: 'approved',
@@ -106,7 +107,7 @@ export async function respondToProvenanceUpdateRequest(
         });
 
         if (!inviteResult.success) {
-          await (client as any)
+          await asUntyped(client)
             .from('provenance_update_requests')
             .update({
               status: 'pending',
@@ -133,7 +134,7 @@ export async function respondToProvenanceUpdateRequest(
         }
       } else if (request.request_type === 'ownership_request') {
         // Transfer ownership to the requester
-        const { error: transferError } = await (client as any)
+        const { error: transferError } = await asUntyped(client)
           .from('artworks')
           .update({
             account_id: request.requested_by,
@@ -154,7 +155,7 @@ export async function respondToProvenanceUpdateRequest(
       } else {
         // Handle image_url and created_at directly if present
         if (request.update_fields.image_url !== undefined) {
-          const { error: imageUpdateError } = await (client as any)
+          const { error: imageUpdateError } = await asUntyped(client)
             .from('artworks')
             .update({ image_url: request.update_fields.image_url })
             .eq('id', request.artworks.id);
@@ -171,7 +172,7 @@ export async function respondToProvenanceUpdateRequest(
         }
 
         if (request.update_fields.created_at !== undefined) {
-          const { error: dateUpdateError } = await (client as any)
+          const { error: dateUpdateError } = await asUntyped(client)
             .from('artworks')
             .update({ created_at: request.update_fields.created_at })
             .eq('id', request.artworks.id);
@@ -213,7 +214,7 @@ export async function respondToProvenanceUpdateRequest(
             request.update_fields.exhibitionId !== '__none__' && 
             request.update_fields.exhibitionTitle) {
           // Verify the artwork owner owns this exhibition (or the requester owns it)
-          const { data: exhibition } = await (client as any)
+          const { data: exhibition } = await asUntyped(client)
             .from('exhibitions')
             .select('gallery_id')
             .eq('id', request.update_fields.exhibitionId)
@@ -239,7 +240,7 @@ export async function respondToProvenanceUpdateRequest(
               exhibitionUpdate.gallery_id = request.update_fields.exhibitionGalleryId;
             }
 
-            const { error: exhibitionUpdateError } = await (client as any)
+            const { error: exhibitionUpdateError } = await asUntyped(client)
               .from('exhibitions')
               .update(exhibitionUpdate)
               .eq('id', request.update_fields.exhibitionId);
@@ -276,7 +277,7 @@ export async function respondToProvenanceUpdateRequest(
 
       // Update the request status (artist_claim already approved before invite)
       if (request.request_type !== 'artist_claim') {
-        const { error: updateError } = await (client as any)
+        const { error: updateError } = await asUntyped(client)
           .from('provenance_update_requests')
           .update({
             status: 'approved',
@@ -329,7 +330,7 @@ export async function respondToProvenanceUpdateRequest(
       }
     } else {
       // Deny the request
-      const { error: updateError } = await (client as any)
+      const { error: updateError } = await asUntyped(client)
         .from('provenance_update_requests')
         .update({
           status: 'denied',
@@ -391,13 +392,13 @@ export async function respondToProvenanceUpdateRequest(
     revalidatePath(`/artworks/${request.artworks.id}/certificate`);
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     logger.error('provenance_request_respond_failed', {
       requestId,
       action,
       error,
     });
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    return { success: false, error: (error as Error).message || 'An unexpected error occurred' };
   }
 }
 

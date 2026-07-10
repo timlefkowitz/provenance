@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { headers } from 'next/headers';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -76,7 +77,7 @@ export async function recordScanLocation(
   } = await client.auth.getUser();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: artwork, error: fetchError } = await (adminClient as any)
+  const { data: artwork, error: fetchError } = await asUntyped(adminClient)
     .from('artworks')
     .select('metadata, account_id, title, status, is_public')
     .eq('id', artworkId)
@@ -131,7 +132,7 @@ export async function recordScanLocation(
   const scanLocations = [...existingScanLocations, newScan];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: updatedRow, error: updateError } = await (adminClient as any)
+  const { data: updatedRow, error: updateError } = await asUntyped(adminClient)
     .from('artworks')
     .update({
       metadata: {

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getEligibleSiteArtworks } from '~/app/_sites/_data/get-eligible-site-artworks';
@@ -27,7 +28,7 @@ export async function getEligibleSiteArtworksAction(
   const { data: { user }, error: authErr } = await client.auth.getUser();
   if (authErr || !user) return [];
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, role')
     .eq('id', profileId)

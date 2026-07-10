@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { logger } from '~/lib/logger';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
@@ -43,7 +44,7 @@ export async function createArtistClaimInviteAfterApproval(
   const tokenHash = hashClaimToken(token);
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
 
-  const { error: insertError } = await (adminClient as any).from('certificate_claim_invites').insert({
+  const { error: insertError } = await asUntyped(adminClient).from('certificate_claim_invites').insert({
     source_artwork_id: sourceId,
     claim_kind: claimKind,
     invitee_email: inviteeEmail,

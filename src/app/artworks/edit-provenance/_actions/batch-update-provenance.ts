@@ -6,6 +6,7 @@ import { updateProvenance } from '../../[id]/edit/_actions/update-provenance';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export async function batchUpdateProvenance(
   artworkIds: string[],
   provenance: {
@@ -36,15 +37,15 @@ export async function batchUpdateProvenance(
 ): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
   try {
     console.log('[BatchUpdateProvenance] started', { count: artworkIds.length });
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
-      return { error: 'You must be signed in to update provenance' };
+      return { success: false, error: 'You must be signed in to update provenance' };
     }
 
     if (artworkIds.length === 0) {
-      return { error: 'No artworks selected' };
+      return { success: false, error: 'No artworks selected' };
     }
 
     // Verify user owns or can edit all artworks (owner or gallery team member)
@@ -54,7 +55,7 @@ export async function batchUpdateProvenance(
       .in('id', artworkIds);
 
     if (fetchError || !artworks) {
-      return { error: 'Error fetching artworks' };
+      return { success: false, error: 'Error fetching artworks' };
     }
 
     for (const a of artworks) {
@@ -63,7 +64,7 @@ export async function batchUpdateProvenance(
         gallery_profile_id: a.gallery_profile_id ?? undefined,
       });
       if (!canEdit) {
-        return { error: 'You do not have permission to edit some of these artworks' };
+        return { success: false, error: 'You do not have permission to edit some of these artworks' };
       }
     }
 
@@ -94,7 +95,7 @@ export async function batchUpdateProvenance(
     revalidatePath('/profile');
 
     if (errors.length > 0 && successCount === 0) {
-      return { error: `Failed to update artworks: ${errors.join(', ')}` };
+      return { success: false, error: `Failed to update artworks: ${errors.join(', ')}` };
     }
 
     if (errors.length > 0) {
@@ -113,6 +114,6 @@ export async function batchUpdateProvenance(
       artworkIds,
       error,
     });
-    return { error: 'An unexpected error occurred' };
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

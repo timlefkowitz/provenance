@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
 import { sendNotificationEmail } from '~/lib/email';
+import { asUntyped } from '~/lib/supabase-untyped';
 
 export interface GalleryMember {
   id: string;
@@ -35,7 +36,7 @@ export async function isGalleryMember(
   userId: string,
   galleryProfileId: string
 ): Promise<boolean> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   
   const { data, error } = await client
     .from('gallery_members')
@@ -58,7 +59,7 @@ export async function canManageGallery(
   userId: string,
   galleryProfileId: string
 ): Promise<boolean> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   
   // Check if user is the gallery profile owner
   const { data: profile } = await client
@@ -120,7 +121,7 @@ export async function canManageExhibition(
   if (exhibitionGalleryId === userId) {
     return true;
   }
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: profiles } = await client
     .from('user_profiles')
     .select('id')
@@ -145,7 +146,7 @@ export async function getGalleryMembers(
   galleryProfileId: string
 ): Promise<{ data: GalleryMember[] | null; error: string | null }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -191,7 +192,7 @@ export async function getGalleryMembers(
     const userIds = Array.from(
       new Set(
         memberRows
-          .map((m: any) => m.user_id)
+          .map((m: Record<string, unknown>) => m.user_id)
           .filter((id: unknown): id is string => typeof id === 'string'),
       ),
     );
@@ -213,10 +214,10 @@ export async function getGalleryMembers(
           details: accountsError.details,
         });
       } else if (accounts) {
-        accountsById = (accounts as any[]).reduce((acc, account) => {
-          acc[account.id] = account;
+        accountsById = (accounts as Record<string, unknown>[]).reduce<typeof accountsById>((acc, account) => {
+          acc[account.id as string] = account as (typeof accountsById)[string];
           return acc;
-        }, {} as typeof accountsById);
+        }, {});
       }
     }
 
@@ -266,7 +267,7 @@ export async function inviteGalleryMember(
   role: 'admin' | 'member' = 'member'
 ): Promise<{ success: boolean; error: string | null }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -373,9 +374,9 @@ export async function inviteGalleryMember(
     revalidatePath(`/artists/${profile.user_id}?role=gallery&profileId=${galleryProfileId}`);
 
     return { success: true, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in inviteGalleryMember:', error);
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    return { success: false, error: (error as Error).message || 'An unexpected error occurred' };
   }
 }
 
@@ -387,7 +388,7 @@ export async function removeGalleryMember(
   memberUserId: string
 ): Promise<{ success: boolean; error: string | null }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -452,9 +453,9 @@ export async function removeGalleryMember(
     }
 
     return { success: true, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in removeGalleryMember:', error);
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    return { success: false, error: (error as Error).message || 'An unexpected error occurred' };
   }
 }
 
@@ -467,7 +468,7 @@ export async function updateGalleryMemberRole(
   newRole: 'owner' | 'admin' | 'member'
 ): Promise<{ success: boolean; error: string | null }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -531,8 +532,8 @@ export async function updateGalleryMemberRole(
     revalidatePath(`/profiles`);
 
     return { success: true, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in updateGalleryMemberRole:', error);
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    return { success: false, error: (error as Error).message || 'An unexpected error occurred' };
   }
 }

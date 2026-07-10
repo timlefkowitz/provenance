@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type BlogPostListItem = {
   slug: string;
   title: string;
@@ -23,7 +24,7 @@ export type BlogPostDetail = BlogPostListItem & {
 };
 
 export async function getPublishedPosts(): Promise<BlogPostListItem[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data, error } = await client
     .from('blog_posts')
     .select('slug, title, description, published_at, og_image_url, author_name')
@@ -39,7 +40,7 @@ export async function getPublishedPosts(): Promise<BlogPostListItem[]> {
 
 export const getPublishedPostBySlug = cache(
   async (slug: string): Promise<BlogPostDetail | null> => {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data, error } = await client
       .from('blog_posts')
       .select(

@@ -5,12 +5,13 @@ import { getOpenCallsForGallery } from './_actions/get-open-calls-for-gallery';
 import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
 import { OpenCallsManager } from './_components/open-calls-manager';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Open Calls | Provenance',
 };
 
 export default async function OpenCallsPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -27,7 +28,7 @@ export default async function OpenCallsPage() {
     redirect('/registry');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
   if (userRole !== USER_ROLES.GALLERY) {
     redirect('/registry');
   }

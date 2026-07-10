@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Soft-delete a role profile by marking it inactive.
  *
@@ -15,7 +16,7 @@ import { revalidatePath } from 'next/cache';
 export async function deleteProfile(profileId: string) {
   console.log('[deleteProfile] Soft-deleting profile', profileId);
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -12,7 +13,7 @@ import { trackUserStreakActivity } from '~/lib/streak-service';
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     
     // Get form data
     const imageFile = formData.get('image') as File;
@@ -71,7 +72,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     const certificateNumber = await generateCertificateNumber(client);
 
     // Certificate type by poster: gallery → show, collector → ownership, artist → authenticity
-    const userRole = getUserRole(account?.public_data as Record<string, any>);
+    const userRole = getUserRole(account?.public_data as Record<string, unknown>);
     const certificateType = getCertificateTypeForRole(userRole);
     const isCollectorOrGallery = userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY;
     const certificateStatus =
@@ -94,7 +95,7 @@ export async function createArtwork(formData: FormData, userId: string) {
           .select('id, public_data')
           .eq('name', artistName)
           .single();
-        if (artistAccount && getUserRole(artistAccount.public_data as Record<string, any>) === USER_ROLES.ARTIST) {
+        if (artistAccount && getUserRole(artistAccount.public_data as Record<string, unknown>) === USER_ROLES.ARTIST) {
           artistAccountId = artistAccount.id;
         }
       } catch {
@@ -120,7 +121,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     };
     if (artistAccountId) (insertPayload as any).artist_account_id = artistAccountId;
 
-    const { data: artwork, error } = await (client as any)
+    const { data: artwork, error } = await asUntyped(client)
       .from('artworks')
       .insert(insertPayload)
       .select('id')
@@ -193,7 +194,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     }
 
     return { artworkId: artwork.id };
-  } catch (error: any) {
+  } catch (error) {
     logger.error('create_artwork_fatal', {
       userId,
       error,

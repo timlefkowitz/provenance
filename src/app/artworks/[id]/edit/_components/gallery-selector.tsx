@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
 import { Input } from '@kit/ui/input';
 import { X, Search, Plus } from 'lucide-react';
 
@@ -147,10 +148,13 @@ export function GallerySelector({
                     className="w-full px-4 py-2 text-left hover:bg-wine/10 transition-colors flex items-center gap-3"
                   >
                     {gallery.picture_url && (
-                      <img
+                      <Image
                         src={gallery.picture_url}
                         alt={gallery.name}
-                        className="w-8 h-8 rounded-full object-cover"
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover"
+                        unoptimized
                       />
                     )}
                     <div className="flex-1 min-w-0">

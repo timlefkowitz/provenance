@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 type UpdateProposalInput = {
@@ -32,7 +33,7 @@ export async function updateProposal(input: UpdateProposalInput) {
   if (input.contentText !== undefined) updates.content_text = input.contentText;
   if (input.status !== undefined) updates.status = input.status;
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('grant_proposals')
     .update(updates)
     .eq('id', input.id)

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
@@ -17,7 +18,7 @@ function milestoneLabel(count: number): string | null {
   return null;
 }
 
-async function checkAndNotifyMilestone(client: ReturnType<typeof getSupabaseServerClient>, userId: string) {
+async function checkAndNotifyMilestone(client: UntypedSupabaseClient, userId: string) {
   try {
     const { count } = await client
       .from('artwork_favorites')
@@ -28,7 +29,7 @@ async function checkAndNotifyMilestone(client: ReturnType<typeof getSupabaseServ
     const label = FAVORITE_MILESTONES.includes(total as any) ? milestoneLabel(total) : null;
     if (!label) return;
 
-    await client.from('notifications').insert({
+    await asUntyped(client).from('notifications').insert({
       user_id: userId,
       type: 'artwork_favorited',
       title: `You reached ${label}!`,
@@ -44,7 +45,7 @@ async function checkAndNotifyMilestone(client: ReturnType<typeof getSupabaseServ
  * Add an artwork to user's favorites
  */
 export async function addFavorite(artworkId: string) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -52,7 +53,7 @@ export async function addFavorite(artworkId: string) {
   }
 
   // Get artwork info to find the owner
-  const { data: artwork } = await (client as any)
+  const { data: artwork } = await asUntyped(client)
     .from('artworks')
     .select('id, title, account_id')
     .eq('id', artworkId)
@@ -136,7 +137,7 @@ export async function addFavorite(artworkId: string) {
  * Remove an artwork from user's favorites
  */
 export async function removeFavorite(artworkId: string) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -167,7 +168,7 @@ export async function removeFavorite(artworkId: string) {
  * Check if an artwork is favorited by the current user
  */
 export async function isFavorited(artworkId: string): Promise<boolean> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -197,7 +198,7 @@ export async function isFavorited(artworkId: string): Promise<boolean> {
  * Get user's favorite artworks
  */
 export async function getFavoriteArtworks(limit: number = 10) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -226,7 +227,7 @@ export async function getFavoriteArtworks(limit: number = 10) {
 
   // Then fetch the artworks
   const artworkIds = favorites.map((f: any) => f.artwork_id);
-  const { data: artworks, error: artworksError } = await (client as any)
+  const { data: artworks, error: artworksError } = await asUntyped(client)
     .from('artworks')
     .select(
       'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status, artist_account_id, artist_profile_id',
@@ -263,7 +264,7 @@ export async function getFavoriteArtworks(limit: number = 10) {
  * Get count of user's favorite artworks
  */
 export async function getFavoriteCount(): Promise<number> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {

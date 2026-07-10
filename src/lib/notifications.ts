@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type NotificationType = 
   | 'certificate_claim_request'
   | 'certificate_claim_pending'
@@ -52,14 +53,14 @@ export interface CreateNotificationParams {
   message?: string;
   artworkId?: string;
   relatedUserId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
  * Create a notification for a user
  */
 export async function createNotification(params: CreateNotificationParams) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { error } = await client
     .from('notifications')
@@ -83,7 +84,7 @@ export async function createNotification(params: CreateNotificationParams) {
  * Get unread notification count for a user
  */
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { count, error } = await client
     .from('notifications')
@@ -103,7 +104,7 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
  * Mark notification as read
  */
 export async function markNotificationAsRead(notificationId: string, userId: string) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { error } = await client
     .from('notifications')
@@ -121,7 +122,7 @@ export async function markNotificationAsRead(notificationId: string, userId: str
  * Mark all notifications as read for a user
  */
 export async function markAllNotificationsAsRead(userId: string) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { error } = await client
     .from('notifications')

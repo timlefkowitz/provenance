@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getActiveSubscription } from './subscription';
 
@@ -14,7 +15,7 @@ export type ConnectAccount = {
  */
 export async function getConnectAccount(userId: string): Promise<ConnectAccount | null> {
   const admin = getSupabaseServerAdminClient();
-  const { data, error } = await (admin as any)
+  const { data, error } = await asUntyped(admin)
     .from('stripe_connect_accounts')
     .select('stripe_account_id, charges_enabled, details_submitted, payouts_enabled')
     .eq('user_id', userId)

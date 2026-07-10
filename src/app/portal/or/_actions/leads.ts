@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { resolveArtistUserId } from '~/lib/crm/owner';
@@ -36,18 +37,21 @@ const SELECT_FIELDS = `
   artwork:artworks(id, title, image_url)
 `;
 
-function normalizeLeads(rows: any[]): ArtistLead[] {
-  return rows.map((row) => ({
-    ...row,
-    is_lead: row.is_lead !== false,
-    artwork: Array.isArray(row.artwork) ? row.artwork[0] ?? null : row.artwork ?? null,
-    intel: normalizeIntel(row.intel),
-  }));
+function normalizeLeads(rows: unknown[]): ArtistLead[] {
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      ...r,
+      is_lead: r.is_lead !== false,
+      artwork: Array.isArray(r.artwork) ? (r.artwork as unknown[])[0] ?? null : r.artwork ?? null,
+      intel: normalizeIntel(r.intel),
+    } as ArtistLead;
+  });
 }
 
 export async function getLeadsForArtist(): Promise<ArtistLead[]> {
   console.log('[Leads] getLeadsForArtist started');
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -57,7 +61,7 @@ export async function getLeadsForArtist(): Promise<ArtistLead[]> {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artist_leads')
     .select(SELECT_FIELDS)
     .eq('artist_user_id', artistUserId)
@@ -85,7 +89,7 @@ export async function createLead(input: {
   intel?: CrmLeadIntel | null;
 }) {
   console.log('[Leads] createLead started', input);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -130,7 +134,7 @@ export async function createContact(input: {
   notes?: string | null;
 }) {
   console.log('[Leads] createContact started', input);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -172,7 +176,7 @@ export async function createContact(input: {
 
 export async function promoteContactToLead(leadId: string) {
   console.log('[Leads] promoteContactToLead', leadId);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -182,7 +186,7 @@ export async function promoteContactToLead(leadId: string) {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artist_leads')
     .update({ is_lead: true, updated_at: new Date().toISOString() })
     .eq('id', leadId)
@@ -200,7 +204,7 @@ export async function promoteContactToLead(leadId: string) {
 
 export async function updateLeadStage(leadId: string, stage: LeadStage) {
   console.log('[Leads] updateLeadStage', leadId, stage);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -210,7 +214,7 @@ export async function updateLeadStage(leadId: string, stage: LeadStage) {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artist_leads')
     .update({ stage, updated_at: new Date().toISOString() })
     .eq('id', leadId)
@@ -241,7 +245,7 @@ export async function updateLead(
   },
 ) {
   console.log('[Leads] updateLead', leadId, input);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -258,7 +262,7 @@ export async function updateLead(
         ? input.intel
         : ({} as Record<string, unknown>);
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artist_leads')
     .update({
       contact_name:    input.contact_name    ?? undefined,
@@ -287,7 +291,7 @@ export async function updateLead(
 
 export async function deleteLead(leadId: string) {
   console.log('[Leads] deleteLead', leadId);
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -297,7 +301,7 @@ export async function deleteLead(leadId: string) {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('artist_leads')
     .delete()
     .eq('id', leadId)

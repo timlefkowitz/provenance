@@ -38,8 +38,8 @@ export interface ProvenanceValuation {
   exhibition_count: number | null;
   scholarly_citations_count: number | null;
   artist_market_cap_cents: number | null;
-  auction_history_summary: Record<string, any> | null;
-  market_signals: Record<string, any> | null;
+  auction_history_summary: Record<string, unknown> | null;
+  market_signals: Record<string, unknown> | null;
   narrative: string | null;
   is_public: boolean;
 }

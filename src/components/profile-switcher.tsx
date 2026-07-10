@@ -1,5 +1,6 @@
 'use client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCurrentUser } from '~/hooks/use-current-user';
@@ -63,7 +64,7 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
         const ownProfiles = (ownData || []) as UserProfile[];
 
         // 2. Gallery team memberships
-        const { data: memberRows, error: memberError } = await (client as any)
+        const { data: memberRows, error: memberError } = await asUntyped(client)
           .from('gallery_members')
           .select('gallery_profile_id')
           .eq('user_id', userId);
@@ -79,7 +80,7 @@ export function ProfileSwitcher({ compact = false }: { compact?: boolean }) {
         let teamProfiles: UserProfile[] = [];
 
         if (memberProfileIds.length > 0) {
-          const { data: teamData, error: teamError } = await (client as any)
+          const { data: teamData, error: teamError } = await asUntyped(client)
             .from('user_profiles')
             .select('*')
             .in('id', memberProfileIds)

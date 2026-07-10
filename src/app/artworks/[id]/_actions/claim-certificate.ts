@@ -5,11 +5,12 @@ import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Artist claims a certificate for an artwork posted by a collector/gallery
  */
 export async function claimCertificate(artworkId: string) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -27,7 +28,7 @@ export async function claimCertificate(artworkId: string) {
     throw new Error('Account not found');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
   if (userRole !== USER_ROLES.ARTIST) {
     throw new Error('Only artists can claim certificates');
   }

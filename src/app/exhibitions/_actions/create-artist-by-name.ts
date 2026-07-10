@@ -5,13 +5,14 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Create a new artist account by name
  * This creates a minimal account entry for artists who aren't registered yet
  */
 export async function createArtistByName(artistName: string) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -29,7 +30,7 @@ export async function createArtistByName(artistName: string) {
       return { error: 'Account not found', success: false };
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, any>);
+    const userRole = getUserRole(account.public_data as Record<string, unknown>);
     if (userRole !== USER_ROLES.GALLERY) {
       return { error: 'Only galleries can create artists', success: false };
     }
@@ -43,7 +44,7 @@ export async function createArtistByName(artistName: string) {
 
     if (existing && existing.length > 0) {
       const existingAccount = existing[0];
-      const existingRole = getUserRole(existingAccount.public_data as Record<string, any>);
+      const existingRole = getUserRole(existingAccount.public_data as Record<string, unknown>);
       
       if (existingRole === USER_ROLES.ARTIST) {
         // Artist already exists, return it

@@ -1,12 +1,13 @@
 'use server';
 
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { slugify } from '~/lib/slug';
 
 export async function createOpenCall(formData: FormData) {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
@@ -19,7 +20,7 @@ export async function createOpenCall(formData: FormData) {
     .eq('id', user.id)
     .single();
 
-  const userRole = getUserRole(account?.public_data as Record<string, any>);
+  const userRole = getUserRole(account?.public_data as Record<string, unknown>);
   if (userRole !== USER_ROLES.GALLERY) {
     throw new Error('Only galleries can create open calls');
   }
@@ -50,7 +51,7 @@ export async function createOpenCall(formData: FormData) {
     throw new Error('Submission open date and submission closing date are required');
   }
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('id, user_id, role')
     .eq('id', galleryProfileId)
@@ -75,7 +76,7 @@ export async function createOpenCall(formData: FormData) {
 
   const slug = await generateUniqueSlug(client, baseSlug);
 
-  const { data: exhibition, error: exhibitionError } = await (client as any)
+  const { data: exhibition, error: exhibitionError } = await asUntyped(client)
     .from('exhibitions')
     .insert({
       gallery_id: profile.user_id,
@@ -95,7 +96,7 @@ export async function createOpenCall(formData: FormData) {
     throw new Error('Failed to create exhibition');
   }
 
-  const { data: openCall, error: openCallError } = await (client as any)
+  const { data: openCall, error: openCallError } = await asUntyped(client)
     .from('open_calls')
     .insert({
       exhibition_id: exhibition.id,
@@ -123,12 +124,12 @@ export async function createOpenCall(formData: FormData) {
   return { openCallId: openCall.id, slug };
 }
 
-async function generateUniqueSlug(client: ReturnType<typeof getSupabaseServerClient>, baseSlug: string) {
+async function generateUniqueSlug(client: UntypedSupabaseClient, baseSlug: string) {
   let candidate = baseSlug;
   let suffix = 1;
 
   while (true) {
-    const { data } = await (client as any)
+    const { data } = await asUntyped(client)
       .from('open_calls')
       .select('id')
       .eq('slug', candidate)

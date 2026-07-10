@@ -36,7 +36,7 @@ export function ValueLineChart({ series, height = 180 }: ValueLineChartProps) {
   }
 
   // Compute chart bounds
-  const allValues = series.map((p) => p.value_cents);
+  const _allValues = series.map((p) => p.value_cents);
   const allLow = series.map((p) => p.low_cents);
   const allHigh = series.map((p) => p.high_cents);
   const dataMin = Math.min(...allLow);

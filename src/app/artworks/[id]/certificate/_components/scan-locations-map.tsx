@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 type ScanCoordinate = {
   latitude: number;
   longitude: number;

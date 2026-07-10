@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 
   const client = getSupabaseServerClient();
 
-  const { data: accounts, error } = await (client as any)
+  const { data: accounts, error } = await asUntyped(client)
     .from('accounts')
     .select('id, name, picture_url, public_data')
     .ilike('name', `%${escapeIlike(q)}%`)
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 
   const artists = (accounts || [])
     .filter((account) => {
-      const role = getUserRole(account.public_data as Record<string, any>);
+      const role = getUserRole(account.public_data as Record<string, unknown>);
       return role === USER_ROLES.ARTIST;
     })
     .map((account) => ({

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -42,7 +43,7 @@ async function assertArtworkOwned(
   userId: string,
   artworkId: string,
 ): Promise<boolean> {
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('id', artworkId)

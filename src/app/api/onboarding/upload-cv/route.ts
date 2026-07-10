@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Ensure artist profile exists — create a minimal one if not
     let profileId: string;
-    const { data: existing } = await (admin as any)
+    const { data: existing } = await asUntyped(admin)
       .from('user_profiles')
       .select('id')
       .eq('user_id', user.id)
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       profileId = existing.id as string;
       console.log('[Onboarding] upload-cv using existing profile', profileId);
     } else {
-      const { data: account } = await (admin as any)
+      const { data: account } = await asUntyped(admin)
         .from('accounts')
         .select('name')
         .eq('id', user.id)
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
       const displayName = (account?.name as string | null) ?? user.email?.split('@')[0] ?? 'Artist';
 
       console.log('[Onboarding] upload-cv creating artist profile for', user.id);
-      const { data: inserted, error: insertErr } = await (admin as any)
+      const { data: inserted, error: insertErr } = await asUntyped(admin)
         .from('user_profiles')
         .insert({ user_id: user.id, role: 'artist', name: displayName, is_active: true })
         .select('id')
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
     const fileUrl = urlData?.publicUrl ?? null;
 
     // Save to profile
-    const { error: updateErr } = await (admin as any)
+    const { error: updateErr } = await asUntyped(admin)
       .from('user_profiles')
       .update({
         artist_cv_json: cvJson,

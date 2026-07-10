@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
@@ -61,7 +62,7 @@ export async function generateMetadata({
   const requestedRole = resolvedSearchParams?.role;
 
   try {
-    const admin = getSupabaseServerAdminClient() as any;
+    const admin = asUntyped(getSupabaseServerAdminClient()) as any;
 
     // Try account lookup first (most common path)
     const { data: account } = await admin
@@ -78,7 +79,7 @@ export async function generateMetadata({
     if (account) {
       displayName = account.name;
       pictureUrl = account.picture_url;
-      const primaryRole = getUserRole(account.public_data as Record<string, any>);
+      const primaryRole = getUserRole(account.public_data as Record<string, unknown>);
       const role = requestedRole && isValidRole(requestedRole) ? requestedRole : primaryRole;
       if (role) roleLabel = getRoleLabel(role);
 
@@ -191,7 +192,7 @@ export default async function ArtistProfilePage({
   const requestedRole = resolvedSearchParams?.role;
   const requestedProfileId = resolvedSearchParams?.profileId;
   
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -300,7 +301,7 @@ export default async function ArtistProfilePage({
   const isOwner = user?.id === account.id;
   
   // Resolve role: never honor ?role=gallery unless this account is actually a gallery (account role or gallery profile).
-  const primaryRole = getUserRole(account.public_data as Record<string, any>);
+  const primaryRole = getUserRole(account.public_data as Record<string, unknown>);
   let userRole: string | null = null;
   if (requestedRole && ['artist', 'collector', 'gallery'].includes(requestedRole)) {
     if (requestedRole === USER_ROLES.GALLERY) {
@@ -388,7 +389,7 @@ export default async function ArtistProfilePage({
   let gallerySelectedThumbnailIds: string[] = [];
   if (isGallery && isOwner && roleProfile?.id) {
     const [{ data: thumbRows, error: thumbErr }, { data: profileRow }] = await Promise.all([
-      (client as any)
+      asUntyped(client)
         .from('artworks')
         .select('id, title, image_url, artist_name, created_at')
         .eq('gallery_profile_id', roleProfile.id)
@@ -398,7 +399,7 @@ export default async function ArtistProfilePage({
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(48),
-      (client as any)
+      asUntyped(client)
         .from('user_profiles')
         .select('registry_artwork_id, registry_artwork_ids')
         .eq('id', roleProfile.id)
@@ -409,7 +410,7 @@ export default async function ArtistProfilePage({
       console.error('[ArtistProfile] gallery thumbnail eligibility query failed', thumbErr);
     }
 
-    galleryEligibleThumbnails = (thumbRows || []).map((row: any) => ({
+    galleryEligibleThumbnails = (thumbRows || []).map((row: Record<string, unknown>) => ({
       id: row.id as string,
       title: (row.title as string) || 'Untitled',
       image_url: (row.image_url as string | null) ?? null,
@@ -444,7 +445,7 @@ export default async function ArtistProfilePage({
 
         const [{ data: feedRows, error: feedErr }, { data: feedProfileRow, error: profileErr }] =
           await Promise.all([
-            (client as any)
+            asUntyped(client)
               .from('artworks')
               .select('id, title, image_url, artist_name, created_at')
               .eq('certificate_type', 'authenticity')
@@ -454,7 +455,7 @@ export default async function ArtistProfilePage({
               .or(orParts.join(','))
               .order('created_at', { ascending: false })
               .limit(48),
-            (client as any)
+            asUntyped(client)
               .from('user_profiles')
               .select('feed_panel_artwork_ids')
               .eq('id', roleProfile.id)
@@ -468,7 +469,7 @@ export default async function ArtistProfilePage({
           console.error('[ArtistProfile] feed panel artist profile query failed', profileErr);
         }
 
-        feedPanelEligibleArtworks = (feedRows || []).map((row: any) => ({
+        feedPanelEligibleArtworks = (feedRows || []).map((row: Record<string, unknown>) => ({
           id: row.id as string,
           title: (row.title as string) || 'Untitled',
           image_url: (row.image_url as string | null) ?? null,
@@ -487,7 +488,7 @@ export default async function ArtistProfilePage({
         // Gallery: any cert type, verified, public, posted by this account
         const [{ data: feedRows, error: feedErr }, { data: feedProfileRow, error: profileErr }] =
           await Promise.all([
-            (client as any)
+            asUntyped(client)
               .from('artworks')
               .select('id, title, image_url, artist_name, created_at')
               .eq('account_id', account.id)
@@ -496,7 +497,7 @@ export default async function ArtistProfilePage({
               .not('image_url', 'is', null)
               .order('created_at', { ascending: false })
               .limit(48),
-            (client as any)
+            asUntyped(client)
               .from('user_profiles')
               .select('feed_panel_artwork_ids')
               .eq('id', roleProfile.id)
@@ -510,7 +511,7 @@ export default async function ArtistProfilePage({
           console.error('[ArtistProfile] feed panel gallery profile query failed', profileErr);
         }
 
-        feedPanelEligibleArtworks = (feedRows || []).map((row: any) => ({
+        feedPanelEligibleArtworks = (feedRows || []).map((row: Record<string, unknown>) => ({
           id: row.id as string,
           title: (row.title as string) || 'Untitled',
           image_url: (row.image_url as string | null) ?? null,
@@ -549,7 +550,7 @@ export default async function ArtistProfilePage({
   } | null;
   let latestCos: LatestCos = null;
   if (isGallery && roleProfile?.id) {
-    let cosQuery = (client as any)
+    let cosQuery = asUntyped(client)
       .from('artworks')
       .select(
         'id, title, artist_name, image_url, created_at, certificate_number, is_public, account_id',
@@ -588,7 +589,7 @@ export default async function ArtistProfilePage({
     }
   } else {
     // Artists: uploads, works credited via artist_account_id, or legacy profile link; collectors: own uploads only
-    let artworksQuery = (client as any)
+    let artworksQuery = asUntyped(client)
       .from('artworks')
       .select(
         'id, title, artist_name, image_url, created_at, certificate_number, account_id, artist_account_id, artist_profile_id, is_public, status',

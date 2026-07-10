@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { LandingCountUp } from "@/components/landing-count-up";
 import type { LandingPlatformStats } from "@/lib/landing-platform-stats.types";
 
+import { asUntyped } from '~/lib/supabase-untyped';
 type LandingStatsSectionProps = {
   stats: LandingPlatformStats;
 };
@@ -17,7 +18,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const fadeUp = {
+const fadeUp: import('framer-motion').Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,

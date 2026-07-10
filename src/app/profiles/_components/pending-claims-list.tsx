@@ -76,9 +76,9 @@ export function PendingClaimsList({
           setResponse('');
           router.refresh();
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('[PendingClaimsList] Error approving claim', error);
-        toast.error(error.message || 'Failed to approve claim');
+        toast.error((error as Error).message || 'Failed to approve claim');
       }
     });
   };
@@ -103,9 +103,9 @@ export function PendingClaimsList({
           setResponse('');
           router.refresh();
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('[PendingClaimsList] Error rejecting claim', error);
-        toast.error(error.message || 'Failed to reject claim');
+        toast.error((error as Error).message || 'Failed to reject claim');
       }
     });
   };
@@ -201,7 +201,7 @@ export function PendingClaimsList({
 
                         {claim.message && (
                           <div className="mt-3 p-3 bg-wine/5 rounded-md border border-wine/10">
-                            <p className="text-xs text-ink/60 font-serif mb-1">Artist's message:</p>
+                            <p className="text-xs text-ink/60 font-serif mb-1">Artist&apos;s message:</p>
                             <p className="text-sm text-ink/80 font-serif">{claim.message}</p>
                           </div>
                         )}
@@ -312,7 +312,7 @@ export function PendingClaimsList({
               Approve Profile Claim
             </DialogTitle>
             <DialogDescription>
-              Approve {selectedClaim?.artist.name}'s claim for the profile "{selectedClaim?.profile.name}"
+              Approve {selectedClaim?.artist.name}&apos;s claim for the profile &quot;{selectedClaim?.profile.name}&quot;
             </DialogDescription>
           </DialogHeader>
           
@@ -362,7 +362,7 @@ export function PendingClaimsList({
               Reject Profile Claim
             </DialogTitle>
             <DialogDescription>
-              Reject {selectedClaim?.artist.name}'s claim for the profile "{selectedClaim?.profile.name}"
+              Reject {selectedClaim?.artist.name}&apos;s claim for the profile &quot;{selectedClaim?.profile.name}&quot;
             </DialogDescription>
           </DialogHeader>
           

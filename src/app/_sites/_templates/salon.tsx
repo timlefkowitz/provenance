@@ -30,7 +30,7 @@ export function SalonTemplate({ site }: { site: SiteData }) {
       <header className="border-y-4 border-double" style={{ borderColor: accentColor }}>
         <div className="max-w-6xl mx-auto px-6 py-8 text-center">
           {site.logo_image_url ? (
-            <img src={site.logo_image_url} alt={displayName} className="h-10 w-auto object-contain mx-auto mb-3" />
+            <Image src={site.logo_image_url} alt={displayName} width={0} height={0} sizes="100vw" className="h-10 w-auto object-contain mx-auto mb-3" />
           ) : (
             <h1 className="text-2xl font-normal tracking-wide">{displayName}</h1>
           )}

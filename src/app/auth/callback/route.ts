@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -10,7 +11,7 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 export async function GET(request: NextRequest) {
   const service = createAuthCallbackService(getSupabaseServerClient());
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { nextPath } = await service.exchangeCodeForSession(request, {
     // Default post-sign-in destination — moved from `/portal` to `/artworks`
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
         .eq('id', user.id)
         .single();
 
-      const accountRole = getUserRole((account?.public_data as Record<string, any> | null) ?? null);
+      const accountRole = getUserRole((account?.public_data as Record<string, unknown> | null) ?? null);
       const role = accountRole ?? USER_ROLES.ARTIST;
 
       const now = new Date();
@@ -45,9 +46,9 @@ export async function GET(request: NextRequest) {
       try {
         console.log('[Billing] trial provisioning started', { userId: user.id });
 
-        const admin = getSupabaseServerAdminClient();
+        const admin = asUntyped(getSupabaseServerAdminClient());
 
-        const { data: eligibleSubscriptionRows } = await (admin as any)
+        const { data: eligibleSubscriptionRows } = await asUntyped(admin)
           .from('subscriptions')
           .select('id')
           .eq('user_id', user.id)
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
 
         // If we already created our idempotent trial row (even if it expired),
         // do not extend or recreate it.
-        const { data: existingTrialRows } = await (admin as any)
+        const { data: existingTrialRows } = await asUntyped(admin)
           .from('subscriptions')
           .select('id')
           .eq('stripe_subscription_id', trialStripeSubscriptionId)
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
         const hasExistingTrialRow = (existingTrialRows?.length ?? 0) > 0;
 
         if (!hasEligibleSubscription && !hasExistingTrialRow) {
-          await admin.from('subscriptions').insert({
+          await asUntyped(admin).from('subscriptions').insert({
             user_id: user.id,
             stripe_customer_id: null,
             stripe_subscription_id: trialStripeSubscriptionId,

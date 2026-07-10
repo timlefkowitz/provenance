@@ -1,13 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
-import { Button } from '@kit/ui/button';
 import { getUserProfiles } from './_actions/get-user-profiles';
 import { ProfilesList } from './_components/profiles-list';
 import { CreateProfileButton } from './_components/create-profile-button';
-import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
-import { Plus } from 'lucide-react';
-
+import { USER_ROLES } from '~/lib/user-roles';
 export const metadata = {
   title: 'Manage Profiles | Provenance',
 };

@@ -13,7 +13,7 @@ export function AuthProvider(props: React.PropsWithChildren) {
 
   useAuthChangeListener({
     appHomePath: pathsConfig.app.home,
-    onEvent: (event: AuthChangeEvent, session: Session | null) => {
+    onEvent: (event: AuthChangeEvent, _session: Session | null) => {
       // Skip query invalidation on auth pages to prevent redirect loops
       // The queries will be refetched naturally when navigating away from auth pages
       if (pathname?.startsWith('/auth')) {

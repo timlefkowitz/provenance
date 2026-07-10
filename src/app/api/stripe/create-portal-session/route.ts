@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -29,7 +30,7 @@ export async function POST(_request: NextRequest) {
     }
 
     const admin = getSupabaseServerAdminClient();
-    const { data: row } = await (admin as any)
+    const { data: row } = await asUntyped(admin)
       .from('stripe_customers')
       .select('stripe_customer_id')
       .eq('user_id', user.id)

@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export type ProvenanceUpdateRequest = {
@@ -10,7 +11,7 @@ export type ProvenanceUpdateRequest = {
   status: 'pending' | 'approved' | 'denied';
   reviewed_by: string | null;
   reviewed_at: string | null;
-  update_fields: Record<string, any>;
+  update_fields: Record<string, unknown>;
   request_message: string | null;
   review_message: string | null;
   request_type: 'provenance_update' | 'ownership_request' | 'artist_claim';
@@ -34,7 +35,7 @@ export async function getProvenanceUpdateRequestsForOwner(): Promise<ProvenanceU
   }
 
   // First get artworks owned by this user
-  const { data: ownedArtworks } = await (client as any)
+  const { data: ownedArtworks } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('account_id', user.id);
@@ -43,10 +44,10 @@ export async function getProvenanceUpdateRequestsForOwner(): Promise<ProvenanceU
     return [];
   }
 
-  const ownedArtworkIds = ownedArtworks.map((a: any) => a.id);
+  const ownedArtworkIds = ownedArtworks.map((a: Record<string, unknown>) => a.id);
 
   // Get all pending requests for those artworks
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('provenance_update_requests')
     .select(`
       *,

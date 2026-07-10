@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Ensure that artists are in the registry as unclaimed profiles
  * This is called to make sure past artists from galleries are available for claiming
@@ -13,7 +14,7 @@ export async function ensureArtistsInRegistry(
   medium?: string
 ) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     
     // Verify user is a gallery
     const { data: account } = await client
@@ -26,7 +27,7 @@ export async function ensureArtistsInRegistry(
       return { error: 'Account not found' };
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, any>);
+    const userRole = getUserRole(account.public_data as Record<string, unknown>);
     if (userRole !== USER_ROLES.GALLERY) {
       return { error: 'Only galleries can ensure artists in registry' };
     }
@@ -53,7 +54,7 @@ export async function ensureArtistsInRegistry(
           .single();
 
         if (existingAccount) {
-          const artistRole = getUserRole(existingAccount.public_data as Record<string, any>);
+          const artistRole = getUserRole(existingAccount.public_data as Record<string, unknown>);
           if (artistRole === USER_ROLES.ARTIST) {
             // Artist already has an account, skip
             results.existing++;
@@ -116,9 +117,9 @@ export async function ensureArtistsInRegistry(
         } else {
           results.created++;
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Error processing artist ${trimmedName}:`, error);
-        results.errors.push(`${trimmedName}: ${error.message || 'Unknown error'}`);
+        results.errors.push(`${trimmedName}: ${(error as Error).message || 'Unknown error'}`);
       }
     }
 

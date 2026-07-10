@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { logger } from '~/lib/logger';
@@ -76,7 +77,7 @@ export async function computeValuationInputs(
   const admin = getSupabaseServerAdminClient();
 
   try {
-    const { data: artwork, error: artworkError } = await (admin as any)
+    const { data: artwork, error: artworkError } = await asUntyped(admin)
       .from('artworks')
       .select(
         'id, title, artist_name, account_id, artist_account_id, medium, former_owners, auction_history, exhibition_history, historic_context, celebrity_notes, edition, value',
@@ -100,7 +101,7 @@ export async function computeValuationInputs(
     const ownerId = (artwork.account_id as string | null) ?? null;
 
     const { data: artistStats } = artistId
-      ? await (admin as any)
+      ? await asUntyped(admin)
           .from('entity_stats')
           .select('*')
           .eq('entity_account_id', artistId)
@@ -111,7 +112,7 @@ export async function computeValuationInputs(
     // Read self-reported sales history from onboarding — used as a market signal
     // when no sales ledger entries exist yet for the artist.
     const { data: artistProfileData } = artistId
-      ? await (admin as any)
+      ? await asUntyped(admin)
           .from('user_profiles')
           .select('has_sold_work')
           .eq('user_id', artistId)
@@ -123,7 +124,7 @@ export async function computeValuationInputs(
     const hasSoldWork = (artistProfileData?.has_sold_work as string | null) ?? null;
 
     const { data: ownerStats } = ownerId
-      ? await (admin as any)
+      ? await asUntyped(admin)
           .from('entity_stats')
           .select('*')
           .eq('entity_account_id', ownerId)
@@ -133,7 +134,7 @@ export async function computeValuationInputs(
     // Comparable sales for same artist
     let comparables: Array<any> = [];
     if (artistId) {
-      const { data: artistArtworks } = await (admin as any)
+      const { data: artistArtworks } = await asUntyped(admin)
         .from('artworks')
         .select('id')
         .eq('artist_account_id', artistId)
@@ -142,7 +143,7 @@ export async function computeValuationInputs(
         ? (artistArtworks as Array<any>).map((a) => a.id as string)
         : [];
       if (ids.length) {
-        const { data: sales } = await (admin as any)
+        const { data: sales } = await asUntyped(admin)
           .from('sales_ledger')
           .select('id, artwork_id, price_cents, currency, sold_at')
           .in('artwork_id', ids)
@@ -153,7 +154,7 @@ export async function computeValuationInputs(
     }
 
     // Exhibition / museum counts from provenance_events for this work
-    const { data: events } = await (admin as any)
+    const { data: events } = await asUntyped(admin)
       .from('provenance_events')
       .select('event_type, metadata')
       .eq('artwork_id', artworkId);

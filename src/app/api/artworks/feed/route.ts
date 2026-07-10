@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Fetch favorite counts for all matching artworks
-      const artworkIds = all.map((a: any) => a.id);
+      const artworkIds = all.map((a: Record<string, unknown>) => a.id);
       const { data: favRows } = await db
         .from('artwork_favorites')
         .select('artwork_id')

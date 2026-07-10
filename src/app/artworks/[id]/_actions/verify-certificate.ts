@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
@@ -15,7 +16,7 @@ export type VerifyCertificateResult = { success: true } | { success: false; erro
  */
 export async function verifyCertificate(artworkId: string): Promise<VerifyCertificateResult> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -39,7 +40,7 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     }
 
     // Get artwork
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks' as any)
       .select('id, account_id, title, certificate_number, certificate_status, artist_account_id, gallery_profile_id, certificate_type')
       .eq('id', artworkId)
@@ -62,7 +63,7 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     }
 
     // Update artwork with verification; once artist claimed and owner approved, it becomes Certificate of Authenticity
-    const { error: updateError } = await (client as any)
+    const { error: updateError } = await asUntyped(client)
       .from('artworks' as any)
       .update({
         verified_by_owner_at: new Date().toISOString(),

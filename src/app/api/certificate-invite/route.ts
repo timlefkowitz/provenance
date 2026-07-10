@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { sendCertificateInviteEmail } from '~/lib/email';
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify the authenticated user owns the artwork or is admin
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
       .select('id, title, artist_name, certificate_number, account_id')
       .eq('id', artworkId)
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the sender's name
-    const { data: account } = await (client as any)
+    const { data: account } = await asUntyped(client)
       .from('accounts')
       .select('name')
       .eq('id', user.id)

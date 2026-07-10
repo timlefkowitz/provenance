@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { EntityStatsDashboard } from '~/app/_components/entity-stats-dashboard';
 import { getUserRole, isValidRole, USER_ROLES, type UserRole } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Sales | Provenance',
 };
@@ -16,7 +17,7 @@ export const revalidate = 0;
 export default async function PortalSalesPage() {
   console.log('[Portal/Sales] rendering');
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -32,7 +33,7 @@ export default async function PortalSalesPage() {
     .single();
 
   const resolvedRole: UserRole = (() => {
-    const fromAccount = getUserRole(account?.public_data as Record<string, any> | null);
+    const fromAccount = getUserRole(account?.public_data as Record<string, unknown> | null);
     if (fromAccount) return fromAccount;
     return USER_ROLES.COLLECTOR;
   })();

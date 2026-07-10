@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
@@ -23,7 +24,7 @@ export async function updateInquiryStatus(
       return { ok: false, error: 'Unauthorized' };
     }
 
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('artwork_inquiries')
       .update({ status })
       .eq('id', inquiryId)

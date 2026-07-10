@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import Image from 'next/image';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import {
@@ -19,12 +18,13 @@ import { ArtPracticeSection } from '~/components/art-practice-section';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Profile | Provenance',
 };
 
 export default async function ProfilePage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {

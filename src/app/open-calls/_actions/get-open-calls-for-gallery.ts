@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES } from '~/lib/user-roles';
 
@@ -17,7 +18,7 @@ export type OpenCallListItem = {
 };
 
 export async function getOpenCallsForGallery(userId: string): Promise<OpenCallListItem[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data: ownedProfiles } = await client
     .from('user_profiles')
@@ -41,7 +42,7 @@ export async function getOpenCallsForGallery(userId: string): Promise<OpenCallLi
     return [];
   }
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('open_calls')
     .select(
       'id, slug, gallery_profile_id, exhibition:exhibition_id (id, title, start_date, end_date, location)',

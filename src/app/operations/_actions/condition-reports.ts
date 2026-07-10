@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -148,7 +149,7 @@ async function assertArtworkOwned(
   userId: string,
   artworkId: string,
 ): Promise<boolean> {
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('id', artworkId)
@@ -215,7 +216,7 @@ export async function createConditionReport(raw: z.infer<typeof createSchema>) {
     return { success: false as const, error: 'Invalid loan or consignment link.' };
   }
   const paths = parsed.data.attachments_storage_paths ?? [];
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('condition_reports')
     .insert({
       account_id: user.id,
@@ -284,7 +285,7 @@ export async function updateConditionReport(raw: z.infer<typeof updateSchema>) {
     patch.attachments_storage_paths = rest.attachments_storage_paths ?? [];
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('condition_reports')
     .update(patch)
     .eq('id', id)
@@ -305,7 +306,7 @@ export async function deleteConditionReport(id: string) {
   if (!user) {
     return { success: false as const, error: 'You must be logged in.' };
   }
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('condition_reports')
     .delete()
     .eq('id', id)

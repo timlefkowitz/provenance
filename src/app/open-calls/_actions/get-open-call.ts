@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export type OpenCall = {
@@ -23,9 +24,9 @@ export type OpenCall = {
 };
 
 export async function getOpenCallBySlug(slug: string): Promise<OpenCall | null> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('open_calls')
     .select(
       'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, external_url, exhibition:exhibition_id (id, title, description, start_date, end_date, location, gallery_id)',

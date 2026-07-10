@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
@@ -24,7 +25,7 @@ export async function updateCollectibleValue(
       return { error: 'You must be signed in to update a value.' };
     }
 
-    const { error } = await (client as any)
+    const { error } = await asUntyped(client)
       .from('collectibles')
       .update({
         value: value.trim() || null,

@@ -43,7 +43,7 @@ export function ChronicleTemplate({ site }: { site: SiteData }) {
       <header className="border-b px-4 md:px-8 py-4 flex items-center justify-between gap-4" style={{ borderColor: borderColor(site.surface_color) }}>
         <div>
           {site.logo_image_url ? (
-            <img src={site.logo_image_url} alt={site.display_name ?? site.name} className="h-7 w-auto object-contain" />
+            <Image src={site.logo_image_url} alt={site.display_name ?? site.name} width={0} height={0} sizes="100vw" className="h-7 w-auto object-contain" />
           ) : (
             <h1 className="font-semibold text-sm" style={{ fontFamily: headingFont }}>{site.display_name ?? site.name}</h1>
           )}

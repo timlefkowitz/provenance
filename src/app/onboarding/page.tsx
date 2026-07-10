@@ -4,12 +4,13 @@ import { Trans } from '@kit/ui/trans';
 
 import { OnboardingForm } from './_components/onboarding-form';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Onboarding',
 };
 
 export default async function OnboardingPage() {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {

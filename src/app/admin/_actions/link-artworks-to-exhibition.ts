@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
 import { revalidatePath } from 'next/cache';
@@ -22,7 +23,7 @@ export async function linkArtworksToExhibition(
     const adminClient = getSupabaseServerAdminClient();
 
     // Find the exhibition by title (case-insensitive)
-    const { data: exhibitions, error: exhibitionError } = await (adminClient as any)
+    const { data: exhibitions, error: exhibitionError } = await asUntyped(adminClient)
       .from('exhibitions')
       .select('id, title, gallery_id')
       .ilike('title', `%${exhibitionTitle}%`);
@@ -38,8 +39,8 @@ export async function linkArtworksToExhibition(
 
     if (exhibitions.length > 1) {
       return {
-        error: `Multiple exhibitions found: ${exhibitions.map((e: any) => e.title).join(', ')}. Please be more specific.`,
-        exhibitions: exhibitions.map((e: any) => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
+        error: `Multiple exhibitions found: ${exhibitions.map((e: Record<string, unknown>) => e.title).join(', ')}. Please be more specific.`,
+        exhibitions: exhibitions.map((e: Record<string, unknown>) => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
       };
     }
 
@@ -55,7 +56,7 @@ export async function linkArtworksToExhibition(
 
     if (artworkIds && artworkIds.length > 0) {
       // Use provided artwork IDs
-      const { data: artworks, error: artworksError } = await (adminClient as any)
+      const { data: artworks, error: artworksError } = await asUntyped(adminClient)
         .from('artworks')
         .select('id')
         .in('id', artworkIds);
@@ -68,14 +69,14 @@ export async function linkArtworksToExhibition(
     } else {
       // Find artworks by gallery account
       // Get all artworks from the gallery account that aren't already linked to this exhibition
-      const { data: existingLinks } = await (adminClient as any)
+      const { data: existingLinks } = await asUntyped(adminClient)
         .from('exhibition_artworks')
         .select('artwork_id')
         .eq('exhibition_id', exhibitionId);
 
       const existingArtworkIds = new Set((existingLinks || []).map((l: any) => l.artwork_id));
 
-      const { data: artworks, error: artworksError } = await (adminClient as any)
+      const { data: artworks, error: artworksError } = await asUntyped(adminClient)
         .from('artworks')
         .select('id, status')
         .eq('account_id', targetGalleryId)
@@ -86,7 +87,7 @@ export async function linkArtworksToExhibition(
       }
 
       // Filter out artworks already linked
-      artworksToLink = (artworks || []).filter((a: any) => !existingArtworkIds.has(a.id));
+      artworksToLink = (artworks || []).filter((a: Record<string, unknown>) => !existingArtworkIds.has(a.id));
     }
 
     if (artworksToLink.length === 0) {
@@ -108,7 +109,7 @@ export async function linkArtworksToExhibition(
       artwork_id: artwork.id,
     }));
 
-    const { error: insertError } = await (adminClient as any)
+    const { error: insertError } = await asUntyped(adminClient)
       .from('exhibition_artworks')
       .insert(linksToInsert);
 
@@ -122,7 +123,7 @@ export async function linkArtworksToExhibition(
 
         for (const link of linksToInsert) {
           try {
-            const { error: singleInsertError } = await (adminClient as any)
+            const { error: singleInsertError } = await asUntyped(adminClient)
               .from('exhibition_artworks')
               .insert(link);
 
@@ -135,8 +136,8 @@ export async function linkArtworksToExhibition(
             } else {
               successCount++;
             }
-          } catch (err: any) {
-            errors.push(`Error linking artwork ${link.artwork_id}: ${err.message}`);
+          } catch (err) {
+            errors.push(`Error linking artwork ${link.artwork_id}: ${(err as Error).message}`);
           }
         }
 
@@ -172,9 +173,9 @@ export async function linkArtworksToExhibition(
         gallery_id: exhibitionGalleryId,
       },
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in linkArtworksToExhibition:', error);
-    return { error: `An unexpected error occurred: ${error.message || 'Unknown error'}` };
+    return { error: `An unexpected error occurred: ${(error as Error).message || 'Unknown error'}` };
   }
 }
 
@@ -195,7 +196,7 @@ export async function findArtworksForExhibition(
     const adminClient = getSupabaseServerAdminClient();
 
     // Find the exhibition
-    const { data: exhibitions, error: exhibitionError } = await (adminClient as any)
+    const { data: exhibitions, error: exhibitionError } = await asUntyped(adminClient)
       .from('exhibitions')
       .select('id, title, gallery_id')
       .ilike('title', `%${exhibitionTitle}%`);
@@ -206,8 +207,8 @@ export async function findArtworksForExhibition(
 
     if (exhibitions.length > 1) {
       return {
-        error: `Multiple exhibitions found: ${exhibitions.map((e: any) => e.title).join(', ')}`,
-        exhibitions: exhibitions.map((e: any) => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
+        error: `Multiple exhibitions found: ${exhibitions.map((e: Record<string, unknown>) => e.title).join(', ')}`,
+        exhibitions: exhibitions.map((e: Record<string, unknown>) => ({ id: e.id, title: e.title, gallery_id: e.gallery_id })),
       };
     }
 
@@ -216,7 +217,7 @@ export async function findArtworksForExhibition(
     const targetGalleryId = galleryAccountId || exhibition.gallery_id;
 
     // Get existing links
-    const { data: existingLinks } = await (adminClient as any)
+    const { data: existingLinks } = await asUntyped(adminClient)
       .from('exhibition_artworks')
       .select('artwork_id')
       .eq('exhibition_id', exhibitionId);
@@ -224,7 +225,7 @@ export async function findArtworksForExhibition(
     const existingArtworkIds = new Set((existingLinks || []).map((l: any) => l.artwork_id));
 
     // Find artworks from the gallery that aren't linked
-    const { data: artworks, error: artworksError } = await (adminClient as any)
+    const { data: artworks, error: artworksError } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, title, status, created_at')
       .eq('account_id', targetGalleryId)
@@ -235,7 +236,7 @@ export async function findArtworksForExhibition(
       return { error: `Failed to fetch artworks: ${artworksError.message}` };
     }
 
-    const unlinkedArtworks = (artworks || []).filter((a: any) => !existingArtworkIds.has(a.id));
+    const unlinkedArtworks = (artworks || []).filter((a: Record<string, unknown>) => !existingArtworkIds.has(a.id));
 
     return {
       success: true,
@@ -247,15 +248,15 @@ export async function findArtworksForExhibition(
       totalArtworks: artworks?.length || 0,
       linkedArtworks: existingArtworkIds.size,
       unlinkedArtworks: unlinkedArtworks.length,
-      artworks: unlinkedArtworks.map((a: any) => ({
+      artworks: unlinkedArtworks.map((a: Record<string, unknown>) => ({
         id: a.id,
         title: a.title,
         created_at: a.created_at,
       })),
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in findArtworksForExhibition:', error);
-    return { error: `An unexpected error occurred: ${error.message || 'Unknown error'}` };
+    return { error: `An unexpected error occurred: ${(error as Error).message || 'Unknown error'}` };
   }
 }
 

@@ -5,13 +5,14 @@ import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 /**
  * Claim an unclaimed artist profile
  * Artist requests to claim a profile that was created by a gallery
  */
 export async function claimArtistProfile(profileId: string, message?: string) {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
 
     if (!user) {
@@ -29,7 +30,7 @@ export async function claimArtistProfile(profileId: string, message?: string) {
       return { error: 'Account not found' };
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, any>);
+    const userRole = getUserRole(account.public_data as Record<string, unknown>);
     if (userRole !== USER_ROLES.ARTIST) {
       return { error: 'Only artists can claim artist profiles' };
     }
@@ -106,7 +107,7 @@ export async function claimArtistProfile(profileId: string, message?: string) {
     try {
       await createNotification({
         userId: profile.created_by_gallery_id,
-        type: 'artist_profile_claim_request',
+          type: 'artist_claim_request',
         title: `Artist Profile Claim Request: ${profile.name}`,
         message: `${account.name || 'An artist'} is requesting to claim the artist profile "${profile.name}". Please review and approve or reject the claim.`,
         relatedUserId: user.id,

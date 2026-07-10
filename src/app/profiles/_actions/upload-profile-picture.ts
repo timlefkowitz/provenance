@@ -4,13 +4,14 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const PROFILES_BUCKET = 'profiles';
 
 export async function uploadProfilePicture(
   formData: FormData,
 ): Promise<{ url: string | null; error: string | null }> {
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const { data: { user }, error: authError } = await client.auth.getUser();
 
     if (authError || !user) {
@@ -73,7 +74,7 @@ export async function uploadProfilePicture(
     const extension = file.name.split('.').pop() || 'jpg';
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
-    const { data: uploadData, error: uploadError } = await bucket.upload(fileName, bytes, {
+    const { error: uploadError } = await bucket.upload(fileName, bytes, {
       contentType: file.type,
       upsert: false,
     });
@@ -92,9 +93,9 @@ export async function uploadProfilePicture(
     }
     
     return { url: urlData.publicUrl, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in uploadProfilePicture:', error);
-    return { url: null, error: error?.message || 'An unexpected error occurred while uploading the image' };
+    return { url: null, error: (error as Error)?.message || 'An unexpected error occurred while uploading the image' };
   }
 }
 

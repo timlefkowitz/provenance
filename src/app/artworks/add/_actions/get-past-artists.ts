@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
@@ -13,7 +14,7 @@ export type PastArtist = {
  * Get list of artists that a gallery has previously uploaded artwork for
  */
 export async function getPastArtists(galleryId: string): Promise<PastArtist[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   
   // Get user role to verify they're a gallery
   const { data: account } = await client
@@ -26,7 +27,7 @@ export async function getPastArtists(galleryId: string): Promise<PastArtist[]> {
     return [];
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, any>);
+  const userRole = getUserRole(account.public_data as Record<string, unknown>);
   
   // Only galleries have past artists
   if (userRole !== USER_ROLES.GALLERY) {
@@ -35,7 +36,7 @@ export async function getPastArtists(galleryId: string): Promise<PastArtist[]> {
 
   // Get distinct artist names from artworks created by this gallery
   // Group by artist_name and artist_account_id to get unique combinations
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('artworks')
     .select('artist_name, artist_account_id')
     .eq('account_id', galleryId)

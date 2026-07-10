@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 
 export interface KnowledgeChunk {
@@ -51,7 +52,7 @@ export async function retrieveArtKnowledge(
     return [];
   }
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   const { data, error } = await client.rpc('match_knowledge_chunks', {
     query_embedding: embedding,

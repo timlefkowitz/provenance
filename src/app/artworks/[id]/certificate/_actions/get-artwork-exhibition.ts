@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
@@ -22,10 +23,10 @@ export type ArtworkExhibition = {
  * Get the exhibition that an artwork is linked to, including gallery information
  */
 export async function getArtworkExhibition(artworkId: string): Promise<ArtworkExhibition> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
 
   // Get exhibition from junction table, including gallery_id
-  const { data: exhibitionArtwork, error } = await (client as any)
+  const { data: exhibitionArtwork, error } = await asUntyped(client)
     .from('exhibition_artworks')
     .select(`
       exhibition_id,
@@ -66,7 +67,7 @@ export async function getArtworkExhibition(artworkId: string): Promise<ArtworkEx
 
       if (galleryAccount) {
         // Check if it's a gallery role
-        const galleryRole = getUserRole(galleryAccount.public_data as Record<string, any>);
+        const galleryRole = getUserRole(galleryAccount.public_data as Record<string, unknown>);
         
         if (galleryRole === USER_ROLES.GALLERY) {
           // Try to get gallery profile name (preferred)

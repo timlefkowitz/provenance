@@ -19,7 +19,7 @@ export function VitrineTemplate({ site }: { site: SiteData }) {
       <header className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
           {site.logo_image_url ? (
-            <img src={site.logo_image_url} alt={displayName} className="h-6 w-auto object-contain brightness-200" />
+            <Image src={site.logo_image_url} alt={displayName} width={0} height={0} sizes="100vw" className="h-6 w-auto object-contain brightness-200" />
           ) : (
             <span className="text-xs uppercase tracking-[0.3em] text-white/50">{displayName}</span>
           )}

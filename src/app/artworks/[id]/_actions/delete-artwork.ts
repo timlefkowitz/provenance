@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
@@ -16,7 +17,7 @@ export async function deleteArtwork(artworkId: string) {
   }
 
   // Get artwork to verify ownership or gallery membership
-  const { data: artwork, error: artworkError } = await (client as any)
+  const { data: artwork, error: artworkError } = await asUntyped(client)
     .from('artworks')
     .select('id, account_id, image_url, gallery_profile_id')
     .eq('id', artworkId)
@@ -36,7 +37,7 @@ export async function deleteArtwork(artworkId: string) {
   }
 
   // Delete by id; RLS allows owner or gallery member
-  const { error: deleteError } = await (client as any)
+  const { error: deleteError } = await asUntyped(client)
     .from('artworks')
     .delete()
     .eq('id', artworkId);

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { resolveArtistUserId } from './owner';
 
@@ -37,7 +38,7 @@ export async function captureCrmContacts(
   console.log('[CRM] captureCrmContacts started', { count: valid.length, actingUserId });
 
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const artistUserId = await resolveArtistUserId(client, actingUserId);
 
     for (const input of valid) {
@@ -50,7 +51,7 @@ export async function captureCrmContacts(
       let existing: { id: string; contact_name: string | null; contact_email: string | null; contact_phone: string | null; notes: string | null; source: string | null } | null = null;
 
       if (email) {
-        const { data: byEmail } = await (client as any)
+        const { data: byEmail } = await asUntyped(client)
           .from('artist_leads')
           .select('id, contact_name, contact_email, contact_phone, notes, source')
           .eq('artist_user_id', artistUserId)
@@ -61,7 +62,7 @@ export async function captureCrmContacts(
       }
 
       if (!existing && name && !email) {
-        const { data: byName } = await (client as any)
+        const { data: byName } = await asUntyped(client)
           .from('artist_leads')
           .select('id, contact_name, contact_email, contact_phone, notes, source')
           .eq('artist_user_id', artistUserId)
@@ -83,7 +84,7 @@ export async function captureCrmContacts(
         if (source && !existing.source) patch.source = source;
 
         if (Object.keys(patch).length > 1) {
-          const { error: updateError } = await (client as any)
+          const { error: updateError } = await asUntyped(client)
             .from('artist_leads')
             .update(patch)
             .eq('id', existing.id)

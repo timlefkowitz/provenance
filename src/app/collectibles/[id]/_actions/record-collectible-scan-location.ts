@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { headers } from 'next/headers';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -65,7 +66,7 @@ export async function recordCollectibleScanLocation(
     data: { user },
   } = await client.auth.getUser();
 
-  const { data: collectible, error: fetchError } = await (adminClient as any)
+  const { data: collectible, error: fetchError } = await asUntyped(adminClient)
     .from('collectibles')
     .select('metadata, account_id, title, status, is_public')
     .eq('id', collectibleId)
@@ -112,7 +113,7 @@ export async function recordCollectibleScanLocation(
 
   const scanLocations = [...existingScans, newScan];
 
-  const { data: updatedRow, error: updateError } = await (adminClient as any)
+  const { data: updatedRow, error: updateError } = await asUntyped(adminClient)
     .from('collectibles')
     .update({
       metadata: { ...currentMetadata, scan_locations: scanLocations },

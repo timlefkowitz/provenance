@@ -10,6 +10,7 @@ import type { StarTier } from '~/lib/streak-service';
 import { SocialLinkItem } from './social-link-item';
 import { TacoAvatar } from '~/components/taco-avatar';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ArtistTemplateProps {

@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- exhibitions tables not fully typed on Supabase client */
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export type UserExhibition = {
@@ -52,7 +53,7 @@ export async function getUserExhibitions(
   userId: string,
   options?: GetUserExhibitionsOptions,
 ): Promise<UserExhibition[]> {
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const forCollectionManagement = options?.forCollectionManagement === true;
   const ownerRole = options?.ownerRole ?? null;
   console.log('[getUserExhibitions] started', {
@@ -81,14 +82,14 @@ export async function getUserExhibitions(
   // Still exclude them in artist/collector mode (forCollectionManagement but
   // no ownerRole) so personal collections are not flooded with unrelated shows.
   if (!forCollectionManagement || ownerRole === 'gallery') {
-    const { data: memberships } = await (client as any)
+    const { data: memberships } = await asUntyped(client)
       .from('gallery_members')
       .select('gallery_profile_id')
       .eq('user_id', userId);
 
     if (memberships?.length) {
       const profileIds = memberships.map((m: { gallery_profile_id: string }) => m.gallery_profile_id);
-      const { data: profiles } = await (client as any)
+      const { data: profiles } = await asUntyped(client)
         .from('user_profiles')
         .select('user_id')
         .in('id', profileIds)
@@ -105,7 +106,7 @@ export async function getUserExhibitions(
   // Exhibitions created for open calls / programs share the exhibitions table; hide them from
   // pickers unless already linked to the user's artwork (linked path below still adds them).
   let openCallExhibitionIds = new Set<string>();
-  const { data: openCallRows, error: openCallErr } = await (client as any)
+  const { data: openCallRows, error: openCallErr } = await asUntyped(client)
     .from('open_calls')
     .select('exhibition_id');
 
@@ -123,7 +124,7 @@ export async function getUserExhibitions(
   const deduped: UserExhibition[] = [];
 
   if (galleryAccountIds.size > 0) {
-    let ownedQuery = (client as any)
+    let ownedQuery = asUntyped(client)
       .from('exhibitions')
       .select('id, title, start_date, end_date, owner_role')
       .in('gallery_id', [...galleryAccountIds])
@@ -153,7 +154,7 @@ export async function getUserExhibitions(
   }
 
   // Also include exhibitions linked to any of the user's own artworks via exhibition_artworks
-  const { data: userArtworks } = await (client as any)
+  const { data: userArtworks } = await asUntyped(client)
     .from('artworks')
     .select('id')
     .eq('account_id', userId);
@@ -161,7 +162,7 @@ export async function getUserExhibitions(
   const artworkIds = (userArtworks || []).map((a: { id: string }) => a.id);
 
   if (artworkIds.length > 0) {
-    const { data: links } = await (client as any)
+    const { data: links } = await asUntyped(client)
       .from('exhibition_artworks')
       .select('exhibition_id')
       .in('artwork_id', artworkIds);
@@ -175,7 +176,7 @@ export async function getUserExhibitions(
     ].filter((id) => !seen.has(id as string)) as string[];
 
     if (linkedExhibitionIds.length > 0) {
-      let linkedQuery = (client as any)
+      let linkedQuery = asUntyped(client)
         .from('exhibitions')
         .select('id, title, start_date, end_date, owner_role')
         .in('id', linkedExhibitionIds)

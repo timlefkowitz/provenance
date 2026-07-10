@@ -12,6 +12,7 @@ import { Trans } from '@kit/ui/trans';
 import { AuthErrorAlert } from '../../../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth/src/components/auth-error-alert';
 import { CustomPasswordSignUpForm } from './custom-password-sign-up-form';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 interface CustomEmailPasswordSignUpContainerProps {
   displayTermsCheckbox?: boolean;
   defaultValues?: {

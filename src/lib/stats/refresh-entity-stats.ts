@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { getUserRole, type UserRole, USER_ROLES } from '~/lib/user-roles';
@@ -43,14 +44,14 @@ function median(values: number[]): number {
 }
 
 async function resolveEntityRole(accountId: string): Promise<EntityRole> {
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
   try {
-    const { data } = await (admin as any)
+    const { data } = await asUntyped(admin)
       .from('accounts')
       .select('public_data')
       .eq('id', accountId)
       .maybeSingle();
-    const role = getUserRole(data?.public_data as Record<string, any> | null);
+    const role = getUserRole(data?.public_data as Record<string, unknown> | null);
     return mapUserRoleToEntityRole(role);
   } catch (err) {
     console.error('[Stats] resolveEntityRole failed', err);
@@ -67,17 +68,17 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
 
   console.log('[Stats] refreshEntityStatsForAccount started', { accountId });
 
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
 
   try {
     const role = await resolveEntityRole(accountId);
 
-    const { data: soldBy } = await (admin as any)
+    const { data: soldBy } = await asUntyped(admin)
       .from('sales_ledger')
       .select('price_cents, sold_at')
       .eq('sold_by_account_id', accountId);
 
-    const { data: boughtBy } = await (admin as any)
+    const { data: boughtBy } = await asUntyped(admin)
       .from('sales_ledger')
       .select('price_cents, sold_at')
       .eq('sold_to_account_id', accountId);
@@ -110,12 +111,12 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
       })
       .reduce((acc, s) => acc + (typeof s.price_cents === 'number' ? s.price_cents : 0), 0);
 
-    const { count: representedCount } = await (admin as any)
+    const { count: representedCount } = await asUntyped(admin)
       .from('artworks')
       .select('id', { count: 'exact', head: true })
       .eq('account_id', accountId);
 
-    const { count: producedCount } = await (admin as any)
+    const { count: producedCount } = await asUntyped(admin)
       .from('artworks')
       .select('id', { count: 'exact', head: true })
       .eq('artist_account_id', accountId);
@@ -123,7 +124,7 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
     let exhibitionCount = 0;
     let museumExhibitionCount = 0;
     try {
-      const { count } = await (admin as any)
+      const { count } = await asUntyped(admin)
         .from('exhibitions')
         .select('id', { count: 'exact', head: true })
         .eq('gallery_id', accountId);
@@ -133,14 +134,14 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
     }
 
     try {
-      const { data: events } = await (admin as any)
+      const { data: events } = await asUntyped(admin)
         .from('provenance_events')
         .select('event_type, metadata')
         .eq('actor_account_id', accountId)
         .eq('event_type', 'exhibition');
       if (Array.isArray(events)) {
-        museumExhibitionCount = events.filter((e: any) => {
-          const venue = (e?.metadata?.venue_type as string) || '';
+        museumExhibitionCount = events.filter((e: Record<string, unknown>) => {
+          const venue = ((e?.metadata as Record<string, unknown>)?.venue_type as string) || '';
           return venue.toLowerCase().includes('museum');
         }).length;
       }
@@ -175,7 +176,7 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
       updated_at: new Date().toISOString(),
     };
 
-    const { error: upsertError } = await (admin as any)
+    const { error: upsertError } = await asUntyped(admin)
       .from('entity_stats')
       .upsert(payload, { onConflict: 'entity_account_id,entity_role' });
 
@@ -214,12 +215,12 @@ export async function refreshAllEntityStats(): Promise<{
   errors: string[];
 }> {
   console.log('[Stats] refreshAllEntityStats started');
-  const admin = getSupabaseServerAdminClient();
+  const admin = asUntyped(getSupabaseServerAdminClient());
   const ids = new Set<string>();
   const errors: string[] = [];
 
   try {
-    const { data: sellers } = await (admin as any)
+    const { data: sellers } = await asUntyped(admin)
       .from('sales_ledger')
       .select('sold_by_account_id, sold_to_account_id');
     if (Array.isArray(sellers)) {
@@ -229,7 +230,7 @@ export async function refreshAllEntityStats(): Promise<{
       }
     }
 
-    const { data: artworks } = await (admin as any)
+    const { data: artworks } = await asUntyped(admin)
       .from('artworks')
       .select('account_id, artist_account_id');
     if (Array.isArray(artworks)) {

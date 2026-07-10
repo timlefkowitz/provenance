@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
@@ -30,7 +31,7 @@ export async function createProposal(input: CreateProposalInput) {
 
   const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);
 
-  const { data, error } = await (client as any)
+  const { data, error } = await asUntyped(client)
     .from('grant_proposals')
     .insert({
       user_id: user.id,

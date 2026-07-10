@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import {
   Card,
@@ -75,27 +76,27 @@ export async function AdminAnalytics() {
       return { count, error: error as Error | null };
     }),
     fetchCount('artworks', async () => {
-      const { count, error } = await (admin as any)
+      const { count, error } = await asUntyped(admin)
         .from('artworks')
         .select('*', { count: 'exact', head: true });
       return { count, error: error as Error | null };
     }),
     fetchCount('artworks_verified', async () => {
-      const { count, error } = await (admin as any)
+      const { count, error } = await asUntyped(admin)
         .from('artworks')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'verified');
       return { count, error: error as Error | null };
     }),
     fetchCount('user_profiles_artist_gallery', async () => {
-      const { count, error } = await (admin as any)
+      const { count, error } = await asUntyped(admin)
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
         .in('role', ['artist', 'gallery']);
       return { count, error: error as Error | null };
     }),
     fetchCount('subscriptions_active_or_trial', async () => {
-      const { count, error } = await (admin as any)
+      const { count, error } = await asUntyped(admin)
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
         .in('status', ['active', 'trialing'])

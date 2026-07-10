@@ -9,6 +9,7 @@ import {
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 export type BatchSendCollectorInvitesResult = {
   sent: number;
   errors: string[];
@@ -26,7 +27,7 @@ export async function batchSendCollectorInvites(
     inviteEmail,
   });
 
-  const client = getSupabaseServerClient();
+  const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
   } = await client.auth.getUser();

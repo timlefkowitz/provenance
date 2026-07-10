@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -37,12 +38,12 @@ async function validateInviteeEmail(userEmail: string, invite: InviteRow): Promi
 }
 
 async function validateExpiry(
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  adminClient: UntypedSupabaseClient,
   invite: InviteRow,
 ): Promise<string | null> {
   const expiresAt = new Date(invite.expires_at as string);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
-    await (adminClient as any)
+    await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .update({ status: 'expired' })
       .eq('id', invite.id);
@@ -55,8 +56,8 @@ async function validateExpiry(
  * Shared claim processing for token link and portal batch accept.
  */
 async function processInvitesAfterAuth(
-  client: ReturnType<typeof getSupabaseServerClient>,
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  client: UntypedSupabaseClient,
+  adminClient: UntypedSupabaseClient,
   user: { id: string; email?: string | null },
   invites: InviteRow[],
 ): Promise<ConsumeCertificateClaimResult> {
@@ -118,8 +119,8 @@ async function processInvitesAfterAuth(
 }
 
 async function processOwnerBatch(
-  _client: ReturnType<typeof getSupabaseServerClient>,
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  _client: UntypedSupabaseClient,
+  adminClient: UntypedSupabaseClient,
   user: { id: string },
   invites: InviteRow[],
 ): Promise<ConsumeCertificateClaimResult> {
@@ -127,7 +128,7 @@ async function processOwnerBatch(
   let firstNewId: string | null = null;
 
   for (const invite of invites) {
-    const { data: sourceArtwork, error: sourceError } = await (adminClient as any)
+    const { data: sourceArtwork, error: sourceError } = await asUntyped(adminClient)
       .from('artworks')
       .select('*')
       .eq('id', invite.source_artwork_id as string)
@@ -154,7 +155,7 @@ async function processOwnerBatch(
       firstNewId = newId;
     }
 
-    await (adminClient as any)
+    await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .update({
         status: 'consumed',
@@ -185,12 +186,12 @@ async function processOwnerBatch(
 }
 
 async function processGalleryBatch(
-  client: ReturnType<typeof getSupabaseServerClient>,
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  client: UntypedSupabaseClient,
+  adminClient: UntypedSupabaseClient,
   user: { id: string },
   invites: InviteRow[],
 ): Promise<ConsumeCertificateClaimResult> {
-  const { data: account } = await (client as any)
+  const { data: account } = await asUntyped(client)
     .from('accounts')
     .select('public_data')
     .eq('id', user.id)
@@ -205,7 +206,7 @@ async function processGalleryBatch(
     return { success: false, error: 'Only gallery or institution accounts can claim this certificate' };
   }
 
-  const { data: galleryProfile } = await (client as any)
+  const { data: galleryProfile } = await asUntyped(client)
     .from('user_profiles')
     .select('id')
     .eq('user_id', user.id)
@@ -217,7 +218,7 @@ async function processGalleryBatch(
   let firstNewId: string | null = null;
 
   for (const invite of invites) {
-    const { data: sourceArtwork, error: sourceError } = await (adminClient as any)
+    const { data: sourceArtwork, error: sourceError } = await asUntyped(adminClient)
       .from('artworks')
       .select('*')
       .eq('id', invite.source_artwork_id as string)
@@ -243,7 +244,7 @@ async function processGalleryBatch(
       firstNewId = newId;
     }
 
-    await (adminClient as any)
+    await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .update({
         status: 'consumed',
@@ -274,8 +275,8 @@ async function processGalleryBatch(
 }
 
 async function processArtistBatch(
-  client: ReturnType<typeof getSupabaseServerClient>,
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  client: UntypedSupabaseClient,
+  adminClient: UntypedSupabaseClient,
   user: { id: string },
   invites: InviteRow[],
 ): Promise<ConsumeCertificateClaimResult> {
@@ -283,7 +284,7 @@ async function processArtistBatch(
   const requestId = first.provenance_update_request_id as string | null;
 
   if (requestId) {
-    const { data: provRequest, error: reqErr } = await (adminClient as any)
+    const { data: provRequest, error: reqErr } = await asUntyped(adminClient)
       .from('provenance_update_requests')
       .select('id, requested_by, status, request_type')
       .eq('id', requestId)
@@ -304,7 +305,7 @@ async function processArtistBatch(
       };
     }
   } else {
-    const { data: account } = await (client as any)
+    const { data: account } = await asUntyped(client)
       .from('accounts')
       .select('public_data')
       .eq('id', user.id)
@@ -337,7 +338,7 @@ async function processArtistBatch(
 
   if (useHeuristicBulk) {
     const invite = invites[0]!;
-    const { data: sourceArtwork, error: sourceError } = await (adminClient as any)
+    const { data: sourceArtwork, error: sourceError } = await asUntyped(adminClient)
       .from('artworks')
       .select('*')
       .eq('id', invite.source_artwork_id as string)
@@ -351,7 +352,7 @@ async function processArtistBatch(
       return { success: false, error: 'Invalid source certificate for this claim' };
     }
 
-    const { data: candidateSources, error: candidateSourcesError } = await (adminClient as any)
+    const { data: candidateSources, error: candidateSourcesError } = await asUntyped(adminClient)
       .from('artworks')
       .select('*')
       .eq('account_id', sourceArtwork.account_id as string)
@@ -366,7 +367,7 @@ async function processArtistBatch(
     }
 
     const candidateIds = (candidateSources ?? []).map((a: { id: string }) => a.id);
-    const { data: existingCoas, error: existingCoasError } = await (adminClient as any)
+    const { data: existingCoas, error: existingCoasError } = await asUntyped(adminClient)
       .from('artworks')
       .select('source_artwork_id')
       .eq('certificate_type', CERTIFICATE_TYPES.AUTHENTICITY)
@@ -388,7 +389,7 @@ async function processArtistBatch(
     ) as Record<string, unknown>[];
   } else {
     const candidateIds = invites.map((i) => i.source_artwork_id as string);
-    const { data: existingCoaRows } = await (adminClient as any)
+    const { data: existingCoaRows } = await asUntyped(adminClient)
       .from('artworks')
       .select('id, source_artwork_id')
       .eq('certificate_type', CERTIFICATE_TYPES.AUTHENTICITY)
@@ -410,7 +411,7 @@ async function processArtistBatch(
         createdBySource.set(sid, existingCoaId);
         continue;
       }
-      const { data: art, error: aerr } = await (adminClient as any)
+      const { data: art, error: aerr } = await asUntyped(adminClient)
         .from('artworks')
         .select('*')
         .eq('id', sid)
@@ -475,7 +476,7 @@ async function processArtistBatch(
   let sourceArtwork =
     sourcesToClaim.find((s) => s.id === firstSourceId) ?? sourcesToClaim[0];
   if (!sourceArtwork) {
-    const { data: srcRow } = await (adminClient as any)
+    const { data: srcRow } = await asUntyped(adminClient)
       .from('artworks')
       .select('*')
       .eq('id', firstSourceId)
@@ -489,7 +490,7 @@ async function processArtistBatch(
   for (const invite of invites) {
     const sid = invite.source_artwork_id as string;
     const resultId = createdBySource.get(sid) ?? primaryCoaId;
-    await (adminClient as any)
+    await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .update({
         status: 'consumed',
@@ -544,7 +545,7 @@ export async function consumeCertificateClaim(
 ): Promise<ConsumeCertificateClaimResult> {
   console.log('[Certificates] consumeCertificateClaim started');
   try {
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
@@ -561,7 +562,7 @@ export async function consumeCertificateClaim(
     const tokenHash = hashClaimToken(trimmed);
     const adminClient = getSupabaseServerAdminClient();
 
-    const { data: invites, error: inviteError } = await (adminClient as any)
+    const { data: invites, error: inviteError } = await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .select('*')
       .eq('token_hash', tokenHash);
@@ -593,7 +594,7 @@ export async function consumeCertificateClaimByBatchId(
       return { success: false, error: 'Invalid batch' };
     }
 
-    const client = getSupabaseServerClient();
+    const client = asUntyped(getSupabaseServerClient());
     const {
       data: { user },
     } = await client.auth.getUser();
@@ -604,7 +605,7 @@ export async function consumeCertificateClaimByBatchId(
 
     const adminClient = getSupabaseServerAdminClient();
 
-    const { data: byBatch, error: batchErr } = await (adminClient as any)
+    const { data: byBatch, error: batchErr } = await asUntyped(adminClient)
       .from('certificate_claim_invites')
       .select('*')
       .eq('batch_id', trimmed)
@@ -616,7 +617,7 @@ export async function consumeCertificateClaimByBatchId(
     }
 
     if (!invites?.length) {
-      const { data: one, error: oneErr } = await (adminClient as any)
+      const { data: one, error: oneErr } = await asUntyped(adminClient)
         .from('certificate_claim_invites')
         .select('*')
         .eq('id', trimmed)

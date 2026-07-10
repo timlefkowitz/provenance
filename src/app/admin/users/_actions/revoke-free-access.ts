@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
@@ -19,7 +20,7 @@ export async function revokeFreeAccess(
   }
 
   const admin = getSupabaseServerAdminClient();
-  const { data: row, error: fetchErr } = await (admin as any)
+  const { data: row, error: fetchErr } = await asUntyped(admin)
     .from('subscriptions')
     .select('id, stripe_subscription_id')
     .eq('id', subscriptionRowId)
@@ -35,7 +36,7 @@ export async function revokeFreeAccess(
     return { ok: false, error: 'Not a free-access grant' };
   }
 
-  const { error: updErr } = await (admin as any)
+  const { error: updErr } = await asUntyped(admin)
     .from('subscriptions')
     .update({
       status: 'canceled',

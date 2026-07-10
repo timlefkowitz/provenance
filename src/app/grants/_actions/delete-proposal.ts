@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -18,7 +19,7 @@ export async function deleteProposal(id: string) {
     return { success: false, error: 'Not authenticated' };
   }
 
-  const { error } = await (client as any)
+  const { error } = await asUntyped(client)
     .from('grant_proposals')
     .delete()
     .eq('id', id)

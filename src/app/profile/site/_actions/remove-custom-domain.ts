@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
 
@@ -37,7 +38,7 @@ export async function removeCustomDomainAction(
     };
   }
 
-  const { data: siteRow, error: siteErr } = await (client as any)
+  const { data: siteRow, error: siteErr } = await asUntyped(client)
     .from('profile_sites')
     .select('profile_id, custom_domain')
     .eq('profile_id', profileId)
@@ -51,7 +52,7 @@ export async function removeCustomDomainAction(
     return { success: false, error: 'No custom domain is connected.' };
   }
 
-  const { data: profile } = await (client as any)
+  const { data: profile } = await asUntyped(client)
     .from('user_profiles')
     .select('user_id')
     .eq('id', profileId)
@@ -79,7 +80,7 @@ export async function removeCustomDomainAction(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await (client as any)
+  const { error: updateErr } = await asUntyped(client)
     .from('profile_sites')
     .update({
       custom_domain: null,

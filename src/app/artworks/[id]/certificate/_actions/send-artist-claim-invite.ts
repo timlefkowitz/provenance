@@ -1,5 +1,6 @@
 'use server';
 
+import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { normalizeInviteEmail, generateClaimToken, hashClaimToken } from '~/lib/certificate-claims/tokens';
@@ -30,7 +31,7 @@ export async function sendArtistClaimInvite(
       return { success: false, error: 'Please enter a valid artist email' };
     }
 
-    const { data: artwork, error: artworkError } = await (client as any)
+    const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
       .select('id, account_id, title, artist_name, certificate_type, certificate_status')
       .eq('id', artworkId)
@@ -58,12 +59,12 @@ export async function sendArtistClaimInvite(
     } else if (certType === CERTIFICATE_TYPES.OWNERSHIP) {
       claimKind = 'artist_coa_from_coo';
     } else if (artwork.certificate_status === 'pending_artist_claim') {
-      const { data: ownerAccount } = await (client as any)
+      const { data: ownerAccount } = await asUntyped(client)
         .from('accounts')
         .select('public_data')
         .eq('id', artwork.account_id)
         .single();
-      const ownerRole = getUserRole(ownerAccount?.public_data as Record<string, any> | null);
+      const ownerRole = getUserRole(ownerAccount?.public_data as Record<string, unknown> | null);
       if (ownerRole === USER_ROLES.GALLERY || ownerRole === USER_ROLES.INSTITUTION) {
         claimKind = 'artist_coa_from_show';
       } else if (ownerRole === USER_ROLES.COLLECTOR) {
@@ -88,7 +89,7 @@ export async function sendArtistClaimInvite(
     const tokenHash = hashClaimToken(token);
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
 
-    const { error: insertError } = await (adminClient as any).from('certificate_claim_invites').insert({
+    const { error: insertError } = await asUntyped(adminClient).from('certificate_claim_invites').insert({
       source_artwork_id: artworkId,
       claim_kind: claimKind,
       invitee_email: normalizedEmail,

@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -36,7 +37,7 @@ export async function GET(_req: NextRequest) {
     // Refresh from Stripe
     const account = await stripe.accounts.retrieve(connectAccount.stripe_account_id);
     const admin = getSupabaseServerAdminClient();
-    await (admin as any)
+    await asUntyped(admin)
       .from('stripe_connect_accounts')
       .update({
         charges_enabled: account.charges_enabled,

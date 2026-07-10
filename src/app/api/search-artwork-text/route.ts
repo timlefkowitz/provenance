@@ -1,3 +1,4 @@
+import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('[ArtworkTextTypeahead] search started', { field, q });
 
-    const { data, error } = await (client as any)
+    const { data, error } = await asUntyped(client)
       .from('artworks')
       .select(field)
       .eq('account_id', userId)
