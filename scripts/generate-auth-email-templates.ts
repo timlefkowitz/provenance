@@ -186,7 +186,7 @@ ${fallbackLink(href, theme)}
 
 function buildResetPassword(theme: EmailTheme): string {
   const { fontFamily, ink } = theme;
-  const href = `${SB.siteUrl}/auth/confirm?token_hash=${SB.tokenHash}&type=recovery&next=/auth/update-password`;
+  const href = `${SB.siteUrl}/auth/confirm?token_hash=${SB.tokenHash}&type=recovery&next=/update-password`;
   return buildAuthEmailHtml('Reset your password', `
 <h1 style="margin:0 0 20px;font-family:${theme.fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">Reset your password</h1>
 <p style="margin:0 0 8px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">Click the button below to choose a new password. This link expires in 24 hours.</p>

@@ -58,18 +58,32 @@ class AuthCallbackService {
       searchParams.get('next') ?? searchParams.get('callback');
 
     let nextPath: string | null = null;
-    const callbackUrl = callbackParam ? new URL(callbackParam) : null;
 
-    // if we have a callback url, we check if it has a next path
-    if (callbackUrl) {
-      // if we have a callback url, we check if it has a next path
-      const callbackNextPath = callbackUrl.searchParams.get('next');
-
-      // if we have a next path in the callback url, we use that
-      if (callbackNextPath) {
-        nextPath = callbackNextPath;
+    if (callbackParam) {
+      if (
+        callbackParam.startsWith('/') &&
+        !callbackParam.startsWith('//') &&
+        !callbackParam.startsWith('/\\')
+      ) {
+        // Relative same-origin path (e.g. /update-password or /auth/callback?next=…).
+        // new URL('/path') throws without a base, so parse with a dummy base to
+        // safely extract a nested ?next param (password-reset PKCE redirect path).
+        try {
+          const asUrl = new URL(callbackParam, 'https://x');
+          const innerNext = asUrl.searchParams.get('next');
+          nextPath = innerNext ?? asUrl.pathname;
+        } catch {
+          nextPath = callbackParam;
+        }
       } else {
-        nextPath = callbackUrl.pathname;
+        // Absolute URL — parse normally; ignore on failure.
+        try {
+          const callbackUrl = new URL(callbackParam);
+          const callbackNextPath = callbackUrl.searchParams.get('next');
+          nextPath = callbackNextPath ?? callbackUrl.pathname;
+        } catch {
+          // invalid or unsafe URL — ignore and keep default redirectPath
+        }
       }
     }
 

@@ -105,6 +105,25 @@ flowchart TB
 - **API routes:** `requireAdminApi()` returns 401/403 JSON errors; blocks `aal1` sessions when `aal2` is required.
 - **Server actions:** Shared `requireAdminUser()` / `requireAdminUserId()` helpers enforce the same MFA rules.
 
+### Password reset (ASVS V2.5 / CASA 2.x)
+
+The forgot-password flow for email/password accounts:
+
+1. **Request** (`/auth/password-reset`): calls `supabase.auth.resetPasswordForEmail`. Supabase returns success for both existing and non-existing emails so the response never reveals whether an account exists (anti-enumeration, ASVS V2.5.6).
+2. **Token delivery**: Supabase sends a short-lived, single-use OTP token via email using the `Reset password` template. The link points to:
+   `{SiteURL}/auth/confirm?token_hash={token}&type=recovery&next=/update-password`
+3. **Verification** (`/auth/confirm`): calls `supabase.auth.verifyOtp({ type: 'recovery', token_hash })`, which sets a new session cookie and redirects to `/update-password`. Expired or already-used tokens redirect to `/auth/callback/error`.
+4. **Set new password** (`/update-password`): server-gated; redirects to `/auth/sign-in` if there is no active session. On submit, calls `supabase.auth.updateUser({ password })`. Validated against `RefinedPasswordSchema` (minimum 8 characters; additional requirements enabled via env vars — see `.env.example`).
+
+**Open-redirect protection (CASA 5.1.2):** the `next` parameter in the confirm route is validated against same-origin rules before use.
+
+**Password strength knobs** (off by default; toggle via `.env.example`):
+- `NEXT_PUBLIC_PASSWORD_REQUIRE_SPECIAL_CHARS`
+- `NEXT_PUBLIC_PASSWORD_REQUIRE_NUMBERS`
+- `NEXT_PUBLIC_PASSWORD_REQUIRE_UPPERCASE`
+
+**Rate limiting:** Supabase applies server-side rate limits on `resetPasswordForEmail`. No additional app-level rate limit is applied to the request form (captcha optional via `NEXT_PUBLIC_CAPTCHA_SITE_KEY`).
+
 ### apps/api
 
 - **API key authentication** via `Authorization: Bearer <key>` header.
