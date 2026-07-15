@@ -1,16 +1,46 @@
 'use client';
 
-import { ShieldCheck } from 'lucide-react';
+import { useEffect } from 'react';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
 import { MultiFactorAuthFactorsList } from '@kit/accounts/mfa';
 
 type Props = {
   userId: string;
+  /**
+   * True when requireAdmin() redirected here with ?require_mfa=1 — the
+   * admin's MFA enrollment grace period expired and admin access is blocked
+   * until a factor is enrolled (CASA 3.3).
+   */
+  mfaEnrollmentRequired?: boolean;
 };
 
-export function SecuritySection({ userId }: Props) {
+export function SecuritySection({ userId, mfaEnrollmentRequired }: Props) {
+  // The redirect from requireAdmin() lands on /settings?require_mfa=1#security,
+  // but the hash can be lost through the server redirect — make sure the user
+  // actually sees this section.
+  useEffect(() => {
+    if (mfaEnrollmentRequired) {
+      document.getElementById('security')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [mfaEnrollmentRequired]);
+
   return (
     <section id="security" className="scroll-mt-28 space-y-6">
+      {mfaEnrollmentRequired && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden />
+          <span>
+            <strong>Admin access blocked:</strong> your grace period to enable
+            two-factor authentication has expired. Enroll an authenticator app
+            below to regain access to the admin dashboard.
+          </span>
+        </div>
+      )}
+
       <div>
         <h2 className="text-2xl font-display font-bold text-wine">
           Security

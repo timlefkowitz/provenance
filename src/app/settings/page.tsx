@@ -21,8 +21,23 @@ export const metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ require_mfa?: string }>;
+}) {
   console.log('[Settings] SettingsPage started');
+
+  // Set by requireAdmin()/requireAdminApi() when an admin's 7-day MFA
+  // enrollment grace period has expired (CASA 3.3): admin access is blocked
+  // until they enroll a factor, so surface an explanation above the
+  // Security section they were redirected to.
+  const { require_mfa } = await searchParams;
+  const mfaEnrollmentRequired = require_mfa === '1';
+
+  if (mfaEnrollmentRequired) {
+    console.log('[Settings] admin redirected here for forced MFA enrollment');
+  }
 
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
@@ -118,7 +133,7 @@ export default async function SettingsPage() {
             userId={user.id}
           />
 
-          <SecuritySection userId={user.id} />
+          <SecuritySection userId={user.id} mfaEnrollmentRequired={mfaEnrollmentRequired} />
 
           <AccountActionsSection />
         </div>
