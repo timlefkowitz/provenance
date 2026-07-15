@@ -27,10 +27,6 @@ const paths = {
 };
 
 function SignUpPage() {
-  const redirectUrl = typeof window !== 'undefined'
-    ? new URL(paths.confirm || paths.callback, window.location.origin).href
-    : '';
-
   return (
     <div className="flex flex-col gap-y-6">
       <div className="flex flex-col gap-y-1 text-center">
@@ -45,7 +41,7 @@ function SignUpPage() {
       {authConfig.providers.password && (
         <CollapsibleSignUpSection label="Sign up with email">
           <CustomEmailPasswordSignUpContainer
-            emailRedirectTo={redirectUrl}
+            emailRedirectPath={paths.confirm || paths.callback}
             displayTermsCheckbox={authConfig.displayTermsCheckbox}
           />
         </CollapsibleSignUpSection>

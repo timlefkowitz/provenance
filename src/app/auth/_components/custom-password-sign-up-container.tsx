@@ -12,7 +12,6 @@ import { Trans } from '@kit/ui/trans';
 import { AuthErrorAlert } from '../../../../makerkit/nextjs-saas-starter-kit-lite/packages/features/auth/src/components/auth-error-alert';
 import { CustomPasswordSignUpForm } from './custom-password-sign-up-form';
 
-import { asUntyped } from '~/lib/supabase-untyped';
 interface CustomEmailPasswordSignUpContainerProps {
   displayTermsCheckbox?: boolean;
   defaultValues?: {
@@ -21,13 +20,18 @@ interface CustomEmailPasswordSignUpContainerProps {
   };
 
   onSignUp?: (userId?: string) => unknown;
-  emailRedirectTo: string;
+  /**
+   * App-relative path for the confirmation link (e.g. `/auth/confirm`).
+   * The full URL is built client-side so it always reflects the actual origin
+   * (avoids the server-render window=undefined bug that produced an empty string).
+   */
+  emailRedirectPath: string;
 }
 
 export function CustomEmailPasswordSignUpContainer({
   defaultValues,
   onSignUp,
-  emailRedirectTo,
+  emailRedirectPath,
   displayTermsCheckbox,
 }: CustomEmailPasswordSignUpContainerProps) {
   const signUpMutation = useSignUpWithEmailPasswordAndUsername();
@@ -41,6 +45,11 @@ export function CustomEmailPasswordSignUpContainer({
       if (loading) {
         return;
       }
+
+      // Build the full confirm URL here in the browser so window.location.origin
+      // is always available (the sign-up page is a Server Component and the old
+      // window-check there always produced an empty string).
+      const emailRedirectTo = new URL(emailRedirectPath, window.location.origin).href;
 
       try {
         const data = await signUpMutation.mutateAsync({
@@ -60,7 +69,7 @@ export function CustomEmailPasswordSignUpContainer({
       }
     },
     [
-      emailRedirectTo,
+      emailRedirectPath,
       loading,
       onSignUp,
       signUpMutation,
