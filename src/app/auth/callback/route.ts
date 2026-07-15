@@ -134,7 +134,21 @@ export async function GET(request: NextRequest) {
     // nextPath is already just a path, use it as-is
     pathToRedirect = nextPath;
   }
-  
+
+  // Guard against open redirects (CASA 5.1.2 / CWE-601): the `next` param on this
+  // route comes straight from the query string via @kit/supabase's auth callback
+  // service. The block above strips the host from full absolute URLs
+  // (e.g. `https://evil.com/x` -> `/x`), but protocol-relative URLs like
+  // `//evil.com/x` fail the `new URL(nextPath)` parse (no base), fall into the
+  // catch, and are used as-is. `new URL('//evil.com/x', origin)` then resolves
+  // to `https://evil.com/x` because a leading `//` is a network-path reference
+  // that takes over the host from `origin`. Reject anything that isn't a
+  // same-origin, single-leading-slash path before building the redirect.
+  if (!pathToRedirect.startsWith('/') || pathToRedirect.startsWith('//') || pathToRedirect.startsWith('/\\')) {
+    console.warn('[Auth] Rejected unsafe post-login redirect target', { nextPath });
+    pathToRedirect = '/artworks';
+  }
+
   const redirectUrl = new URL(pathToRedirect, origin);
 
   if (isNewUser) {

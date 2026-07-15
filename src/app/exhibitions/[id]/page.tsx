@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES } from '~/lib/user-roles';
 import appConfig from '~/config/app.config';
+import { safeJsonLd } from '~/lib/safe-json-ld';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { getExhibitionShareMeta } from '../_actions/get-exhibition-share-meta';
 import { getExhibitionMemories } from '../_actions/exhibition-memories';
@@ -176,7 +177,7 @@ export default async function ExhibitionPage({
       <script
         key="ld:exhibition"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(exhibitionJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(exhibitionJsonLd) }}
       />
     <div className="min-h-screen">
       {/* ── HERO ──────────────────────────────────────────────── */}

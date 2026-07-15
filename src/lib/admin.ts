@@ -5,6 +5,48 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { User } from '@supabase/supabase-js';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+
+type AdminAccountState = {
+  isAdminFlag: boolean;
+  /**
+   * MFA enrollment grace-period deadline (see migration
+   * 20260714000000_admin_mfa_grace_period.sql). Null if the account isn't
+   * admin, or if the deadline column hasn't been populated for some reason
+   * (treated as "already expired" — fail closed rather than grandfathering
+   * indefinitely).
+   */
+  mfaGraceDeadline: Date | null;
+};
+
+/**
+ * Fetch admin status and MFA grace-period deadline in a single query.
+ * Internal helper for the require* functions below — `isAdmin()` stays the
+ * public, MFA-agnostic check for callers (e.g. /api/admin/check) that only
+ * care about the flag.
+ */
+async function getAdminAccountState(userId: string): Promise<AdminAccountState> {
+  const client = asUntyped(getSupabaseServerClient());
+  const { data: account } = await client
+    .from('accounts')
+    .select('public_data, admin_mfa_grace_deadline')
+    .eq('id', userId)
+    .single();
+
+  if (!account?.public_data) {
+    return { isAdminFlag: false, mfaGraceDeadline: null };
+  }
+
+  const publicData = account.public_data as Record<string, unknown>;
+  const isAdminFlag = publicData.admin === true;
+  const rawDeadline = (account as { admin_mfa_grace_deadline?: string | null })
+    .admin_mfa_grace_deadline;
+
+  return {
+    isAdminFlag,
+    mfaGraceDeadline: isAdminFlag && rawDeadline ? new Date(rawDeadline) : null,
+  };
+}
+
 /**
  * Check if a user is an admin
  * Uses public_data.admin field in accounts table (no database changes needed)
@@ -41,7 +83,7 @@ export async function getCurrentUserAdminStatus(): Promise<boolean> {
   try {
     const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
-    
+
     if (!user) {
       return false;
     }
@@ -54,42 +96,55 @@ export async function getCurrentUserAdminStatus(): Promise<boolean> {
 }
 
 /**
- * Verify that the current session belongs to an admin and enforce MFA assurance.
- *
- * - If the admin has MFA factors enrolled but the session is aal1 (not yet
- *   step-up verified this session), redirects to /auth/verify.
- * - If the admin has NO factors enrolled yet, allows access but sets
- *   requiresMfaSetup=true so callers can show the MFA setup banner.
- *
- * Returns { user, requiresMfaSetup } on success. Redirects/throws on failure.
+ * Whole days remaining until `deadline`, or null if there is no deadline.
+ * Kept as a plain (non-component) helper — components should call this
+ * rather than invoking `Date.now()` directly in their render body, which
+ * trips the react-hooks/purity lint rule (components must be idempotent).
  */
-async function checkAdminMfa(
-  user: User,
-): Promise<{ user: User; requiresMfaSetup: boolean }> {
+export function daysUntil(deadline: Date | null | undefined): number | null {
+  if (!deadline) return null;
+  return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+}
+
+type MfaOutcome =
+  | { kind: 'ok'; requiresMfaSetup: boolean; mfaGraceDeadline: Date | null }
+  | { kind: 'step_up_required' }
+  | { kind: 'grace_expired' };
+
+/**
+ * Shared MFA assurance check used by every require* variant below.
+ *
+ * - Enrolled factors, session not stepped up (aal1, aal2 required) → 'step_up_required'.
+ * - No factors enrolled, still inside the 7-day grace period from
+ *   admin_mfa_grace_deadline → 'ok' with requiresMfaSetup=true (banner nudge).
+ * - No factors enrolled, grace period expired (or was never set — fail
+ *   closed) → 'grace_expired' (CASA 3.3: admin interfaces must use MFA).
+ *
+ * Any error checking AAL fails closed as 'step_up_required'.
+ */
+async function evaluateAdminMfa(state: AdminAccountState): Promise<MfaOutcome> {
   const client = asUntyped(getSupabaseServerClient());
 
   try {
     const { data: aalData } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
     const { currentLevel, nextLevel } = aalData ?? {};
 
-    // Admin has enrolled factors but this session hasn't stepped up yet → force MFA verify
     if (nextLevel === 'aal2' && currentLevel !== 'aal2') {
-      console.log('[Admin] session is aal1 but aal2 factors enrolled — redirecting to /auth/verify');
-      redirect('/auth/verify');
+      return { kind: 'step_up_required' };
     }
 
-    // Admin has no MFA factors enrolled → allow but flag for setup banner
-    const requiresMfaSetup = nextLevel !== 'aal2';
-    return { user, requiresMfaSetup };
-  } catch (err) {
-    // redirect() throws internally — rethrow it
-    if ((err as Error)?.message?.includes('NEXT_REDIRECT')) {
-      throw err;
+    // No factors enrolled (nextLevel !== 'aal2').
+    const deadline = state.mfaGraceDeadline;
+    const withinGrace = deadline !== null && deadline.getTime() > Date.now();
+
+    if (!withinGrace) {
+      return { kind: 'grace_expired' };
     }
-    console.error('[Admin] checkAdminMfa error — failing closed, requiring step-up', err);
-    // Fail closed: if the AAL check cannot be completed, require MFA verification
-    // rather than granting admin access on an unverified assurance level.
-    redirect('/auth/verify');
+
+    return { kind: 'ok', requiresMfaSetup: true, mfaGraceDeadline: deadline };
+  } catch (err) {
+    console.error('[Admin] evaluateAdminMfa error — failing closed, requiring step-up', err);
+    return { kind: 'step_up_required' };
   }
 }
 
@@ -97,12 +152,18 @@ async function checkAdminMfa(
  * Require an authenticated admin user for the current request.
  * Redirects to sign-in if not authenticated, or to home if not admin.
  * If MFA is enrolled but not yet verified this session, redirects to /auth/verify.
+ * If no MFA is enrolled and the 7-day grace period has expired, redirects to
+ * /settings#security with a message forcing enrollment before continuing.
  * Use at the top of admin page server components.
  *
- * Returns { user, requiresMfaSetup } — pass requiresMfaSetup to the page to
- * conditionally render the AdminMfaSetupBanner.
+ * Returns { user, requiresMfaSetup, mfaGraceDeadline } — pass requiresMfaSetup
+ * (and mfaGraceDeadline, if set) to the page to render the AdminMfaSetupBanner.
  */
-export async function requireAdmin(): Promise<{ user: User; requiresMfaSetup: boolean }> {
+export async function requireAdmin(): Promise<{
+  user: User;
+  requiresMfaSetup: boolean;
+  mfaGraceDeadline: Date | null;
+}> {
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
@@ -110,20 +171,35 @@ export async function requireAdmin(): Promise<{ user: User; requiresMfaSetup: bo
     redirect('/auth/sign-in');
   }
 
-  const userIsAdmin = await isAdmin(user.id);
-  if (!userIsAdmin) {
+  const state = await getAdminAccountState(user.id);
+  if (!state.isAdminFlag) {
     redirect('/');
   }
 
-  return checkAdminMfa(user);
+  const outcome = await evaluateAdminMfa(state);
+
+  if (outcome.kind === 'step_up_required') {
+    console.log('[Admin] session is aal1 but aal2 factors enrolled — redirecting to /auth/verify');
+    redirect('/auth/verify');
+  }
+
+  if (outcome.kind === 'grace_expired') {
+    console.log('[Admin] MFA grace period expired with no factors enrolled — forcing enrollment', {
+      userId: user.id,
+    });
+    redirect('/settings?require_mfa=1#security');
+  }
+
+  return { user, requiresMfaSetup: outcome.requiresMfaSetup, mfaGraceDeadline: outcome.mfaGraceDeadline };
 }
 
 /**
  * For API routes: require a signed-in admin or return a JSON error response.
- * Returns 403 when the admin session requires MFA step-up.
+ * Returns 403 when the admin session requires MFA step-up, or when no MFA is
+ * enrolled and the grace period has expired.
  */
 export async function requireAdminApi(): Promise<
-  { user: User; requiresMfaSetup: boolean } | NextResponse
+  { user: User; requiresMfaSetup: boolean; mfaGraceDeadline: Date | null } | NextResponse
 > {
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
@@ -132,44 +208,46 @@ export async function requireAdminApi(): Promise<
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userIsAdmin = await isAdmin(user.id);
-  if (!userIsAdmin) {
+  const state = await getAdminAccountState(user.id);
+  if (!state.isAdminFlag) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Check MFA for API routes: return 403 when step-up is required
-  try {
-    const { data: aalData } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
-    const { currentLevel, nextLevel } = aalData ?? {};
+  const outcome = await evaluateAdminMfa(state);
 
-    if (nextLevel === 'aal2' && currentLevel !== 'aal2') {
-      console.log('[Admin] API route blocked — aal2 required but session is aal1');
-      return NextResponse.json(
-        { error: 'MFA verification required. Please complete step-up authentication.' },
-        { status: 403 },
-      );
-    }
-
-    const requiresMfaSetup = nextLevel !== 'aal2';
-    return { user, requiresMfaSetup };
-  } catch (err) {
-    console.error('[Admin] requireAdminApi MFA check error — failing closed', err);
-    // Fail closed: deny the request when the MFA assurance level cannot be verified.
+  if (outcome.kind === 'step_up_required') {
+    console.log('[Admin] API route blocked — aal2 required but session is aal1');
     return NextResponse.json(
-      { error: 'Unable to verify MFA assurance level. Please retry.' },
+      { error: 'MFA verification required. Please complete step-up authentication.' },
       { status: 403 },
     );
   }
+
+  if (outcome.kind === 'grace_expired') {
+    console.log('[Admin] API route blocked — MFA grace period expired with no factors enrolled');
+    return NextResponse.json(
+      { error: 'MFA enrollment required. Enable two-factor authentication in Settings to continue.' },
+      { status: 403 },
+    );
+  }
+
+  return { user, requiresMfaSetup: outcome.requiresMfaSetup, mfaGraceDeadline: outcome.mfaGraceDeadline };
 }
 
 /**
  * Shared helper for server actions: require a signed-in admin and enforce MFA.
  * Throws an Error('Unauthorized') if not authenticated or not admin.
  * Throws an Error('MFA step-up required') if aal2 is enrolled but session is aal1.
+ * Throws an Error('MFA enrollment required') if no MFA is enrolled and the
+ * grace period has expired.
  *
  * Use this in place of the local requireAdminUser() helpers in server action files.
  */
-export async function requireAdminUser(): Promise<{ user: User; requiresMfaSetup: boolean }> {
+export async function requireAdminUser(): Promise<{
+  user: User;
+  requiresMfaSetup: boolean;
+  mfaGraceDeadline: Date | null;
+}> {
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
@@ -177,34 +255,28 @@ export async function requireAdminUser(): Promise<{ user: User; requiresMfaSetup
     throw new Error('Unauthorized');
   }
 
-  const userIsAdmin = await isAdmin(user.id);
-  if (!userIsAdmin) {
+  const state = await getAdminAccountState(user.id);
+  if (!state.isAdminFlag) {
     throw new Error('Unauthorized');
   }
 
-  try {
-    const { data: aalData } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
-    const { currentLevel, nextLevel } = aalData ?? {};
+  const outcome = await evaluateAdminMfa(state);
 
-    if (nextLevel === 'aal2' && currentLevel !== 'aal2') {
-      throw new Error('MFA step-up required');
-    }
-
-    const requiresMfaSetup = nextLevel !== 'aal2';
-    return { user, requiresMfaSetup };
-  } catch (err) {
-    if ((err as Error)?.message === 'MFA step-up required') {
-      throw err;
-    }
-    console.error('[Admin] requireAdminUser MFA check error — failing closed', err);
-    // Fail closed: deny when the MFA assurance level cannot be verified.
+  if (outcome.kind === 'step_up_required') {
     throw new Error('MFA step-up required');
   }
+
+  if (outcome.kind === 'grace_expired') {
+    throw new Error('MFA enrollment required');
+  }
+
+  return { user, requiresMfaSetup: outcome.requiresMfaSetup, mfaGraceDeadline: outcome.mfaGraceDeadline };
 }
 
 /**
  * Shared helper for server actions: require a signed-in admin and return their userId.
- * Returns null if not authenticated or not admin (caller checks and returns early).
+ * Returns null if not authenticated, not admin, MFA step-up is pending, or the
+ * MFA enrollment grace period has expired.
  */
 export async function requireAdminUserId(): Promise<string | null> {
   const client = asUntyped(getSupabaseServerClient());
@@ -212,21 +284,18 @@ export async function requireAdminUserId(): Promise<string | null> {
 
   if (!user) return null;
 
-  const userIsAdmin = await isAdmin(user.id);
-  if (!userIsAdmin) return null;
+  const state = await getAdminAccountState(user.id);
+  if (!state.isAdminFlag) return null;
 
-  try {
-    const { data: aalData } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
-    const { currentLevel, nextLevel } = aalData ?? {};
+  const outcome = await evaluateAdminMfa(state);
 
-    // Block when MFA step-up is enrolled but not yet verified
-    if (nextLevel === 'aal2' && currentLevel !== 'aal2') {
-      console.log('[Admin] requireAdminUserId blocked — aal2 enrolled but session is aal1');
-      return null;
-    }
-  } catch (err) {
-    console.error('[Admin] requireAdminUserId MFA check error — failing closed', err);
-    // Fail closed: deny when the MFA assurance level cannot be verified.
+  if (outcome.kind === 'step_up_required') {
+    console.log('[Admin] requireAdminUserId blocked — aal2 enrolled but session is aal1');
+    return null;
+  }
+
+  if (outcome.kind === 'grace_expired') {
+    console.log('[Admin] requireAdminUserId blocked — MFA grace period expired with no factors enrolled');
     return null;
   }
 

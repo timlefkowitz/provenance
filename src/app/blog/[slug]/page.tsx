@@ -13,6 +13,7 @@ import pathsConfig from '~/config/paths.config';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 import { formatBlogDate } from '~/lib/blog/format-date';
+import { safeJsonLd } from '~/lib/safe-json-ld';
 import { getPublishedPostBySlug } from '~/lib/blog/posts';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 
@@ -110,7 +111,7 @@ async function BlogPostPage(props: PageProps) {
       <script
         key="ld:blog-post"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }}
       />
 
       <article className="min-h-screen bg-parchment font-body">

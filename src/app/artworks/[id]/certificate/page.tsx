@@ -12,6 +12,7 @@ import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 import appConfig from '~/config/app.config';
+import { safeJsonLd } from '~/lib/safe-json-ld';
 
 export const dynamic = 'force-dynamic';
 
@@ -382,7 +383,7 @@ export default async function CertificatePage({
       <script
         key="ld:artwork"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(artworkJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(artworkJsonLd) }}
       />
       <CertificateOfAuthenticity 
         artwork={artwork} 

@@ -4,6 +4,7 @@ import { isOpenCallSubmissionExpired } from '../_lib/open-call-utils';
 import { getMediumLabel } from '../_actions/open-call-constants';
 import { OpenCallSubmissionForm } from './_components/open-call-submission-form';
 import appConfig from '~/config/app.config';
+import { safeJsonLd } from '~/lib/safe-json-ld';
 
 export async function generateMetadata({
   params,
@@ -91,7 +92,7 @@ export default async function OpenCallPage({
       <script
         key="ld:open-call"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(openCallJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(openCallJsonLd) }}
       />
     <div className="container mx-auto px-4 py-10 max-w-3xl">
       <div className="mb-8">

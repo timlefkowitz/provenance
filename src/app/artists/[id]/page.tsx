@@ -8,6 +8,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { Button } from '@kit/ui/button';
 import appConfig from '~/config/app.config';
+import { safeJsonLd } from '~/lib/safe-json-ld';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, isValidRole, getRoleLabel, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
 import {
@@ -760,7 +761,7 @@ export default async function ArtistProfilePage({
       <script
         key="ld:profile"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(profileJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(profileJsonLd) }}
       />
       <div className="min-h-screen">
       {/* ── HERO HEADER ─────────────────────────────────────────── */}

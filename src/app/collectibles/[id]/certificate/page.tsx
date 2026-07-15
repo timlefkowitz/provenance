@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { formatCategoryLabel, type CollectibleRow } from '~/lib/collectibles/constants';
 import { CollectibleCertificate } from './_components/collectible-certificate';
 import appConfig from '~/config/app.config';
+import { safeJsonLd } from '~/lib/safe-json-ld';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,7 +128,7 @@ export default async function CollectibleCertificatePage({
       <script
         key="ld:collectible"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <CollectibleCertificate collectible={collectible} isOwner={isOwner} ownerName={ownerName} />
     </>

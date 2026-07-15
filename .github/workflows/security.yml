@@ -9,31 +9,40 @@ on:
     # Run every Monday at 08:00 UTC to catch newly published advisories.
     - cron: '0 8 * * 1'
 
+# Required by the osv-scanner reusable workflows below to upload SARIF
+# results to Security > Code Scanning.
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
 jobs:
-  audit:
-    name: pnpm audit
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run security audit
-        # Fail on high or critical severity advisories in production dependencies.
-        run: pnpm audit --prod --audit-level=high
+  # CASA 6.1 ("app only uses components without known exploitable
+  # vulnerabilities"): this used to be `pnpm audit --prod --audit-level=high`,
+  # scoped to prod deps at high+ severity only. Two problems:
+  #
+  # 1. Coverage gap: it missed moderate-severity advisories and anything only
+  #    reachable via devDependencies (build tooling, etc.).
+  # 2. As of 2026-04-15 the npm registry began retiring the legacy audit
+  #    endpoints pnpm/Yarn rely on (full brownout completes 2026-07-15), so
+  #    `pnpm audit` now fails outright with `ERR_PNPM_AUDIT_BAD_RESPONSE` /
+  #    HTTP 410 regardless of flags — this step would already be red in CI.
+  #    See https://github.com/pnpm/pnpm/issues/11265.
+  #
+  # Replaced with OSV-Scanner (google/osv-scanner-action), which reads
+  # pnpm-lock.yaml directly against the OSV.dev database — full dependency
+  # graph (prod + dev), not tied to the retired npm audit endpoints, and
+  # results also land in the repo's Code Scanning tab.
+  #
+  # This may surface a batch of pre-existing findings the first time it runs —
+  # triage and patch/pin, or document an accepted exception, rather than
+  # narrowing the scan back down.
+  osv-scan:
+    name: Dependency vulnerability scan (osv-scanner)
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8
+    with:
+      scan-args: |-
+        --lockfile=./pnpm-lock.yaml
 
   lint-changed:
     name: ESLint & TypeScript (changed files)

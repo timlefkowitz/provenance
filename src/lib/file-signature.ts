@@ -23,7 +23,76 @@
 import { fileTypeFromBuffer } from 'file-type';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { createNotification } from '~/lib/notifications';
+
 export type AllowedUploadGroup = 'image' | 'pdf' | 'document';
+
+// ---------------------------------------------------------------------------
+// AV outage alerting
+// ---------------------------------------------------------------------------
+//
+// CASA 5.2 accepted risk (see docs/SECURITY.md §8): uploads intentionally fail
+// OPEN when VirusTotal is unreachable, rate-limited, or erroring, so a VT
+// outage never takes down uploads platform-wide. That's still the right
+// availability tradeoff, but a silent, indefinite fail-open means unscanned
+// files can accumulate without anyone noticing. This fans out a one-time (per
+// cooldown window) in-app notification to admins so outages get investigated
+// instead of running unnoticed. This does NOT fire for a missing API key
+// (static deployment config, not a transient outage) or a 404 (expected —
+// unknown hash, not an error).
+
+const AV_ALERT_COOLDOWN_MS = 30 * 60 * 1000; // at most one alert per 30 minutes
+let lastAvAlertAt = 0;
+
+async function alertAdminsAvScanDown(reason: string): Promise<void> {
+  const now = Date.now();
+  if (now - lastAvAlertAt < AV_ALERT_COOLDOWN_MS) {
+    return;
+  }
+  lastAvAlertAt = now;
+
+  try {
+    const admin = getSupabaseServerAdminClient();
+    const { data: adminAccounts, error } = await asUntyped(admin)
+      .from('accounts')
+      .select('id, public_data');
+
+    if (error) {
+      console.error('[FileSignature] alertAdminsAvScanDown: failed to load admin accounts', error);
+      return;
+    }
+
+    const adminIds = (adminAccounts ?? [])
+      .filter((row: { public_data: unknown }) => {
+        const pd = row.public_data as Record<string, unknown> | null;
+        return pd?.admin === true;
+      })
+      .map((row: { id: string }) => row.id);
+
+    console.warn('[FileSignature] AV scanning is down — alerting admins', {
+      reason,
+      adminCount: adminIds.length,
+    });
+
+    await Promise.all(
+      adminIds.map((adminId: string) =>
+        createNotification({
+          userId: adminId,
+          type: 'av_scan_outage',
+          title: 'Upload virus scanning is degraded',
+          message: `VirusTotal lookups are currently failing (${reason}). Uploads are proceeding unscanned (fail-open, magic-byte checks still run). Investigate if this persists.`,
+          metadata: { reason },
+        }).catch((err) => {
+          console.error('[FileSignature] failed to notify admin of AV outage', { adminId, err });
+        }),
+      ),
+    );
+  } catch (err) {
+    // Never let alerting itself break the upload path.
+    console.error('[FileSignature] alertAdminsAvScanDown threw', err);
+  }
+}
 
 const ALLOWED_MIME_BY_GROUP: Record<AllowedUploadGroup, readonly string[]> = {
   image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/avif'],
@@ -196,11 +265,13 @@ export async function vtCheckFile(
 
     if (res.status === 429) {
       console.warn('[FileSignature] vtCheckFile: rate limited by VirusTotal, skipping scan');
+      await alertAdminsAvScanDown('VirusTotal rate limit (HTTP 429)');
       return { skipped: true, reason: 'VT rate limit' };
     }
 
     if (!res.ok) {
       console.warn('[FileSignature] vtCheckFile: VT API returned non-OK status', res.status);
+      await alertAdminsAvScanDown(`VirusTotal API returned HTTP ${res.status}`);
       return { skipped: true, reason: `VT API error ${res.status}` };
     }
 
@@ -235,6 +306,7 @@ export async function vtCheckFile(
   } catch (err) {
     // Network errors, timeouts, etc. — don't block legitimate uploads.
     console.error('[FileSignature] vtCheckFile: VT lookup failed, failing open', err);
+    await alertAdminsAvScanDown(err instanceof Error ? err.message : 'VT lookup exception');
     return { skipped: true, reason: 'VT lookup error' };
   }
 }

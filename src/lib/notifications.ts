@@ -44,7 +44,8 @@ export type NotificationType =
   | 'trial_expiring'
   | 'subscription_payment_failed'
   | 'gallery_team_invite'
-  | 'exhibition_artwork_submitted';
+  | 'exhibition_artwork_submitted'
+  | 'av_scan_outage';
 
 export interface CreateNotificationParams {
   userId: string;

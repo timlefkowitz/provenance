@@ -64,6 +64,14 @@ export async function removeCustomDomainAction(
 
   const domain = siteRow.custom_domain as string;
 
+  // CASA 6.4 (subdomain/domain takeover): only clear the DB record once Vercel
+  // confirms the domain is actually detached (200/204) or already gone (404).
+  // If the DELETE fails for any other reason, the domain stays attached to
+  // this Vercel project while our own DB would otherwise say it's free —
+  // letting a *different* Provenance customer "claim" a domain whose DNS
+  // still legitimately points here, hijacking the original owner's traffic.
+  // Fail closed: on an unexpected error, leave the DB record intact and
+  // surface the failure so the user can retry instead of silently detaching.
   if (token && projectId) {
     const vercelRes = await fetch(
       `https://api.vercel.com/v9/projects/${projectId}/domains/${domain}`,
@@ -75,7 +83,11 @@ export async function removeCustomDomainAction(
 
     if (!vercelRes.ok && vercelRes.status !== 404) {
       const body = await vercelRes.json().catch(() => ({}));
-      console.error('[Sites] removeCustomDomainAction Vercel error', body);
+      console.error('[Sites] removeCustomDomainAction Vercel error — not clearing DB record', body);
+      return {
+        success: false,
+        error: 'Failed to detach the domain from our hosting provider. Please try again.',
+      };
     }
   }
 
