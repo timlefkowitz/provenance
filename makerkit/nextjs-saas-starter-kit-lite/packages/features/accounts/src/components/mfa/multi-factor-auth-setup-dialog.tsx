@@ -141,6 +141,7 @@ function MultiFactorAuthSetupForm({
           code: verificationCode,
         });
 
+        console.log('[MFA] refreshAuthSession start');
         await refreshAuthSession();
 
         setState({
@@ -150,6 +151,7 @@ function MultiFactorAuthSetupForm({
 
         onEnrolled();
       } catch (error) {
+        console.error('[MFA] setup failed', error);
         const message = (error as Error).message || `Unknown error`;
 
         setState({
@@ -162,7 +164,7 @@ function MultiFactorAuthSetupForm({
   );
 
   if (state.error) {
-    return <ErrorAlert />;
+    return <ErrorAlert message={state.error} />;
   }
 
   return (
@@ -460,15 +462,20 @@ function useVerifyCodeMutation(userId: string) {
   const client = useSupabase();
 
   const mutationFn = async (params: { factorId: string; code: string }) => {
+    console.log('[MFA] challenge start', { factorId: params.factorId });
+
     const challenge = await client.auth.mfa.challenge({
       factorId: params.factorId,
     });
 
     if (challenge.error) {
+      console.error('[MFA] challenge failed', challenge.error);
       throw challenge.error;
     }
 
     const challengeId = challenge.data.id;
+
+    console.log('[MFA] verify start', { factorId: params.factorId, challengeId });
 
     const verify = await client.auth.mfa.verify({
       factorId: params.factorId,
@@ -477,6 +484,7 @@ function useVerifyCodeMutation(userId: string) {
     });
 
     if (verify.error) {
+      console.error('[MFA] verify failed', verify.error);
       throw verify.error;
     }
 
@@ -492,7 +500,7 @@ function useVerifyCodeMutation(userId: string) {
   });
 }
 
-function ErrorAlert() {
+function ErrorAlert({ message }: { message?: string }) {
   return (
     <Alert variant={'destructive'}>
       <ExclamationTriangleIcon className={'h-4'} />
@@ -503,6 +511,9 @@ function ErrorAlert() {
 
       <AlertDescription>
         <Trans i18nKey={'account:multiFactorSetupErrorDescription'} />
+        {message ? (
+          <p className={'mt-1 font-mono text-xs opacity-80'}>{message}</p>
+        ) : null}
       </AlertDescription>
     </Alert>
   );
