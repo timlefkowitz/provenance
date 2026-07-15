@@ -18,6 +18,7 @@ const INTERNAL_PACKAGES = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   transpilePackages: INTERNAL_PACKAGES,
   images: {
     remotePatterns: getRemotePatterns(),

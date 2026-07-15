@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { getServiceClient } from '~/lib/supabase';
 
 export interface AuthenticatedRequest {
@@ -11,14 +13,17 @@ export interface AuthenticatedRequest {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory rate limiter for API key requests (per keyId, per hour).
-// Resets on cold start; suitable for a long-running server deployment.
+// Distributed rate limiter for API key requests (per keyId, per hour).
+// Backed by Upstash Redis so limits hold across serverless instances and
+// cold starts; falls back to a per-process in-memory Map only when the
+// Upstash env vars are absent (local development).
 // ---------------------------------------------------------------------------
 
-const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
-function checkApiKeyRateLimit(keyId: string, limitPerHour: number): boolean {
+const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
+
+function checkMemRateLimit(keyId: string, limitPerHour: number): boolean {
   const now = Date.now();
   const entry = rateLimitStore.get(keyId);
 
@@ -33,6 +38,52 @@ function checkApiKeyRateLimit(keyId: string, limitPerHour: number): boolean {
 
   entry.count += 1;
   return true;
+}
+
+let upstashRedis: Redis | null = null;
+// Cache Ratelimit instances per limit value to avoid re-creating them.
+const rlCache = new Map<number, Ratelimit>();
+
+function getUpstashRatelimit(limitPerHour: number): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  const cached = rlCache.get(limitPerHour);
+  if (cached) return cached;
+
+  if (!upstashRedis) {
+    upstashRedis = new Redis({ url, token });
+  }
+
+  const limiter = new Ratelimit({
+    redis: upstashRedis,
+    limiter: Ratelimit.slidingWindow(limitPerHour, '3600 s'),
+    prefix: 'api-key-rl',
+    analytics: false,
+  });
+
+  rlCache.set(limitPerHour, limiter);
+  return limiter;
+}
+
+async function checkApiKeyRateLimit(
+  keyId: string,
+  limitPerHour: number,
+): Promise<boolean> {
+  const upstash = getUpstashRatelimit(limitPerHour);
+
+  if (upstash) {
+    try {
+      const { success } = await upstash.limit(keyId);
+      return success;
+    } catch (err) {
+      // If Redis is unreachable, degrade gracefully to in-memory limiting.
+      console.error('[API/auth] Upstash error, falling back to in-memory', err);
+    }
+  }
+
+  return checkMemRateLimit(keyId, limitPerHour);
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +172,7 @@ export async function authenticateRequest(
   }
 
   const limitPerHour: number = data.rate_limit ?? 1000;
-  if (!checkApiKeyRateLimit(data.id, limitPerHour)) {
+  if (!(await checkApiKeyRateLimit(data.id, limitPerHour))) {
     const retryAfterSeconds = Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
     console.warn('[API/auth] Rate limit exceeded', { keyId: data.id, limitPerHour });
     return NextResponse.json(

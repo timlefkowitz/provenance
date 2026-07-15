@@ -19,6 +19,8 @@
     "@provenance/planet-realestate": "workspace:*",
     "@provenance/planet-vehicles": "workspace:*",
     "@supabase/supabase-js": "2.75.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "next": "15.5.9",
     "react": "19.2.1",
     "react-dom": "19.2.1",

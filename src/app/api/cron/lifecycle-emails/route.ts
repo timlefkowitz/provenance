@@ -9,6 +9,7 @@ import {
 } from '~/lib/email-layout';
 import { getPresetThemeDefaults } from '~/lib/email-layout-presets';
 
+import { constantTimeEquals } from '~/lib/security/constant-time';
 import { asUntyped } from '~/lib/supabase-untyped';
 export const runtime = 'nodejs';
 
@@ -39,7 +40,7 @@ function isAuthorized(request: NextRequest): boolean {
   }
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) return false;
-  return header.slice(7) === secret;
+  return constantTimeEquals(header.slice(7), secret);
 }
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';

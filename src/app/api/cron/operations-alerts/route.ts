@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { insertProvenanceEventForOperations } from '~/lib/operations/operations-provenance';
+import { constantTimeEquals } from '~/lib/security/constant-time';
 
 function isAuthorized(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -13,7 +14,7 @@ function isAuthorized(request: NextRequest) {
   if (!header?.startsWith('Bearer ')) {
     return false;
   }
-  return header.slice(7) === secret;
+  return constantTimeEquals(header.slice(7), secret);
 }
 
 /**

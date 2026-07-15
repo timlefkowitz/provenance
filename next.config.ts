@@ -21,6 +21,7 @@ const INTERNAL_PACKAGES = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   productionBrowserSourceMaps: false,
   /** Bundled server routes must resolve the ffmpeg-static native binary at runtime */
   serverExternalPackages: ['ffmpeg-static'],

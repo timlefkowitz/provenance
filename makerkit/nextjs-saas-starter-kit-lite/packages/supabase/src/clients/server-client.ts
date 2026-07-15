@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
 import { Database } from '../database.types';
+import { getHardenedCookieOptions } from '../cookie-options';
 import { getSupabaseClientKeys } from '../get-supabase-client-keys';
 
 /**
@@ -15,6 +16,7 @@ export function getSupabaseServerClient<GenericSchema = Database>() {
   const keys = getSupabaseClientKeys();
 
   return createServerClient<GenericSchema>(keys.url, keys.anonKey, {
+    cookieOptions: getHardenedCookieOptions(),
     cookies: {
       async getAll() {
         const cookieStore = await cookies();

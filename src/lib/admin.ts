@@ -86,9 +86,10 @@ async function checkAdminMfa(
     if ((err as Error)?.message?.includes('NEXT_REDIRECT')) {
       throw err;
     }
-    console.error('[Admin] checkAdminMfa error, allowing access without AAL check', err);
-    // Fail open (allow admin access) rather than locking admins out on a transient error.
-    return { user, requiresMfaSetup: false };
+    console.error('[Admin] checkAdminMfa error — failing closed, requiring step-up', err);
+    // Fail closed: if the AAL check cannot be completed, require MFA verification
+    // rather than granting admin access on an unverified assurance level.
+    redirect('/auth/verify');
   }
 }
 
@@ -152,8 +153,12 @@ export async function requireAdminApi(): Promise<
     const requiresMfaSetup = nextLevel !== 'aal2';
     return { user, requiresMfaSetup };
   } catch (err) {
-    console.error('[Admin] requireAdminApi MFA check error', err);
-    return { user, requiresMfaSetup: false };
+    console.error('[Admin] requireAdminApi MFA check error — failing closed', err);
+    // Fail closed: deny the request when the MFA assurance level cannot be verified.
+    return NextResponse.json(
+      { error: 'Unable to verify MFA assurance level. Please retry.' },
+      { status: 403 },
+    );
   }
 }
 
@@ -191,8 +196,9 @@ export async function requireAdminUser(): Promise<{ user: User; requiresMfaSetup
     if ((err as Error)?.message === 'MFA step-up required') {
       throw err;
     }
-    console.error('[Admin] requireAdminUser MFA check error', err);
-    return { user, requiresMfaSetup: false };
+    console.error('[Admin] requireAdminUser MFA check error — failing closed', err);
+    // Fail closed: deny when the MFA assurance level cannot be verified.
+    throw new Error('MFA step-up required');
   }
 }
 
@@ -219,8 +225,9 @@ export async function requireAdminUserId(): Promise<string | null> {
       return null;
     }
   } catch (err) {
-    console.error('[Admin] requireAdminUserId MFA check error', err);
-    // Fail open on transient errors
+    console.error('[Admin] requireAdminUserId MFA check error — failing closed', err);
+    // Fail closed: deny when the MFA assurance level cannot be verified.
+    return null;
   }
 
   return user.id;

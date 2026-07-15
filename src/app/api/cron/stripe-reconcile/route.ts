@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { constantTimeEquals } from '~/lib/security/constant-time';
 
 /**
  * Daily safety-net cron for Stripe billing.
@@ -27,7 +28,7 @@ function isAuthorized(request: NextRequest) {
   }
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) return false;
-  return header.slice(7) === secret;
+  return constantTimeEquals(header.slice(7), secret);
 }
 
 function getStripe(): Stripe | null {
