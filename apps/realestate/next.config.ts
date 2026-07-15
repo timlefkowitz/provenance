@@ -38,8 +38,21 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
+// Legacy/default Supabase project domain. Kept in addition to whatever
+// NEXT_PUBLIC_SUPABASE_URL currently points to (e.g. a custom auth domain
+// like auth.provenance.guru) so that already-stored image URLs generated
+// against the raw *.supabase.co domain don't break in next/image.
+const LEGACY_SUPABASE_HOSTNAME = 'upbiqtluqemrmonyghix.supabase.co';
+
 function getRemotePatterns() {
   const remotePatterns: { protocol: 'http' | 'https'; hostname: string; pathname?: string }[] = [];
+  const seenHostnames = new Set<string>();
+
+  function addHostname(hostname: string, protocol: 'http' | 'https') {
+    if (seenHostnames.has(hostname)) return;
+    seenHostnames.add(hostname);
+    remotePatterns.push({ protocol, hostname, pathname: '/storage/v1/object/public/**' });
+  }
 
   if (SUPABASE_URL) {
     try {
@@ -48,15 +61,13 @@ function getRemotePatterns() {
         : `https://${SUPABASE_URL}`;
       const url = new URL(urlString);
 
-      remotePatterns.push({
-        protocol: url.protocol === 'https:' ? 'https' : 'http',
-        hostname: url.hostname,
-        pathname: '/storage/v1/object/public/**',
-      });
+      addHostname(url.hostname, url.protocol === 'https:' ? 'https' : 'http');
     } catch (error) {
       console.warn('Invalid SUPABASE_URL:', SUPABASE_URL, error);
     }
   }
+
+  addHostname(LEGACY_SUPABASE_HOSTNAME, 'https');
 
   return IS_PRODUCTION
     ? remotePatterns
