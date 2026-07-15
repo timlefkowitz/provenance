@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
+// Legacy/default Supabase project domain. Kept in addition to whatever
+// NEXT_PUBLIC_SUPABASE_URL currently points to (e.g. a custom auth domain
+// like auth.provenance.guru) so that already-stored image URLs generated
+// against the raw *.supabase.co domain don't break in next/image.
+const LEGACY_SUPABASE_HOSTNAME = 'upbiqtluqemrmonyghix.supabase.co';
+
 const INTERNAL_PACKAGES = [
   '@kit/ui',
   '@kit/auth',
@@ -37,12 +43,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-// Legacy/default Supabase project domain. Kept in addition to whatever
-// NEXT_PUBLIC_SUPABASE_URL currently points to (e.g. a custom auth domain
-// like auth.provenance.guru) so that already-stored image URLs generated
-// against the raw *.supabase.co domain don't break in next/image.
-const LEGACY_SUPABASE_HOSTNAME = 'upbiqtluqemrmonyghix.supabase.co';
 
 function getRemotePatterns() {
   const remotePatterns: { protocol: 'http' | 'https'; hostname: string; pathname?: string }[] = [];
