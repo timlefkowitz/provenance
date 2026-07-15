@@ -1,7 +1,7 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { RegistryContent } from './_components/registry-content';
-import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
+import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES, CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { isPublicDirectoryGallery } from '~/config/public-registry-galleries';
 import { MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY } from '~/config/registry-directory-requirements';
 import { registryRowKey } from './_lib/registry-row-key';
@@ -122,12 +122,14 @@ export default async function RegistryPage() {
     .filter((a) => !(a.role === USER_ROLES.GALLERY && a.profileId))
     .map((a) => a.id);
 
+  // Galleries: only Certificate of Show counts for directory eligibility.
   if (galleryProfileIds.length > 0) {
     const { data: galleryArtworks } = await client
       .from('artworks')
       .select('gallery_profile_id, account_id')
       .in('gallery_profile_id', galleryProfileIds)
-      .eq('status', 'verified');
+      .eq('status', 'verified')
+      .eq('certificate_type', CERTIFICATE_TYPES.SHOW);
 
     galleryArtworks?.forEach((artwork) => {
       if (artwork.gallery_profile_id) {
@@ -140,18 +142,51 @@ export default async function RegistryPage() {
     });
   }
 
+  // Non-gallery accounts (artists, collectors, institutions): only Certificate of Authenticity
+  // counts for directory eligibility. Count is attributed to artist_account_id when set (the
+  // credited artist), otherwise to account_id (the uploader, gallery_profile_id must be null).
+  // Artworks are deduped by id so an artwork where uploader === credited artist isn't double-counted.
+  // This ensures collectors whose only works are Certificates of Ownership don't appear in /registry.
   if (nonGalleryAccountIds.length > 0) {
-    const { data: artistArtworks } = await client
-      .from('artworks')
-      .select('account_id, gallery_profile_id')
-      .in('account_id', nonGalleryAccountIds)
-      .eq('status', 'verified');
+    const nonGallerySet = new Set(nonGalleryAccountIds);
 
-    artistArtworks?.forEach((artwork) => {
-      if (!artwork.gallery_profile_id) {
-        artworkCounts[artwork.account_id] = (artworkCounts[artwork.account_id] || 0) + 1;
+    const { data: coaByUploader } = await client
+      .from('artworks')
+      .select('id, account_id')
+      .in('account_id', nonGalleryAccountIds)
+      .is('gallery_profile_id', null)
+      .eq('status', 'verified')
+      .eq('certificate_type', CERTIFICATE_TYPES.AUTHENTICITY);
+
+    const { data: coaByCredit } = await client
+      .from('artworks')
+      .select('id, artist_account_id')
+      .in('artist_account_id', nonGalleryAccountIds)
+      .eq('status', 'verified')
+      .eq('certificate_type', CERTIFICATE_TYPES.AUTHENTICITY);
+
+    // Dedupe by artwork id: prefer the credited artist attribution.
+    const counted = new Map<string, string>(); // artworkId → accountId to credit
+
+    for (const row of coaByCredit || []) {
+      const aid = row.artist_account_id as string;
+      if (nonGallerySet.has(aid)) {
+        counted.set(row.id as string, aid);
       }
-    });
+    }
+
+    for (const row of coaByUploader || []) {
+      if (!counted.has(row.id as string)) {
+        const uid = row.account_id as string;
+        if (nonGallerySet.has(uid)) {
+          counted.set(row.id as string, uid);
+        }
+      }
+    }
+
+    for (const accountId of counted.values()) {
+      artworkCounts[accountId] = (artworkCounts[accountId] || 0) + 1;
+    }
   }
 
   const previewByKey: Record<string, string | null> = {};
