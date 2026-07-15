@@ -15,6 +15,15 @@ export function useSignInWithOtp() {
   const mutationFn = async (credentials: SignInWithPasswordlessCredentials) => {
     const result = await client.auth.signInWithOtp(credentials);
 
+    // Temporary diagnostic: logs the raw Supabase response so a "magic link
+    // does nothing" report can be traced to an actual API error (e.g. rate
+    // limit, captcha rejection, disabled provider) vs. a client-side no-op.
+    console.log('[Auth] signInWithOtp result', {
+      hasError: Boolean(result.error),
+      errorMessage: result.error?.message,
+      errorStatus: (result.error as { status?: number } | null)?.status,
+    });
+
     if (result.error) {
       if (shouldIgnoreError(result.error.message)) {
         console.warn(

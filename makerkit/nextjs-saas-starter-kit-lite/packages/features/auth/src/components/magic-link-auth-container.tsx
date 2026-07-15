@@ -55,18 +55,44 @@ export function MagicLinkAuthContainer({
   });
 
   const onSubmit = ({ email }: { email: string }) => {
-    const url = new URL(redirectUrl);
-    const emailRedirectTo = url.href;
+    // Diagnostic logging (temporary): pins down whether "magic link does
+    // nothing" is a client-side no-op (this log never appears), a Supabase
+    // rejection (logged in useSignInWithOtp), or a delivery/dashboard issue
+    // (this logs success, but no email arrives).
+    console.log('[Auth/MagicLink] submit', {
+      email,
+      redirectUrl,
+      hasCaptchaToken: Boolean(captchaToken),
+      shouldCreateUser,
+    });
+
+    let emailRedirectTo: string;
+    try {
+      emailRedirectTo = new URL(redirectUrl).href;
+    } catch (err) {
+      // redirectUrl was empty/invalid (e.g. computed during SSR before
+      // hydration) — this would otherwise throw silently before the mutation
+      // is ever called, which looks exactly like "nothing happens."
+      console.error('[Auth/MagicLink] invalid redirectUrl, aborting submit', { redirectUrl, err });
+      toast.error(t('auth:errors.link'));
+      return;
+    }
 
     const promise = async () => {
-      await signInWithOtpMutation.mutateAsync({
-        email,
-        options: {
-          emailRedirectTo,
-          captchaToken,
-          shouldCreateUser,
-        },
-      });
+      try {
+        await signInWithOtpMutation.mutateAsync({
+          email,
+          options: {
+            emailRedirectTo,
+            captchaToken,
+            shouldCreateUser,
+          },
+        });
+        console.log('[Auth/MagicLink] signInWithOtp resolved', { email });
+      } catch (err) {
+        console.error('[Auth/MagicLink] signInWithOtp rejected', { email, err });
+        throw err;
+      }
     };
 
     toast.promise(promise, {

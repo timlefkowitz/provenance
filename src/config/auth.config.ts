@@ -20,10 +20,17 @@ const AuthConfigSchema = z.object({
 const passwordEnabled = process.env.NEXT_PUBLIC_AUTH_PASSWORD !== 'false';
 const magicLinkEnabled = process.env.NEXT_PUBLIC_AUTH_MAGIC_LINK !== 'false';
 
+// Google is verified and working end-to-end. Apple requires its own dashboard
+// setup on both sides before this actually functions for users — see the
+// note in the PR/commit that added this: a Supabase project with no Apple
+// provider configured will show the button but fail on click with an
+// "Unsupported provider" error from Supabase, not a broken *app*.
+const oAuthProviders = ['google', 'apple'] as const;
+
 console.log('[Auth] providers configured', {
   password: passwordEnabled,
   magicLink: magicLinkEnabled,
-  oAuth: ['google'],
+  oAuth: oAuthProviders,
 });
 
 const authConfig = AuthConfigSchema.parse({
@@ -32,7 +39,7 @@ const authConfig = AuthConfigSchema.parse({
   providers: {
     password: passwordEnabled,
     magicLink: magicLinkEnabled,
-    oAuth: ['google'],
+    oAuth: [...oAuthProviders],
   },
 } satisfies z.infer<typeof AuthConfigSchema>);
 

@@ -10,6 +10,16 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 
 
 export async function GET(request: NextRequest) {
+  // Diagnostic logging (temporary): confirms whether magic-link/OAuth clicks
+  // are reaching this route at all, and whether a `code` param is present
+  // (PKCE flow) — helps distinguish "email link never arrives" (this never
+  // logs) from "link arrives but exchange fails" (logs, then errors below).
+  console.log('[Auth/Callback] request received', {
+    hasCode: request.nextUrl.searchParams.has('code'),
+    hasError: request.nextUrl.searchParams.has('error'),
+    next: request.nextUrl.searchParams.get('next'),
+  });
+
   const service = createAuthCallbackService(getSupabaseServerClient());
   const client = asUntyped(getSupabaseServerClient());
 
