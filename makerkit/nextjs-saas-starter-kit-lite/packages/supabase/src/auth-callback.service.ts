@@ -153,38 +153,63 @@ class AuthCallbackService {
     const nextUrl = nextUrlPathFromParams ?? params.redirectPath;
 
     if (authCode) {
+      console.log('[Auth/Callback] exchangeCodeForSession starting', {
+        authCodeLength: authCode.length,
+        nextUrl,
+      });
+
       try {
-        const { error } =
+        const { error, data } =
           await this.client.auth.exchangeCodeForSession(authCode);
 
         // if we have an error, we redirect to the error page
         if (error) {
+          console.error('[Auth/Callback] exchangeCodeForSession failed', {
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorStatus: error.status,
+            name: 'auth.callback',
+          });
+
           return onError({
             code: error.code,
             error: error.message,
             path: errorPath,
           });
         }
-      } catch (error) {
-        console.error(
-          {
-            error,
-            name: `auth.callback`,
-          },
-          `An error occurred while exchanging code for session`,
-        );
 
-        const message = error instanceof Error ? error.message : error;
+        console.log('[Auth/Callback] exchangeCodeForSession succeeded', {
+          userId: data?.user?.id,
+          provider: data?.user?.app_metadata?.provider,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        console.error('[Auth/Callback] exchangeCodeForSession threw', {
+          errorMessage: message,
+          errorCode: (error as AuthError)?.code,
+          name: 'auth.callback',
+        });
 
         return onError({
           code: (error as AuthError)?.code,
-          error: message as string,
+          error: message,
           path: errorPath,
         });
       }
+    } else {
+      console.log('[Auth/Callback] no auth code present', {
+        hasError: !!error,
+        nextUrl,
+      });
     }
 
     if (error) {
+      console.error('[Auth/Callback] error param from OAuth provider', {
+        error,
+        name: 'auth.callback',
+      });
+
       return onError({
         error,
         path: errorPath,
@@ -208,17 +233,12 @@ function onError({
 }) {
   const errorMessage = getAuthErrorMessage({ error, code });
 
-  console.error(
-    {
-      error: JSON.stringify(error),
-      name: `auth.callback`,
-    },
-    `An error occurred while signing user in`,
-  );
-
   const searchParams = new URLSearchParams({
     error: errorMessage,
     code: code ?? '',
+    // Include the raw Supabase error message so it appears in the URL for
+    // easy diagnostics without needing Vercel logs.
+    raw: error,
   });
 
   const nextPath = `${path}?${searchParams.toString()}`;
@@ -229,14 +249,19 @@ function onError({
 }
 
 /**
- * Checks if the given error message indicates a verifier error.
- * We check for this specific error because it's highly likely that the
- * user is trying to sign in using a different browser than the one they
- * used to request the sign in link. This is a common mistake, so we
- * want to provide a helpful error message.
+ * Checks if the given error message indicates a PKCE verifier error.
+ * Multiple Supabase error message variants are checked because the exact
+ * wording has changed across Supabase versions and edge cases (e.g. empty
+ * verifier vs verifier mismatch vs missing verifier).
  */
 function isVerifierError(error: string) {
-  return error.includes('both auth code and code verifier should be non-empty');
+  const lower = error.toLowerCase();
+  return (
+    lower.includes('both auth code and code verifier should be non-empty') ||
+    lower.includes('code verifier') ||
+    lower.includes('pkce') ||
+    lower.includes('code_verifier')
+  );
 }
 
 /**
