@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   // (PKCE flow) — helps distinguish "email link never arrives" (this never
   // logs) from "link arrives but exchange fails" (logs, then errors below).
   console.log('[Auth/Callback] request received', {
+    host: request.headers.get('host'),
     hasCode: request.nextUrl.searchParams.has('code'),
     hasError: request.nextUrl.searchParams.has('error'),
     next: request.nextUrl.searchParams.get('next'),
