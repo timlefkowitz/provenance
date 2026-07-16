@@ -88,6 +88,7 @@ export async function createGoal(input: { title: string; emoji?: string }) {
     });
 
     revalidatePath('/profile');
+    revalidatePath('/goals');
     console.log('[Goals] createGoal action succeeded', { goalId: goal.id });
     return { success: true, goalId: goal.id };
   } catch (error) {
@@ -111,6 +112,7 @@ export async function archiveGoal(goalId: string) {
   try {
     await archiveGoalRecord(client, { userId: user.id, goalId });
     revalidatePath('/profile');
+    revalidatePath('/goals');
     console.log('[Goals] archiveGoal action succeeded');
     return { success: true };
   } catch (error) {

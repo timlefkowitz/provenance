@@ -16,6 +16,7 @@ import {
   Globe,
   Mail,
   Newspaper,
+  Target,
   Users,
   Wrench,
 } from 'lucide-react';
@@ -82,6 +83,12 @@ const TOOLBOX_ITEMS: ToolboxItem[] = [
     label: 'Ask Taco',
     description: 'Your studio AI — chat, images & docs',
     image: '/taco-cat.png',
+  },
+  {
+    href: '/goals',
+    label: 'Goals',
+    description: 'Track your practice streaks & check in',
+    icon: Target,
   },
   {
     href: '/profile/site',

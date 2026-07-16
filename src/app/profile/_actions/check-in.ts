@@ -32,6 +32,7 @@ export async function checkInToday(note?: string): Promise<CheckinResult> {
     const goal = await recordManualCheckin(client, { userId: user.id, note: trimmedNote });
 
     revalidatePath('/profile');
+    revalidatePath('/goals');
     console.log('[Goals] checkInToday action succeeded', { currentStreakDays: goal.current_streak_days });
     return {
       success: true,
@@ -64,6 +65,7 @@ export async function checkInToGoal(goalId: string): Promise<CheckinResult> {
     const goal = await checkInGoal(client, { userId: user.id, goalId });
 
     revalidatePath('/profile');
+    revalidatePath('/goals');
     console.log('[Goals] checkInToGoal action succeeded', { currentStreakDays: goal.current_streak_days });
     return {
       success: true,
