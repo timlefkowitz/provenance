@@ -133,7 +133,11 @@ export default async function SettingsPage({
             userId={user.id}
           />
 
-          <SecuritySection userId={user.id} mfaEnrollmentRequired={mfaEnrollmentRequired} />
+          <SecuritySection
+            userId={user.id}
+            email={user.email || ''}
+            mfaEnrollmentRequired={mfaEnrollmentRequired}
+          />
 
           <AccountActionsSection />
         </div>
