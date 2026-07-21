@@ -4,8 +4,8 @@
  * with rounded borders, prices, and sold badges. Shop-feel for artists selling directly.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
@@ -91,7 +91,7 @@ export function ShopfrontTemplate({ site }: { site: SiteData }) {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                 {site.artworks.map((artwork) => (
-                  <Link key={artwork.id} href={`/works/${artwork.id}`} className="group block rounded-xl border overflow-hidden transition-shadow hover:shadow-lg" style={{ borderColor: borderColor(site.surface_color) }}>
+                  <SiteArtworkLink key={artwork.id} artwork={artwork} className="group block rounded-xl border overflow-hidden transition-shadow hover:shadow-lg" style={{ borderColor: borderColor(site.surface_color) }}>
                     <div className="relative aspect-square overflow-hidden" style={{ background: `${surface.ink}06` }}>
                       {artwork.image_url ? (
                         <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized loading="lazy" sizes="(max-width: 640px) 50vw, 25vw" />
@@ -112,7 +112,7 @@ export function ShopfrontTemplate({ site }: { site: SiteData }) {
                         <p className="text-xs" style={{ color: mutedText(site.surface_color, site.theme.text_color) }}>{new Date(artwork.created_at).getFullYear()}</p>
                       )}
                     </div>
-                  </Link>
+                  </SiteArtworkLink>
                 ))}
               </div>
             </section>

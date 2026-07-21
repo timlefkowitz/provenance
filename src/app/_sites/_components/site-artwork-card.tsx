@@ -1,6 +1,6 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteArtwork } from '../types';
+import { SiteArtworkLink } from './site-artwork-runtime';
 
 export function SiteArtworkCard({
   artwork,
@@ -14,8 +14,8 @@ export function SiteArtworkCard({
   const accent = accentColor ?? 'var(--site-accent)';
 
   return (
-    <Link
-      href={`/works/${artwork.id}`}
+    <SiteArtworkLink
+      artwork={artwork}
       className="group block overflow-hidden"
       style={{ '--card-accent': accent } as React.CSSProperties}
     >
@@ -92,6 +92,6 @@ export function SiteArtworkCard({
           ) : null}
         </div>
       </div>
-    </Link>
+    </SiteArtworkLink>
   );
 }

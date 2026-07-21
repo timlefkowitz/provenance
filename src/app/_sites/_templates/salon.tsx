@@ -3,8 +3,8 @@
  * 19th-century salon hang: dense masonry wall of varied sizes.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
@@ -66,7 +66,7 @@ export function SalonTemplate({ site }: { site: SiteData }) {
             <section id="works" className="max-w-6xl mx-auto px-4 py-10">
               <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[140px] md:auto-rows-[180px] gap-3">
                 {site.artworks.map((artwork, i) => (
-                  <Link key={artwork.id} href={`/works/${artwork.id}`} className={`group relative overflow-hidden border bg-neutral-100 ${SALON_SIZES[i % SALON_SIZES.length]}`} style={{ borderColor: `${accentColor}44` }}>
+                  <SiteArtworkLink key={artwork.id} artwork={artwork} className={`group relative overflow-hidden border bg-neutral-100 ${SALON_SIZES[i % SALON_SIZES.length]}`} style={{ borderColor: `${accentColor}44` }}>
                     {artwork.image_url ? (
                       <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized loading="lazy" />
                     ) : (
@@ -75,7 +75,7 @@ export function SalonTemplate({ site }: { site: SiteData }) {
                     <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.55)' }}>
                       <p className="text-[10px] text-white truncate">{artwork.title}</p>
                     </div>
-                  </Link>
+                  </SiteArtworkLink>
                 ))}
               </div>
             </section>

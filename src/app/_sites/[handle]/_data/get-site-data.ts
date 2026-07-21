@@ -19,6 +19,11 @@ import {
   getEligibleSiteArtworks,
   getFeaturedSiteArtworks,
 } from '~/app/_sites/_data/get-eligible-site-artworks';
+import {
+  getEligibleSiteExhibitions,
+  getFeaturedSiteExhibitions,
+} from '~/app/_sites/_data/get-eligible-site-exhibitions';
+import { isSellingEnabled } from '~/lib/stripe-connect';
 
 /**
  * Resolve a site handle → full SiteData for rendering.
@@ -120,22 +125,33 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
         sale_price: row.sale_price ?? null,
         sale_currency: row.sale_currency ?? null,
         sold_at: row.sold_at ?? null,
+        description: row.description ?? null,
+        dimensions: row.dimensions ?? null,
+        inquire_enabled: row.inquire_enabled ?? false,
+        stripe_price_id: row.stripe_price_id ?? null,
+        account_id: row.account_id ?? null,
       });
     }
   }
 
-  // 4. Fetch exhibitions
+  // 4. Fetch exhibitions (curated or auto)
+  const featuredExhibitionIds: string[] = Array.isArray(siteRow.featured_exhibition_ids)
+    ? (siteRow.featured_exhibition_ids as string[]).filter(Boolean)
+    : [];
+
   const exhibitions: SiteData['exhibitions'] = [];
   if (sections.exhibitions) {
-    const { data: exhibitionRows } = await sb
-      .from('exhibitions')
-      .select('id, title, start_date, end_date, location, image_url')
-      .eq('gallery_id', profile.user_id)
-      .not('published_at', 'is', null)
-      .order('start_date', { ascending: false })
-      .limit(12);
+    let rawExhibitions: Awaited<ReturnType<typeof getEligibleSiteExhibitions>>;
 
-    for (const row of exhibitionRows ?? []) {
+    if (featuredExhibitionIds.length > 0) {
+      console.log('[Sites] exhibitions: curated mode', { count: featuredExhibitionIds.length });
+      rawExhibitions = await getFeaturedSiteExhibitions(sb, featuredExhibitionIds);
+    } else {
+      console.log('[Sites] exhibitions: auto mode');
+      rawExhibitions = await getEligibleSiteExhibitions(sb, profile, 12);
+    }
+
+    for (const row of rawExhibitions) {
       exhibitions.push({
         id: row.id,
         title: row.title,
@@ -146,6 +162,9 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
       });
     }
   }
+
+  // 4b. Selling status
+  const sellingEnabled = await isSellingEnabled(profile.user_id);
 
   // 5. Press
   const press: SiteData['press'] = sections.press
@@ -158,6 +177,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     exhibitions: exhibitions.length,
     press: press.length,
     isWhiteLabel,
+    sellingEnabled,
   });
 
   return {
@@ -185,6 +205,11 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     custom_domain: siteRow.custom_domain_verified_at ? (siteRow.custom_domain ?? null) : null,
     is_white_label: isWhiteLabel,
     section_order: parseSectionOrder(siteRow.section_order),
+    featured_exhibition_ids: featuredExhibitionIds,
+    artwork_click_behavior: (['page', 'modal', 'lightbox'].includes(siteRow.artwork_click_behavior)
+      ? siteRow.artwork_click_behavior
+      : 'page') as 'page' | 'modal' | 'lightbox',
+    selling_enabled: sellingEnabled,
   };
 }
 

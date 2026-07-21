@@ -6,6 +6,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SitePressList } from '../_components/site-press-list';
@@ -85,7 +86,7 @@ export function ManifestoTemplate({ site }: { site: SiteData }) {
                 <span className="text-[10px] uppercase tracking-[0.25em]" style={{ color: accentColor }}>Work</span>
               </div>
               {site.artworks.slice(0, 12).map((artwork, i) => (
-                <Link key={artwork.id} href={`/works/${artwork.id}`} className="group flex flex-col md:flex-row border-t" style={{ borderColor: `${surface.ink}14`, flexDirection: i % 2 === 0 ? 'row' : 'row-reverse' }}>
+                <SiteArtworkLink key={artwork.id} artwork={artwork} className="group flex flex-col md:flex-row border-t" style={{ borderColor: `${surface.ink}14`, flexDirection: i % 2 === 0 ? 'row' : 'row-reverse' }}>
                   <div className="md:w-1/2 relative aspect-video overflow-hidden" style={{ background: `${surface.ink}08` }}>
                     {artwork.image_url ? (
                       <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized loading="lazy" sizes="50vw" />
@@ -101,7 +102,7 @@ export function ManifestoTemplate({ site }: { site: SiteData }) {
                       {artwork.sold_at ? ' · Sold' : artwork.for_sale && artwork.sale_price ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: (artwork.sale_currency ?? 'usd').toUpperCase(), minimumFractionDigits: 0 }).format(Number(artwork.sale_price))}` : ''}
                     </p>
                   </div>
-                </Link>
+                </SiteArtworkLink>
               ))}
             </section>
           ) : undefined,

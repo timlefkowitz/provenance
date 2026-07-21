@@ -23,7 +23,8 @@ export type TemplateId =
   | 'annum'
   | 'chronicle'
   | 'ledger'
-  | 'broadside';
+  | 'broadside'
+  | 'marginalia';
 
 export type TemplateCategory = 'original' | 'museum' | 'minimal' | 'photography' | 'statement' | 'archive';
 
@@ -163,6 +164,13 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     bestFor: 'Artists & galleries with an editorial voice',
     category: 'statement',
   },
+  {
+    id: 'marginalia',
+    name: 'Marginalia',
+    description: 'Annotated manuscript — sticky running head, drop caps, footnote-numbered plates, margin notes.',
+    bestFor: 'Painters, writers & literary archives',
+    category: 'museum',
+  },
 ];
 
 export type SiteTheme = {
@@ -232,6 +240,12 @@ export type SiteArtwork = {
   sale_price?: number | null;
   sale_currency?: string | null;
   sold_at?: string | null;
+  /** Extra fields loaded for quick-view / lightbox popups */
+  description?: string | null;
+  dimensions?: string | null;
+  inquire_enabled?: boolean;
+  stripe_price_id?: string | null;
+  account_id?: string | null;
 };
 
 export type SiteExhibition = {
@@ -284,6 +298,12 @@ export type SiteData = {
   is_white_label: boolean;
   /** Ordered array of section keys. null = template default order. */
   section_order: SiteSectionKey[] | null;
+  /** Ordered array of exhibition UUIDs pinned by the site owner. Empty = auto. */
+  featured_exhibition_ids: string[];
+  /** What happens when a visitor clicks an artwork thumbnail. */
+  artwork_click_behavior: 'page' | 'modal' | 'lightbox';
+  /** Whether the site owner has Stripe selling fully enabled (subscription + charges_enabled). */
+  selling_enabled: boolean;
 };
 
 /** Constrained accent color palette for site theming */

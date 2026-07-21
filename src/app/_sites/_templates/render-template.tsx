@@ -21,6 +21,11 @@ import { AnnumTemplate } from './annum';
 import { ChronicleTemplate } from './chronicle';
 import { LedgerTemplate } from './ledger';
 import { BroadsideTemplate } from './broadside';
+import { MarginaliaTemplate } from './marginalia';
+import { SiteArtworkRuntimeProvider } from '../_components/site-artwork-runtime';
+import { ArtworkQuickViewModal } from '../_components/artwork-quick-view-modal';
+import { ArtworkLightbox } from '../_components/artwork-lightbox';
+import { resolveAccent } from './palette';
 
 type TemplateComponent = ComponentType<{ site: SiteData }>;
 
@@ -46,9 +51,23 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, TemplateComponent> = {
   chronicle: ChronicleTemplate,
   ledger: LedgerTemplate,
   broadside: BroadsideTemplate,
+  marginalia: MarginaliaTemplate,
 };
 
 export function renderSiteTemplate(site: SiteData) {
   const Component = TEMPLATE_COMPONENTS[site.template_id] ?? StudioTemplate;
-  return <Component site={site} />;
+  const accentColor = resolveAccent(site.theme.accent);
+
+  return (
+    <SiteArtworkRuntimeProvider
+      clickBehavior={site.artwork_click_behavior ?? 'page'}
+      artworks={site.artworks}
+      accentColor={accentColor}
+      sellingEnabled={site.selling_enabled ?? false}
+    >
+      <Component site={site} />
+      {site.artwork_click_behavior === 'modal' && <ArtworkQuickViewModal />}
+      {site.artwork_click_behavior === 'lightbox' && <ArtworkLightbox />}
+    </SiteArtworkRuntimeProvider>
+  );
 }

@@ -6,6 +6,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { OrderedSections } from '../_components/ordered-sections';
@@ -65,7 +66,7 @@ export function PosterTemplate({ site }: { site: SiteData }) {
               <h2 className="text-[10px] uppercase tracking-[0.25em] mb-8" style={{ color: accentColor }}>Works</h2>
               <div className="flex flex-wrap justify-center gap-6 md:gap-10">
                 {site.artworks.slice(0, 12).map((artwork, i) => (
-                  <Link key={artwork.id} href={`/works/${artwork.id}`} className="group block" style={{ transform: `rotate(${TILE_ROTATIONS[i % TILE_ROTATIONS.length]})`, transition: 'transform 0.2s ease', width: 'min(45vw, 220px)' }}>
+                  <SiteArtworkLink key={artwork.id} artwork={artwork} className="group block" style={{ transform: `rotate(${TILE_ROTATIONS[i % TILE_ROTATIONS.length]})`, transition: 'transform 0.2s ease', width: 'min(45vw, 220px)' }}>
                     <div className="border-4 overflow-hidden" style={{ borderColor: surface.ink, background: `${surface.ink}08` }}>
                       <div className="relative" style={{ aspectRatio: '3/4' }}>
                         {artwork.image_url ? (
@@ -85,7 +86,7 @@ export function PosterTemplate({ site }: { site: SiteData }) {
                         )}
                       </div>
                     </div>
-                  </Link>
+                  </SiteArtworkLink>
                 ))}
               </div>
             </section>

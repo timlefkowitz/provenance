@@ -3,8 +3,8 @@
  * Dark exhibition hall: spotlit works with didactic panels.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
@@ -53,13 +53,13 @@ export function VitrineTemplate({ site }: { site: SiteData }) {
                 <article key={artwork.id} className="min-h-[85vh] flex flex-col md:flex-row items-stretch border-t border-white/5">
                   <div className="flex-1 relative min-h-[50vh] md:min-h-0 bg-black flex items-center justify-center p-8 md:p-16">
                     <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at center, ${accentColor}22 0%, transparent 70%)` }} />
-                    <Link href={`/works/${artwork.id}`} className="relative w-full max-w-lg aspect-[3/4] group">
+                    <SiteArtworkLink artwork={artwork} className="relative w-full max-w-lg aspect-[3/4] group">
                       {artwork.image_url ? (
                         <Image src={artwork.image_url} alt={artwork.title} fill className="object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]" unoptimized priority={i < 2} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs text-white/30">No image</div>
                       )}
-                    </Link>
+                    </SiteArtworkLink>
                   </div>
                   <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col justify-center px-8 py-12 md:py-0 border-t md:border-t-0 md:border-l border-white/5">
                     <p className="text-[10px] uppercase tracking-[0.25em] mb-4" style={{ color: accentColor }}>{String(i + 1).padStart(2, '0')}</p>

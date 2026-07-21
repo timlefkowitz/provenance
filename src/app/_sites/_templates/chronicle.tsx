@@ -6,8 +6,8 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useState } from 'react';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import type { SiteData, SiteArtwork } from '../types';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
@@ -100,7 +100,7 @@ export function ChronicleTemplate({ site }: { site: SiteData }) {
           {activeWorks.length > 0 ? (
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1">
               {activeWorks.map((artwork) => (
-                <Link key={artwork.id} href={`/works/${artwork.id}`} className="group block relative aspect-square overflow-hidden" style={{ background: `${surface.ink}06` }}>
+                <SiteArtworkLink key={artwork.id} artwork={artwork} className="group block relative aspect-square overflow-hidden" style={{ background: `${surface.ink}06` }}>
                   {artwork.image_url ? (
                     <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-all duration-300 group-hover:scale-110 group-hover:opacity-80" unoptimized loading="lazy" sizes="12vw" />
                   ) : (
@@ -109,7 +109,7 @@ export function ChronicleTemplate({ site }: { site: SiteData }) {
                   <div className="absolute inset-0 flex items-end p-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'linear-gradient(transparent 50%, rgba(0,0,0,0.6))' }}>
                     <p className="text-white text-[9px] leading-tight">{artwork.title}</p>
                   </div>
-                </Link>
+                </SiteArtworkLink>
               ))}
             </div>
           ) : (

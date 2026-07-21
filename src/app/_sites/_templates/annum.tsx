@@ -4,8 +4,8 @@
  * anchor-jump to each year's work group. For deep archives.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData, SiteArtwork } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
@@ -103,7 +103,7 @@ export function AnnumTemplate({ site }: { site: SiteData }) {
               <h2 className="text-5xl md:text-7xl font-black mb-8 select-none" style={{ fontFamily: headingFont, color: `${surface.ink}12` }}>{yr}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {works.map((artwork) => (
-                  <Link key={artwork.id} href={`/works/${artwork.id}`} className="group block">
+                  <SiteArtworkLink key={artwork.id} artwork={artwork} className="group block">
                     <div className="relative aspect-square overflow-hidden" style={{ background: `${surface.ink}06` }}>
                       {artwork.image_url ? (
                         <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-opacity duration-300 group-hover:opacity-80" unoptimized loading="lazy" sizes="25vw" />
@@ -112,7 +112,7 @@ export function AnnumTemplate({ site }: { site: SiteData }) {
                       )}
                     </div>
                     <p className="text-xs mt-1.5 leading-snug truncate" style={{ color: surface.ink }}>{artwork.title}</p>
-                  </Link>
+                  </SiteArtworkLink>
                 ))}
               </div>
             </section>

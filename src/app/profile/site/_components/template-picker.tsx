@@ -130,6 +130,21 @@ function TemplateWireframe({ id }: { id: TemplateId }) {
           </div>
         </div>
       );
+    case 'marginalia':
+      return (
+        <div className="flex h-full flex-col gap-1 p-1">
+          {/* running head */}
+          <div className="h-1 w-full rounded-sm bg-wine/30" />
+          {/* title + margin note */}
+          <div className="mt-0.5 flex flex-1 gap-1">
+            <div className="flex w-2/5 flex-col gap-0.5">
+              <div className="h-1 w-full rounded-sm border-b border-dotted border-wine/30" />
+              <div className="h-1 w-3/4 rounded-sm border-b border-dotted border-wine/30" />
+            </div>
+            <div className={cn(base, 'flex-1')} />
+          </div>
+        </div>
+      );
     default:
       return <div className={cn(base, 'h-full w-full')} />;
   }
@@ -159,9 +174,9 @@ function TemplateCard({
         <TemplateWireframe id={template.id} />
       </div>
       <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="font-display font-semibold text-ink text-xs">{template.name}</p>
-          <p className="text-[9px] uppercase tracking-widest text-wine/50 font-serif flex-shrink-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-display font-semibold text-ink text-xs flex-1 min-w-0">{template.name}</p>
+          <p className="text-[9px] uppercase tracking-widest text-wine/50 font-serif shrink-0 max-w-[45%] text-right leading-snug">
             {template.bestFor}
           </p>
         </div>

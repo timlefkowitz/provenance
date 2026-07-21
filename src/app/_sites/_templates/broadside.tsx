@@ -8,6 +8,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { resolveAccent, resolveSurface, mutedText, borderColor } from './palette';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { OrderedSections } from '../_components/ordered-sections';
@@ -257,7 +258,7 @@ export function BroadsideTemplate({ site }: { site: SiteData }) {
                   const sold = !!a.sold_at;
                   return (
                     <li key={a.id} className={`col-span-12 ${spans[offset]} ${nudges[offset]} group relative`}>
-                      <Link href={`/works/${a.id}`} className="block">
+                      <SiteArtworkLink artwork={a} className="block">
                         <figure className="relative">
                           {a.image_url ? (
                             <div className="relative w-full aspect-[4/5]">
@@ -314,7 +315,7 @@ export function BroadsideTemplate({ site }: { site: SiteData }) {
                             </div>
                           </figcaption>
                         </figure>
-                      </Link>
+                      </SiteArtworkLink>
                     </li>
                   );
                 })}

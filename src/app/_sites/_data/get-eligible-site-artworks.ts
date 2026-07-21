@@ -24,6 +24,11 @@ type EligibleArtworkRow = {
   sale_price?: number | null;
   sale_currency?: string | null;
   sold_at?: string | null;
+  description?: string | null;
+  dimensions?: string | null;
+  inquire_enabled?: boolean;
+  stripe_price_id?: string | null;
+  account_id?: string | null;
 };
 
 type ProfileRef = {
@@ -41,7 +46,7 @@ export async function getEligibleSiteArtworks(
   let q = sb
     .from('artworks')
     .select(
-      'id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at',
+      'id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at, description, dimensions, inquire_enabled, stripe_price_id, account_id',
     )
     .eq('status', 'verified')
     .eq('is_public', true)
@@ -94,7 +99,7 @@ export async function getFeaturedSiteArtworks(
   const { data, error } = await sb
     .from('artworks')
     .select(
-      'id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at',
+      'id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at, description, dimensions, inquire_enabled, stripe_price_id, account_id',
     )
     .in('id', ids)
     .eq('status', 'verified')

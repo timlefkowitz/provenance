@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, Upload, X, RefreshCw, ChevronDown, Sparkles, GripVertical, Pencil } from 'lucide-react';
+import { Eye, Upload, X, RefreshCw, ChevronDown, Sparkles, GripVertical, Pencil, ShoppingBag, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -50,6 +50,7 @@ import { TemplatePicker } from './template-picker';
 import { CustomDomainCard } from './custom-domain-card';
 import { AccentColorPicker } from './accent-color-picker';
 import { FeaturedArtworksPicker } from './featured-artworks-picker';
+import { FeaturedExhibitionsPicker } from './featured-exhibitions-picker';
 import { buildGoogleFontsUrl } from '~/app/_sites/_templates/palette';
 import type { ManageableProfile } from '../_actions/get-manageable-profiles';
 import type { SiteConfig } from '../_actions/get-site-config';
@@ -84,6 +85,10 @@ type Props = {
   manageableProfiles: ManageableProfile[];
   initialConfig: SiteConfig | null;
   hasActiveSubscription: boolean;
+  /** Whether the artist/gallery has a Stripe Connect account on file. */
+  sellingConnected: boolean;
+  /** Whether that Stripe Connect account has completed onboarding and can accept charges. */
+  sellingChargesEnabled: boolean;
 };
 
 export function SiteEditor({
@@ -93,6 +98,8 @@ export function SiteEditor({
   manageableProfiles,
   initialConfig,
   hasActiveSubscription,
+  sellingConnected,
+  sellingChargesEnabled,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -138,6 +145,14 @@ export function SiteEditor({
   const [featuredArtworkIds, setFeaturedArtworkIds] = useState<string[]>(
     initialConfig?.featuredArtworkIds ?? [],
   );
+  const [featuredExhibitionIds, setFeaturedExhibitionIds] = useState<string[]>(
+    initialConfig?.featuredExhibitionIds ?? [],
+  );
+  const [artworkClickBehavior, setArtworkClickBehavior] = useState<'page' | 'modal' | 'lightbox'>(
+    initialConfig?.artworkClickBehavior ?? 'page',
+  );
+
+  const sellingFullyEnabled = hasActiveSubscription && sellingConnected && sellingChargesEnabled;
 
   const [sectionOrder, setSectionOrder] = useState<SiteSectionKey[]>(
     initialConfig?.sectionOrder ?? DEFAULT_SECTION_ORDER,
@@ -276,6 +291,8 @@ export function SiteEditor({
       artworkFilters,
       featuredArtworkIds,
       sectionOrder,
+      featuredExhibitionIds,
+      artworkClickBehavior,
     });
     if (!result.success) {
       console.error('[SiteEditor] persist failed', result.error, {
@@ -902,6 +919,89 @@ export function SiteEditor({
           {/* ── CONTENT TAB ── */}
           {activeTab === 'content' && (
             <>
+        {/* ── SELL YOUR WORK ── */}
+        <section className="rounded-xl border border-wine/15 bg-white/60 p-4">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-wine/60" />
+              <h2 className="text-sm font-semibold text-ink font-serif">Sell your work</h2>
+            </div>
+            {sellingFullyEnabled ? (
+              <span className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-serif font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                <CheckCircle2 className="h-3 w-3" /> Enabled
+              </span>
+            ) : hasActiveSubscription && sellingConnected ? (
+              <span className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-serif font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                <AlertCircle className="h-3 w-3" /> Incomplete
+              </span>
+            ) : null}
+          </div>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            {!hasActiveSubscription
+              ? 'Accept payments for your artworks directly on your creator site — upgrade to unlock Stripe checkout.'
+              : sellingFullyEnabled
+                ? 'Payments are connected. Add a price to any work from your artworks list to start selling it here.'
+                : sellingConnected
+                  ? 'Your Stripe account is connected, but onboarding is incomplete. Finish setup to start accepting payments.'
+                  : 'Connect a Stripe account to accept payments for artworks — buyers pay directly through checkout on your site.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {!hasActiveSubscription ? (
+              <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
+                <Link href="/subscription">Upgrade to sell</Link>
+              </Button>
+            ) : sellingFullyEnabled ? (
+              <Button asChild size="sm" variant="outline" className="font-serif border-wine/30">
+                <Link href="/artworks">Mark works for sale →</Link>
+              </Button>
+            ) : (
+              <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
+                <Link href="/settings#selling">
+                  {sellingConnected ? 'Finish Stripe setup' : 'Set up payments'}
+                </Link>
+              </Button>
+            )}
+          </div>
+        </section>
+
+        {/* ── ARTWORK CLICK BEHAVIOR ── */}
+        <section>
+          <h2 className="text-sm font-semibold text-ink font-serif mb-1">When visitors click a work</h2>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            Choose what happens when someone taps an artwork thumbnail on your site.
+          </p>
+          <div className="space-y-2">
+            {([
+              { id: 'page', label: 'Open detail page', desc: 'Navigate to a full artwork page — includes all details, inquire, and buy.' },
+              { id: 'modal', label: 'Quick-view popup', desc: 'Show a card overlay with image, price, and CTAs — visitor stays on your site.' },
+              { id: 'lightbox', label: 'Lightbox gallery', desc: 'Full-screen gallery with prev / next navigation and a details panel.' },
+            ] as const).map(({ id, label, desc }) => (
+              <label
+                key={id}
+                className={cn(
+                  'flex items-start gap-3 rounded-lg border px-3.5 py-2.5 cursor-pointer transition-all',
+                  artworkClickBehavior === id
+                    ? 'border-wine bg-wine/5'
+                    : 'border-wine/15 hover:border-wine/30',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="artwork-click-behavior"
+                  value={id}
+                  checked={artworkClickBehavior === id}
+                  onChange={() => { setArtworkClickBehavior(id); markUnsaved(); }}
+                  className="mt-0.5 accent-wine"
+                />
+                <div>
+                  <p className="text-xs font-semibold text-ink font-serif">{label}</p>
+                  <p className="text-[11px] text-ink/55 font-serif leading-relaxed">{desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </section>
+
         {/* ── FEATURED ARTWORKS ── */}
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-1">Featured works</h2>
@@ -914,6 +1014,21 @@ export function SiteEditor({
             onChange={(ids) => { setFeaturedArtworkIds(ids); markUnsaved(); }}
           />
         </section>
+
+        {/* ── FEATURED EXHIBITIONS (gallery only) ── */}
+        {profile.role === 'gallery' && (
+          <section>
+            <h2 className="text-sm font-semibold text-ink font-serif mb-1">Featured exhibitions</h2>
+            <p className="text-xs text-ink/50 font-serif mb-3">
+              Choose specific exhibitions to highlight on your site and set their display order.
+            </p>
+            <FeaturedExhibitionsPicker
+              profileId={profileId}
+              selectedIds={featuredExhibitionIds}
+              onChange={(ids) => { setFeaturedExhibitionIds(ids); markUnsaved(); }}
+            />
+          </section>
+        )}
 
         {/* ── CERTIFICATE TYPE FILTER ── */}
         <section>

@@ -3,8 +3,8 @@
  * Biennale pavilion: oversized poster typography, exhibitions-first.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
@@ -85,7 +85,7 @@ export function PavilionTemplate({ site }: { site: SiteData }) {
                   {site.artworks.map((artwork, i) => (
                     <li key={artwork.id} className="py-6 flex items-center gap-6 group">
                       <span className="text-3xl font-black w-12 flex-shrink-0" style={{ color: `${accentColor}44` }}>{String(i + 1).padStart(2, '0')}</span>
-                      <Link href={`/works/${artwork.id}`} className="flex items-center gap-6 flex-1 min-w-0">
+                      <SiteArtworkLink artwork={artwork} className="flex items-center gap-6 flex-1 min-w-0">
                         {artwork.image_url && (
                           <div className="relative w-16 h-16 flex-shrink-0 overflow-hidden bg-neutral-100">
                             <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover" unoptimized />
@@ -95,7 +95,7 @@ export function PavilionTemplate({ site }: { site: SiteData }) {
                           <p className="font-semibold truncate group-hover:opacity-70 transition-opacity">{artwork.title}</p>
                           <p className="text-xs mt-0.5" style={{ color: '#999' }}>{new Date(artwork.created_at).getFullYear()} · {artwork.certificate_number}</p>
                         </div>
-                      </Link>
+                      </SiteArtworkLink>
                     </li>
                   ))}
                 </ol>

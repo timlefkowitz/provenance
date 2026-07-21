@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
+import { getConnectAccount } from '~/lib/stripe-connect';
 import { getSiteConfig } from './_actions/get-site-config';
 import { getManageableProfiles } from './_actions/get-manageable-profiles';
 import { findProfileWithSite } from './_actions/find-profile-with-site';
@@ -30,6 +31,13 @@ export default async function ProfileSitePage({
 
   const subscription = await getActiveSubscription(user.id);
   const hasActiveSubscription = subscription !== null;
+
+  const connectAccount = await getConnectAccount(user.id);
+  console.log('[Sites] /profile/site connect account status', {
+    userId: user.id,
+    connected: !!connectAccount,
+    chargesEnabled: connectAccount?.charges_enabled ?? false,
+  });
 
   // ── Manageable profiles ──
   const manageableProfiles = await getManageableProfiles();
@@ -113,6 +121,8 @@ export default async function ProfileSitePage({
           initialConfig={existingConfig}
           siteDomain={existingConfig?.siteDomain ?? 'provenance.guru'}
           hasActiveSubscription={hasActiveSubscription}
+          sellingConnected={!!connectAccount}
+          sellingChargesEnabled={connectAccount?.charges_enabled ?? false}
         />
       </div>
     </div>

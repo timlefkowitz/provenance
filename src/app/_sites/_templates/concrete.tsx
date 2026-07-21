@@ -3,8 +3,8 @@
  * Brutalist grid: visible hairline borders, uniform square crops.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
@@ -55,7 +55,7 @@ export function ConcreteTemplate({ site }: { site: SiteData }) {
             <section id="works">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {site.artworks.map((artwork) => (
-                  <Link key={artwork.id} href={`/works/${artwork.id}`} className="group border-r border-b aspect-square relative overflow-hidden" style={{ borderColor: '#111' }}>
+                  <SiteArtworkLink key={artwork.id} artwork={artwork} className="group border-r border-b aspect-square relative overflow-hidden" style={{ borderColor: '#111' }}>
                     {artwork.image_url ? (
                       <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-opacity group-hover:opacity-80" unoptimized loading="lazy" />
                     ) : (
@@ -64,7 +64,7 @@ export function ConcreteTemplate({ site }: { site: SiteData }) {
                     <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 translate-y-full group-hover:translate-y-0 transition-transform" style={{ background: accentColor }}>
                       <p className="text-[10px] text-white truncate uppercase tracking-wide">{artwork.title}</p>
                     </div>
-                  </Link>
+                  </SiteArtworkLink>
                 ))}
               </div>
             </section>

@@ -3,8 +3,8 @@
  * Narrow centered column — one work after another, book-like rhythm.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
@@ -53,7 +53,7 @@ export function FolioTemplate({ site }: { site: SiteData }) {
             <section id="works" className="max-w-md mx-auto px-6">
               {site.artworks.map((artwork, i) => (
                 <article key={artwork.id} className="mb-20 last:mb-0">
-                  <Link href={`/works/${artwork.id}`} className="group block">
+                  <SiteArtworkLink artwork={artwork} className="group block">
                     <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-100">
                       {artwork.image_url ? (
                         <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-opacity duration-500 group-hover:opacity-90" unoptimized priority={i < 2} />
@@ -65,7 +65,7 @@ export function FolioTemplate({ site }: { site: SiteData }) {
                       <p className="text-sm italic">{artwork.title}</p>
                       <p className="text-[10px] uppercase tracking-[0.15em] mt-2" style={{ color: '#aaa' }}>{new Date(artwork.created_at).getFullYear()}</p>
                     </figcaption>
-                  </Link>
+                  </SiteArtworkLink>
                 </article>
               ))}
             </section>

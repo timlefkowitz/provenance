@@ -483,7 +483,7 @@ const UPDATE_MY_WEBSITE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
         handle: { type: 'string', description: 'URL handle (slug). Lowercase letters, numbers, hyphens. e.g. "jane-doe".' },
         template_id: {
           type: 'string',
-          enum: ['editorial','studio','atelier','whitecube','vitrine','salon','pavilion','cabinet','folio','index','concrete','lightbox','noir','manifesto','billboard','shopfront','poster','annum','chronicle','ledger','broadside'],
+          enum: ['editorial','studio','atelier','whitecube','vitrine','salon','pavilion','cabinet','folio','index','concrete','lightbox','noir','manifesto','billboard','shopfront','poster','annum','chronicle','ledger','broadside','marginalia'],
           description: 'Visual template to use.',
         },
         accent: { type: 'string', description: 'Accent color — a key from the valid accent list returned by get_my_website, or a hex color like #C4472A.' },

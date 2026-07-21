@@ -6,6 +6,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { OrderedSections } from '../_components/ordered-sections';
@@ -79,7 +80,7 @@ export function BillboardTemplate({ site }: { site: SiteData }) {
               <h2 className="text-4xl md:text-6xl font-black uppercase leading-none tracking-tighter mb-10" style={{ fontFamily: headingFont, color: accentColor }}>Work</h2>
               <div className="grid grid-cols-2 gap-0.5">
                 {site.artworks.slice(0, 12).map((artwork) => (
-                  <Link key={artwork.id} href={`/works/${artwork.id}`} className="group block relative overflow-hidden bg-gray-50" style={{ aspectRatio: '4/3' }}>
+                  <SiteArtworkLink key={artwork.id} artwork={artwork} className="group block relative overflow-hidden bg-gray-50" style={{ aspectRatio: '4/3' }}>
                     {artwork.image_url ? (
                       <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized loading="lazy" sizes="(max-width: 640px) 50vw, 50vw" />
                     ) : (
@@ -95,7 +96,7 @@ export function BillboardTemplate({ site }: { site: SiteData }) {
                         <span className="text-white/80 text-xs mt-1">{new Intl.NumberFormat('en-US', { style: 'currency', currency: (artwork.sale_currency ?? 'usd').toUpperCase(), minimumFractionDigits: 0 }).format(Number(artwork.sale_price))}</span>
                       ) : null}
                     </div>
-                  </Link>
+                  </SiteArtworkLink>
                 ))}
               </div>
             </section>

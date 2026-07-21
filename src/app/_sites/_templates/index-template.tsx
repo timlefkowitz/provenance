@@ -3,8 +3,8 @@
  * Swiss typographic archive: strict table of works, minimal decoration.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
@@ -48,7 +48,7 @@ export function IndexTemplate({ site }: { site: SiteData }) {
                 <span className="text-right">Year</span>
               </div>
               {site.artworks.map((artwork, i) => (
-                <Link key={artwork.id} href={`/works/${artwork.id}`} className="grid grid-cols-[2rem_3rem_1fr_4rem] gap-x-4 items-center py-3 border-b hover:bg-black/[0.02] transition-colors group" style={{ borderColor: '#eee', fontFamily: 'system-ui, sans-serif' }}>
+                <SiteArtworkLink key={artwork.id} artwork={artwork} className="grid grid-cols-[2rem_3rem_1fr_4rem] gap-x-4 items-center py-3 border-b hover:bg-black/[0.02] transition-colors group" style={{ borderColor: '#eee', fontFamily: 'system-ui, sans-serif' }}>
                   <span className="text-[10px]" style={{ color: '#aaa' }}>{String(i + 1).padStart(3, '0')}</span>
                   <div className="relative w-8 h-8 bg-neutral-100 overflow-hidden flex-shrink-0">
                     {artwork.image_url ? <Image src={artwork.image_url} alt="" fill className="object-cover" unoptimized /> : null}
@@ -58,7 +58,7 @@ export function IndexTemplate({ site }: { site: SiteData }) {
                     <p className="text-[10px] truncate mt-0.5" style={{ color: '#aaa' }}>{artwork.certificate_number}</p>
                   </div>
                   <span className="text-xs text-right" style={{ color: '#999' }}>{new Date(artwork.created_at).getFullYear()}</span>
-                </Link>
+                </SiteArtworkLink>
               ))}
             </section>
           ) : undefined,

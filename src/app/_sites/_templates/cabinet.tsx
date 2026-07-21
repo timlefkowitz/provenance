@@ -8,6 +8,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { resolveAccent, resolveSurface, isDarkSurface } from './palette';
 import { EditableText } from '../_components/editable-text';
 import { EditableImage } from '../_components/editable-image';
@@ -365,7 +366,7 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
                       className="grid grid-cols-1 items-start gap-6 md:grid-cols-12 md:gap-8"
                     >
                       <figure className={`md:col-span-7 ${flip ? 'md:order-2 md:col-start-6' : ''}`}>
-                        <Link href={`/works/${art.id}`} className="block group">
+                        <SiteArtworkLink artwork={art} className="block group">
                           <div
                             style={{
                               border: `1px solid ${hairline}`,
@@ -396,7 +397,7 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
                               </div>
                             )}
                           </div>
-                        </Link>
+                        </SiteArtworkLink>
                       </figure>
 
                       <div className={`md:col-span-5 ${flip ? 'md:order-1 md:col-start-1' : ''}`}>
@@ -409,14 +410,14 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
                           <span>{year(art.created_at)}</span>
                         </div>
 
-                        <Link href={`/works/${art.id}`} className="block group">
+                        <SiteArtworkLink artwork={art} className="block group">
                           <h3
                             className="mt-3 font-normal leading-tight tracking-tight transition-opacity group-hover:opacity-70"
                             style={{ fontSize: 'clamp(1.6rem, 2.4vw, 2.4rem)', letterSpacing: '-0.01em' }}
                           >
                             {art.title}
                           </h3>
-                        </Link>
+                        </SiteArtworkLink>
 
                         {art.artist_name && (
                           <p className="mt-1 italic" style={{ color: withAlpha(ink, 0.75) }}>
@@ -453,13 +454,13 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
 
                         {!art.sold_at && (art.for_sale || art.sale_price) && (
                           <div className="mt-6">
-                            <Link
-                              href={`/works/${art.id}`}
+                            <SiteArtworkLink
+                              artwork={art}
                               className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-opacity hover:opacity-70"
                               style={{ color: accentHex }}
                             >
                               View work <span aria-hidden>→</span>
-                            </Link>
+                            </SiteArtworkLink>
                           </div>
                         )}
                       </div>

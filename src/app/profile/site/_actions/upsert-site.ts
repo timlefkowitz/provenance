@@ -39,6 +39,10 @@ export type UpsertSiteInput = {
   featuredArtworkIds?: string[];
   /** Section display order. null / undefined = preserve existing / template default. */
   sectionOrder?: SiteSectionKey[] | null;
+  /** Ordered array of exhibition UUIDs to pin. Pass empty array for automatic mode. */
+  featuredExhibitionIds?: string[];
+  /** What happens when a visitor clicks an artwork thumbnail. */
+  artworkClickBehavior?: 'page' | 'modal' | 'lightbox';
 };
 
 export type UpsertSiteResult =
@@ -134,6 +138,11 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     ? Array.from(new Set(input.featuredArtworkIds.filter((id) => UUID_RE.test(id)))).slice(0, 24)
     : undefined;
 
+  // Sanitize featured exhibition ids: dedupe, UUID-ish filter, cap at 24
+  const featuredExhibitionIds = input.featuredExhibitionIds
+    ? Array.from(new Set(input.featuredExhibitionIds.filter((id) => UUID_RE.test(id)))).slice(0, 24)
+    : undefined;
+
   // Sanitize section_order: only valid keys, at most 5 entries
   const sectionOrder =
     input.sectionOrder !== undefined
@@ -142,8 +151,15 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
         : Array.from(new Set(input.sectionOrder.filter((k) => ORDERABLE_SECTION_KEYS.includes(k)))).slice(0, 5)
       : undefined;
 
+  // Sanitize artwork_click_behavior
+  const artworkClickBehavior =
+    input.artworkClickBehavior && ['page', 'modal', 'lightbox'].includes(input.artworkClickBehavior)
+      ? input.artworkClickBehavior
+      : undefined;
+
   // Full payload — requires migration 20260514 (extra columns) + 20260708000000 (featured_artwork_ids)
-  //               + 20260721000001 (section_order)
+  //               + 20260721000001 (section_order) + 20260721000004 (featured_exhibition_ids)
+  //               + 20260721000005 (artwork_click_behavior)
   const fullPayload = {
     profile_id: input.profileId,
     handle: handleResult.normalized,
@@ -160,6 +176,8 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     artwork_filters: artworkFilters,
     ...(featuredArtworkIds !== undefined ? { featured_artwork_ids: featuredArtworkIds } : {}),
     ...(sectionOrder !== undefined ? { section_order: sectionOrder } : {}),
+    ...(featuredExhibitionIds !== undefined ? { featured_exhibition_ids: featuredExhibitionIds } : {}),
+    ...(artworkClickBehavior !== undefined ? { artwork_click_behavior: artworkClickBehavior } : {}),
     updated_at: new Date().toISOString(),
   };
 
@@ -178,6 +196,9 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     surface_color: input.surfaceColor ?? null,
     artwork_filters: artworkFilters,
     ...(featuredArtworkIds !== undefined ? { featured_artwork_ids: featuredArtworkIds } : {}),
+    ...(sectionOrder !== undefined ? { section_order: sectionOrder } : {}),
+    ...(featuredExhibitionIds !== undefined ? { featured_exhibition_ids: featuredExhibitionIds } : {}),
+    ...(artworkClickBehavior !== undefined ? { artwork_click_behavior: artworkClickBehavior } : {}),
     updated_at: new Date().toISOString(),
   };
 

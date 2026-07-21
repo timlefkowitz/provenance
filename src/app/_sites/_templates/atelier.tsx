@@ -6,6 +6,7 @@
  */
 import Image from 'next/image';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
@@ -112,7 +113,7 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
                 <p className="text-xs uppercase tracking-[0.2em] mb-14" style={{ color: accentColor }}>Selected Works</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14">
                   {featuredWorks.map((artwork, i) => (
-                    <div key={artwork.id} className={i % 3 === 1 ? 'md:mt-14' : ''}>
+                    <SiteArtworkLink key={artwork.id} artwork={artwork} className={`block ${i % 3 === 1 ? 'md:mt-14' : ''}`}>
                       <div className="relative aspect-[4/5] overflow-hidden mb-4 bg-gray-100">
                         {artwork.image_url ? (
                           <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover" unoptimized loading="lazy" />
@@ -122,7 +123,7 @@ export function AtelierTemplate({ site }: { site: SiteData }) {
                       </div>
                       <p className="text-sm font-medium" style={{ fontFamily: 'system-ui, sans-serif', color: '#111' }}>{artwork.title}</p>
                       <p className="text-xs mt-0.5" style={{ fontFamily: 'system-ui, sans-serif', color: '#999' }}>{new Date(artwork.created_at).getFullYear()}</p>
-                    </div>
+                    </SiteArtworkLink>
                   ))}
                 </div>
                 {site.artworks.length > 6 && <p className="mt-14 text-xs" style={{ color: '#aaa', fontFamily: 'system-ui, sans-serif' }}>+ {site.artworks.length - 6} more works</p>}

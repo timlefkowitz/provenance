@@ -6,8 +6,8 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useState } from 'react';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import type { SiteData, SiteArtwork } from '../types';
 import { SiteCtaButton } from '../_components/site-cta-button';
 import { SiteExhibitionList } from '../_components/site-exhibition-list';
@@ -81,7 +81,7 @@ export function LedgerTemplate({ site }: { site: SiteData }) {
                   const yr = new Date(artwork.created_at).getFullYear();
                   return (
                     <li key={artwork.id} onMouseEnter={() => setHoveredId(artwork.id)} onMouseLeave={() => setHoveredId(null)}>
-                      <Link href={`/works/${artwork.id}`} className="flex items-center gap-6 px-6 md:px-12 py-3 transition-all hover:pl-8 md:hover:pl-14 border-b" style={{ borderColor: borderColor(site.surface_color), background: hoveredId === artwork.id ? `${accentColor}08` : 'transparent' }}>
+                      <SiteArtworkLink artwork={artwork} className="flex items-center gap-6 px-6 md:px-12 py-3 transition-all hover:pl-8 md:hover:pl-14 border-b" style={{ borderColor: borderColor(site.surface_color), background: hoveredId === artwork.id ? `${accentColor}08` : 'transparent' }}>
                         <span className="w-12 flex-shrink-0 text-xs font-mono" style={{ color: mutedText(site.surface_color, site.theme.text_color) }}>{yr}</span>
                         <span className="flex-1 text-sm" style={{ color: surface.ink }}>{artwork.title}</span>
                         {artwork.artist_name && <span className="hidden md:block w-40 text-right text-xs" style={{ color: mutedText(site.surface_color, site.theme.text_color) }}>{artwork.artist_name}</span>}
@@ -90,7 +90,7 @@ export function LedgerTemplate({ site }: { site: SiteData }) {
                         ) : artwork.for_sale && artwork.sale_price ? (
                           <span className="text-xs flex-shrink-0" style={{ color: accentColor }}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: (artwork.sale_currency ?? 'usd').toUpperCase(), minimumFractionDigits: 0 }).format(Number(artwork.sale_price))}</span>
                         ) : null}
-                      </Link>
+                      </SiteArtworkLink>
                     </li>
                   );
                 })}

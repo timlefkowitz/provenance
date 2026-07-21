@@ -3,8 +3,8 @@
  * Darkroom portfolio: full-bleed frames on pure black, alternating layouts.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
@@ -50,7 +50,7 @@ export function NoirTemplate({ site }: { site: SiteData }) {
                 const isOffset = i % 3 === 1;
                 return (
                   <article key={artwork.id} className={isFullBleed ? 'w-full' : isOffset ? 'max-w-4xl mx-auto px-6 md:px-0 md:ml-[15%] md:mr-[25%]' : 'max-w-3xl mx-auto px-6'}>
-                    <Link href={`/works/${artwork.id}`} className="group block">
+                    <SiteArtworkLink artwork={artwork} className="group block">
                       <div className={`relative overflow-hidden bg-neutral-950 ${isFullBleed ? 'aspect-[16/9] w-full' : 'aspect-[4/5] w-full'}`}>
                         {artwork.image_url ? (
                           <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-opacity duration-700 group-hover:opacity-85" unoptimized priority={i < 2} />
@@ -62,7 +62,7 @@ export function NoirTemplate({ site }: { site: SiteData }) {
                         <p className="text-xs text-white/60">{artwork.title}</p>
                         <p className="text-[10px] text-white/25 flex-shrink-0">{new Date(artwork.created_at).getFullYear()}</p>
                       </div>
-                    </Link>
+                    </SiteArtworkLink>
                   </article>
                 );
               })}

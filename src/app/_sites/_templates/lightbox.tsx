@@ -3,8 +3,8 @@
  * Edge-to-edge photo grid: one column on mobile, tiled flush grid on desktop.
  */
 import Image from 'next/image';
-import Link from 'next/link';
 import type { SiteData } from '../types';
+import { SiteArtworkLink } from '../_components/site-artwork-runtime';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { OrderedSections } from '../_components/ordered-sections';
 import { EditableText } from '../_components/editable-text';
@@ -39,7 +39,7 @@ export function LightboxTemplate({ site }: { site: SiteData }) {
           artworks: site.artworks.length > 0 ? (
             <section className="grid gap-0 w-full" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
               {site.artworks.map((artwork, i) => (
-                <Link key={artwork.id} href={`/works/${artwork.id}`} className="group relative aspect-square overflow-hidden">
+                <SiteArtworkLink key={artwork.id} artwork={artwork} className="group relative aspect-square overflow-hidden">
                   {artwork.image_url ? (
                     <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover transition-transform duration-700 group-hover:scale-[1.03]" unoptimized priority={i < 4} sizes="(max-width: 640px) 100vw, 33vw" />
                   ) : (
@@ -48,7 +48,7 @@ export function LightboxTemplate({ site }: { site: SiteData }) {
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end p-3 opacity-0 group-hover:opacity-100">
                     <p className="text-[10px] text-white uppercase tracking-widest">{artwork.title}</p>
                   </div>
-                </Link>
+                </SiteArtworkLink>
               ))}
             </section>
           ) : undefined,

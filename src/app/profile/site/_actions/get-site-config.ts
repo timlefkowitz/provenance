@@ -38,6 +38,10 @@ export type SiteConfig = {
   featuredArtworkIds: string[];
   /** Section display order. null = template default. */
   sectionOrder: SiteSectionKey[] | null;
+  /** Ordered array of exhibition UUIDs pinned for curation. Empty = auto. */
+  featuredExhibitionIds: string[];
+  /** What happens when a visitor clicks an artwork thumbnail. */
+  artworkClickBehavior: 'page' | 'modal' | 'lightbox';
   publishedAt: string | null;
   siteUrl: string | null;
   /** Root hostname without www. (e.g. "provenance.guru") */
@@ -96,6 +100,8 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     artworkFilters: { ...DEFAULT_ARTWORK_FILTERS, ...(data.artwork_filters ?? {}) },
     featuredArtworkIds: Array.isArray(data.featured_artwork_ids) ? (data.featured_artwork_ids as string[]).filter(Boolean) : [],
     sectionOrder: parseSectionOrder(data.section_order),
+    featuredExhibitionIds: Array.isArray(data.featured_exhibition_ids) ? (data.featured_exhibition_ids as string[]).filter(Boolean) : [],
+    artworkClickBehavior: (['page', 'modal', 'lightbox'].includes(data.artwork_click_behavior) ? data.artwork_click_behavior : 'page') as 'page' | 'modal' | 'lightbox',
     publishedAt: data.published_at ?? null,
     siteUrl,
     siteDomain,
