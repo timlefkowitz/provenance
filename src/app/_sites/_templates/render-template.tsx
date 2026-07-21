@@ -20,6 +20,7 @@ import { PosterTemplate } from './poster';
 import { AnnumTemplate } from './annum';
 import { ChronicleTemplate } from './chronicle';
 import { LedgerTemplate } from './ledger';
+import { BroadsideTemplate } from './broadside';
 
 type TemplateComponent = ComponentType<{ site: SiteData }>;
 
@@ -44,6 +45,7 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, TemplateComponent> = {
   annum: AnnumTemplate,
   chronicle: ChronicleTemplate,
   ledger: LedgerTemplate,
+  broadside: BroadsideTemplate,
 };
 
 export function renderSiteTemplate(site: SiteData) {

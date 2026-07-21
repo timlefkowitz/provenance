@@ -118,6 +118,18 @@ function TemplateWireframe({ id }: { id: TemplateId }) {
           <div className="w-full h-2 bg-white/15 rounded-sm" />
         </div>
       );
+    case 'broadside':
+      return (
+        <div className="flex flex-col gap-1 h-full p-1">
+          {/* ticker */}
+          <div className="h-0.5 w-full bg-wine/40 rounded-full" />
+          {/* offset plates */}
+          <div className="flex gap-1 flex-1 items-start">
+            <div className={cn(base, 'w-3/5 h-3/5 mt-0')} />
+            <div className={cn(base, 'flex-1 h-4/5 mt-1')} />
+          </div>
+        </div>
+      );
     default:
       return <div className={cn(base, 'h-full w-full')} />;
   }

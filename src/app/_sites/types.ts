@@ -22,7 +22,8 @@ export type TemplateId =
   | 'poster'
   | 'annum'
   | 'chronicle'
-  | 'ledger';
+  | 'ledger'
+  | 'broadside';
 
 export type TemplateCategory = 'original' | 'museum' | 'minimal' | 'photography' | 'statement' | 'archive';
 
@@ -153,6 +154,14 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     description: 'Ultra-minimal text list of works with inline hover thumbnail reveal.',
     bestFor: 'Archives & estates',
     category: 'archive',
+  },
+  // Statement templates — Contino "Bad Medicine" broadsheet-inspired
+  {
+    id: 'broadside',
+    name: 'Broadside',
+    description: 'Zine/broadsheet energy — running ticker, offset asymmetric plates, footnote-style press.',
+    bestFor: 'Artists & galleries with an editorial voice',
+    category: 'statement',
   },
 ];
 
