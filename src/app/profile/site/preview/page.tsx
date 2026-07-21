@@ -44,6 +44,7 @@ export default async function SitePreviewPage({
   searchParams?: Promise<{
     profileId?: string;
     embed?: string;
+    edit?: string;
     template?: string;
     accent?: string;
     surface?: string;
@@ -55,6 +56,8 @@ export default async function SitePreviewPage({
   const params = (await searchParams) ?? {};
   const profileId = params.profileId;
   const embedMode = params.embed === '1';
+  // Standalone edit mode: edit=1 without embed
+  const standaloneEdit = params.edit === '1' && !embedMode;
 
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
@@ -215,58 +218,68 @@ export default async function SitePreviewPage({
               className="text-xs font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'system-ui, sans-serif' }}
             >
-              Preview
+              {standaloneEdit ? 'Editing' : 'Preview'}
             </span>
             <span
-              className="text-xs"
+              className="text-xs hidden sm:inline"
               style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'system-ui, sans-serif' }}
             >
               {profile.name} · {effectiveTemplateId} · {config.handle}.{config.siteDomain}
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Edit / View toggle */}
+            <Link
+              href={standaloneEdit
+                ? `/profile/site/preview?profileId=${profileId}`
+                : `/profile/site/preview?profileId=${profileId}&edit=1`}
+              className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: standaloneEdit ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontFamily: 'system-ui, sans-serif',
+                border: standaloneEdit ? '1px solid rgba(255,255,255,0.5)' : '1px solid transparent',
+              }}
+            >
+              {standaloneEdit ? '← View only' : '✏ Edit site'}
+            </Link>
+
             {config.publishedAt && config.siteUrl ? (
               <a
                 href={config.siteUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs px-3 py-1 rounded border transition-opacity hover:opacity-80"
+                className="text-xs px-3 py-1 rounded border transition-opacity hover:opacity-80 hidden sm:inline-block"
                 style={{
                   color: '#fff',
                   borderColor: 'rgba(255,255,255,0.4)',
                   fontFamily: 'system-ui, sans-serif',
                 }}
               >
-                Visit live site ↗
+                Live ↗
               </a>
-            ) : (
-              <span
-                className="text-xs"
-                style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'system-ui, sans-serif' }}
-              >
-                Not yet published
-              </span>
-            )}
+            ) : null}
             <Link
               href={`/profile/site?profileId=${profileId}`}
               className="text-xs px-3 py-1.5 rounded font-medium transition-opacity hover:opacity-80"
               style={{
-                background: 'rgba(255,255,255,0.15)',
+                background: 'rgba(255,255,255,0.12)',
                 color: '#fff',
                 fontFamily: 'system-ui, sans-serif',
               }}
             >
-              ← Back to editor
+              ← Editor
             </Link>
           </div>
         </div>
       )}
 
       <div style={{ paddingTop: embedMode ? 0 : '40px' }}>
-        {embedMode ? (
-          // Edit mode: live-reactive wrapper handles bridge overrides client-side
+        {(embedMode || standaloneEdit) ? (
+          // Edit mode: live-reactive wrapper handles overrides client-side
           <EditModeWrapper
             initialData={siteData}
+            profileId={profileId}
             chrome={
               <>
                 {!isWhiteLabel && <ProvenanceSiteBar />}

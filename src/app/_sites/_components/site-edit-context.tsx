@@ -3,14 +3,16 @@
 /**
  * SiteEditContext
  *
- * Lives inside the preview iframe. When edit=1, this provider:
- *  - Holds a live override of SiteData fields in client state
- *  - Listens for postMessage from the parent editor window (same-origin)
- *  - Posts change events back up so the editor can sync its own state
+ * Lives inside the preview (iframe or standalone page). When edit=1:
+ *  - Holds live override of SiteData fields in client state
+ *
+ * Two modes:
+ *  - Iframe mode   (window.parent !== window): bridges with parent editor via postMessage
+ *  - Standalone mode (window.parent === window): applies changes directly to local state;
+ *    a StandaloneSaveBar reads overrides and calls upsertSiteAction.
  *
  * Templates read from this context via `useSiteEdit()`.
- * When edit mode is off (public site), context values are null/false and all
- * client components degrade to pure-render.
+ * When edit mode is off (public site), context values are null/false.
  */
 
 import {
@@ -19,6 +21,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { SiteData, SiteSectionKey } from '../types';
@@ -60,14 +63,23 @@ export type SiteEditOverrides = {
 
 type SiteEditContextValue = {
   isEditMode: boolean;
+  /** True when running as a standalone page (not inside an editor iframe). */
+  isStandalone: boolean;
   overrides: SiteEditOverrides;
   postUp: (msg: PreviewToEditorMessage) => void;
+  /** Standalone mode: directly patch the overrides state (e.g. after image upload). */
+  applyOverride: (patch: Partial<SiteEditOverrides>) => void;
+  /** Standalone mode: register the function that opens the file input for image uploads. */
+  registerImageUploadHandler: (fn: (field: 'hero' | 'logo') => void) => void;
 };
 
 const SiteEditContext = createContext<SiteEditContextValue>({
   isEditMode: false,
+  isStandalone: false,
   overrides: {},
   postUp: () => {},
+  applyOverride: () => {},
+  registerImageUploadHandler: () => {},
 });
 
 export function useSiteEdit() {
@@ -78,14 +90,54 @@ export function useSiteEdit() {
 
 export function SiteEditProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<SiteEditOverrides>({});
+  // Resolved client-side only so SSR never sees it
+  const [isStandalone, setIsStandalone] = useState(false);
+  const imageUploadHandlerRef = useRef<((field: 'hero' | 'logo') => void) | null>(null);
+
+  useEffect(() => {
+    setIsStandalone(window.parent === window);
+  }, []);
+
+  const applyOverride = useCallback((patch: Partial<SiteEditOverrides>) => {
+    setOverrides((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const registerImageUploadHandler = useCallback((fn: (field: 'hero' | 'logo') => void) => {
+    imageUploadHandlerRef.current = fn;
+  }, []);
 
   const postUp = useCallback((msg: PreviewToEditorMessage) => {
-    if (typeof window === 'undefined' || !window.parent || window.parent === window) return;
-    console.log('[SiteEdit] postUp', msg.type);
-    window.parent.postMessage({ __provenanceSiteEdit: true, ...msg }, window.location.origin);
+    if (typeof window === 'undefined') return;
+
+    if (window.parent === window) {
+      // ── Standalone mode: apply changes directly to local state ──
+      console.log('[SiteEdit] standalone postUp', msg.type);
+      if (msg.type === 'EDIT_TEXT') {
+        const { field, value } = msg.payload;
+        setOverrides((prev) => ({ ...prev, [field]: value }));
+      } else if (msg.type === 'EDIT_CTA') {
+        setOverrides((prev) => ({ ...prev, cta: { label: msg.payload.label, url: msg.payload.url } }));
+      } else if (msg.type === 'EDIT_SECTION_ORDER') {
+        setOverrides((prev) => ({ ...prev, section_order: msg.payload.order }));
+      } else if (msg.type === 'EDIT_SECTION_VISIBILITY') {
+        setOverrides((prev) => ({
+          ...prev,
+          sections: { ...prev.sections, [msg.payload.key]: msg.payload.visible },
+        }));
+      } else if (msg.type === 'REQUEST_IMAGE_UPLOAD') {
+        imageUploadHandlerRef.current?.(msg.payload.field);
+      }
+    } else {
+      // ── Iframe mode: post to parent editor ──
+      console.log('[SiteEdit] postUp', msg.type);
+      window.parent.postMessage({ __provenanceSiteEdit: true, ...msg }, window.location.origin);
+    }
   }, []);
 
   useEffect(() => {
+    // Iframe mode only: listen for messages from parent editor
+    if (typeof window === 'undefined' || window.parent === window) return;
+
     function onMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
       const data = event.data as EditorToPreviewMessage & { __provenanceSiteEdit?: boolean };
@@ -114,7 +166,14 @@ export function SiteEditProvider({ children }: { children: ReactNode }) {
   }, [postUp]);
 
   return (
-    <SiteEditContext.Provider value={{ isEditMode: true, overrides, postUp }}>
+    <SiteEditContext.Provider value={{
+      isEditMode: true,
+      isStandalone,
+      overrides,
+      postUp,
+      applyOverride,
+      registerImageUploadHandler,
+    }}>
       {children}
     </SiteEditContext.Provider>
   );
