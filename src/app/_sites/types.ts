@@ -61,13 +61,6 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     category: 'original',
   },
   {
-    id: 'studio',
-    name: 'Studio',
-    description: 'Minimalist grid. Artwork-first, clean and fast.',
-    bestFor: 'Artists',
-    category: 'original',
-  },
-  {
     id: 'atelier',
     name: 'Atelier',
     description: 'Single-page narrative scroll. Story-driven.',
@@ -79,20 +72,6 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     name: 'Whitecube',
     description: 'White-cube gallery. Vast whitespace, one work per wall.',
     bestFor: 'Contemporary artists',
-    category: 'museum',
-  },
-  {
-    id: 'vitrine',
-    name: 'Vitrine',
-    description: 'Dark exhibition hall. Spotlit works with didactic panels.',
-    bestFor: 'Sculpture & installation',
-    category: 'museum',
-  },
-  {
-    id: 'salon',
-    name: 'Salon',
-    description: 'Salon hang. Dense masonry wall of varied sizes.',
-    bestFor: 'Painters & mixed media',
     category: 'museum',
   },
   {
@@ -114,13 +93,6 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     name: 'Folio',
     description: 'Narrow centered column. One work after another, book-like.',
     bestFor: 'Printmakers & illustrators',
-    category: 'minimal',
-  },
-  {
-    id: 'index',
-    name: 'Index',
-    description: 'Swiss archive. Strict table of works, almost no decoration.',
-    bestFor: 'Archives & estates',
     category: 'minimal',
   },
   {
@@ -146,13 +118,6 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
   },
   // Statement templates — Contino-inspired
   {
-    id: 'manifesto',
-    name: 'Manifesto',
-    description: 'Emotion-led. Giant typographic hero, alternating full-width case-study rows.',
-    bestFor: 'Studios & brand-forward artists',
-    category: 'statement',
-  },
-  {
     id: 'billboard',
     name: 'Billboard',
     description: 'Bold color blocks, oversized headlines, two-column work grid.',
@@ -165,13 +130,6 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     name: 'Shopfront',
     description: 'Product-card grid, sale prices and sold badges. Shop-feel.',
     bestFor: 'Artists selling work directly',
-    category: 'statement',
-  },
-  {
-    id: 'poster',
-    name: 'Poster',
-    description: 'Playful tilted tiles, big friendly type, news-board press section.',
-    bestFor: 'Illustrators & printmakers',
     category: 'statement',
   },
   // Archive templates — James Jean-inspired

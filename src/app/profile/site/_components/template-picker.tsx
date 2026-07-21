@@ -31,14 +31,6 @@ function TemplateWireframe({ id }: { id: TemplateId }) {
           </div>
         </div>
       );
-    case 'studio':
-      return (
-        <div className="grid grid-cols-3 gap-0.5 h-full p-1">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={cn(base, 'aspect-square')} />
-          ))}
-        </div>
-      );
     case 'atelier':
       return (
         <div className="flex flex-col gap-1 h-full p-1">
@@ -55,26 +47,6 @@ function TemplateWireframe({ id }: { id: TemplateId }) {
         <div className="flex flex-col items-center justify-center gap-1.5 h-full p-2">
           <div className={cn(base, 'w-8 h-10')} />
           <div className="w-6 h-0.5 bg-wine/25 rounded-full" />
-        </div>
-      );
-    case 'vitrine':
-      return (
-        <div className="flex h-full p-1 bg-neutral-900/10 rounded">
-          <div className={cn(base, 'flex-1 bg-wine/25')} />
-          <div className="w-3 flex flex-col gap-0.5 p-0.5">
-            <div className="h-1 w-full bg-wine/30 rounded-sm" />
-            <div className="h-0.5 w-2/3 bg-wine/20 rounded-sm" />
-            <div className="flex-1" />
-          </div>
-        </div>
-      );
-    case 'salon':
-      return (
-        <div className="grid grid-cols-3 grid-rows-3 gap-0.5 h-full p-1">
-          <div className={cn(base, 'col-span-1 row-span-2')} />
-          <div className={cn(base, 'col-span-2')} />
-          <div className={cn(base)} />
-          <div className={cn(base, 'col-span-2 row-span-1')} />
         </div>
       );
     case 'pavilion':
@@ -120,18 +92,6 @@ function TemplateWireframe({ id }: { id: TemplateId }) {
           <div className={cn(base, 'w-6 h-8')} />
           <div className="w-4 h-0.5 bg-wine/20" />
           <div className={cn(base, 'w-6 h-8 opacity-60')} />
-        </div>
-      );
-    case 'index':
-      return (
-        <div className="flex flex-col gap-0.5 h-full p-1.5">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-sm bg-wine/20" />
-              <div className="w-2 h-2 rounded-sm bg-wine/15 border border-wine/20" />
-              <div className="flex-1 h-0.5 bg-wine/20 rounded-sm" />
-            </div>
-          ))}
         </div>
       );
     case 'concrete':
