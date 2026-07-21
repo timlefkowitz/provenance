@@ -7,6 +7,7 @@ import { WhitecubeTemplate } from './whitecube';
 import { VitrineTemplate } from './vitrine';
 import { SalonTemplate } from './salon';
 import { PavilionTemplate } from './pavilion';
+import { CabinetTemplate } from './cabinet';
 import { FolioTemplate } from './folio';
 import { IndexTemplate } from './index-template';
 import { ConcreteTemplate } from './concrete';
@@ -30,6 +31,7 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, TemplateComponent> = {
   vitrine: VitrineTemplate,
   salon: SalonTemplate,
   pavilion: PavilionTemplate,
+  cabinet: CabinetTemplate,
   folio: FolioTemplate,
   index: IndexTemplate,
   concrete: ConcreteTemplate,

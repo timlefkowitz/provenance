@@ -89,6 +89,31 @@ function TemplateWireframe({ id }: { id: TemplateId }) {
           </div>
         </div>
       );
+    case 'cabinet':
+      return (
+        <div className="flex h-full p-1 gap-1">
+          {/* TOC rail */}
+          <div className="flex flex-col gap-0.5 w-5 pt-1">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-0.5">
+                <div className="w-1 h-0.5 bg-wine/40 rounded-sm" />
+                <div className="flex-1 h-px border-b border-dotted border-wine/30" />
+              </div>
+            ))}
+          </div>
+          {/* Content area */}
+          <div className="flex flex-col gap-1 flex-1">
+            <div className={cn(base, 'h-5 w-full')} />
+            <div className="flex gap-0.5 flex-1 mt-0.5">
+              <div className={cn(base, 'flex-1')} />
+              <div className="flex flex-col gap-0.5 flex-1">
+                <div className={cn(base, 'h-1.5')} />
+                <div className={cn(base, 'h-1')} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     case 'folio':
       return (
         <div className="flex flex-col items-center gap-1 h-full p-2">

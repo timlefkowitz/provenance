@@ -10,6 +10,7 @@ export type TemplateId =
   | 'vitrine'
   | 'salon'
   | 'pavilion'
+  | 'cabinet'
   | 'folio'
   | 'index'
   | 'concrete'
@@ -99,6 +100,13 @@ export const SITE_TEMPLATES: SiteTemplateMeta[] = [
     name: 'Pavilion',
     description: 'Biennale poster typography. Exhibitions take center stage.',
     bestFor: 'Galleries & fairs',
+    category: 'museum',
+  },
+  {
+    id: 'cabinet',
+    name: 'Cabinet',
+    description: 'Curatorial catalog. Roman-numeral plates, dotted-leader table of contents, warm serif typography.',
+    bestFor: 'Estates & catalogued archives',
     category: 'museum',
   },
   {
