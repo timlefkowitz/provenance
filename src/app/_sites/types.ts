@@ -174,6 +174,33 @@ export type SiteSections = {
   contact: boolean;
 };
 
+/** Keys for the orderable content sections (cv excluded — no template renders it yet). */
+export type SiteSectionKey = 'bio' | 'artworks' | 'exhibitions' | 'press' | 'contact';
+
+export const ORDERABLE_SECTION_KEYS: SiteSectionKey[] = [
+  'bio',
+  'artworks',
+  'exhibitions',
+  'press',
+  'contact',
+];
+
+export const DEFAULT_SECTION_ORDER: SiteSectionKey[] = [
+  'bio',
+  'artworks',
+  'exhibitions',
+  'press',
+  'contact',
+];
+
+export const SECTION_LABELS: Record<SiteSectionKey, string> = {
+  bio: 'About',
+  artworks: 'Works',
+  exhibitions: 'Exhibitions',
+  press: 'Press',
+  contact: 'Contact',
+};
+
 export type SiteCta = {
   label: string;
   url: string;
@@ -246,6 +273,8 @@ export type SiteData = {
   custom_domain: string | null;
   /** When true, no Provenance navbar or powered-by footer (paid/trial) */
   is_white_label: boolean;
+  /** Ordered array of section keys. null = template default order. */
+  section_order: SiteSectionKey[] | null;
 };
 
 /** Constrained accent color palette for site theming */

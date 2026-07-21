@@ -10,6 +10,10 @@ import { SiteExhibitionList } from '../_components/site-exhibition-list';
 import { SitePressList } from '../_components/site-press-list';
 import { SiteContactBlock } from '../_components/site-contact-block';
 import { SiteCtaButton } from '../_components/site-cta-button';
+import { OrderedSections } from '../_components/ordered-sections';
+import { EditableText } from '../_components/editable-text';
+import { EditableImage } from '../_components/editable-image';
+import { EditableCta } from '../_components/editable-cta';
 import { resolveAccent, resolveSurface, borderColor, mutedText } from './palette';
 
 export function StudioTemplate({ site }: { site: SiteData }) {
@@ -20,16 +24,18 @@ export function StudioTemplate({ site }: { site: SiteData }) {
 
       {/* ── HERO BANNER (optional) ── */}
       {site.hero_image_url && (
-        <div className="relative w-full h-48 md:h-72 overflow-hidden border-b" style={{ borderColor: borderColor(site.surface_color) }}>
-          <Image
-            src={site.hero_image_url}
-            alt={site.name}
-            fill
-            className="object-cover"
-            unoptimized
-            priority
-          />
-        </div>
+        <EditableImage field="hero">
+          <div className="relative w-full h-48 md:h-72 overflow-hidden border-b" style={{ borderColor: borderColor(site.surface_color) }}>
+            <Image
+              src={site.hero_image_url}
+              alt={site.name}
+              fill
+              className="object-cover"
+              unoptimized
+              priority
+            />
+          </div>
+        </EditableImage>
       )}
 
       {/* ── HEADER ── */}
@@ -49,28 +55,34 @@ export function StudioTemplate({ site }: { site: SiteData }) {
             )}
             <div>
               {site.logo_image_url ? (
-                <Image
-                  src={site.logo_image_url}
-                  alt={site.display_name ?? site.name}
-                  width={0}
-                  height={0}
-                  sizes="100vw"
-                  className="h-7 w-auto object-contain"
-                />
+                <EditableImage field="logo">
+                  <Image
+                    src={site.logo_image_url}
+                    alt={site.display_name ?? site.name}
+                    width={0}
+                    height={0}
+                    sizes="100vw"
+                    className="h-7 w-auto object-contain"
+                  />
+                </EditableImage>
               ) : (
                 <h1 className="text-base font-semibold tracking-tight" style={{ color: surface.ink }}>
-                  {site.display_name ?? site.name}
+                  <EditableText
+                    field="display_name"
+                    value={site.display_name ?? site.name}
+                    placeholder="Your name"
+                    as="span"
+                  />
                 </h1>
               )}
-              {site.tagline ? (
-                <p className="text-xs mt-0.5" style={{ color: mutedText(site.surface_color) }}>
-                  {site.tagline}
-                </p>
-              ) : (site.medium || site.location) ? (
-                <p className="text-xs mt-0.5" style={{ color: mutedText(site.surface_color) }}>
-                  {[site.medium, site.location].filter(Boolean).join(' · ')}
-                </p>
-              ) : null}
+              <EditableText
+                field="tagline"
+                value={site.tagline ?? null}
+                placeholder={`${site.medium ?? site.role}`}
+                as="p"
+                className="text-xs mt-0.5"
+                style={{ color: mutedText(site.surface_color) }}
+              />
             </div>
           </div>
 
@@ -95,86 +107,98 @@ export function StudioTemplate({ site }: { site: SiteData }) {
                 Contact
               </a>
             )}
-            {site.cta && <SiteCtaButton cta={site.cta} />}
+            {site.cta && (
+              <EditableCta cta={site.cta}>
+                <SiteCtaButton cta={site.cta} />
+              </EditableCta>
+            )}
           </nav>
         </div>
       </header>
 
-      {/* ── BIO ── */}
-      {site.sections.bio && site.bio && (
-        <section className="max-w-6xl mx-auto px-6 py-10 border-b" style={{ borderColor: '#e4e4e4' }}>
-          <p className="text-sm leading-relaxed max-w-2xl" style={{ color: '#444' }}>
-            {site.bio}
-          </p>
-        </section>
-      )}
-
-      {/* ── WORKS (dominant grid) ── */}
-      {site.sections.artworks && site.artworks.length > 0 && (
-        <section id="works" className="max-w-6xl mx-auto px-6 py-10">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-xs uppercase tracking-[0.15em]" style={{ color: accentColor }}>
-              Works
-            </span>
-            <span className="text-xs" style={{ color: '#ccc' }}>
-              {site.artworks.length}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {site.artworks.map((artwork) => (
-              <SiteArtworkCard
-                key={artwork.id}
-                artwork={artwork}
-                handle={site.handle}
-                accentColor={accentColor}
+      {/* ── ORDERED SECTIONS ── */}
+      <OrderedSections
+        order={site.section_order}
+        sections={site.sections}
+        accentColor={accentColor}
+        slots={{
+          bio: site.bio ? (
+            <section className="max-w-6xl mx-auto px-6 py-10 border-b" style={{ borderColor: '#e4e4e4' }}>
+              <EditableText
+                field="bio"
+                value={site.bio}
+                placeholder="Write a short bio…"
+                as="p"
+                className="text-sm leading-relaxed max-w-2xl"
+                style={{ color: '#444' }}
               />
-            ))}
-          </div>
-        </section>
-      )}
+            </section>
+          ) : undefined,
 
-      {/* ── EXHIBITIONS ── */}
-      {site.sections.exhibitions && site.exhibitions.length > 0 && (
-        <section id="exhibitions" className="border-t" style={{ borderColor: '#e4e4e4' }}>
-          <div className="max-w-6xl mx-auto px-6 py-10">
-            <span className="block text-xs uppercase tracking-[0.15em] mb-6" style={{ color: accentColor }}>
-              Exhibitions
-            </span>
-            <SiteExhibitionList exhibitions={site.exhibitions} handle={site.handle} />
-          </div>
-        </section>
-      )}
+          artworks: site.artworks.length > 0 ? (
+            <section id="works" className="max-w-6xl mx-auto px-6 py-10">
+              <div className="flex items-center justify-between mb-6">
+                <span className="text-xs uppercase tracking-[0.15em]" style={{ color: accentColor }}>
+                  Works
+                </span>
+                <span className="text-xs" style={{ color: '#ccc' }}>
+                  {site.artworks.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {site.artworks.map((artwork) => (
+                  <SiteArtworkCard
+                    key={artwork.id}
+                    artwork={artwork}
+                    handle={site.handle}
+                    accentColor={accentColor}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : undefined,
 
-      {/* ── PRESS ── */}
-      {site.sections.press && site.press.length > 0 && (
-        <section id="press" className="border-t" style={{ borderColor: '#e4e4e4' }}>
-          <div className="max-w-6xl mx-auto px-6 py-10">
-            <span className="block text-xs uppercase tracking-[0.15em] mb-6" style={{ color: accentColor }}>
-              Press
-            </span>
-            <div className="max-w-xl">
-              <SitePressList press={site.press} />
-            </div>
-          </div>
-        </section>
-      )}
+          exhibitions: site.exhibitions.length > 0 ? (
+            <section id="exhibitions" className="border-t" style={{ borderColor: '#e4e4e4' }}>
+              <div className="max-w-6xl mx-auto px-6 py-10">
+                <span className="block text-xs uppercase tracking-[0.15em] mb-6" style={{ color: accentColor }}>
+                  Exhibitions
+                </span>
+                <SiteExhibitionList exhibitions={site.exhibitions} handle={site.handle} />
+              </div>
+            </section>
+          ) : undefined,
 
-      {/* ── CONTACT ── */}
-      {site.sections.contact && (
-        <section id="contact" className="border-t" style={{ borderColor: '#e4e4e4' }}>
-          <div className="max-w-6xl mx-auto px-6 py-10">
-            <span className="block text-xs uppercase tracking-[0.15em] mb-6" style={{ color: accentColor }}>
-              Contact
-            </span>
-            <SiteContactBlock
-              name={site.name}
-              website={site.website}
-              location={site.location}
-              medium={site.medium}
-            />
-          </div>
-        </section>
-      )}
+          press: site.press.length > 0 ? (
+            <section id="press" className="border-t" style={{ borderColor: '#e4e4e4' }}>
+              <div className="max-w-6xl mx-auto px-6 py-10">
+                <span className="block text-xs uppercase tracking-[0.15em] mb-6" style={{ color: accentColor }}>
+                  Press
+                </span>
+                <div className="max-w-xl">
+                  <SitePressList press={site.press} />
+                </div>
+              </div>
+            </section>
+          ) : undefined,
+
+          contact: (
+            <section id="contact" className="border-t" style={{ borderColor: '#e4e4e4' }}>
+              <div className="max-w-6xl mx-auto px-6 py-10">
+                <span className="block text-xs uppercase tracking-[0.15em] mb-6" style={{ color: accentColor }}>
+                  Contact
+                </span>
+                <SiteContactBlock
+                  name={site.name}
+                  website={site.website}
+                  location={site.location}
+                  medium={site.medium}
+                />
+              </div>
+            </section>
+          ),
+        }}
+      />
     </div>
   );
 }

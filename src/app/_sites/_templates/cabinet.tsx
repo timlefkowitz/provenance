@@ -9,6 +9,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { SiteData } from '../types';
 import { resolveAccent, resolveSurface, isDarkSurface } from './palette';
+import { EditableText } from '../_components/editable-text';
+import { EditableImage } from '../_components/editable-image';
+import { EditableCta } from '../_components/editable-cta';
 
 /* ── local helpers (alpha tints not covered by palette.ts) ── */
 
@@ -185,18 +188,13 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
               className="mt-6 font-normal leading-[0.95] tracking-tight"
               style={{ fontSize: 'clamp(3rem, 8vw, 6.5rem)', letterSpacing: '-0.02em' }}
             >
-              {displayName}
+              <EditableText field="display_name" value={displayName} placeholder="Your name" as="span" />
               <span style={{ color: accentHex }}>.</span>
             </h1>
 
-            {site.tagline && (
-              <p
-                className="mt-6 max-w-lg italic leading-snug"
-                style={{ fontSize: 'clamp(1.15rem, 1.6vw, 1.5rem)', color: withAlpha(ink, 0.82) }}
-              >
-                "{site.tagline}"
-              </p>
-            )}
+            <p className="mt-6 max-w-lg italic leading-snug" style={{ fontSize: 'clamp(1.15rem, 1.6vw, 1.5rem)', color: withAlpha(ink, 0.82) }}>
+              "<EditableText field="tagline" value={site.tagline} placeholder="Your tagline…" as="span" />"
+            </p>
 
             <dl className="mt-10 grid grid-cols-2 gap-y-4 font-mono text-[11px] uppercase tracking-[0.18em]" style={{ color: ink }}>
               {site.location && (
@@ -244,16 +242,18 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
                 aria-hidden
               />
               {site.hero_image_url ? (
-                <div className="relative aspect-[4/5] w-full md:aspect-[5/6]">
-                  <Image
-                    src={site.hero_image_url}
-                    alt={`${displayName} — frontispiece`}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                    priority
-                  />
-                </div>
+                <EditableImage field="hero">
+                  <div className="relative aspect-[4/5] w-full md:aspect-[5/6]">
+                    <Image
+                      src={site.hero_image_url}
+                      alt={`${displayName} — frontispiece`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                      priority
+                    />
+                  </div>
+                </EditableImage>
               ) : site.picture_url ? (
                 <div className="relative aspect-[4/5] w-full md:aspect-[5/6]">
                   <Image
@@ -333,19 +333,12 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
             {showBio && (
               <section className="mb-24">
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
-                  <p
-                    className="md:col-span-8 md:col-start-1"
-                    style={{ fontSize: 'clamp(1.15rem, 1.5vw, 1.4rem)', lineHeight: 1.55, color: withAlpha(ink, 0.9) }}
-                  >
-                    <span
-                      className="float-left mr-3 mt-1 font-normal leading-[0.8]"
-                      style={{ fontSize: '4.5rem', color: accentHex, fontFamily: 'inherit' }}
-                      aria-hidden
-                    >
+                  <div className="md:col-span-8 md:col-start-1" style={{ fontSize: 'clamp(1.15rem, 1.5vw, 1.4rem)', lineHeight: 1.55, color: withAlpha(ink, 0.9) }}>
+                    <span className="float-left mr-3 mt-1 font-normal leading-[0.8]" style={{ fontSize: '4.5rem', color: accentHex, fontFamily: 'inherit' }} aria-hidden>
                       {(site.bio ?? '')[0]}
                     </span>
-                    {(site.bio ?? '').slice(1)}
-                  </p>
+                    <EditableText field="bio" value={site.bio} placeholder="Write a short bio…" as="span" />
+                  </div>
                 </div>
               </section>
             )}
@@ -598,15 +591,17 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
                       <div className="font-mono text-[10px] uppercase tracking-[0.28em]" style={{ color: muted }}>
                         Enquire
                       </div>
-                      <a
-                        href={site.cta.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-opacity hover:opacity-80"
-                        style={{ backgroundColor: accentHex, color: isDark(accentHex) ? '#FFFFFF' : '#111111' }}
-                      >
-                        {site.cta.label} <span aria-hidden>↗</span>
-                      </a>
+                      <EditableCta cta={site.cta}>
+                        <a
+                          href={site.cta.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-opacity hover:opacity-80"
+                          style={{ backgroundColor: accentHex, color: isDark(accentHex) ? '#FFFFFF' : '#111111' }}
+                        >
+                          {site.cta.label} <span aria-hidden>↗</span>
+                        </a>
+                      </EditableCta>
                     </div>
                   )}
                 </div>

@@ -8,11 +8,13 @@ import type {
   SiteSections,
   SiteCta,
   SiteArtworkFilters,
+  SiteSectionKey,
 } from '~/app/_sites/types';
 import {
   DEFAULT_SECTIONS,
   DEFAULT_THEME,
   DEFAULT_ARTWORK_FILTERS,
+  ORDERABLE_SECTION_KEYS,
 } from '~/app/_sites/types';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { validateHandleAction } from './validate-handle';
@@ -35,6 +37,8 @@ export type UpsertSiteInput = {
   artworkFilters?: Partial<SiteArtworkFilters>;
   /** Ordered array of artwork UUIDs to pin. Pass empty array for automatic mode. */
   featuredArtworkIds?: string[];
+  /** Section display order. null / undefined = preserve existing / template default. */
+  sectionOrder?: SiteSectionKey[] | null;
 };
 
 export type UpsertSiteResult =
@@ -130,7 +134,16 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     ? Array.from(new Set(input.featuredArtworkIds.filter((id) => UUID_RE.test(id)))).slice(0, 24)
     : undefined;
 
+  // Sanitize section_order: only valid keys, at most 5 entries
+  const sectionOrder =
+    input.sectionOrder !== undefined
+      ? input.sectionOrder === null
+        ? null
+        : Array.from(new Set(input.sectionOrder.filter((k) => ORDERABLE_SECTION_KEYS.includes(k)))).slice(0, 5)
+      : undefined;
+
   // Full payload — requires migration 20260514 (extra columns) + 20260708000000 (featured_artwork_ids)
+  //               + 20260721000001 (section_order)
   const fullPayload = {
     profile_id: input.profileId,
     handle: handleResult.normalized,
@@ -146,6 +159,7 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     surface_color: input.surfaceColor ?? null,
     artwork_filters: artworkFilters,
     ...(featuredArtworkIds !== undefined ? { featured_artwork_ids: featuredArtworkIds } : {}),
+    ...(sectionOrder !== undefined ? { section_order: sectionOrder } : {}),
     updated_at: new Date().toISOString(),
   };
 

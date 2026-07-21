@@ -16,8 +16,9 @@ import {
   ProvenanceSiteBar,
   PoweredByProvenanceFooter,
 } from '~/app/_sites/_components/provenance-site-bar';
-import type { SiteData, TemplateId } from '~/app/_sites/types';
-import { SITE_TEMPLATES } from '~/app/_sites/types';
+import { EditModeWrapper } from './_components/edit-mode-wrapper';
+import type { SiteData, TemplateId, SiteSectionKey } from '~/app/_sites/types';
+import { SITE_TEMPLATES, ORDERABLE_SECTION_KEYS } from '~/app/_sites/types';
 import {
   getEligibleSiteArtworks,
   getFeaturedSiteArtworks,
@@ -194,6 +195,7 @@ export default async function SitePreviewPage({
     surface_color: effectiveSurface,
     custom_domain: config.customDomainVerifiedAt ? config.customDomain : null,
     is_white_label: isWhiteLabel,
+    section_order: config.sectionOrder,
   };
 
   const accentColor = resolveAccent(effectiveAccent);
@@ -261,9 +263,23 @@ export default async function SitePreviewPage({
       )}
 
       <div style={{ paddingTop: embedMode ? 0 : '40px' }}>
-        {!isWhiteLabel && <ProvenanceSiteBar />}
-        {renderSiteTemplate(siteData)}
-        {!isWhiteLabel && <PoweredByProvenanceFooter />}
+        {embedMode ? (
+          // Edit mode: live-reactive wrapper handles bridge overrides client-side
+          <EditModeWrapper
+            initialData={siteData}
+            chrome={
+              <>
+                {!isWhiteLabel && <ProvenanceSiteBar />}
+              </>
+            }
+          />
+        ) : (
+          <>
+            {!isWhiteLabel && <ProvenanceSiteBar />}
+            {renderSiteTemplate(siteData)}
+          </>
+        )}
+        {!embedMode && !isWhiteLabel && <PoweredByProvenanceFooter />}
       </div>
     </div>
   );

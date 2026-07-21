@@ -8,12 +8,14 @@ import type {
   SiteSections,
   SiteCta,
   SiteArtworkFilters,
+  SiteSectionKey,
 } from '~/app/_sites/types';
 import {
   DEFAULT_THEME,
   DEFAULT_SECTIONS,
   DEFAULT_ARTWORK_FILTERS,
   DEFAULT_SURFACE,
+  ORDERABLE_SECTION_KEYS,
 } from '~/app/_sites/types';
 
 export type SiteConfig = {
@@ -34,6 +36,8 @@ export type SiteConfig = {
   artworkFilters: SiteArtworkFilters;
   /** Ordered array of artwork UUIDs pinned for curation. Empty = auto. */
   featuredArtworkIds: string[];
+  /** Section display order. null = template default. */
+  sectionOrder: SiteSectionKey[] | null;
   publishedAt: string | null;
   siteUrl: string | null;
   /** Root hostname without www. (e.g. "provenance.guru") */
@@ -41,6 +45,12 @@ export type SiteConfig = {
   customDomain: string | null;
   customDomainVerifiedAt: string | null;
 };
+
+function parseSectionOrder(raw: unknown): SiteSectionKey[] | null {
+  if (!Array.isArray(raw)) return null;
+  const valid = raw.filter((k): k is SiteSectionKey => ORDERABLE_SECTION_KEYS.includes(k as SiteSectionKey));
+  return valid.length > 0 ? valid : null;
+}
 
 /**
  * Fetch the site config for a profile. Returns null if no row exists yet.
@@ -85,6 +95,7 @@ export async function getSiteConfig(profileId: string): Promise<SiteConfig | nul
     surfaceColor: data.surface_color ?? DEFAULT_SURFACE,
     artworkFilters: { ...DEFAULT_ARTWORK_FILTERS, ...(data.artwork_filters ?? {}) },
     featuredArtworkIds: Array.isArray(data.featured_artwork_ids) ? (data.featured_artwork_ids as string[]).filter(Boolean) : [],
+    sectionOrder: parseSectionOrder(data.section_order),
     publishedAt: data.published_at ?? null,
     siteUrl,
     siteDomain,

@@ -7,11 +7,13 @@ import type {
   SiteCta,
   SiteArtworkFilters,
   CertificateTypeKey,
+  SiteSectionKey,
 } from '~/app/_sites/types';
 import {
   DEFAULT_THEME,
   DEFAULT_SECTIONS,
   DEFAULT_ARTWORK_FILTERS,
+  ORDERABLE_SECTION_KEYS,
 } from '~/app/_sites/types';
 import {
   getEligibleSiteArtworks,
@@ -182,6 +184,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     surface_color: siteRow.surface_color ?? null,
     custom_domain: siteRow.custom_domain_verified_at ? (siteRow.custom_domain ?? null) : null,
     is_white_label: isWhiteLabel,
+    section_order: parseSectionOrder(siteRow.section_order),
   };
 }
 
@@ -189,6 +192,12 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
  * Get the SiteData for a profile_id (used in the editor to preview unpublished drafts).
  * Only callable server-side with the authenticated user's session.
  */
+function parseSectionOrder(raw: unknown): SiteSectionKey[] | null {
+  if (!Array.isArray(raw)) return null;
+  const valid = raw.filter((k): k is SiteSectionKey => ORDERABLE_SECTION_KEYS.includes(k as SiteSectionKey));
+  return valid.length > 0 ? valid : null;
+}
+
 // Re-export so preview page and other callers can resolve the root domain consistently
 export function getRootDomain(): string {
   const raw = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru';

@@ -1,16 +1,30 @@
 'use client';
 
-import { useState, useTransition, useRef, useMemo } from 'react';
+import { useState, useTransition, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, Upload, X, RefreshCw, ChevronDown, Sparkles } from 'lucide-react';
+import { Eye, Upload, X, RefreshCw, ChevronDown, Sparkles, GripVertical, Pencil } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Switch } from '@kit/ui/switch';
 import { cn } from '@kit/ui/utils';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type {
   TemplateId,
   SiteTheme,
@@ -18,6 +32,7 @@ import type {
   SiteCta,
   SiteArtworkFilters,
   CertificateTypeKey,
+  SiteSectionKey,
 } from '~/app/_sites/types';
 import {
   SITE_FONT_PAIRINGS,
@@ -27,6 +42,9 @@ import {
   DEFAULT_SURFACE,
   DEFAULT_ARTWORK_FILTERS,
   CERTIFICATE_TYPE_LABELS,
+  ORDERABLE_SECTION_KEYS,
+  DEFAULT_SECTION_ORDER,
+  SECTION_LABELS,
 } from '~/app/_sites/types';
 import { TemplatePicker } from './template-picker';
 import { CustomDomainCard } from './custom-domain-card';
@@ -41,6 +59,7 @@ import { validateHandleAction } from '../_actions/validate-handle';
 import { uploadSiteImage } from '../_actions/upload-site-image';
 import { transferHandleAction } from '../_actions/transfer-handle';
 import { deleteSiteAction } from '../_actions/delete-site';
+import { useSitePreviewBridge } from '../_hooks/use-site-preview-bridge';
 
 const CERT_TYPE_KEYS: CertificateTypeKey[] = ['authenticity', 'ownership', 'show'];
 
@@ -120,6 +139,10 @@ export function SiteEditor({
     initialConfig?.featuredArtworkIds ?? [],
   );
 
+  const [sectionOrder, setSectionOrder] = useState<SiteSectionKey[]>(
+    initialConfig?.sectionOrder ?? DEFAULT_SECTION_ORDER,
+  );
+
   const [publishedAt, setPublishedAt] = useState(initialConfig?.publishedAt ?? null);
   const [siteUrl, setSiteUrl] = useState(initialConfig?.siteUrl ?? null);
 
@@ -132,6 +155,9 @@ export function SiteEditor({
     'idle' | 'saving' | 'saved' | 'error'
   >(initialConfig?.handle ? 'saved' : 'idle');
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Edit mode: when true the iframe receives edit=1 and the bridge is active
+  const [editMode, setEditMode] = useState(false);
 
   // Preview iframe state
   const previewRef = useRef<HTMLIFrameElement>(null);
@@ -166,13 +192,49 @@ export function SiteEditor({
       font: theme.font_pairing,
     });
     if (theme.text_color) params.set('ink', theme.text_color);
+    if (editMode) params.set('edit', '1');
     return `/profile/site/preview?${params.toString()}`;
-  }, [profileId, previewKey, templateId, theme.accent, theme.font_pairing, theme.text_color, surfaceColor]);
+  }, [profileId, previewKey, templateId, theme.accent, theme.font_pairing, theme.text_color, surfaceColor, editMode]);
 
   const editorFontsUrl = useMemo(() => {
     const families = [...new Set(SITE_FONT_PAIRINGS.flatMap((fp) => fp.googleFamilies))];
     return buildGoogleFontsUrl(families);
   }, []);
+
+  // ── Preview bridge (postMessage to/from iframe) ──
+  const bridgeOverrides = useMemo(() => ({
+    displayName,
+    tagline,
+    bio: aboutOverride,
+    sectionOrder,
+    sections,
+    cta: ctaEnabled && cta?.label && cta?.url ? cta : null,
+    heroImageUrl,
+    logoImageUrl,
+    accentColor: theme.accent,
+    surfaceColor,
+  }), [displayName, tagline, aboutOverride, sectionOrder, sections, cta, ctaEnabled, heroImageUrl, logoImageUrl, theme.accent, surfaceColor]);
+
+  const triggerImageUpload = useCallback((field: 'hero' | 'logo') => {
+    if (field === 'hero') fileInputRef.current?.click();
+    else if (field === 'logo') logoFileInputRef.current?.click();
+  }, []);
+
+  const bridgeSetters = useMemo(() => ({
+    setDisplayName,
+    setTagline,
+    setAboutOverride,
+    setSectionOrder,
+    setSections,
+    setCta,
+    setCtaEnabled,
+    setHeroImageUrl,
+    setLogoImageUrl,
+    markUnsaved,
+    triggerImageUpload,
+  }), [triggerImageUpload]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { resetReady } = useSitePreviewBridge(previewRef, bridgeOverrides, bridgeSetters, editMode);
 
   // ── Profile selector ──
   function handleSwitchProfile(newProfileId: string) {
@@ -213,6 +275,7 @@ export function SiteEditor({
       surfaceColor,
       artworkFilters,
       featuredArtworkIds,
+      sectionOrder,
     });
     if (!result.success) {
       console.error('[SiteEditor] persist failed', result.error, {
@@ -894,17 +957,24 @@ export function SiteEditor({
 
         {/* ── SECTIONS ── */}
         <section>
-          <h2 className="text-sm font-semibold text-ink font-serif mb-3">Content sections</h2>
-          <div className="space-y-2.5">
-            {(Object.keys(sections) as (keyof SiteSections)[]).map((key) => (
-              <div key={key} className="flex items-center justify-between">
-                <Label className="font-serif capitalize text-sm text-ink/80">{key}</Label>
-                <Switch
-                  checked={sections[key]}
-                  onCheckedChange={(v) => setSections((prev) => ({ ...prev, [key]: v }))}
-                />
-              </div>
-            ))}
+          <h2 className="text-sm font-semibold text-ink font-serif mb-1">Content sections</h2>
+          <p className="text-xs text-ink/50 font-serif mb-3">Drag to reorder. Toggle to show or hide.</p>
+          <SortableSectionList
+            order={sectionOrder}
+            sections={sections}
+            onOrderChange={(newOrder) => { setSectionOrder(newOrder); markUnsaved(); }}
+            onVisibilityChange={(key, visible) => {
+              setSections((prev) => ({ ...prev, [key]: visible }));
+              markUnsaved();
+            }}
+          />
+          {/* cv section (not orderable) */}
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-wine/10">
+            <Label className="font-serif capitalize text-sm text-ink/80">CV</Label>
+            <Switch
+              checked={sections.cv}
+              onCheckedChange={(v) => { setSections((prev) => ({ ...prev, cv: v })); markUnsaved(); }}
+            />
           </div>
         </section>
 
@@ -1095,7 +1165,31 @@ export function SiteEditor({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
+              {/* Edit mode toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !editMode;
+                  setEditMode(next);
+                  if (next) {
+                    // Remount iframe so it loads with edit=1
+                    setPreviewKey((k) => k + 1);
+                  } else {
+                    setPreviewKey((k) => k + 1);
+                  }
+                }}
+                title={editMode ? 'Exit edit mode' : 'Enter edit mode'}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-serif font-semibold transition-colors',
+                  editMode
+                    ? 'bg-wine text-parchment hover:bg-wine/90'
+                    : 'bg-wine/10 text-wine hover:bg-wine/20',
+                )}
+              >
+                <Pencil className="h-3 w-3" />
+                {editMode ? 'Editing' : 'Edit'}
+              </button>
               <button
                 type="button"
                 onClick={handleRefreshPreview}
@@ -1124,6 +1218,10 @@ export function SiteEditor({
                 src={previewSrc}
                 className="flex-1 w-full"
                 title="Site preview"
+                onLoad={() => {
+                  // When iframe reloads, reset the ready flag so we re-flush state
+                  if (editMode) resetReady();
+                }}
               />
               {/* Overlay nudge: visible only while saving/transferring, shown for a moment */}
             </div>
@@ -1318,6 +1416,95 @@ function ProfileSection({
           </div>
         </button>
       ))}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Sortable section list (content tab)
+// ────────────────────────────────────────────────────────────
+
+function SortableSectionList({
+  order,
+  sections,
+  onOrderChange,
+  onVisibilityChange,
+}: {
+  order: SiteSectionKey[];
+  sections: SiteSections;
+  onOrderChange: (order: SiteSectionKey[]) => void;
+  onVisibilityChange: (key: SiteSectionKey, visible: boolean) => void;
+}) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = order.indexOf(active.id as SiteSectionKey);
+    const newIndex = order.indexOf(over.id as SiteSectionKey);
+    onOrderChange(arrayMove(order, oldIndex, newIndex));
+  }
+
+  return (
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <SortableContext items={order} strategy={verticalListSortingStrategy}>
+        <div className="space-y-1.5">
+          {order.map((key) => (
+            <SortableSectionRow
+              key={key}
+              sectionKey={key}
+              visible={sections[key] ?? true}
+              onVisibilityChange={(v) => onVisibilityChange(key, v)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function SortableSectionRow({
+  sectionKey,
+  visible,
+  onVisibilityChange,
+}: {
+  sectionKey: SiteSectionKey;
+  visible: boolean;
+  onVisibilityChange: (v: boolean) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sectionKey });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors',
+        isDragging ? 'border-wine/40 bg-wine/5 shadow-sm' : 'border-wine/15 bg-white/50 hover:border-wine/30',
+      )}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="p-0.5 text-ink/30 hover:text-ink/60 cursor-grab active:cursor-grabbing"
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Label className="flex-1 font-serif text-sm text-ink/80 cursor-default">
+        {SECTION_LABELS[sectionKey]}
+      </Label>
+      <Switch
+        checked={visible}
+        onCheckedChange={onVisibilityChange}
+      />
     </div>
   );
 }
