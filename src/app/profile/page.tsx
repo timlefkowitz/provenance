@@ -61,12 +61,16 @@ export default async function ProfilePage() {
     (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
   );
 
-  // Fetch artworks user owns or can manage (via gallery team membership); RLS enforces access
+  // Fetch artworks this user owns. Must filter by account_id — the artworks
+  // table's public RLS policy allows any authenticated user to read *any*
+  // verified+public artwork, so relying on RLS alone here would leak other
+  // users' artworks into "Your Artworks".
   const { data: artworks } = await client
     .from('artworks')
     .select(
       'id, title, artist_name, image_url, created_at, certificate_number, description, creation_date',
     )
+    .eq('account_id', user.id)
     .eq('status', 'verified')
     .order('created_at', { ascending: false });
 
