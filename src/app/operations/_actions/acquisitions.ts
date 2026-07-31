@@ -57,12 +57,14 @@ async function applySeller(
   artworkId: string,
   email: string | null,
   prior: PriorS | null,
+  sellerName?: string | null,
 ) {
   const p = prior ?? { seller_email: null, seller_user_id: null };
   const { data: art } = await client.from('artworks').select('title').eq('id', artworkId).maybeSingle();
   const title = (art as { title?: string } | null)?.title?.trim() || 'Artwork';
   const r = await resolveCounterparty({
     email,
+    name: sellerName ?? null,
     role: 'seller',
     recordKind: 'acquisition',
     recordId: acqId,
@@ -132,6 +134,7 @@ export async function createAcquisition(raw: z.infer<typeof createSchema>) {
     d.artwork_id,
     row.seller_email as string | null,
     null,
+    d.seller_name,
   );
   if (row.status === 'accessioned') {
     const { data: cRow } = await client
@@ -229,7 +232,7 @@ export async function updateAcquisition(raw: z.infer<typeof updateSchema>) {
     const info = await applySeller(client, user.id, id, artId, newEmail, {
       seller_email: p0.seller_email ?? null,
       seller_user_id: p0.seller_user_id ?? null,
-    });
+    }, rest.seller_name as string | null | undefined);
     if (newStatus === 'accessioned' && oldStatus && oldStatus !== 'accessioned') {
       const { data: cRow } = await client
         .from('acquisitions')

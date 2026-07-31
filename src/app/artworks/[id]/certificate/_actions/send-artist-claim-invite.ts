@@ -7,6 +7,7 @@ import { normalizeInviteEmail, generateClaimToken, hashClaimToken } from '~/lib/
 import { CERTIFICATE_TYPES, USER_ROLES, getUserRole } from '~/lib/user-roles';
 import { sendArtistCoaInviteEmail } from '~/lib/certificate-claims/send-certificate-invite-email';
 import { logger } from '~/lib/logger';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -119,6 +120,14 @@ export async function sendArtistClaimInvite(
       console.error('[Certificates] sendArtistClaimInvite email failed', emailError);
       logger.error('send_artist_claim_invite_email_failed', { artworkId, userId: user.id, error: emailError });
     }
+
+    await captureCrmContacts(user.id, [
+      {
+        email: normalizedEmail,
+        source: 'certificate',
+        notes: `Artist claim invite sent — artwork ${artworkId}`,
+      },
+    ]);
 
     console.log('[Certificates] sendArtistClaimInvite success', { artworkId });
     return { success: true };

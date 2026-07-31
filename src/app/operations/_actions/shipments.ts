@@ -66,6 +66,7 @@ async function applyShipmentCounterparty(
   shipmentId: string,
   artworkId: string,
   email: string | null,
+  name?: string | null,
   prior: PriorCourier | null,
 ) {
   const p = prior ?? { courier_contact_email: null, courier_user_id: null };
@@ -73,6 +74,7 @@ async function applyShipmentCounterparty(
   const title = (art as { title?: string } | null)?.title?.trim() || 'Artwork';
   const r = await resolveCounterparty({
     email,
+    name: name ?? null,
     role: 'courier',
     recordKind: 'shipment',
     recordId: shipmentId,
@@ -143,6 +145,7 @@ export async function createShipment(raw: z.infer<typeof createSchema>) {
     parsed.data.artwork_id,
     row.courier_contact_email as string | null,
     null,
+    parsed.data.courier_name,
   );
   if (row.status === 'in_transit') {
     const { data: cRow } = await client
@@ -260,7 +263,7 @@ export async function updateShipment(raw: z.infer<typeof updateSchema>) {
     const info = await applyShipmentCounterparty(client, user.id, id, artId, newEmail, {
       courier_contact_email: p0.courier_contact_email ?? null,
       courier_user_id: p0.courier_user_id ?? null,
-    });
+    }, rest.courier_name as string | null | undefined);
     if (newStatus === 'in_transit' && oldStatus && oldStatus !== 'in_transit') {
       const { data: cRow } = await client
         .from('artwork_shipments')

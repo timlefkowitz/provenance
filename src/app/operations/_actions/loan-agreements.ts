@@ -71,6 +71,8 @@ async function applyLoanCounterpartyLinks(
   currentBorrowerEmail: string | null,
   currentLenderEmail: string | null,
   prior: CounterpartyPriorLoan | null,
+  currentBorrowerName?: string | null,
+  currentLenderName?: string | null,
 ) {
   console.log('[Operations/loans] applyLoanCounterpartyLinks', loanId);
   const p: CounterpartyPriorLoan =
@@ -92,6 +94,7 @@ async function applyLoanCounterpartyLinks(
 
   const b = await resolveCounterparty({
     email: currentBorrowerEmail,
+    name: currentBorrowerName ?? null,
     role: 'borrower',
     recordKind: 'loan',
     recordId: loanId,
@@ -103,6 +106,7 @@ async function applyLoanCounterpartyLinks(
   });
   const l = await resolveCounterparty({
     email: currentLenderEmail,
+    name: currentLenderName ?? null,
     role: 'lender',
     recordKind: 'loan',
     recordId: loanId,
@@ -183,6 +187,8 @@ export async function createLoanAgreement(raw: z.infer<typeof createLoanSchema>)
     row.borrower_email,
     row.lender_email,
     null,
+    parsed.data.borrower_name,
+    parsed.data.lender_name,
   );
   console.log('[Operations/loans] createLoanAgreement success', data?.id);
   revalidatePath('/operations');
@@ -288,6 +294,8 @@ export async function updateLoanAgreement(raw: z.infer<typeof updateLoanSchema>)
         borrower_user_id: pRow.borrower_user_id ?? null,
         lender_user_id: pRow.lender_user_id ?? null,
       },
+      rest.borrower_name as string | null | undefined,
+      rest.lender_name as string | null | undefined,
     );
     if (newStatus === 'active' && oldStatus && oldStatus !== 'active') {
       await notifyCounterpartyStatusActive({

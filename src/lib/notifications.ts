@@ -7,6 +7,7 @@ export type NotificationType =
   | 'certificate_claim_request'
   | 'certificate_claim_pending'
   | 'certificate_claimed'
+  | 'certificate_received'
   | 'certificate_verified'
   | 'certificate_rejected'
   | 'artwork_updated'

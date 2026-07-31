@@ -5,6 +5,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 const invoiceStatus = z.enum(['draft', 'sent', 'partial', 'paid', 'overdue']);
 
@@ -126,6 +127,17 @@ export async function createInvoice(raw: z.infer<typeof createInvoiceSchema>) {
     return { success: false as const, error: 'Could not save line items.' };
   }
 
+  if (d.client_email) {
+    await captureCrmContacts(user.id, [
+      {
+        email: d.client_email,
+        name: d.client_name || null,
+        source: 'invoice',
+        notes: `Invoice client — ${d.client_name || d.client_email}`,
+      },
+    ]);
+  }
+
   console.log('[Operations/invoices] createInvoice success', invoiceId);
   revalidatePath('/operations');
   return { success: true as const, id: invoiceId };
@@ -199,6 +211,19 @@ export async function updateInvoice(raw: z.infer<typeof updateInvoiceSchema>) {
       console.error('[Operations/invoices] updateInvoice insert lines failed', insErr);
       return { success: false as const, error: 'Could not save line items.' };
     }
+  }
+
+  const emailToCapture = rest.client_email || null;
+  const nameToCapture = rest.client_name || null;
+  if (emailToCapture) {
+    await captureCrmContacts(user.id, [
+      {
+        email: emailToCapture,
+        name: nameToCapture,
+        source: 'invoice',
+        notes: `Invoice client — ${nameToCapture || emailToCapture}`,
+      },
+    ]);
   }
 
   revalidatePath('/operations');

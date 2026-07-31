@@ -31,8 +31,8 @@ export function NotificationBadge() {
       return count || 0;
     },
     enabled: !!user?.sub,
-    refetchInterval: 120000, // Refetch every 2 minutes
-    refetchOnWindowFocus: false,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true,
   });
 
   if (!user) {

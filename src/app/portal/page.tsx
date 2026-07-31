@@ -627,6 +627,28 @@ export default async function PortalPage() {
         </Card>
       </div>
 
+      {/* Certificate Invites quick-links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardContent className="p-5">
+            <p className="text-sm text-ink/60 font-serif mb-1">Certificate invites received</p>
+            <p className="text-xs text-ink/50 font-serif mb-3">Accept pending claims sent to your email</p>
+            <Button asChild variant="ghost" size="sm" className="font-serif text-wine hover:text-wine/80">
+              <Link href="/portal/pending-claims">View pending claims →</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="border-wine/20 bg-parchment/60">
+          <CardContent className="p-5">
+            <p className="text-sm text-ink/60 font-serif mb-1">Certificate invites sent</p>
+            <p className="text-xs text-ink/50 font-serif mb-3">View and revoke invites you have sent</p>
+            <Button asChild variant="ghost" size="sm" className="font-serif text-wine hover:text-wine/80">
+              <Link href="/portal/sent-invites">View sent invites →</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Provenance Update Requests */}
       <ProvenanceUpdateRequestsList requests={provenanceUpdateRequests} />
 

@@ -21,6 +21,7 @@ export type BatchSendCollectorInvitesResult = {
 export async function batchSendCollectorInvites(
   artworkIds: string[],
   inviteEmail: string,
+  inviteeName?: string,
 ): Promise<BatchSendCollectorInvitesResult> {
   console.log('[Collection] batchSendCollectorInvites started', {
     count: artworkIds.length,
@@ -78,6 +79,7 @@ export async function batchSendCollectorInvites(
     await captureCrmContacts(user.id, [
       {
         email: normalizedEmail,
+        name: inviteeName || null,
         source: 'certificate',
         notes: `Batch certificate of ownership invite (${result.sent} work${result.sent === 1 ? '' : 's'})`,
       },

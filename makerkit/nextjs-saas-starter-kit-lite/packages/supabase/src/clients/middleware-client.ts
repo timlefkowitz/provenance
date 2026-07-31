@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 import { Database } from '../database.types';
 import { getHardenedCookieOptions } from '../cookie-options';
@@ -52,7 +52,13 @@ export function createMiddlewareClient<GenericSchema = Database>(
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet, headers) {
+      setAll(
+        cookiesToSet: {
+          name: string;
+          value: string;
+          options: CookieOptions;
+        }[],
+      ) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
@@ -61,10 +67,12 @@ export function createMiddlewareClient<GenericSchema = Database>(
           response.cookies.set(name, value, options),
         );
 
-        // @supabase/ssr v0.10+ passes Cache-Control / Expires / Pragma on token
-        // refresh so CDNs do not cache auth responses and leak sessions.
-        Object.entries(headers ?? {}).forEach(([key, value]) =>
-          response.headers.set(key, value),
+        // Auth cookies were just (re)written on this response — make sure
+        // CDNs/proxies never cache it, or a stale/rotated session could leak
+        // to another visitor.
+        response.headers.set(
+          'Cache-Control',
+          'no-cache, no-store, max-age=0, must-revalidate',
         );
       },
     },

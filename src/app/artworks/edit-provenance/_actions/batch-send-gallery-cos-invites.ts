@@ -8,6 +8,7 @@ import {
   commitCertificateInviteBatch,
 } from '~/lib/certificate-claims/create-invite-batch';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 export type BatchSendGalleryCoSInvitesResult = {
   sent: number;
@@ -95,6 +96,16 @@ export async function batchSendGalleryCoSInvites(
     sent: result.sent,
     errorCount: errors.length,
   });
+
+  if (result.sent > 0) {
+    await captureCrmContacts(user.id, [
+      {
+        email: normalizedEmail,
+        source: 'certificate',
+        notes: `Gallery CoS invite (${recipientRole}, ${result.sent} work${result.sent === 1 ? '' : 's'})`,
+      },
+    ]);
+  }
 
   return { sent: result.sent, errors };
 }

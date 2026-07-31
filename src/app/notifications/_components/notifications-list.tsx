@@ -92,6 +92,7 @@ export function NotificationsList({
     switch (type) {
       case 'certificate_claim_request':
       case 'certificate_claimed':
+      case 'certificate_received':
       case 'certificate_verified':
       case 'artist_claim_request':
       case 'artist_claim_approved':
@@ -118,6 +119,7 @@ export function NotificationsList({
   const getNotificationColor = (type: string) => {
     switch (type) {
       case 'certificate_verified':
+      case 'certificate_received':
       case 'artist_profile_claim_approved':
       case 'artist_claim_approved':
         return 'text-notify-success';
@@ -262,6 +264,18 @@ export function NotificationsList({
                           className="font-serif bg-wine text-parchment hover:bg-wine/90"
                         >
                           Verify Certificate
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'certificate_received' && notification.artwork_id && (
+                      <Link href={`/artworks/${notification.artwork_id}/certificate`}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          View Certificate
                         </Button>
                       </Link>
                     )}

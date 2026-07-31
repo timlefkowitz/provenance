@@ -62,6 +62,8 @@ async function applyInsuranceCounterparties(
   insEmail: string | null,
   apEmail: string | null,
   prior: PriorI | null,
+  insurerName?: string | null,
+  appraiserName?: string | null,
 ) {
   const p: PriorI =
     prior ?? {
@@ -75,6 +77,7 @@ async function applyInsuranceCounterparties(
 
   const a = await resolveCounterparty({
     email: insEmail,
+    name: insurerName ?? null,
     role: 'insurer',
     recordKind: 'insurance',
     recordId: rowId,
@@ -86,6 +89,7 @@ async function applyInsuranceCounterparties(
   });
   const b = await resolveCounterparty({
     email: apEmail,
+    name: appraiserName ?? null,
     role: 'appraiser',
     recordKind: 'insurance',
     recordId: rowId,
@@ -156,6 +160,8 @@ export async function createInsuranceValuation(raw: z.infer<typeof createSchema>
     row.insurer_contact_email as string | null,
     row.appraiser_email as string | null,
     null,
+    d.insurer_name,
+    d.appraiser_name,
   );
   if (row.status === 'active') {
     const { data: cRow } = await client
@@ -274,6 +280,8 @@ export async function updateInsuranceValuation(raw: z.infer<typeof updateSchema>
         appraiser_email: p0.appraiser_email ?? null,
         appraiser_user_id: p0.appraiser_user_id ?? null,
       },
+      rest.insurer_name as string | null | undefined,
+      rest.appraiser_name as string | null | undefined,
     );
     if (newStatus === 'active' && oldStatus && oldStatus !== 'active') {
       const { data: cRow } = await client

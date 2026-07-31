@@ -69,6 +69,7 @@ export async function createVendor(raw: z.infer<typeof createSchema>) {
   }
   const r = await resolveVendorContact({
     email: row.contact_email as string | null,
+    name: row.contact_name as string | null,
     recordId: data.id as string,
     ownerAccountId: user.id,
     vendorName: d.name,
@@ -136,10 +137,12 @@ export async function updateVendor(raw: z.infer<typeof updateSchema>) {
   }
 
   const newEmail = rest.contact_email !== undefined ? (rest.contact_email || null) : (p0.contact_email ?? null);
+  const newContactName = rest.contact_name !== undefined ? (rest.contact_name || null) : (p0.contact_name ?? null);
   const name = (rest.name as string) ?? (p0.name as string);
   const st = (rest.service_type as string) ?? (p0.service_type as string) ?? 'other';
   const r = await resolveVendorContact({
     email: newEmail,
+    name: newContactName as string | null,
     recordId: id,
     ownerAccountId: user.id,
     vendorName: name,
@@ -217,6 +220,7 @@ export async function duplicateVendor(id: string) {
   const st = (row.service_type as string) ?? 'other';
   const r = await resolveVendorContact({
     email: row.contact_email as string | null,
+    name: row.contact_name as string | null,
     recordId: created.id as string,
     ownerAccountId: user.id,
     vendorName: `${row.name} (copy)`,

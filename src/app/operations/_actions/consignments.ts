@@ -59,6 +59,7 @@ async function applyConsignmentCounterpartyLinks(
   artworkId: string,
   currentConsigneeEmail: string | null,
   prior: { consignee_email: string | null; consignee_user_id: string | null } | null,
+  consigneeName?: string | null,
 ) {
   console.log('[Operations/consignments] applyConsignmentCounterpartyLinks', consignmentId);
   const p = prior ?? { consignee_email: null, consignee_user_id: null };
@@ -74,6 +75,7 @@ async function applyConsignmentCounterpartyLinks(
 
   const c = await resolveCounterparty({
     email: currentConsigneeEmail,
+    name: consigneeName ?? null,
     role: 'consignee',
     recordKind: 'consignment',
     recordId: consignmentId,
@@ -141,6 +143,7 @@ export async function createConsignment(raw: z.infer<typeof createSchema>) {
     parsed.data.artwork_id,
     row.consignee_email,
     null,
+    parsed.data.consignee_name,
   );
   console.log('[Operations/consignments] create success', data?.id);
   revalidatePath('/operations');
@@ -241,6 +244,7 @@ export async function updateConsignment(raw: z.infer<typeof updateSchema>) {
             consignee_user_id: p0.consignee_user_id ?? null,
           }
         : null,
+      rest.consignee_name as string | null | undefined,
     );
     if (newStatus === 'active' && oldStatus && oldStatus !== 'active') {
       await notifyCounterpartyStatusActive({

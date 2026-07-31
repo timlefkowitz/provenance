@@ -26,6 +26,7 @@ export function InviteCooFromCoaDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [pending, startTransition] = useTransition();
 
   return (
@@ -47,17 +48,31 @@ export function InviteCooFromCoaDialog({
             &quot;{artworkTitle}&quot;. Your Certificate of Authenticity stays in your account.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="invite-coo-email">Collector email</Label>
-          <Input
-            id="invite-coo-email"
-            type="email"
-            autoComplete="email"
-            placeholder="collector@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="font-serif"
-          />
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="invite-coo-email">Collector email</Label>
+            <Input
+              id="invite-coo-email"
+              type="email"
+              autoComplete="email"
+              placeholder="collector@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="font-serif"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="invite-coo-name">Collector name <span className="text-ink/40 font-normal">(optional)</span></Label>
+            <Input
+              id="invite-coo-name"
+              type="text"
+              autoComplete="name"
+              placeholder="Jane Smith"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="font-serif"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -70,7 +85,7 @@ export function InviteCooFromCoaDialog({
             onClick={() => {
               startTransition(async () => {
                 console.log('[Certificates] InviteCooFromCoaDialog submit', { artworkId });
-                const result = await createOwnerInviteFromCoa(artworkId, email);
+                const result = await createOwnerInviteFromCoa(artworkId, email, name.trim() || undefined);
                 if (result.error) {
                   toast.error(result.error);
                   return;
@@ -78,6 +93,7 @@ export function InviteCooFromCoaDialog({
                 toast.success('Invitation sent. The collector should check their email to claim.');
                 setOpen(false);
                 setEmail('');
+                setName('');
               });
             }}
           >

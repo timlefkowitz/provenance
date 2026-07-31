@@ -1,6 +1,7 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { sendNotificationEmail } from '~/lib/email';
 import type { NotificationType } from '~/lib/notifications';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -167,6 +168,7 @@ async function getOwnerDisplayName(ownerAccountId: string, provided?: string): P
  */
 export async function resolveCounterparty(input: {
   email: string | null | undefined;
+  name?: string | null;
   role: CounterpartyRole;
   recordKind: CounterpartyRecordKind;
   recordId: string;
@@ -180,6 +182,20 @@ export async function resolveCounterparty(input: {
   const emailNorm = normalizeEmail(input.email);
   if (!emailNorm) {
     return { userId: null, status: 'skipped' };
+  }
+
+  // Capture in mailing list whenever we interact with a name/email
+  try {
+    await captureCrmContacts(input.ownerAccountId, [
+      {
+        email: emailNorm,
+        name: input.name ?? null,
+        source: input.recordKind,
+        notes: `${input.role} — ${input.artworkTitle}`,
+      },
+    ]);
+  } catch (e) {
+    console.error('[Operations/resolveCounterparty] captureCrmContacts failed', e);
   }
 
   const priorE = normalizeEmail(input.priorEmail);
@@ -344,6 +360,7 @@ export async function notifyCounterpartyStatusActive(input: {
  */
 export async function resolveVendorContact(input: {
   email: string | null | undefined;
+  name?: string | null;
   recordId: string;
   ownerAccountId: string;
   ownerDisplayName?: string;
@@ -355,6 +372,20 @@ export async function resolveVendorContact(input: {
   const emailNorm = normalizeEmail(input.email);
   if (!emailNorm) {
     return { userId: null, status: 'skipped' };
+  }
+
+  // Capture in mailing list whenever we interact with a name/email
+  try {
+    await captureCrmContacts(input.ownerAccountId, [
+      {
+        email: emailNorm,
+        name: input.name ?? null,
+        source: 'vendor',
+        notes: `Vendor contact — ${input.vendorName} (${input.serviceType})`,
+      },
+    ]);
+  } catch (e) {
+    console.error('[Operations/resolveVendorContact] captureCrmContacts failed', e);
   }
 
   const priorE = normalizeEmail(input.priorEmail);

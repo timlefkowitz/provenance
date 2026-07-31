@@ -77,6 +77,8 @@ async function applyExhibitionPlanCounterparties(
   lenderEmail: string | null,
   curatorEmail: string | null,
   prior: PriorE | null,
+  lenderName?: string | null,
+  curatorName?: string | null,
 ) {
   const p: PriorE =
     prior ?? {
@@ -90,6 +92,7 @@ async function applyExhibitionPlanCounterparties(
 
   const a = await resolveCounterparty({
     email: lenderEmail,
+    name: lenderName ?? null,
     role: 'lender',
     recordKind: 'exhibition_plan',
     recordId: rowId,
@@ -101,6 +104,7 @@ async function applyExhibitionPlanCounterparties(
   });
   const b = await resolveCounterparty({
     email: curatorEmail,
+    name: curatorName ?? null,
     role: 'curator',
     recordKind: 'exhibition_plan',
     recordId: rowId,
@@ -214,6 +218,8 @@ export async function createExhibitionPlan(raw: z.infer<typeof createSchema>) {
     row.lender_email as string | null,
     row.curator_email as string | null,
     null,
+    d.lender_name,
+    d.curator_name,
   );
   if (row.status === 'confirmed') {
     await fireConfirmedEvents(
@@ -339,6 +345,8 @@ export async function updateExhibitionPlan(raw: z.infer<typeof updateSchema>) {
         curator_email: p0.curator_email ?? null,
         curator_user_id: p0.curator_user_id ?? null,
       },
+      rest.lender_name as string | null | undefined,
+      rest.curator_name as string | null | undefined,
     );
     if (newStatus === 'confirmed' && oldStatus && oldStatus !== 'confirmed') {
       const et =

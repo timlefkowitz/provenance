@@ -51,12 +51,14 @@ async function applyCustodian(
   artworkId: string,
   email: string | null,
   prior: PriorC | null,
+  custodianName?: string | null,
 ) {
   const p = prior ?? { custodian_email: null, custodian_user_id: null };
   const { data: art } = await client.from('artworks').select('title').eq('id', artworkId).maybeSingle();
   const title = (art as { title?: string } | null)?.title?.trim() || 'Artwork';
   const r = await resolveCounterparty({
     email,
+    name: custodianName ?? null,
     role: 'custodian',
     recordKind: 'inventory_location',
     recordId: locId,
@@ -140,6 +142,7 @@ export async function createArtworkLocation(raw: z.infer<typeof createSchema>) {
     d.artwork_id,
     row.custodian_email as string | null,
     null,
+    d.custodian_name,
   );
   await insertLocationProvenance(
     user.id,
@@ -213,7 +216,7 @@ export async function updateArtworkLocation(raw: z.infer<typeof updateSchema>) {
     await applyCustodian(client, user.id, id, artId, newEmail, {
       custodian_email: p0.custodian_email ?? null,
       custodian_user_id: p0.custodian_user_id ?? null,
-    });
+    }, rest.custodian_name as string | null | undefined);
   }
   const finalType = (rest.location_type as string) ?? (p0.location_type as string);
   const finalName = rest.location_name !== undefined ? rest.location_name || null : (p0.location_name ?? null);

@@ -6,6 +6,7 @@ import {
   commitCertificateInviteBatch,
 } from '~/lib/certificate-claims/create-invite-batch';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
+import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export type BatchSendArtistClaimInvitesResult = {
@@ -72,6 +73,16 @@ export async function batchSendArtistClaimInvites(
 
   if (result.sent === 0 && errors.length === 0) {
     errors.push('Could not send invites');
+  }
+
+  if (result.sent > 0) {
+    await captureCrmContacts(user.id, [
+      {
+        email: normalizedEmail,
+        source: 'certificate',
+        notes: `Batch artist claim invite (${result.sent} work${result.sent === 1 ? '' : 's'})`,
+      },
+    ]);
   }
 
   return { sent: result.sent, errors };

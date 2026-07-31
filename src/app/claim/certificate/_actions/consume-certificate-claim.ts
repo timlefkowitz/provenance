@@ -178,10 +178,24 @@ async function processOwnerBatch(
       logger.error('consume_coo_owner_notify_failed', { error: e });
     }
 
+    try {
+      await createNotification({
+        userId: user.id,
+        type: 'certificate_received',
+        title: `Certificate of Ownership added: ${sourceArtwork.title}`,
+        message: `Your Certificate of Ownership for "${sourceArtwork.title}" has been added to your account.`,
+        artworkId: newId,
+        relatedUserId: sourceArtwork.account_id as string,
+      });
+    } catch (e) {
+      logger.error('consume_coo_acceptor_notify_failed', { error: e });
+    }
+
     revalidatePath(`/artworks/${newId}/certificate`);
   }
 
   revalidatePath('/portal');
+  revalidatePath('/notifications');
   return { success: true, artworkId: firstNewId! };
 }
 
@@ -267,10 +281,24 @@ async function processGalleryBatch(
       logger.error('consume_gallery_cos_owner_notify_failed', { error: e });
     }
 
+    try {
+      await createNotification({
+        userId: user.id,
+        type: 'certificate_received',
+        title: `Certificate of Show added: ${sourceArtwork.title}`,
+        message: `Your Certificate of Show for "${sourceArtwork.title}" has been added to your account.`,
+        artworkId: newId,
+        relatedUserId: sourceArtwork.account_id as string,
+      });
+    } catch (e) {
+      logger.error('consume_gallery_cos_acceptor_notify_failed', { error: e });
+    }
+
     revalidatePath(`/artworks/${newId}/certificate`);
   }
 
   revalidatePath('/portal');
+  revalidatePath('/notifications');
   return { success: true, artworkId: firstNewId! };
 }
 
@@ -536,6 +564,7 @@ async function processArtistBatch(
   }
 
   revalidatePath('/portal');
+  revalidatePath('/notifications');
   revalidatePath(`/artworks/${primaryCoaId}/certificate`);
   return { success: true, artworkId: primaryCoaId };
 }

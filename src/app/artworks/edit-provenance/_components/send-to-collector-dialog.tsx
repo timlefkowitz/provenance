@@ -24,6 +24,7 @@ type Props = {
 
 export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }: Props) {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [pending, startTransition] = useTransition();
   const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
 
@@ -39,7 +40,7 @@ export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }
   const handleSend = () => {
     console.log('[Collection] SendToCollectorDialog submit', { count });
     startTransition(async () => {
-      const result = await batchSendCollectorInvites([...selectedArtworkIds], email);
+      const result = await batchSendCollectorInvites([...selectedArtworkIds], email, name.trim() || undefined);
       if (result.sent === 0) {
         toast.error(result.errors[0] ?? 'No invites sent');
         return;
@@ -58,6 +59,7 @@ export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }
         );
       }
       setEmail('');
+      setName('');
       onOpenChange(false);
     });
   };
@@ -84,18 +86,34 @@ export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }
               <code className="rounded bg-amber-100/80 px-1">RESEND_API_KEY</code> is set on the server.
             </div>
           )}
-          <Label htmlFor="collector-email" className="font-serif text-sm text-ink">
-            Collector email
-          </Label>
-          <Input
-            id="collector-email"
-            type="email"
-            placeholder="collector@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={pending}
-            className="font-serif"
-          />
+          <div className="space-y-1">
+            <Label htmlFor="collector-email" className="font-serif text-sm text-ink">
+              Collector email
+            </Label>
+            <Input
+              id="collector-email"
+              type="email"
+              placeholder="collector@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={pending}
+              className="font-serif"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="collector-name" className="font-serif text-sm text-ink">
+              Collector name <span className="text-ink/40 font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="collector-name"
+              type="text"
+              placeholder="Jane Smith"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={pending}
+              className="font-serif"
+            />
+          </div>
         </div>
 
         <DialogFooter className="gap-2">

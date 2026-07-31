@@ -19,6 +19,7 @@ export type CreateOwnerInviteResult =
 export async function createOwnerInviteFromCoa(
   artworkId: string,
   inviteeEmailRaw: string,
+  inviteeName?: string,
 ): Promise<CreateOwnerInviteResult> {
   console.log('[Certificates] createOwnerInviteFromCoa started', { artworkId });
   try {
@@ -122,6 +123,7 @@ export async function createOwnerInviteFromCoa(
     await captureCrmContacts(user.id, [
       {
         email: inviteeEmail,
+        name: inviteeName || null,
         source: 'certificate',
         notes: `Certificate of ownership invite — ${artworkTitle}`,
       },

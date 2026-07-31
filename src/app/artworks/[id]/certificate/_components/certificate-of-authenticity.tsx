@@ -41,6 +41,7 @@ import { EditArtworkDialog } from './edit-artwork-dialog';
 import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
+import { PendingCooInviteStatus } from './pending-coo-invite-status';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 import {
   ProvenanceValuationBlock,
@@ -1589,6 +1590,9 @@ export function CertificateOfAuthenticity({
                   certificateType={certificateType}
                 />
               </div>
+              {certificateType === CERTIFICATE_TYPES.AUTHENTICITY && (
+                <PendingCooInviteStatus artworkId={artwork.id} />
+              )}
             </div>
           )}
 

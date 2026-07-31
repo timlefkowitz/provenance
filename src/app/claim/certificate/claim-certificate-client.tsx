@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@kit/ui/button';
 import { Heading } from '@kit/ui/heading';
 import pathsConfig from '~/config/paths.config';
@@ -13,6 +14,7 @@ export function ClaimCertificateClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const supabase = useSupabase();
+  const queryClient = useQueryClient();
   const token = searchParams.get('token')?.trim() ?? '';
   const [status, setStatus] = useState<'loading' | 'needs_sign_in' | 'consuming' | 'done' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export function ClaimCertificateClient() {
           setClaimedCount(result.claimedCount);
         }
         setStatus('done');
+        void queryClient.invalidateQueries({ queryKey: ['notifications:unread-count'] });
         // Small delay so the success message is briefly visible before redirect
         setTimeout(() => router.replace(`/artworks/${result.artworkId}/certificate`), 1800);
         return;

@@ -235,6 +235,7 @@ export async function middleware(request: NextRequest) {
 
     const rewriteResponse = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     rewriteResponse.headers.set('x-site-handle', siteHandle);
+    // Pass original host through so canonical URLs can be built server-side
     rewriteResponse.headers.set('x-forwarded-host', request.headers.get('host') || '');
     applySecurityHeaders(rewriteResponse, { isProduction, isHttps, isPreview, nonce });
     return rewriteResponse;
