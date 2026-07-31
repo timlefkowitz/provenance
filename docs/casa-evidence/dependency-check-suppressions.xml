@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+   <!--
+     Suppression rationale (reviewed 2026-07-31):
+
+     leaflet 1.9.4 / CVE-2025-69993 (bindPopup renders string content as HTML)
+
+     The Leaflet maintainers' published position (github.com/Leaflet/Leaflet/issues/10214)
+     is that this is intended, documented behavior of the raw bindPopup(string) API, not a
+     library defect; callers are responsible for sanitizing untrusted input before passing
+     it as an HTML string. No patched release exists or is planned in the 1.x line.
+
+     Provenance never calls Leaflet's raw bindPopup(string)/setContent(string) API. The only
+     Leaflet usage in this codebase is via `react-leaflet`
+     (src/app/artworks/[id]/certificate/_components/scan-locations-map.tsx), which renders
+     popup content as React children. React escapes all text content by default, so
+     user-controlled scan metadata (city/country/timestamp) can never reach the DOM as raw,
+     unescaped HTML. The XSS sink described in the advisory is not reachable from this
+     application's code path.
+
+     Re-evaluate this suppression if Leaflet is ever called directly with untrusted HTML
+     strings (bindPopup/bindTooltip/setContent) outside of react-leaflet's component API.
+   -->
+   <suppress>
+      <notes><![CDATA[
+         False positive: application only uses leaflet via react-leaflet's <Popup> component
+         API (React children, auto-escaped), never the raw bindPopup(string) HTML sink that
+         CVE-2025-69993 describes. See docs/casa-evidence/dependency-scan-owasp.md for detail.
+      ]]></notes>
+      <packageUrl regex="true">^pkg:npm/leaflet@.*$</packageUrl>
+      <cve>CVE-2025-69993</cve>
+   </suppress>
+
+   <!--
+     brace-expansion / GHSA-mh99-v99m-4gvg (CVE-2026-14257)
+     pnpm-lock.yaml resolves brace-expansion to 1.1.17 and 5.0.9, both of which are
+     explicitly listed as patched by the upstream advisory (patched versions: 1.1.17,
+     2.1.3, 3.0.3, 5.0.8+). Confirmed by direct lockfile inspection on 2026-07-31
+     (`grep -n "^  brace-expansion@" pnpm-lock.yaml`). The Pnpm Audit Analyzer's local
+     advisory match does not resolve the finding down to a specific installed version,
+     so it continues to flag the package name generically even though both resolved
+     versions are fixed. Revisit if `pnpm audit` or a future Dependency-Check release
+     resolves this more precisely, or if brace-expansion is ever downgraded.
+   -->
+   <suppress>
+      <notes><![CDATA[
+         False positive: pnpm-lock.yaml pins brace-expansion to 1.1.17 and 5.0.9, both
+         patched per the upstream advisory's own "Patched versions" list. See
+         docs/casa-evidence/dependency-scan-owasp.md for verification steps.
+      ]]></notes>
+      <packageUrl regex="true">^pkg:npm/brace\-expansion.*$</packageUrl>
+      <vulnerabilityName>GHSA-mh99-v99m-4gvg</vulnerabilityName>
+   </suppress>
+</suppressions>

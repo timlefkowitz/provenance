@@ -1,0 +1,1162 @@
+{
+  "$schema" : "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version" : "2.1.0",
+  "runs" : [ {
+    "tool" : {
+      "driver" : {
+        "name" : "dependency-check",
+        "version" : "12.2.2",
+        "informationUri" : "https://dependency-check.github.io/DependencyCheck/",
+        "rules" : [ ],
+        "properties" : {
+          "disclaimer" : "Dependency-Check is an open source tool performing a best effort analysis of 3rd party dependencies; false positives and false negatives may exist in the analysis performed by the tool. Use of the tool and the reporting provided constitutes acceptance for use in an AS IS condition, and there are NO warranties, implied or otherwise, with regard to the analysis or its use. Any use of the tool and the reporting provided is at the user's risk. In no event shall the copyright holder or OWASP be held liable for any damages whatsoever arising out of or in connection with the use of this tool, the analysis performed, or the resulting report.",
+          "nvd" : "This product uses the NVD API but is not endorsed or certified by the NVD. This report contains data retrieved from the National Vulnerability Database: https://nvd.nist.gov",
+          "cisa" : "This report may contain data retrieved from the CISA Known Exploited Vulnerability Catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+          "npm" : "This report may contain data retrieved from the the Github Advisory Database (via NPM Audit API): https://github.com/advisories/",
+          "retirejs" : "This report may contain data retrieved from the RetireJS community: https://retirejs.github.io/retire.js/",
+          "ossindex" : "This report may contain data retrieved from the Sonatype Guide OSS Index API: https://www.sonatype.com/products/sonatype-guide/oss-index-users",
+          "NVD API Last Checked" : "2026-07-31T12:21:10-05",
+          "NVD API Last Modified" : "2026-07-31T17:18:00Z"
+        }
+      }
+    },
+    "artifacts" : [ {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@ai-sdk/react:^3.0.210"
+      },
+      "properties" : {
+        "license" : "Apache-2.0",
+        "id1" : "pkg:npm/%40ai-sdk%2Freact@3.0.210"
+      }
+    }, {
+      "description" : {
+        "text" : "dnd kit – a lightweight React library for building performant and accessible drag and drop experiences"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@dnd-kit/core:^6.3.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id2" : "pkg:npm/%40dnd-kit%2Fcore@6.3.1"
+      }
+    }, {
+      "description" : {
+        "text" : "Translate modifier presets for use with `@dnd-kit` packages."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@dnd-kit/modifiers:^9.0.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id3" : "pkg:npm/%40dnd-kit%2Fmodifiers@9.0.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Official sortable preset and sensors for dnd kit"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@dnd-kit/sortable:^10.0.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id4" : "pkg:npm/%40dnd-kit%2Fsortable@10.0.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Internal utilities to bee shared between `@dnd-kit` packages"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@dnd-kit/utilities:^3.2.2"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id5" : "pkg:npm/%40dnd-kit%2Futilities@3.2.2"
+      }
+    }, {
+      "description" : {
+        "text" : "React Hook Form validation resolvers: Yup, Joi, Superstruct, Zod, Vest, Class Validator, io-ts, Nope, computed-types, TypeBox, arktype, Typanion, Effect-TS and VineJS"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@hookform/resolvers:^5.2.2"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id6" : "pkg:npm/%40hookform%2Fresolvers@5.2.2"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@kit/accounts:workspace:*"
+      },
+      "properties" : {
+        "id7" : "pkg:npm/%40kit%2Faccounts@0.1.0"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/auth:workspace:*"
+      },
+      "properties" : {
+        "id8" : "pkg:npm/%40kit%2Fauth@0.1.0"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/i18n:workspace:*"
+      },
+      "properties" : {
+        "id9" : "pkg:npm/%40kit%2Fi18n@0.1.0"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/next:workspace:*"
+      },
+      "properties" : {
+        "id10" : "pkg:npm/%40kit%2Fnext@0.1.0"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/supabase:workspace:*"
+      },
+      "properties" : {
+        "id11" : "pkg:npm/%40kit%2Fsupabase@0.1.0"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/ui:workspace:*"
+      },
+      "properties" : {
+        "id12" : "pkg:npm/%40kit%2Fui@0.1.0"
+      }
+    }, {
+      "description" : {
+        "text" : "ESLint plugin for Next.js."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/package.json?eslint-config:0.2.0/@next/eslint-plugin-next:15.5.4"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id13" : "pkg:npm/%40next%2Feslint-plugin-next@15.5.4"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-accordion:1.2.12"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id14" : "pkg:npm/%40radix-ui%2Freact-accordion@1.2.12"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-alert-dialog:^1.1.15"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id15" : "pkg:npm/%40radix-ui%2Freact-alert-dialog@1.1.15"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-avatar:^1.1.10"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id16" : "pkg:npm/%40radix-ui%2Freact-avatar@1.1.10"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-checkbox:^1.3.3"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id17" : "pkg:npm/%40radix-ui%2Freact-checkbox@1.3.3"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-collapsible:1.1.12"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id18" : "pkg:npm/%40radix-ui%2Freact-collapsible@1.1.12"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-dialog:^1.1.15"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id19" : "pkg:npm/%40radix-ui%2Freact-dialog@1.1.15"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-dropdown-menu:^2.1.16"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id20" : "pkg:npm/%40radix-ui%2Freact-dropdown-menu@2.1.16"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-label:^2.1.7"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id21" : "pkg:npm/%40radix-ui%2Freact-label@2.1.7"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-navigation-menu:^1.2.14"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id22" : "pkg:npm/%40radix-ui%2Freact-navigation-menu@1.2.14"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-popover:^1.1.15"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id23" : "pkg:npm/%40radix-ui%2Freact-popover@1.1.15"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-progress:^1.1.7"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id24" : "pkg:npm/%40radix-ui%2Freact-progress@1.1.7"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-radio-group:^1.3.8"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id25" : "pkg:npm/%40radix-ui%2Freact-radio-group@1.3.8"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-scroll-area:^1.2.10"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id26" : "pkg:npm/%40radix-ui%2Freact-scroll-area@1.2.10"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-select:^2.2.6"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id27" : "pkg:npm/%40radix-ui%2Freact-select@2.2.6"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-separator:^1.1.7"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id28" : "pkg:npm/%40radix-ui%2Freact-separator@1.1.7"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-slot:^1.2.3"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id29" : "pkg:npm/%40radix-ui%2Freact-slot@1.2.3"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-switch:^1.2.6"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id30" : "pkg:npm/%40radix-ui%2Freact-switch@1.2.6"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-tabs:^1.1.13"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id31" : "pkg:npm/%40radix-ui%2Freact-tabs@1.1.13"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-toast:^1.2.15"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id32" : "pkg:npm/%40radix-ui%2Freact-toast@1.2.15"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/@radix-ui/react-tooltip:1.2.8"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id33" : "pkg:npm/%40radix-ui%2Freact-tooltip@1.2.8"
+      }
+    }, {
+      "description" : {
+        "text" : "Connect.js loading utility package (GA version)"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@stripe/connect-js:^3.3.5"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id34" : "pkg:npm/%40stripe%2Fconnect-js@3.4.6"
+      }
+    }, {
+      "description" : {
+        "text" : "React components for Connect.js and Connect embedded components"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@stripe/react-connect-js:^3.3.5"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id35" : "pkg:npm/%40stripe%2Freact-connect-js@3.4.4"
+      }
+    }, {
+      "description" : {
+        "text" : "Use the Supabase JavaScript library in popular server-side rendering (SSR) frameworks."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/supabase/package.json?supabase:0.1.0/@supabase/ssr:^0.7.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id36" : "pkg:npm/%40supabase%2Fssr@0.7.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Isomorphic Javascript client for Supabase"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@supabase/supabase-js:2.75.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id37" : "pkg:npm/%40supabase%2Fsupabase-js@2.75.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Hooks for managing, caching and syncing asynchronous and remote data in React"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@tanstack/react-query:5.101.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id38" : "pkg:npm/%40tanstack%2Freact-query@5.101.0"
+      }
+    }, {
+      "description" : {
+        "text" : "link extension for tiptap"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@tiptap/extension-link:^3.27.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id39" : "pkg:npm/%40tiptap%2Fextension-link@3.27.1",
+        "vid1" : "cpe:2.3:a:tiptap:tiptap\\/extension-link:3.27.1:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "placeholder extension for tiptap"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@tiptap/extension-placeholder:^3.27.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id40" : "pkg:npm/%40tiptap%2Fextension-placeholder@3.27.1"
+      }
+    }, {
+      "description" : {
+        "text" : "prosemirror wrapper package for tiptap"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@tiptap/pm:^3.27.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id41" : "pkg:npm/%40tiptap%2Fpm@3.27.1"
+      }
+    }, {
+      "description" : {
+        "text" : "React components for tiptap"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@tiptap/react:^3.27.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id42" : "pkg:npm/%40tiptap%2Freact@3.27.1"
+      }
+    }, {
+      "description" : {
+        "text" : "starter kit for tiptap"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@tiptap/starter-kit:^3.27.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id43" : "pkg:npm/%40tiptap%2Fstarter-kit@3.27.1"
+      }
+    }, {
+      "description" : {
+        "text" : "A prettier plugins to sort imports in provided RegEx order"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/prettier/package.json?prettier-config:0.1.0/@trivago/prettier-plugin-sort-imports:5.2.2"
+      },
+      "properties" : {
+        "license" : "Apache-2.0",
+        "id44" : "pkg:npm/%40trivago%2Fprettier-plugin-sort-imports@5.2.2"
+      }
+    }, {
+      "description" : {
+        "text" : "TypeScript definitions for eslint"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/package.json?eslint-config:0.2.0/@types/eslint:9.6.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id45" : "pkg:npm/%40types%2Feslint@9.6.1"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@upstash/ratelimit:^2.0.8"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id46" : "pkg:npm/%40upstash%2Fratelimit@v2.0.8"
+      }
+    }, {
+      "description" : {
+        "text" : "An HTTP/REST based Redis client built on top of Upstash REST API."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@upstash/redis:^1.38.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id47" : "pkg:npm/%40upstash%2Fredis@1.38.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Gain real-time traffic insights with Vercel Web Analytics"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/@vercel/analytics:^1.6.1"
+      },
+      "properties" : {
+        "license" : "MPL-2.0",
+        "id48" : "pkg:npm/%40vercel%2Fanalytics@1.6.1"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/Test.js"
+      },
+      "hashes" : {
+        "md5" : "927a9a4edd665826ba3d6604ea9d91c3",
+        "sha1" : "341d0ed30b831ddbdf531c8111b6b0f04b3626b9",
+        "sha256" : "4fd85c4d96b7229a644bda9060f7d4f407d3b3e69d3d9457bc6b4ad953223c5a"
+      },
+      "properties" : { }
+    }, {
+      "description" : {
+        "text" : "AI SDK by Vercel - build apps like ChatGPT, Claude, Gemini, and more with a single interface for any model using the Vercel AI Gateway or go direct to OpenAI, Anthropic, Google, or any other model provider."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/ai:^6.0.208"
+      },
+      "properties" : {
+        "license" : "Apache-2.0",
+        "id49" : "pkg:npm/ai@6.0.208",
+        "vid2" : "cpe:2.3:a:vercel:ai:6.0.208:*:*:*:*:*:*:*"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/apps.js"
+      },
+      "hashes" : {
+        "md5" : "9031142d57e5dd3079813f4b60023901",
+        "sha1" : "42d4e9c60095952f24f0754d7171f67d8488b0de",
+        "sha256" : "d3ebf19616b08040b05b0b46e118e59c9079b274d29b5fdb39ccf13bb3573015"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/base.js"
+      },
+      "hashes" : {
+        "md5" : "4fd581ff993391bd895cf2bb9de15c13",
+        "sha1" : "75ca730ca6fa00945be23d256724e105f651e826",
+        "sha256" : "be7c9433609481098876643f535f03d645e9d9b6ee5e77ce91036f9b3cd88425"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/pnpm-lock.yaml?brace-expansion"
+      },
+      "properties" : {
+        "id50" : "pkg:npm/brace-expansion"
+      }
+    }, {
+      "description" : {
+        "text" : "A tiny (239B) utility for constructing className strings conditionally."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/clsx:^2.1.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id51" : "pkg:npm/clsx@2.1.1"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/cmdk:1.1.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id52" : "pkg:npm/cmdk@1.1.1"
+      }
+    }, {
+      "description" : {
+        "text" : "ESLint configuration used by Next.js."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/package.json?eslint-config:0.2.0/eslint-config-next:16.0.6"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id53" : "pkg:npm/eslint-config-next@16.0.6"
+      }
+    }, {
+      "description" : {
+        "text" : "ESLint config for Turborepo"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/package.json?eslint-config:0.2.0/eslint-config-turbo:^2.5.8"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id54" : "pkg:npm/eslint-config-turbo@2.5.8"
+      }
+    }, {
+      "description" : {
+        "text" : "\uD83D\uDCF7 The fastest and most versatile JavaScript EXIF reading library."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/exifr:^7.1.3"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id55" : "pkg:npm/exifr@7.1.3"
+      }
+    }, {
+      "description" : {
+        "text" : "ffmpeg binaries for macOS, Linux and Windows"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/ffmpeg-static:^5.2.0"
+      },
+      "properties" : {
+        "license" : "GPL-3.0-or-later",
+        "id56" : "pkg:npm/ffmpeg-static@5.3.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Detect the file type of a file, stream, or data"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/file-type:^22.0.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id57" : "pkg:npm/file-type@22.0.1",
+        "vid3" : "cpe:2.3:a:sindresorhus:file-type:22.0.1:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "A simple and powerful JavaScript animation library"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/framer-motion:^12.40.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id58" : "pkg:npm/framer-motion@12.40.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Convert HEIC/HEIF images to JPEG and PNG"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/heic-convert:^2.1.0"
+      },
+      "properties" : {
+        "license" : "ISC",
+        "id59" : "pkg:npm/heic-convert@2.1.0"
+      }
+    }, {
+      "description" : {
+        "text" : "language detector used in browser environment for i18next"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/i18n/package.json?i18n:0.1.0/i18next-browser-languagedetector:8.2.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id60" : "pkg:npm/i18next-browser-languagedetector@8.2.0"
+      }
+    }, {
+      "description" : {
+        "text" : "This package helps to transform resources to an i18next backend"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/i18n/package.json?i18n:0.1.0/i18next-resources-to-backend:^1.2.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id61" : "pkg:npm/i18next-resources-to-backend@1.2.1"
+      }
+    }, {
+      "description" : {
+        "text" : "i18next internationalization framework"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/i18n/package.json?i18n:0.1.0/i18next:25.6.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id62" : "pkg:npm/i18next@25.6.0",
+        "vid4" : "cpe:2.3:a:i18next:i18next:25.6.0:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "One-time password input component for React."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/input-otp:1.4.2"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id63" : "pkg:npm/input-otp@1.4.2"
+      }
+    }, {
+      "description" : {
+        "text" : "JavaScript library for mobile-friendly interactive maps"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/leaflet:^1.9.4"
+      },
+      "properties" : {
+        "license" : "BSD-2-Clause",
+        "id64" : "pkg:npm/leaflet@1.9.4",
+        "vid5" : "cpe:2.3:a:leafletjs:leaflet:1.9.4:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "A Lucide icon library package for React applications."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/lucide-react:^0.545.0"
+      },
+      "properties" : {
+        "license" : "ISC",
+        "id65" : "pkg:npm/lucide-react@0.545.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Convert Word documents from docx to simple HTML and Markdown"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/mammoth:^1.12.0"
+      },
+      "properties" : {
+        "license" : "BSD-2-Clause",
+        "id66" : "pkg:npm/mammoth@1.12.0"
+      }
+    }, {
+      "description" : {
+        "text" : "A markdown parser built for speed"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/marked:^17.0.5"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id67" : "pkg:npm/marked@17.0.5",
+        "vid6" : "cpe:2.3:a:marked_project:marked:17.0.5:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "A tiny (118 bytes), secure URL-friendly unique string ID generator"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/features/accounts/package.json?accounts:0.1.0/nanoid:^5.1.6"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id68" : "pkg:npm/nanoid@5.1.6",
+        "vid7" : "cpe:2.3:a:nanoid_project:nanoid:5.1.6:*:*:*:*:*:*:*"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/next-themes:0.4.6"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id69" : "pkg:npm/next-themes@0.4.6"
+      }
+    }, {
+      "description" : {
+        "text" : "The React Framework"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/next:15.5.22"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id70" : "pkg:npm/next@15.5.22",
+        "vid8" : "cpe:2.3:a:next:next:15.5.22:*:*:*:*:*:*:*"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/nextjs.js"
+      },
+      "hashes" : {
+        "md5" : "0eaf055cc245e9502654bd01c9b3db37",
+        "sha1" : "5cdd56381b122b2e18404ebbec000441a036c423",
+        "sha256" : "6240247b897b2a39cfe548753cfe8df7f4322f3fe100ae7af5321cdff06927e5"
+      },
+      "properties" : { }
+    }, {
+      "description" : {
+        "text" : "The official TypeScript library for the OpenAI API"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/openai:^4.73.0"
+      },
+      "properties" : {
+        "license" : "Apache-2.0",
+        "id71" : "pkg:npm/openai@4.104.0"
+      }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/api/package.json"
+      },
+      "hashes" : {
+        "md5" : "3e08648de51a77ef05bb191116398a40",
+        "sha1" : "ef75ca0271fcb727ee93842673cb9f331a566fc0",
+        "sha256" : "6d0100fc5a730654bde7910c0051b45b3b9dcb6c860bc671502fc42838adaae2"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/collectibles/package.json"
+      },
+      "hashes" : {
+        "md5" : "f845cc9eb25c2a6fd00b1ec5cb4e23f0",
+        "sha1" : "840ab67deb04bee45a58d9f885bfd9f0216bd84f",
+        "sha256" : "7ed1e1046ac419bd62e4ea60c4e5d1a7846239f10f8bc45171c04ef52b140423"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/realestate/package.json"
+      },
+      "hashes" : {
+        "md5" : "836a3f0c73e3ed4ea16232b21389848a",
+        "sha1" : "c9d210665be30d1de45b4e52975d10cdc49c4839",
+        "sha256" : "4170df87ac68f96400bba55d1abaa976a761495cac5c2dd662d51e28364e5cac"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json"
+      },
+      "hashes" : {
+        "md5" : "0c999182ead53249a57fe0fb7f3eb7a4",
+        "sha1" : "17bad399638b24c265e1658795af1f0a3b203c97",
+        "sha256" : "5db7f63f28ae52a7d7cf9059708a0a6b914ab7505abc7be2a71e4dc81c932d51"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/shared/package.json"
+      },
+      "hashes" : {
+        "md5" : "2bfd67480a7ead621b1ddc2905e8c84c",
+        "sha1" : "7ecaff80e4f3f6f76fc752a5665ff6222eb1b34d",
+        "sha256" : "3f5bdebaf615b19e7e19bac051f8c43401b5116de1d648b9222898968c640f1c"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/package.json"
+      },
+      "hashes" : {
+        "md5" : "1ef62bf4f5b7c26aeb34511c51fbb74f",
+        "sha1" : "68116b43fe5f62e25f8bb2583d4988d6fccae5ad",
+        "sha256" : "02d0d98dd3f300ec0dab3cc437c918be8298d280d81997f46c7a9e44c7ca42e4"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/prettier/package.json"
+      },
+      "hashes" : {
+        "md5" : "486bd54e44af03c12eeaf2ce1a44a3e2",
+        "sha1" : "3d2d9f90d3250b7146e3e47bb255c0138b75137c",
+        "sha256" : "3b7ebc41aa54c14c025d42f359d404ed8929aa6610c70fa3db75bf3222a18a08"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/scripts/package.json"
+      },
+      "hashes" : {
+        "md5" : "a505dc67238b493265a4c768cc54f7ab",
+        "sha1" : "6f946daaba924b4f15036a677e4b33d81d2f2471",
+        "sha256" : "f014ca4e9bc00b7970f465b94bac61b6200d6cdbcbb6673b47587a3433e03181"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/typescript/package.json"
+      },
+      "hashes" : {
+        "md5" : "ff57fd5ba908e4919bea1bb90282eba3",
+        "sha1" : "2339b5065d4abb6337cd71fb1abc5575800c08c6",
+        "sha256" : "082e370bad2f8985f00aa57841c57e6d0d57349b73ead2817db8020b90dbb55f"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json"
+      },
+      "hashes" : {
+        "md5" : "3213f6c9f4c6b24e3d0f8229ffc5390f",
+        "sha1" : "c943c0042dd9ab051d0375cc1ff6bdfcc201b99e",
+        "sha256" : "19342537194c7d67357c4f94ef6715155460609fa9d5a2f1b551c28b100a418f"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/packages/core/package.json"
+      },
+      "hashes" : {
+        "md5" : "5108a495c3b3ce1ee0e0332a3d2cd161",
+        "sha1" : "996962cd90bae92225c2179ecb12b7cee84ebcb0",
+        "sha256" : "303e6ba682f8b200a08268c53780407bc837467c21d4c8425c18a1e7a3c31f3e"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/packages/planet-artworks/package.json"
+      },
+      "hashes" : {
+        "md5" : "5004185259a28e4d0d3fc3511cf9747d",
+        "sha1" : "fa796ba4f608f96de3fbe47750a8787439114b5f",
+        "sha256" : "587e995563bf0b8accf2e95f5a0a42722b7d8886af506fd0ca1aca840be199d1"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/packages/planet-collectibles/package.json"
+      },
+      "hashes" : {
+        "md5" : "ea9e768a8aedba6896f91ec70c4515c0",
+        "sha1" : "a6e137b3614c51d754bcc5a3fd24f7d19c55b23a",
+        "sha256" : "47216a7d5b75e501cb53b401c37277e8935183bb3d6e7d6bef98fef34ab7e1a6"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/packages/planet-realestate/package.json"
+      },
+      "hashes" : {
+        "md5" : "696d212f7873443a7591964ea6ee8e19",
+        "sha1" : "c99c44a7bc5ec77c2e845d02dac170b93754cb7a",
+        "sha256" : "7cd81dd1bab922430b5f33ec1008a8b116724cd37917c9805aab21ae8967d15b"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/packages/planet-vehicles/package.json"
+      },
+      "hashes" : {
+        "md5" : "ba51456d8eb55bb825b7d8ccd127caa6",
+        "sha1" : "520c7154ddc17fc163ad8aee86ccfe6e126e9306",
+        "sha256" : "1d91816ece0a1292e0711e70573f8fe7d616b10117c4f3e802fed4ded3b28bfc"
+      },
+      "properties" : { }
+    }, {
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/packages/verification-engine/package.json"
+      },
+      "hashes" : {
+        "md5" : "c62468295f35766ac80c904d5ed8ba4d",
+        "sha1" : "412e375b933a7286f9c43b8ab2f16320e1dd8d1d",
+        "sha256" : "40e8448142e859c8a50941a1f4b07f4c57be99dd9ed5d76bbe1a03eb9c19eaab"
+      },
+      "properties" : { }
+    }, {
+      "description" : {
+        "text" : "Create and modify PDF files with JavaScript"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/pdf-lib:^1.17.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id72" : "pkg:npm/pdf-lib@1.17.1"
+      }
+    }, {
+      "description" : {
+        "text" : "Pure javascript cross-platform module to extract text from PDFs."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/pdf-parse:^1.1.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id73" : "pkg:npm/pdf-parse@1.1.4"
+      }
+    }, {
+      "description" : {
+        "text" : "super fast, all natural json logger"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/shared/package.json?shared:0.1.0/pino:^10.0.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id74" : "pkg:npm/pino@10.0.0"
+      }
+    }, {
+      "description" : {
+        "text" : "A Prettier plugin for sorting Tailwind CSS classes."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/prettier/package.json?prettier-config:0.1.0/prettier-plugin-tailwindcss:^0.6.14"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id75" : "pkg:npm/prettier-plugin-tailwindcss@0.6.14"
+      }
+    }, {
+      "description" : {
+        "text" : "Prettier is an opinionated code formatter"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/prettier/package.json?prettier-config:0.1.0/prettier:^3.6.2"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id76" : "pkg:npm/prettier@3.8.4"
+      }
+    }, {
+      "description" : {
+        "text" : "React component to generate QR codes"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/qrcode.react:^4.2.0"
+      },
+      "properties" : {
+        "license" : "ISC",
+        "id77" : "pkg:npm/qrcode.react@4.2.0"
+      }
+    }, {
+      "description" : {
+        "text" : "React package for working with the DOM."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/react-dom:19.2.7"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id78" : "pkg:npm/react-dom@19.2.7"
+      }
+    }, {
+      "description" : {
+        "text" : "Internationalization for react done right. Using the i18next i18n ecosystem."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/react-i18next:^16.0.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id79" : "pkg:npm/react-i18next@16.0.0"
+      }
+    }, {
+      "description" : {
+        "text" : "React components for Leaflet maps"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/react-leaflet:^5.0.0"
+      },
+      "properties" : {
+        "license" : "Hippocratic-2.1",
+        "id80" : "pkg:npm/react-leaflet@5.0.0"
+      }
+    }, {
+      "description" : {
+        "text" : "React component to render markdown"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/react-markdown:^10.1.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id81" : "pkg:npm/react-markdown@10.1.0"
+      }
+    }, {
+      "description" : {
+        "text" : "A very simple, highly customisable react top loader component."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/react-top-loading-bar:3.0.2"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id82" : "pkg:npm/react-top-loading-bar@3.0.2"
+      }
+    }, {
+      "description" : {
+        "text" : "React is a JavaScript library for building user interfaces."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/react:19.2.7"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id83" : "pkg:npm/react@19.2.7",
+        "vid9" : "cpe:2.3:a:facebook:react:19.2.7:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "React charts"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/packages/ui/package.json?ui:0.1.0/recharts:2.15.3"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id84" : "pkg:npm/recharts@2.15.3"
+      }
+    }, {
+      "description" : {
+        "text" : "remark plugin to support GFM (autolink literals, footnotes, strikethrough, tables, tasklists)"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/remark-gfm:^4.0.1"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id85" : "pkg:npm/remark-gfm@4.0.1"
+      }
+    }, {
+      "description" : {
+        "text" : "Node.js library for the Resend API"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/resend:^4.0.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id86" : "pkg:npm/resend@4.8.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Clean up user-submitted HTML, preserving allowlisted elements and allowlisted attributes on a per-element basis"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/sanitize-html:^2.17.5"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id87" : "pkg:npm/sanitize-html@2.17.5",
+        "vid10" : "cpe:2.3:a:apostrophecms:sanitize-html:2.17.5:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "High performance Node.js image processing, the fastest module to resize JPEG, PNG, WebP, GIF, AVIF and TIFF images"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/sharp:^0.35.3"
+      },
+      "properties" : {
+        "license" : "Apache-2.0",
+        "id88" : "pkg:npm/sharp@0.35.3",
+        "vid11" : "cpe:2.3:a:sharp_project:sharp:0.35.3:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "An opinionated toast component for React."
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/sonner:^2.0.7"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id89" : "pkg:npm/sonner@2.0.7"
+      }
+    }, {
+      "description" : {
+        "text" : "Stripe API wrapper"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/stripe:^17.5.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id90" : "pkg:npm/stripe@17.7.0",
+        "vid12" : "cpe:2.3:a:stripe:stripe:17.7.0:*:*:*:*:*:*:*"
+      }
+    }, {
+      "description" : {
+        "text" : "Merge Tailwind CSS classes without style conflicts"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/tailwind-merge:^3.6.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id91" : "pkg:npm/tailwind-merge@3.6.0"
+      }
+    }, {
+      "description" : {
+        "text" : "Tooling which enables you to use TypeScript with ESLint"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/makerkit/nextjs-saas-starter-kit-lite/tooling/eslint/package.json?eslint-config:0.2.0/typescript-eslint:8.46.0"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id92" : "pkg:npm/typescript-eslint@8.46.0"
+      }
+    }, {
+      "description" : {
+        "text" : "TypeScript-first schema declaration and validation library with static type inference"
+      },
+      "location" : {
+        "uri" : "file:///Users/timothylefkowitz/projects/provenance/package.json?/zod:^3.25.32"
+      },
+      "properties" : {
+        "license" : "MIT",
+        "id93" : "pkg:npm/zod@3.25.76",
+        "vid13" : "cpe:2.3:a:zod:zod:3.25.76:*:*:*:*:*:*:*"
+      }
+    } ],
+    "results" : [ ]
+  } ]
+}
