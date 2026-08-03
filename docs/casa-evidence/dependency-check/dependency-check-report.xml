@@ -8,7 +8,7 @@
                   
       <name>NVD API Last Checked</name>
                   
-      <timestamp>2026-07-31T12:21:10-05</timestamp>
+      <timestamp>2026-08-03T11:42:48-05</timestamp>
               
     </dataSource>
             
@@ -16,7 +16,7 @@
                   
       <name>NVD API Last Modified</name>
                   
-      <timestamp>2026-07-31T17:18:00Z</timestamp>
+      <timestamp>2026-08-03T16:41:32Z</timestamp>
               
     </dataSource>
         
@@ -26,7 +26,7 @@
             
     <name>Provenance</name>
             
-    <reportDate>2026-07-31T17:43:37.053798Z</reportDate>
+    <reportDate>2026-08-03T16:43:03.402826Z</reportDate>
             
     <credits>This product uses the NVD API but is not endorsed or certified by the NVD. This report contains data retrieved from the National Vulnerability Database: https://nvd.nist.gov, Github Advisory Database (via NPM Audit API): https://github.com/advisories/, and the RetireJS community.</credits>
         
@@ -644,7 +644,7 @@
                   
       <fileName>@kit/accounts:0.1.0</fileName>
                   
-      <filePath>/Users/timothylefkowitz/projects/provenance/package.json?/@kit/accounts:workspace:*</filePath>
+      <filePath>/Users/timothylefkowitz/projects/provenance/apps/realestate/package.json?realestate:0.0.1/@kit/accounts:workspace:*</filePath>
                   
       <md5/>
                   
@@ -694,7 +694,7 @@
                               
           <fileName>@kit/accounts:0.1.0</fileName>
                               
-          <filePath>/Users/timothylefkowitz/projects/provenance/apps/realestate/package.json?realestate:0.0.1/@kit/accounts:workspace:*</filePath>
+          <filePath>/Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/accounts:workspace:*</filePath>
                               
           <sha256/>
                               
@@ -718,7 +718,7 @@
                               
           <fileName>@kit/accounts:0.1.0</fileName>
                               
-          <filePath>/Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/accounts:workspace:*</filePath>
+          <filePath>/Users/timothylefkowitz/projects/provenance/package.json?/@kit/accounts:workspace:*</filePath>
                               
           <sha256/>
                               
@@ -1154,7 +1154,7 @@
                   
       <fileName>@kit/next:0.1.0</fileName>
                   
-      <filePath>/Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/next:workspace:*</filePath>
+      <filePath>/Users/timothylefkowitz/projects/provenance/apps/realestate/package.json?realestate:0.0.1/@kit/next:workspace:*</filePath>
                   
       <md5/>
                   
@@ -1204,7 +1204,7 @@
                               
           <fileName>@kit/next:0.1.0</fileName>
                               
-          <filePath>/Users/timothylefkowitz/projects/provenance/apps/realestate/package.json?realestate:0.0.1/@kit/next:workspace:*</filePath>
+          <filePath>/Users/timothylefkowitz/projects/provenance/apps/vehicles/package.json?vehicles:0.0.1/@kit/next:workspace:*</filePath>
                               
           <sha256/>
                               
@@ -5872,270 +5872,6 @@
                   
       <evidenceCollected>
             </evidenceCollected>
-              
-    </dependency>
-            
-    <dependency isVirtual="true">
-                  
-      <fileName>brace-expansion</fileName>
-                  
-      <filePath>/Users/timothylefkowitz/projects/provenance/pnpm-lock.yaml?brace-expansion</filePath>
-                  
-      <md5/>
-                  
-      <sha1/>
-                  
-      <sha256/>
-                  
-      <projectReferences>
-                        
-        <projectReference>pnpm-lock.yaml: transitive</projectReference>
-                    
-      </projectReferences>
-                  
-      <evidenceCollected>
-                        
-        <evidence type="vendor" confidence="HIGH">
-                              
-          <source>package.json</source>
-                              
-          <name>name</name>
-                              
-          <value>brace-expansion</value>
-                          
-        </evidence>
-                        
-        <evidence type="product" confidence="HIGHEST">
-                              
-          <source>package.json</source>
-                              
-          <name>name</name>
-                              
-          <value>brace-expansion</value>
-                          
-        </evidence>
-                    
-      </evidenceCollected>
-                  
-      <identifiers>
-                        
-        <package confidence="HIGHEST">
-                              
-          <id>pkg:npm/brace-expansion</id>
-                          
-        </package>
-                    
-      </identifiers>
-                  
-      <vulnerabilities>
-                        
-        <suppressedVulnerability source="NPM">
-                              
-          <name>GHSA-mh99-v99m-4gvg</name>
-                              
-          <cvssV3>
-                                    
-            <baseScore>7.5</baseScore>
-                                    
-            <attackVector>NETWORK</attackVector>
-                                    
-            <attackComplexity>LOW</attackComplexity>
-                                    
-            <privilegesRequired>NONE</privilegesRequired>
-                                    
-            <userInteraction>NONE</userInteraction>
-                                    
-            <scope>UNCHANGED</scope>
-                                    
-            <confidentialityImpact>NONE</confidentialityImpact>
-                                    
-            <integrityImpact>NONE</integrityImpact>
-                                    
-            <availabilityImpact>HIGH</availabilityImpact>
-                                    
-            <baseSeverity>HIGH</baseSeverity>
-            
-            <version>3.1</version>
-                                
-          </cvssV3>
-                              
-          <cwes>
-            
-            <cwe>CWE-400</cwe>
-            <cwe>CWE-770</cwe>
-                                
-          </cwes>
-                              
-          <description>### Summary
-
-`expand()` bounds the *number* of results it produces (the `max` option,
-`100_000` by default) but not their *length*. By chaining many brace groups,
-an attacker keeps the result count under `max` while making every result grow
-with the number of groups. Building `max` long results — plus the intermediate
-arrays combined at each brace group — exhausts memory and crashes the Node
-process with an **uncatchable** out-of-memory error. `try/catch` around
-`expand()` does not help: the fatal error terminates the process.
-
-A ~7.5 KB input (`'{a,b}'.repeat(1500)`) is enough to crash a default Node
-process.
-
-### Details
-
-For `N` chained brace groups such as `'{a,b}'.repeat(N)`:
-
-- the result count is `2^N`, immediately capped at `max` (`100_000`), so the
-  `max` protection appears to hold, but
-- each result is `N` characters long, so the total output size is
-  `max × N` characters, which grows without bound in `N`.
-
-`expand_` combines each brace set with the fully-expanded tail:
-
-```js
-const post = m.post.length ? expand_(m.post, max, false) : ['']
-...
-for (let j = 0; j &lt; N.length; j++) {
-  for (let k = 0; k &lt; post.length &amp;&amp; expansions.length &lt; max; k++) {
-    const expansion = pre + N[j] + post[k]   // grows one group longer per level
-    ...
-    expansions.push(expansion)
-  }
-}
-```
-
-The loop guard `expansions.length &lt; max` limits how many strings are built, but
-nothing limits how long they get. Each recursion level materializes another
-array of up to `max` strings, one character longer than the level below, and —
-because V8 represents `pre + N[j] + post[k]` as a cons-string (rope) that
-references `post[k]` — those intermediate strings stay reachable through the
-whole chain. Memory therefore scales with `max × N`.
-
-Measured on `5.0.7` (`'{a,b}'.repeat(N)`, default `max`):
-
-| groups (N) | input bytes | result count | peak RSS |
-|---|---|---|---|
-| 20 | 100 | 100,000 | ~80 MB |
-| 50 | 250 | 100,000 | ~214 MB |
-| 100 | 500 | 100,000 | ~409 MB |
-| 300 | 1,500 | 100,000 | ~1,148 MB |
-| 1500 | 7,500 | — | **OOM crash** |
-
-### Proof of concept
-
-```js
-const { expand } = require('brace-expansion')
-
-// ~7.5 KB input — crashes the process with a fatal, uncatchable OOM:
-//   FATAL ERROR: ... JavaScript heap out of memory
-try {
-  expand('{a,b}'.repeat(1500))
-} catch (e) {
-  // never reached — the process is already dead
-}
-```
-
-### Impact
-
-Any application that passes attacker-influenced strings to
-`brace-expansion.expand()` — directly, or transitively via `minimatch` / `glob`
-brace patterns — can be crashed by a small request. Because the failure is a
-fatal V8 out-of-memory error rather than a thrown exception, it cannot be caught
-and it takes down the whole worker/process, denying service.
-
-### Remediation
-
-Upgrade to a patched release. The fix bounds the total number of characters a
-single `expand()` call may accumulate (`EXPANSION_MAX_LENGTH`, default
-`4_000_000`, configurable via a new `maxLength` option), applied inside the
-output-building loops so intermediate arrays are bounded too. Once the limit is
-reached, output is truncated — consistent with how `max` already truncates —
-instead of growing without bound. The limit sits well above any realistic
-expansion (100,000 results hitting `max` measure ~1M characters), so legitimate
-input is unaffected.
-
-After the fix, `'{a,b}'.repeat(1500)` returns a bounded, truncated result in
-~0.7 s using ~340 MB and never crashes, including under a constrained 512 MB
-heap.
-
-The fix bounds memory but the algorithm still rebuilds intermediate arrays at
-each level (roughly `O(N × maxLength)` work on this input class). A streaming
-rewrite that produces output in `O(total output size)` can be a non-urgent
-follow-up.
-
-If immediate upgrade isn't possible, avoid passing untrusted input to
-`expand()` / glob brace patterns, or pass a small explicit `max` **and**
-`maxLength`.</description>
-                              
-          <notes>False positive: pnpm-lock.yaml pins brace-expansion to 1.1.17 and 5.0.9, both
-         patched per the upstream advisory's own "Patched versions" list. See
-         docs/casa-evidence/dependency-scan-owasp.md for verification steps.</notes>
-                              
-          <references>
-                                    
-            <reference>
-                                          
-              <source>NPM Advisory reference: </source>
-              
-              <url>https://github.com/juliangruber/brace-expansion/commit/a1bd33999ea75262c4749fff3bbb0d1372bd07b5</url>
-              <name>https://github.com/juliangruber/brace-expansion/commit/a1bd33999ea75262c4749fff3bbb0d1372bd07b5</name>
-                                      
-            </reference>
-                                    
-            <reference>
-                                          
-              <source>NPM Advisory reference: </source>
-              
-              <url>https://nvd.nist.gov/vuln/detail/CVE-2026-14257</url>
-              <name>https://nvd.nist.gov/vuln/detail/CVE-2026-14257</name>
-                                      
-            </reference>
-                                    
-            <reference>
-                                          
-              <source>NPM Advisory reference: </source>
-              
-              <url>https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-mh99-v99m-4gvg</url>
-              <name>https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-mh99-v99m-4gvg</name>
-                                      
-            </reference>
-                                    
-            <reference>
-                                          
-              <source>NPM Advisory reference: </source>
-              
-              <url>https://github.com/juliangruber/brace-expansion</url>
-              <name>https://github.com/juliangruber/brace-expansion</name>
-                                      
-            </reference>
-                                    
-            <reference>
-                                          
-              <source>NPM Advisory reference: </source>
-              
-              <url>https://github.com/advisories/GHSA-mh99-v99m-4gvg</url>
-              <name>https://github.com/advisories/GHSA-mh99-v99m-4gvg</name>
-                                      
-            </reference>
-                                    
-            <reference>
-                                          
-              <source>NPM Advisory reference: </source>
-              
-              <url>https://www.npmjs.com/package/brace-expansion</url>
-              <name>https://www.npmjs.com/package/brace-expansion</name>
-                                      
-            </reference>
-                                
-          </references>
-                              
-          <vulnerableSoftware>
-                                    
-            <software>cpe:2.3:a:*:brace-expansion:\&lt;\=5.0.7:*:*:*:*:*:*:*</software>
-                                
-          </vulnerableSoftware>
-                          
-        </suppressedVulnerability>
-                    
-      </vulnerabilities>
               
     </dependency>
             
@@ -10843,6 +10579,16 @@ If immediate upgrade isn't possible, avoid passing untrusted input to
                               
           <name>version</name>
                               
+          <value>19.2.1</value>
+                          
+        </evidence>
+                        
+        <evidence type="version" confidence="HIGHEST">
+                              
+          <source>package.json</source>
+                              
+          <name>version</name>
+                              
           <value>19.2.7</value>
                           
         </evidence>
@@ -11614,6 +11360,16 @@ If immediate upgrade isn't possible, avoid passing untrusted input to
           <name>name</name>
                               
           <value>react</value>
+                          
+        </evidence>
+                        
+        <evidence type="version" confidence="HIGHEST">
+                              
+          <source>package.json</source>
+                              
+          <name>version</name>
+                              
+          <value>19.2.1</value>
                           
         </evidence>
                         
