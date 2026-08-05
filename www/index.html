@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Provenance</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #F8F4F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #4a3728;
+    }
+    .loader {
+      text-align: center;
+      opacity: 0;
+      animation: fadeIn 0.6s ease 0.3s forwards;
+    }
+    .loader h1 {
+      font-size: 1.5rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .loader p {
+      font-size: 0.85rem;
+      color: #7a6a5a;
+    }
+    @keyframes fadeIn { to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <!--
+    This file is a minimal placeholder required by Capacitor's webDir setting.
+    It is never served to the user — Capacitor's server.url config redirects
+    the WKWebView to https://provenance.guru on launch.
+  -->
+  <div class="loader">
+    <h1>Provenance</h1>
+    <p>Loading…</p>
+  </div>
+</body>
+</html>

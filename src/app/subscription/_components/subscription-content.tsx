@@ -12,7 +12,13 @@ import {
 } from '~/lib/stripe-config';
 import { getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
-import { Loader2, TrendingDown } from 'lucide-react';
+import { Loader2, TrendingDown, Apple } from 'lucide-react';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+import {
+  APPLE_PRODUCT_TO_PLAN,
+  RC_OFFERING_IDENTIFIER,
+} from '~/lib/capacitor/revenuecat-config';
+import { syncAppleEntitlement } from '../_actions/sync-apple-entitlement';
 
 type SubscriptionRow = {
   id: string;
@@ -20,6 +26,7 @@ type SubscriptionRow = {
   status: string;
   current_period_end: string | null;
   trial_end: string | null;
+  provider?: string | null;
 } | null;
 
 type Props = {
@@ -83,6 +90,12 @@ export function SubscriptionContent({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [native, setNative] = useState(false);
+
+  // Detect native platform client-side (safe for SSR)
+  useEffect(() => {
+    setNative(isNativePlatform());
+  }, []);
 
   // Fire a GTM purchase event exactly once when Stripe redirects back with ?success=1
   useEffect(() => {
@@ -94,6 +107,7 @@ export function SubscriptionContent({
 
   const isActiveSubscription = subscription?.status === 'active';
   const isTrialing = subscription?.status === 'trialing';
+  const isAppleSubscription = subscription?.provider === 'apple_iap';
 
   function formatLongDate(iso: string | null | undefined) {
     if (!iso) return null;
@@ -104,7 +118,6 @@ export function SubscriptionContent({
     });
   }
 
-  // During Stripe trialing, current_period_end can reflect billing-cycle boundaries; prefer trial_end.
   const trialEndsOn =
     isTrialing && subscription
       ? formatLongDate(subscription.trial_end ?? subscription.current_period_end)
@@ -113,6 +126,8 @@ export function SubscriptionContent({
     isActiveSubscription && subscription
       ? formatLongDate(subscription.current_period_end)
       : null;
+
+  // ── Web checkout (Stripe) ──────────────────────────────────────────────────
 
   async function handleCheckout() {
     setError(null);
@@ -163,6 +178,124 @@ export function SubscriptionContent({
       setLoading(false);
     }
   }
+
+  // ── Native Apple IAP (RevenueCat) ─────────────────────────────────────────
+
+  async function handleNativePurchase() {
+    setError(null);
+    setLoading(true);
+    console.log('[IAP] Starting native purchase', { role: selectedRole, interval });
+    try {
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
+
+      const offeringsResult = await Purchases.getOfferings();
+      const offering =
+        offeringsResult.current ??
+        offeringsResult.all[RC_OFFERING_IDENTIFIER] ??
+        null;
+
+      if (!offering) {
+        setError('No subscription plans available. Please try again.');
+        return;
+      }
+
+      // Find the package whose product ID matches our selected role + interval.
+      const targetProductId = Object.entries(APPLE_PRODUCT_TO_PLAN).find(
+        ([, plan]) => plan.role === selectedRole && plan.interval === interval,
+      )?.[0];
+
+      const pkg = offering.availablePackages.find(
+        (p) => p.product.productIdentifier === targetProductId,
+      );
+
+      if (!pkg) {
+        setError('Selected plan not available in the App Store. Please try again.');
+        console.error('[IAP] Package not found for', { selectedRole, interval, targetProductId });
+        return;
+      }
+
+      const purchaseResult = await Purchases.purchasePackage({ aPackage: pkg });
+      const customerInfo = purchaseResult.customerInfo;
+
+      // Eagerly sync to our DB without waiting for the webhook.
+      const expMs =
+        purchaseResult.customerInfo.allExpirationDatesByProduct?.[targetProductId!] ?? null;
+      const expDate = expMs ? new Date(expMs).getTime() : null;
+
+      // Get the original transaction ID for this purchase
+      const originalTransactionId =
+        customerInfo.allPurchaseDatesByProduct?.[targetProductId!]
+          ? targetProductId! // fallback; RC SDK v13 exposes this differently
+          : targetProductId!;
+
+      // Try to get the real original transaction ID from active subscriptions
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const subs = (customerInfo as any).activeSubscriptions as string[] | undefined;
+      const activeSub = subs?.[0] ?? targetProductId!;
+
+      const syncResult = await syncAppleEntitlement(activeSub, targetProductId!, expDate);
+      if (!syncResult.success) {
+        console.error('[IAP] Eager sync failed (webhook will catch it)', syncResult.error);
+      }
+
+      console.log('[IAP] Purchase completed', { role: selectedRole, interval });
+      // Reload the page so the server re-reads the new subscription row.
+      window.location.reload();
+    } catch (err: unknown) {
+      // RevenueCat throws a specific error when the user cancels
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((err as any)?.code === 'PURCHASE_CANCELLED') {
+        setError(null);
+        console.log('[IAP] Purchase cancelled by user');
+        return;
+      }
+      console.error('[IAP] Purchase failed', err);
+      setError(err instanceof Error ? err.message : 'Purchase failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRestorePurchases() {
+    setError(null);
+    setLoading(true);
+    console.log('[IAP] Restoring purchases');
+    try {
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
+      const { customerInfo } = await Purchases.restorePurchases();
+
+      // Sync any active subscription found after restore.
+      const activeProductIds = Object.keys(customerInfo.allExpirationDatesByProduct ?? {});
+      let synced = false;
+
+      for (const productId of activeProductIds) {
+        const plan = APPLE_PRODUCT_TO_PLAN[productId];
+        if (!plan) continue;
+
+        const expMs = customerInfo.allExpirationDatesByProduct?.[productId] ?? null;
+        const expDate = expMs ? new Date(expMs).getTime() : null;
+        const result = await syncAppleEntitlement(productId, productId, expDate);
+        if (result.success) {
+          synced = true;
+          break;
+        }
+      }
+
+      if (synced) {
+        console.log('[IAP] Restore succeeded, reloading');
+        window.location.reload();
+      } else {
+        setError('No active subscriptions found to restore.');
+      }
+    } catch (err) {
+      console.error('[IAP] Restore failed', err);
+      setError(err instanceof Error ? err.message : 'Restore failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -235,16 +368,25 @@ export function SubscriptionContent({
                 </span>
               )}
             </p>
-            <Button
-              onClick={handlePortal}
-              disabled={loading}
-              className="font-serif"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Manage Billing & Payment
-            </Button>
+            {isAppleSubscription ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/5 px-4 py-3 text-sm font-serif text-ink/70">
+                  <Apple className="h-4 w-4 flex-shrink-0" aria-hidden />
+                  <span>Subscribed via Apple. Manage your subscription in <strong>Settings → Apple ID → Subscriptions</strong> on your device.</span>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={handlePortal}
+                disabled={loading}
+                className="font-serif"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Manage Billing & Payment
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -367,21 +509,55 @@ export function SubscriptionContent({
                 </p>
               </div>
 
-              <Button
-                onClick={handleCheckout}
-                disabled={loading}
-                className={`w-full font-serif ${isTrialing ? 'bg-wine text-parchment hover:bg-wine/90' : ''}`}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                {isTrialing ? 'Upgrade to continue' : 'Proceed to Checkout'}
-              </Button>
-              <p className="text-xs text-ink/50">
-                {isTrialing
-                  ? "You can upgrade anytime during your trial. You'll complete payment on Stripe."
-                  : "You'll be redirected to Stripe to complete payment. Card and Apple Pay accepted."}
-              </p>
+              {/* Native (Apple IAP) checkout path */}
+              {native ? (
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleNativePurchase}
+                    disabled={loading}
+                    className={`w-full font-serif bg-wine text-parchment hover:bg-wine/90`}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Apple className="h-4 w-4 mr-2" aria-hidden />
+                    )}
+                    {isTrialing ? 'Upgrade with Apple' : 'Subscribe with Apple'}
+                  </Button>
+                  <p className="text-xs text-ink/50 text-center">
+                    Payment will be charged to your Apple ID at confirmation.
+                  </p>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={handleRestorePurchases}
+                      disabled={loading}
+                      className="font-serif text-xs text-wine underline hover:no-underline"
+                    >
+                      Restore previous purchases
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Web (Stripe) checkout path */
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={loading}
+                    className={`w-full font-serif ${isTrialing ? 'bg-wine text-parchment hover:bg-wine/90' : ''}`}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {isTrialing ? 'Upgrade to continue' : 'Proceed to Checkout'}
+                  </Button>
+                  <p className="text-xs text-ink/50">
+                    {isTrialing
+                      ? "You can upgrade anytime during your trial. You'll complete payment on Stripe."
+                      : "You'll be redirected to Stripe to complete payment. Card and Apple Pay accepted."}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

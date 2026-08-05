@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
 import { getRoleLabel, type UserRole } from '~/lib/user-roles';
-import { CreditCard, ExternalLink, Loader2 } from 'lucide-react';
+import { Apple, CreditCard, ExternalLink, Loader2 } from 'lucide-react';
 
 type SubscriptionData = {
   id: string;
@@ -14,6 +14,7 @@ type SubscriptionData = {
   status: string;
   current_period_end: string | null;
   trial_end: string | null;
+  provider?: string | null;
 } | null;
 
 type Props = {
@@ -35,6 +36,7 @@ export function BillingSection({ subscription }: Props) {
 
   const isActive = subscription?.status === 'active';
   const isTrialing = subscription?.status === 'trialing';
+  const isApple = subscription?.provider === 'apple_iap';
 
   async function handleOpenPortal() {
     setError(null);
@@ -103,16 +105,23 @@ export function BillingSection({ subscription }: Props) {
                   Current period ends {formatDate(subscription.current_period_end)}.
                 </p>
               )}
-              <Button
-                onClick={handleOpenPortal}
-                disabled={loading}
-                variant="outline"
-                className="font-serif border-wine/30"
-              >
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Manage Billing & Payment
-                <ExternalLink className="h-3.5 w-3.5 ml-2" />
-              </Button>
+              {isApple ? (
+                <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/5 px-4 py-3 text-sm font-serif text-ink/70">
+                  <Apple className="h-4 w-4 flex-shrink-0" aria-hidden />
+                  <span>Subscribed via Apple. Go to <strong>Settings → Apple ID → Subscriptions</strong> to manage.</span>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleOpenPortal}
+                  disabled={loading}
+                  variant="outline"
+                  className="font-serif border-wine/30"
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Manage Billing & Payment
+                  <ExternalLink className="h-3.5 w-3.5 ml-2" />
+                </Button>
+              )}
             </div>
           )}
 

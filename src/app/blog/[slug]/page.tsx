@@ -174,7 +174,7 @@ async function BlogPostPage(props: PageProps) {
                   {post.title}
                 </h1>
                 {post.description ? (
-                  <p className="mt-4 text-base font-[family-name:var(--font-inter-tight)] leading-relaxed text-editorial-ink/65 max-w-2xl">
+                  <p className="mt-4 text-lg font-[family-name:var(--font-inter-tight)] font-medium leading-relaxed text-editorial-ink/80 max-w-2xl">
                     {post.description}
                   </p>
                 ) : null}

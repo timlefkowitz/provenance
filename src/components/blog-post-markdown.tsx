@@ -8,25 +8,25 @@ const markdownLinkClass =
 const markdownComponents: Partial<Components> = {
   h1: (props) => (
     <h1
-      className="font-[family-name:var(--font-fraunces)] mt-10 text-3xl font-light italic tracking-[-0.03em] text-editorial-ink first:mt-0"
+      className="font-[family-name:var(--font-fraunces)] mt-12 text-4xl font-semibold italic tracking-[-0.03em] text-editorial-ink first:mt-0"
       {...props}
     />
   ),
   h2: (props) => (
     <h2
-      className="font-[family-name:var(--font-fraunces)] mt-10 text-2xl font-light italic tracking-[-0.02em] text-editorial-ink"
+      className="font-[family-name:var(--font-fraunces)] mt-12 text-3xl font-semibold italic tracking-[-0.02em] text-editorial-ink"
       {...props}
     />
   ),
   h3: (props) => (
     <h3
-      className="font-[family-name:var(--font-fraunces)] mt-8 text-xl font-light italic tracking-[-0.01em] text-editorial-ink"
+      className="font-[family-name:var(--font-fraunces)] mt-10 text-2xl font-semibold italic tracking-[-0.01em] text-editorial-ink"
       {...props}
     />
   ),
   p: (props) => (
     <p
-      className="mt-4 text-base leading-relaxed text-editorial-ink/80 first:mt-0 font-[family-name:var(--font-inter-tight)]"
+      className="mt-6 text-lg md:text-xl leading-[1.8] text-editorial-ink font-normal first:mt-0 font-[family-name:var(--font-inter-tight)]"
       {...props}
     />
   ),
@@ -35,20 +35,20 @@ const markdownComponents: Partial<Components> = {
   ),
   ul: (props) => (
     <ul
-      className="mt-4 list-inside list-disc space-y-2 pl-1 font-[family-name:var(--font-inter-tight)] text-editorial-ink/80"
+      className="mt-6 list-inside list-disc space-y-3 pl-1 text-lg md:text-xl leading-[1.8] font-[family-name:var(--font-inter-tight)] text-editorial-ink"
       {...props}
     />
   ),
   ol: (props) => (
     <ol
-      className="mt-4 list-inside list-decimal space-y-2 pl-1 font-[family-name:var(--font-inter-tight)] text-editorial-ink/80"
+      className="mt-6 list-inside list-decimal space-y-3 pl-1 text-lg md:text-xl leading-[1.8] font-[family-name:var(--font-inter-tight)] text-editorial-ink"
       {...props}
     />
   ),
-  li: (props) => <li className="leading-relaxed" {...props} />,
+  li: (props) => <li className="leading-[1.8]" {...props} />,
   blockquote: (props) => (
     <blockquote
-      className="mt-6 border-l-2 border-vermillion/50 pl-5 italic text-editorial-ink/65 font-[family-name:var(--font-fraunces)] font-light text-lg"
+      className="mt-8 border-l-4 border-vermillion/50 pl-6 italic text-editorial-ink font-[family-name:var(--font-fraunces)] font-medium text-xl md:text-2xl leading-relaxed"
       {...props}
     />
   ),
