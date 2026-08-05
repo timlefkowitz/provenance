@@ -114,7 +114,9 @@ type MfaOutcome =
 /**
  * Shared MFA assurance check used by every require* variant below.
  *
- * - Enrolled factors, session not stepped up (aal1, aal2 required) → 'step_up_required'.
+ * - Factors enrolled (nextLevel === 'aal2') and session already stepped up
+ *   (currentLevel === 'aal2') → 'ok', no grace period involved at all.
+ * - Factors enrolled, session not stepped up yet → 'step_up_required'.
  * - No factors enrolled, still inside the 7-day grace period from
  *   admin_mfa_grace_deadline → 'ok' with requiresMfaSetup=true (banner nudge).
  * - No factors enrolled, grace period expired (or was never set — fail
@@ -129,11 +131,17 @@ async function evaluateAdminMfa(state: AdminAccountState): Promise<MfaOutcome> {
     const { data: aalData } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
     const { currentLevel, nextLevel } = aalData ?? {};
 
-    if (nextLevel === 'aal2' && currentLevel !== 'aal2') {
-      return { kind: 'step_up_required' };
+    if (nextLevel === 'aal2') {
+      if (currentLevel !== 'aal2') {
+        return { kind: 'step_up_required' };
+      }
+
+      // Factors enrolled and this session has already completed the MFA
+      // challenge — fully satisfied, regardless of the grace-period clock.
+      return { kind: 'ok', requiresMfaSetup: false, mfaGraceDeadline: null };
     }
 
-    // No factors enrolled (nextLevel !== 'aal2').
+    // No factors enrolled.
     const deadline = state.mfaGraceDeadline;
     const withinGrace = deadline !== null && deadline.getTime() > Date.now();
 

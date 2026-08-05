@@ -27,6 +27,23 @@ const OAUTH_SCOPES: Partial<Record<Provider, string>> = {
 };
 
 /**
+ * @name OAUTH_QUERY_PARAMS
+ * @description
+ * Extra query params forwarded to the provider's OAuth authorize endpoint.
+ *
+ * Google forces `prompt: 'select_account'` so that users who are already
+ * signed into a Google session in the browser (e.g. after signing out of
+ * this app, or when they want to use a different Google account) are always
+ * shown the account chooser instead of being silently re-authenticated with
+ * whichever Google account is already active.
+ *
+ * @see https://developers.google.com/identity/openid-connect/openid-connect#authenticationuriparameters
+ */
+const OAUTH_QUERY_PARAMS: Partial<Record<Provider, Record<string, string>>> = {
+  google: { prompt: 'select_account' },
+};
+
+/**
  * @name APEX_TO_WWW_HOST
  * @description
  * `provenance.guru` (apex) 307s to `www.provenance.guru` at the Vercel domain
@@ -118,6 +135,7 @@ export function OauthProviders(props: {
 
                   const redirectTo = [origin, redirectPath].join('');
                   const scopesOpts = OAUTH_SCOPES[provider] ?? {};
+                  const oauthQueryParams = OAUTH_QUERY_PARAMS[provider];
 
                   const credentials = {
                     provider,
@@ -125,6 +143,9 @@ export function OauthProviders(props: {
                       shouldCreateUser: props.shouldCreateUser,
                       redirectTo,
                       ...scopesOpts,
+                      ...(oauthQueryParams
+                        ? { queryParams: oauthQueryParams }
+                        : {}),
                     },
                   };
 

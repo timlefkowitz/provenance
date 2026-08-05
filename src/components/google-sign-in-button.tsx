@@ -21,6 +21,13 @@ export function GoogleSignInButton() {
       options: {
         shouldCreateUser: false,
         redirectTo,
+        // Always show Google's account chooser instead of silently
+        // reusing whatever Google session is already active in the
+        // browser, so users can pick a different account after signing
+        // out of this app.
+        queryParams: {
+          prompt: 'select_account',
+        },
       },
     };
 

@@ -44,8 +44,13 @@ site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["http://localhost:3000", "http://localhost:3000/auth/callback", "http://localhost:3000/update-password"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
-# week).
-jwt_expiry = 3600
+# week). This is just the short-lived access token — supabase-js silently refreshes it in the
+# background via the refresh token, so it doesn't by itself control how long a user stays signed
+# in. Set to the max allowed here for local dev parity; the setting that actually controls "how
+# long until someone is forced to log back in" is Time-box user sessions / Inactivity timeout under
+# Authentication > Sessions in the Supabase dashboard (this config.toml only applies to `supabase
+# start` locally — it is not synced to the hosted project).
+jwt_expiry = 604800
 # Allow/disallow new user signups to your project.
 enable_signup = true
 
