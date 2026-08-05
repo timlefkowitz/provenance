@@ -20,6 +20,7 @@ export type RegistryAccount = {
   listPreviewUrl: string | null;
   listPreviewUrls: string[] | null;
   listPreviewUsesArtwork: boolean;
+  latestArtworkAt: string | null;
 };
 
 type RegistryContentProps = {

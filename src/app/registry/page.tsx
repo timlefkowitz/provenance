@@ -25,9 +25,14 @@ type Account = {
   listPreviewUrls: string[] | null;
   /** True when preview image comes from public artwork, false when it is only the profile photo. */
   listPreviewUsesArtwork: boolean;
+  /** created_at of this account's/gallery's most recent verified artwork, for "Most Recent" sort. */
+  latestArtworkAt: string | null;
 };
 
-type AccountRow = Omit<Account, 'listPreviewUrl' | 'listPreviewUrls' | 'listPreviewUsesArtwork'>;
+type AccountRow = Omit<
+  Account,
+  'listPreviewUrl' | 'listPreviewUrls' | 'listPreviewUsesArtwork' | 'latestArtworkAt'
+>;
 
 type PreviewCandidate = {
   rowKey: string;
@@ -192,6 +197,9 @@ export default async function RegistryPage() {
   const previewByKey: Record<string, string | null> = {};
   const previewUrlsByKey: Record<string, string[]> = {};
   const artworkPreviewKeys = new Set<string>();
+  // created_at of the most recent verified artwork per account/gallery, used to default
+  // the /registry listing to "most recent artworks first" instead of alphabetical.
+  const latestArtworkAtByKey: Record<string, string> = {};
   combinedList.forEach((a) => {
     previewByKey[registryRowKey(a)] = a.picture_url;
   });
@@ -226,6 +234,10 @@ export default async function RegistryPage() {
         if (url) {
           previewByKey[key] = url;
           artworkPreviewKeys.add(key);
+        }
+        const createdAt = row.created_at as string | null;
+        if (createdAt && !latestArtworkAtByKey[key]) {
+          latestArtworkAtByKey[key] = createdAt;
         }
       }
 
@@ -342,6 +354,9 @@ export default async function RegistryPage() {
         assigned.add(c.rowKey);
         previewByKey[c.rowKey] = c.image_url;
         artworkPreviewKeys.add(c.rowKey);
+        if (c.created_at) {
+          latestArtworkAtByKey[c.rowKey] = c.created_at;
+        }
       }
 
       // Override with user-selected registry artwork where set
@@ -396,14 +411,22 @@ export default async function RegistryPage() {
       listPreviewUrl: url,
       listPreviewUrls: multi && multi.length > 1 ? multi : null,
       listPreviewUsesArtwork: artworkPreviewKeys.has(key),
+      latestArtworkAt: latestArtworkAtByKey[key] ?? null,
     };
   });
 
   const minWorks = MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY;
-  const directoryAccounts = withPreview.filter((a) => {
-    const key = registryRowKey(a);
-    return (artworkCounts[key] ?? 0) >= minWorks;
-  });
+  const directoryAccounts = withPreview
+    .filter((a) => {
+      const key = registryRowKey(a);
+      return (artworkCounts[key] ?? 0) >= minWorks;
+    })
+    // Default sort: most recent artworks first (falls back to 0 — pushed to the end — when unknown).
+    .sort((a, b) => {
+      const aTime = a.latestArtworkAt ? new Date(a.latestArtworkAt).getTime() : 0;
+      const bTime = b.latestArtworkAt ? new Date(b.latestArtworkAt).getTime() : 0;
+      return bTime - aTime;
+    });
 
   console.log('[Registry] RegistryPage load finished', {
     combined: withPreview.length,
