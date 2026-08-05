@@ -7,6 +7,15 @@ import { constantTimeEquals } from '~/lib/security/constant-time';
 /**
  * Daily safety-net cron for Stripe billing.
  *
+ * 0. FULL SWEEP: For every known Stripe customer, list their live Stripe
+ *    subscriptions and make sure each one has a matching row in our
+ *    `subscriptions` table. This catches subscriptions that never got synced
+ *    at all (a completely missed/failed webhook), which the drift-check in
+ *    step 1 cannot detect because it only looks at rows that already exist
+ *    locally. When a real paid subscription is found for a user, any
+ *    lingering local app-trial row (stripe_subscription_id LIKE 'trial_%')
+ *    is canceled so stale "trial ending" messaging stops showing.
+ *
  * 1. RECONCILE: For every real Stripe subscription in our DB whose period is
  *    expiring soon or whose status looks unhealthy, fetch the live subscription
  *    from Stripe and refresh status / current_period_end. This catches any
@@ -81,6 +90,144 @@ async function run(request: NextRequest) {
   let renewalErrors = 0;
   let trialNotifsCreated = 0;
   let trialNotifsSkipped = 0;
+  let sweepCustomersChecked = 0;
+  let sweepGapsFound = 0;
+  let sweepGapsFixed = 0;
+  let sweepErrors = 0;
+  let staleTrialsCanceled = 0;
+
+  // ---------------------------------------------------------------
+  // 0. Full sweep: find subscriptions missing entirely from our DB
+  // ---------------------------------------------------------------
+  if (stripe) {
+    const { data: customers, error: custErr } = await admin
+      .from('stripe_customers')
+      .select('user_id, stripe_customer_id');
+
+    if (custErr) {
+      console.error('[CRON/stripe-reconcile] stripe_customers load failed', custErr);
+    } else {
+      for (const c of customers ?? []) {
+        sweepCustomersChecked += 1;
+        try {
+          const liveSubs = await stripe.subscriptions.list({
+            customer: c.stripe_customer_id,
+            status: 'all',
+            limit: 20,
+          });
+
+          let userHasLiveCoverage = false;
+
+          for (const ls of liveSubs.data) {
+            const liveStatus = ALLOWED_STATUSES.has(ls.status) ? ls.status : 'canceled';
+            const liveEnd = ls.current_period_end
+              ? new Date(ls.current_period_end * 1000).toISOString()
+              : null;
+            if (liveStatus === 'active' || liveStatus === 'trialing') {
+              userHasLiveCoverage = true;
+            }
+
+            const { data: localRow } = await admin
+              .from('subscriptions')
+              .select('id, status, current_period_end')
+              .eq('stripe_subscription_id', ls.id)
+              .maybeSingle();
+
+            const missing = !localRow;
+            const drifted =
+              !!localRow &&
+              (localRow.status !== liveStatus || localRow.current_period_end !== liveEnd);
+
+            if (!missing && !drifted) continue;
+
+            sweepGapsFound += 1;
+            const role = (ls.metadata?.role as string) || null;
+            if (!role) {
+              console.error('[CRON/stripe-reconcile] sweep: cannot fix gap, no role metadata', {
+                userId: c.user_id,
+                subscriptionId: ls.id,
+              });
+              sweepErrors += 1;
+              continue;
+            }
+
+            const { error: fixErr } = await admin.from('subscriptions').upsert(
+              {
+                user_id: c.user_id,
+                stripe_customer_id: c.stripe_customer_id,
+                stripe_subscription_id: ls.id,
+                stripe_price_id: ls.items?.data?.[0]?.price?.id ?? null,
+                status: liveStatus,
+                current_period_end: liveEnd,
+                trial_end: ls.trial_end ? new Date(ls.trial_end * 1000).toISOString() : null,
+                role,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'stripe_subscription_id' },
+            );
+
+            if (fixErr) {
+              sweepErrors += 1;
+              console.error('[CRON/stripe-reconcile] sweep: fix upsert failed', {
+                userId: c.user_id,
+                subscriptionId: ls.id,
+                fixErr,
+              });
+            } else {
+              sweepGapsFixed += 1;
+              console.log('[CRON/stripe-reconcile] sweep: recovered missing/drifted subscription', {
+                userId: c.user_id,
+                subscriptionId: ls.id,
+                status: liveStatus,
+              });
+            }
+          }
+
+          // A user with real paid/trialing coverage doesn't need the local
+          // app-provisioned trial row anymore — cancel it so stale "trial
+          // ending" banners/emails stop firing.
+          if (userHasLiveCoverage) {
+            const { data: staleTrials, error: staleErr } = await admin
+              .from('subscriptions')
+              .select('id')
+              .eq('user_id', c.user_id)
+              .eq('status', 'trialing')
+              .like('stripe_subscription_id', 'trial_%');
+
+            if (staleErr) {
+              console.error('[CRON/stripe-reconcile] stale trial lookup failed', {
+                userId: c.user_id,
+                staleErr,
+              });
+            } else if (staleTrials && staleTrials.length > 0) {
+              const { error: cancelErr } = await admin
+                .from('subscriptions')
+                .update({ status: 'canceled', updated_at: new Date().toISOString() })
+                .in('id', staleTrials.map((t: { id: string }) => t.id));
+              if (cancelErr) {
+                console.error('[CRON/stripe-reconcile] stale trial cancel failed', {
+                  userId: c.user_id,
+                  cancelErr,
+                });
+              } else {
+                staleTrialsCanceled += staleTrials.length;
+                console.log('[CRON/stripe-reconcile] canceled stale trial row(s)', {
+                  userId: c.user_id,
+                  count: staleTrials.length,
+                });
+              }
+            }
+          }
+        } catch (err) {
+          sweepErrors += 1;
+          console.error('[CRON/stripe-reconcile] sweep: stripe.list failed', {
+            customerId: c.stripe_customer_id,
+            err,
+          });
+        }
+      }
+    }
+  }
 
   // ---------------------------------------------------------------
   // 1. Reconcile real Stripe subscriptions
@@ -221,6 +368,11 @@ async function run(request: NextRequest) {
   }
 
   const summary = {
+    sweepCustomersChecked,
+    sweepGapsFound,
+    sweepGapsFixed,
+    sweepErrors,
+    staleTrialsCanceled,
     renewalChecked,
     renewalDrifted,
     renewalErrors,

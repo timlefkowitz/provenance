@@ -151,6 +151,25 @@ async function upsertFromSubscription(
     });
     return { ok: false, reason: 'upsert_failed' };
   }
+
+  // A real Stripe subscription now covers this user — cancel any lingering
+  // local app-provisioned trial row so stale "trial ending" banners/emails
+  // stop showing immediately, instead of waiting on the daily reconcile cron.
+  if (status === 'active' || status === 'trialing') {
+    const { error: staleErr } = await admin
+      .from('subscriptions')
+      .update({ status: 'canceled', updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('status', 'trialing')
+      .like('stripe_subscription_id', 'trial_%');
+    if (staleErr) {
+      console.error('[Stripe] Webhook: failed to cancel stale trial row', {
+        userId,
+        staleErr,
+      });
+    }
+  }
+
   return { ok: true };
 }
 
