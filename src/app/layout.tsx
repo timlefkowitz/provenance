@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { JwtPayload } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
-import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text } from "next/font/google";
+import { Cinzel, Cormorant_Garamond, Libre_Caslon_Text, Fraunces, JetBrains_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@kit/ui/sonner";
@@ -42,6 +42,28 @@ const caslon = Libre_Caslon_Text({
   subsets: ["latin"],
   weight: ["400", "700"],
   style: ["normal", "italic"],
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -139,7 +161,7 @@ export default async function RootLayout({
     >
       <GoogleTagManager nonce={nonce} />
       <body
-        className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} antialiased overflow-x-hidden`}
+        className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${interTight.variable} antialiased overflow-x-hidden`}
       >
         <RootProviders lang={currentLang} theme={currentTheme}>
           <LegalModalProvider>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 import { Trans } from '@kit/ui/trans';
 
@@ -22,9 +22,11 @@ export const generateMetadata = async () => {
   };
 };
 
-function SectionEyebrow({ children }: { children: React.ReactNode }) {
+function MonoLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className="inline-block text-xs font-medium tracking-[0.25em] text-wine/70 uppercase">
+    <span
+      className={`font-[family-name:var(--font-jetbrains)] text-[0.65rem] uppercase tracking-[0.18em] ${className}`}
+    >
       {children}
     </span>
   );
@@ -32,189 +34,229 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
 
 function PostMeta({ post }: { post: BlogPostListItem }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-body text-xs font-medium tracking-[0.18em] text-ink/45 uppercase">
-      <time dateTime={post.published_at ?? undefined}>
-        {formatBlogDate(post.published_at)}
-      </time>
-      <span aria-hidden className="text-ink/25">
-        ·
-      </span>
-      <span className="normal-case tracking-normal text-ink/55">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <MonoLabel className="text-editorial-ink/50">
+        <time dateTime={post.published_at ?? undefined}>
+          {formatBlogDate(post.published_at)}
+        </time>
+      </MonoLabel>
+      <span className="text-editorial-ink/25 font-[family-name:var(--font-jetbrains)] text-[0.65rem]">·</span>
+      <MonoLabel className="text-editorial-ink/60 normal-case tracking-normal">
         {post.author_name}
-      </span>
+      </MonoLabel>
     </div>
   );
 }
 
-function FeaturedPostCard({ post }: { post: BlogPostListItem }) {
+function FeaturedPostCard({ post, index }: { post: BlogPostListItem; index: number }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-wine/10 bg-white/50 shadow-sm ring-1 ring-wine/5 transition duration-300 hover:shadow-md hover:ring-wine/12 lg:flex-row lg:items-stretch"
+      className="group grid grid-cols-1 md:grid-cols-12 hairline-b"
     >
-      <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-wine/[0.06] lg:aspect-auto lg:w-[min(44%,28rem)]">
-        {post.og_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- arbitrary OG URLs from CMS
-          <img
-            src={post.og_image_url}
-            alt=""
-            className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div
-            className="flex h-full min-h-[12rem] items-end justify-start bg-gradient-to-br from-wine/[0.12] via-parchment to-wine/[0.04] p-6 lg:min-h-full"
-            aria-hidden
-          >
-            <div className="h-px w-12 bg-wine/35" />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col justify-center gap-4 p-8 md:p-10 lg:pl-12 lg:pr-14">
-        <PostMeta post={post} />
-        <div className="flex items-start justify-between gap-4">
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-wine transition group-hover:text-wine/85 md:text-3xl lg:text-[2rem] lg:leading-snug">
+      {/* Left: metadata */}
+      <div className="col-span-12 md:col-span-5 hairline-b md:hairline-b-0 md:hairline-r p-6 md:p-10 flex flex-col justify-between gap-8">
+        <div>
+          <MonoLabel className="text-gilt">
+            Featured Entry № {String(index + 1).padStart(3, '0')}
+          </MonoLabel>
+          <h2 className="mt-4 font-[family-name:var(--font-fraunces)] font-light italic text-4xl md:text-6xl leading-[0.92] tracking-[-0.03em] text-editorial-ink group-hover:text-vermillion transition-colors duration-200">
             {post.title}
           </h2>
-          <span
-            className="mt-1 inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-wine/15 bg-parchment/80 text-wine opacity-80 transition group-hover:border-wine/25 group-hover:opacity-100"
-            aria-hidden
-          >
-            <ArrowUpRight className="size-4" strokeWidth={1.75} />
+          {post.description ? (
+            <p className="mt-5 font-[family-name:var(--font-inter-tight)] text-base leading-relaxed text-editorial-ink/65">
+              {post.description}
+            </p>
+          ) : null}
+        </div>
+
+        <div>
+          <dl className="space-y-2.5 mb-6">
+            {[
+              ['Author', post.author_name],
+              ['Filed', formatBlogDate(post.published_at)],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between border-b border-editorial-border/30 pb-2">
+                <dt><MonoLabel className="text-editorial-ink/45">{k}</MonoLabel></dt>
+                <dd><MonoLabel className="text-editorial-ink">{v}</MonoLabel></dd>
+              </div>
+            ))}
+          </dl>
+          <span className="inline-flex items-center gap-1.5 font-[family-name:var(--font-jetbrains)] text-[0.65rem] uppercase tracking-[0.18em] text-editorial-ink border-b border-editorial-ink pb-0.5 group-hover:text-vermillion group-hover:border-vermillion transition-colors duration-200">
+            Read the full entry →
           </span>
         </div>
-        {post.description ? (
-          <p className="max-w-2xl font-body text-base font-light leading-relaxed text-ink/70 md:text-lg">
-            {post.description}
-          </p>
-        ) : null}
-        <span className="inline-flex items-center gap-1.5 font-body text-sm font-medium text-wine underline-offset-4 group-hover:underline">
-          <Trans i18nKey="marketing:readMore" />
-        </span>
+      </div>
+
+      {/* Right: image */}
+      <div className="col-span-12 md:col-span-7 relative bg-cream min-h-[32vh] md:min-h-[400px]">
+        {post.og_image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.og_image_url}
+            alt={post.title}
+            className="w-full h-full object-cover absolute inset-0"
+          />
+        ) : (
+          <div className="w-full h-full absolute inset-0 bg-gradient-to-br from-cream via-bone to-cream/50" />
+        )}
+        <div className="absolute top-4 left-4">
+          <MonoLabel className="bg-bone px-2.5 py-1.5 text-editorial-ink">
+            Provenance · The Journal
+          </MonoLabel>
+        </div>
+        <div className="absolute bottom-4 right-4">
+          <MonoLabel className="bg-editorial-ink text-bone px-2.5 py-1.5 flex items-center gap-1.5">
+            Read <ArrowUpRight className="h-3 w-3" />
+          </MonoLabel>
+        </div>
       </div>
     </Link>
   );
 }
 
-function CompactPostCard({ post }: { post: BlogPostListItem }) {
+function ArchivePostCard({ post, index }: { post: BlogPostListItem; index: number }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-wine/10 bg-white/40 shadow-sm ring-1 ring-wine/5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md hover:ring-wine/12"
+      className="group flex flex-col p-6 md:p-8 min-h-[220px] hover:bg-cream transition-colors duration-200"
     >
-      <div className="relative aspect-[16/10] overflow-hidden bg-wine/[0.05]">
-        {post.og_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- arbitrary OG URLs from CMS
-          <img
-            src={post.og_image_url}
-            alt=""
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div
-            className="flex h-full items-center justify-center bg-gradient-to-br from-wine/10 via-transparent to-wine/[0.06]"
-            aria-hidden
-          >
-            <div className="h-px w-10 bg-wine/30" />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-3 p-6 md:p-7">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <PostMeta post={post} />
-        <h2 className="font-display text-xl font-semibold tracking-tight text-wine transition group-hover:text-wine/85">
-          {post.title}
-        </h2>
-        {post.description ? (
-          <p className="line-clamp-3 flex-1 font-body text-sm font-light leading-relaxed text-ink/65">
-            {post.description}
-          </p>
-        ) : (
-          <div className="flex-1" />
-        )}
-        <span className="inline-flex items-center gap-1 font-body text-sm font-medium text-wine">
-          <Trans i18nKey="marketing:readMore" />
-          <ArrowUpRight className="size-3.5 opacity-70 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
-        </span>
+        <MonoLabel className="text-editorial-ink/30 shrink-0">
+          № {String(index + 1).padStart(2, '0')}
+        </MonoLabel>
+      </div>
+      <h2 className="font-[family-name:var(--font-fraunces)] font-light italic text-2xl md:text-3xl leading-tight tracking-[-0.02em] text-editorial-ink group-hover:text-vermillion transition-colors duration-200 flex-1">
+        {post.title}
+      </h2>
+      {post.description ? (
+        <p className="mt-3 font-[family-name:var(--font-inter-tight)] text-sm leading-relaxed text-editorial-ink/60 line-clamp-2">
+          {post.description}
+        </p>
+      ) : null}
+      <div className="mt-4">
+        <MonoLabel className="text-editorial-ink/40 group-hover:text-vermillion transition-colors duration-200">
+          Read →
+        </MonoLabel>
       </div>
     </Link>
   );
 }
 
 async function BlogIndexPage() {
+  console.log('[Blog] BlogIndexPage render started');
   const { t } = await createI18nServerInstance();
   const posts = await getPublishedPosts();
   const [featured, ...rest] = posts;
+  console.log('[Blog] BlogIndexPage loaded posts', { total: posts.length });
 
   return (
-    <main className="min-h-screen bg-parchment font-body">
-      <div className="relative border-b border-wine/10 bg-gradient-to-b from-white/30 to-transparent">
-        <div className="mx-auto max-w-6xl px-6 pb-16 pt-10 sm:px-10 sm:pt-14 md:pb-20 md:pt-16">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 font-body text-sm font-medium text-ink/55 transition hover:text-wine"
-          >
-            <ArrowLeft className="size-4 shrink-0 opacity-70" strokeWidth={1.75} />
-            <Trans i18nKey="marketing:product" />
-          </Link>
+    <main className="grain min-h-screen bg-bone text-editorial-ink font-[family-name:var(--font-inter-tight)]">
 
-          <header className="mt-12 max-w-3xl md:mt-16">
-            <SectionEyebrow>{t('marketing:blogIndexEyebrow')}</SectionEyebrow>
-            <h1 className="mt-5 font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl md:tracking-tight">
-              {t('marketing:blog')}
+      {/* Folio hero header */}
+      <div className="relative hairline-b">
+        <div className="grid grid-cols-12">
+          {/* Left rail */}
+          <aside className="hidden md:flex col-span-2 hairline-r p-5 flex-col justify-between min-h-[56vh]">
+            <MonoLabel className="text-editorial-ink/50">Vol. I / Folio 001</MonoLabel>
+            <div className="space-y-2">
+              <MonoLabel className="block text-editorial-ink/50">Est. MMXXIII</MonoLabel>
+              <MonoLabel className="block text-editorial-ink/50">The Journal</MonoLabel>
+            </div>
+          </aside>
+
+          {/* Center content */}
+          <div className="col-span-12 md:col-span-8 p-6 md:p-10 flex flex-col justify-center">
+            <MonoLabel className="text-editorial-ink/55 mb-6 block">
+              {t('marketing:blogIndexEyebrow', { defaultValue: 'Notes on Art, Objects & Their Histories' })}
+            </MonoLabel>
+            <h1 className="font-[family-name:var(--font-fraunces)] font-light italic text-[16vw] md:text-[9vw] leading-[0.85] tracking-[-0.04em] text-editorial-ink">
+              The Journal<span className="text-vermillion">.</span>
             </h1>
-            <p className="mt-4 max-w-xl text-base font-light leading-relaxed text-ink/60 md:text-lg">
-              {t('marketing:blogSubtitle')}
+            <p className="mt-8 max-w-2xl font-[family-name:var(--font-inter-tight)] text-lg leading-relaxed text-editorial-ink/70">
+              {t('marketing:blogSubtitle', { defaultValue: 'Writing on provenance, conservation, collecting, and the biographies of objects.' })}
             </p>
-            <div className="mt-10 h-px max-w-xs bg-gradient-to-r from-wine/40 to-transparent" />
-          </header>
+          </div>
+
+          {/* Right rail */}
+          <aside className="hidden md:flex col-span-2 hairline-l p-5 flex-col justify-between min-h-[56vh]">
+            <MonoLabel className="text-right text-editorial-ink/50">
+              Filed under<br />Essays / Notes
+            </MonoLabel>
+            <MonoLabel className="text-editorial-ink/40 text-right">
+              provenance.guru/<br />blog
+            </MonoLabel>
+          </aside>
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 py-14 sm:px-10 md:py-20">
+      {/* Posts */}
+      <div>
         {posts.length === 0 ? (
-          <div className="mx-auto max-w-md rounded-2xl border border-dashed border-wine/20 bg-white/30 px-8 py-16 text-center ring-1 ring-wine/5">
-            <p className="font-body text-lg font-light text-ink/65">
-              <Trans i18nKey="marketing:noPosts" />
-            </p>
+          <div className="p-10 md:p-20 flex items-center justify-center">
+            <div className="border border-editorial-border px-8 py-12 text-center max-w-md">
+              <MonoLabel className="text-editorial-ink/40 block mb-3">No entries yet</MonoLabel>
+              <p className="font-[family-name:var(--font-fraunces)] italic text-2xl text-editorial-ink/60">
+                <Trans i18nKey="marketing:noPosts" />
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-14 md:gap-20">
+          <>
+            {/* Featured post */}
             {featured ? (
               <section aria-labelledby="blog-featured-heading">
                 <h2 id="blog-featured-heading" className="sr-only">
-                  {t('marketing:blogLatestScreenReader')}
+                  {t('marketing:blogLatestScreenReader', { defaultValue: 'Latest post' })}
                 </h2>
-                <FeaturedPostCard post={featured} />
+                <FeaturedPostCard post={featured} index={0} />
               </section>
             ) : null}
 
+            {/* Archive grid */}
             {rest.length > 0 ? (
               <section aria-labelledby="blog-archive-heading">
-                <div className="mb-8 flex flex-col gap-2 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
+                {/* Archive header */}
+                <div className="hairline-b p-6 md:p-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <SectionEyebrow>{t('marketing:blogArchiveEyebrow')}</SectionEyebrow>
+                    <MonoLabel className="text-gilt block mb-2">
+                      {t('marketing:blogArchiveEyebrow', { defaultValue: 'All Entries' })}
+                    </MonoLabel>
                     <h2
                       id="blog-archive-heading"
-                      className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink"
+                      className="font-[family-name:var(--font-fraunces)] font-light italic text-4xl md:text-5xl leading-tight tracking-[-0.03em] text-editorial-ink"
                     >
-                      {t('marketing:blogArchiveHeading')}
+                      {t('marketing:blogArchiveHeading', { defaultValue: 'Further Reading.' })}
                     </h2>
                   </div>
-                  <p className="max-w-sm text-sm font-light text-ink/50">
-                    {t('marketing:blogSubtitle')}
-                  </p>
+                  <MonoLabel className="text-editorial-ink/45 max-w-xs text-right">
+                    {rest.length} {rest.length === 1 ? 'entry' : 'entries'} in the archive
+                  </MonoLabel>
                 </div>
-                <ul className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-10">
-                  {rest.map((post) => (
-                    <li key={post.slug}>
-                      <CompactPostCard post={post} />
+
+                {/* Grid */}
+                <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                  {rest.map((post, i) => (
+                    <li
+                      key={post.slug}
+                      className={[
+                        'hairline-b',
+                        // right border: all except last in each row
+                        'md:[&:not(:nth-child(2n))]:hairline-r',
+                        'lg:hairline-r lg:[&:nth-child(3n)]:border-r-0',
+                      ].join(' ')}
+                    >
+                      <ArchivePostCard post={post} index={i + 1} />
                     </li>
                   ))}
                 </ul>
               </section>
             ) : null}
-          </div>
+          </>
         )}
       </div>
+
       <SiteLegalFooter />
     </main>
   );

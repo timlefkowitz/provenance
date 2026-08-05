@@ -39,8 +39,37 @@
   font-display: swap;
 }
 
+/* ── Editorial palette (Guru Overhaul) ───────────────────────────── */
+:root {
+  --bone: oklch(0.965 0.012 85);
+  --cream: oklch(0.94 0.02 82);
+  --editorial-ink: oklch(0.14 0.01 60);
+  --vermillion: oklch(0.62 0.22 32);
+  --oxblood: oklch(0.38 0.12 25);
+  --gilt: oklch(0.78 0.13 82);
+  --editorial-border: oklch(0.2 0.01 60);
+}
+
+.dark {
+  --bone: oklch(0.155 0.008 60);
+  --cream: oklch(0.205 0.012 65);
+  --editorial-ink: oklch(0.955 0.012 85);
+  --vermillion: oklch(0.70 0.20 32);
+  --oxblood: oklch(0.55 0.15 25);
+  --gilt: oklch(0.82 0.14 82);
+  --editorial-border: oklch(0.88 0.01 80);
+}
+
 /* User Custom Theme */
 @theme {
+  --color-bone: var(--bone);
+  --color-cream: var(--cream);
+  --color-vermillion: var(--vermillion);
+  --color-oxblood: var(--oxblood);
+  --color-gilt: var(--gilt);
+  --color-editorial-ink: var(--editorial-ink);
+  --color-editorial-border: var(--editorial-border);
+
   --color-parchment: #F5F1E8;
   --color-ink: #111111;
   --color-wine: #4A2F25;
@@ -64,6 +93,11 @@
   /* D-DIN — used for the navbar. Falls back to Gotham → Helvetica Neue → system sans. */
   --font-nav: "D-DIN", "Gotham", "Helvetica Neue", Helvetica, Arial, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Editorial typefaces (Guru Overhaul) */
+  --font-fraunces: "Fraunces", "Times New Roman", serif;
+  --font-jetbrains: "JetBrains Mono", ui-monospace, monospace;
+  --font-inter-tight: "Inter Tight", system-ui, sans-serif;
 }
 
 @layer base {
@@ -171,6 +205,67 @@
   .animate-toolbox-item {
     animation: none;
   }
+}
+
+/* ── Editorial utilities (Guru Overhaul) ─────────────────────────── */
+
+/* hairline borders */
+@utility hairline {
+  border-top: 1px solid var(--editorial-border);
+}
+@utility hairline-b {
+  border-bottom: 1px solid var(--editorial-border);
+}
+@utility hairline-r {
+  border-right: 1px solid var(--editorial-border);
+}
+@utility hairline-l {
+  border-left: 1px solid var(--editorial-border);
+}
+
+/* mono label utility */
+@utility label-editorial {
+  font-family: var(--font-jetbrains);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* display-mega: large Fraunces italic */
+@utility display-mega {
+  font-family: var(--font-fraunces);
+  font-weight: 300;
+  letter-spacing: -0.055em;
+  line-height: 0.82;
+  font-style: italic;
+}
+
+/* film-grain overlay */
+@keyframes grain {
+  0%,100% { transform: translate(0,0); }
+  10% { transform: translate(-2%,-2%); }
+  30% { transform: translate(2%,-1%); }
+  50% { transform: translate(-1%,2%); }
+  70% { transform: translate(2%,2%); }
+  90% { transform: translate(-2%,1%); }
+}
+
+.grain::before {
+  content: "";
+  position: fixed; inset: -50%;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.08; mix-blend-mode: multiply; z-index: 100;
+  animation: grain 8s steps(6) infinite;
+}
+
+/* pulse dot for live indicators */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@utility pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 /* Print styles for artwork tags */
