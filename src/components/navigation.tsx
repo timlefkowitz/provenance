@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
+import { isAppMode } from '~/lib/app-mode';
 import { usePathname } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
 import { ChevronDown, Wrench } from 'lucide-react';
@@ -61,12 +62,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const [scrolled, setScrolled] = useState(false);
   const [isNative, setIsNative] = useState(false);
 
-  useEffect(() => {
-    // Detect app-mode environment (Capacitor native or installed PWA) for
-    // safe-area / UI adjustments.
-    import('~/lib/app-mode').then(({ isAppMode }) => {
-      setIsNative(isAppMode());
-    });
+  // useLayoutEffect fires synchronously before the browser paints, so the
+  // hamburger / desktop-link visibility is correct on the very first frame —
+  // no visible flash in the Capacitor wrapper or installed PWA.
+  useLayoutEffect(() => {
+    setIsNative(isAppMode());
   }, []);
 
   useEffect(() => {

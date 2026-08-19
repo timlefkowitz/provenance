@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -62,7 +62,7 @@ export function NativeTabBar() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setIsNative(isAppMode());
   }, []);
 
