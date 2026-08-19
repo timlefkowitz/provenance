@@ -18,8 +18,18 @@ const config: CapacitorConfig = {
   webDir: 'www',
 
   server: {
-    url: 'https://provenance.guru',
+    // Use the canonical www host — the apex redirects 307 to www which Capacitor
+    // would otherwise hand off to Safari before the first page even loads.
+    url: 'https://www.provenance.guru',
     cleartext: false,
+    allowNavigation: [
+      'provenance.guru',       // apex, for any hard-coded apex links
+      '*.provenance.guru',     // www (canonical), auth.provenance.guru, {handle} sites
+      '*.supabase.co',         // legacy Supabase auth/storage host
+      'checkout.stripe.com',   // artwork, domain, subscription checkout
+      'billing.stripe.com',    // billing portal
+      'connect.stripe.com',    // Stripe Connect onboarding
+    ],
   },
 
   ios: {

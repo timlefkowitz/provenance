@@ -51,7 +51,7 @@
     "@provenance/core": "workspace:*",
     "@provenance/planet-artworks": "workspace:*",
     "@provenance/verification-engine": "workspace:*",
-    "@revenuecat/purchases-capacitor": "^13.3.0",
+    "@revenuecat/purchases-capacitor": "13.1.0",
     "@stripe/connect-js": "^3.3.5",
     "@stripe/react-connect-js": "^3.3.5",
     "@supabase/supabase-js": "2.75.0",

@@ -169,7 +169,7 @@ export function ArtworkFeed({
   };
 
   return (
-    <div className="relative h-[calc(100dvh-var(--nav-h))] bg-parchment">
+    <div className="relative h-[calc(100dvh-var(--nav-h)-var(--tabbar-h,0px))] bg-parchment">
       {/* Floating controls — filter + search */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         {/* Filter button + dropdown */}

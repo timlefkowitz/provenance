@@ -103,6 +103,7 @@
 @layer base {
   :root {
     --nav-h: 4.25rem;
+    --tabbar-h: 0px; /* overridden to 4rem in native context by .cap-native */
   }
 
   body {
@@ -268,7 +269,98 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
-/* Print styles for artwork tags */
+/* ── Capacitor native wrapper styles ───────────────────────────────────── */
+/*
+ * Applied when the app is running inside the Provenance iOS Capacitor shell.
+ * NativeInit adds `cap-native` to <html> at runtime.
+ */
+
+/* Base native resets */
+.cap-native {
+  --tabbar-h: 4rem;
+}
+
+.cap-native,
+.cap-native body {
+  /* Prevent body from bouncing/overscrolling — feels like a browser */
+  overscroll-behavior: none;
+  /* Disable the iOS text-size-adjust that can make fonts look odd */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Push page content above the native tab bar */
+.cap-native body {
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Remove the blue tap flash on interactive elements */
+.cap-native * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Disable text selection everywhere except inputs/textareas */
+.cap-native *:not(input):not(textarea):not([contenteditable]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable selection for content that should be selectable */
+.cap-native p,
+.cap-native h1,
+.cap-native h2,
+.cap-native h3,
+.cap-native h4,
+.cap-native h5,
+.cap-native h6,
+.cap-native span,
+.cap-native li,
+.cap-native td,
+.cap-native blockquote,
+.cap-native [data-selectable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Push main content below the status bar using safe-area-inset-top.
+   The Navigation component adds pt-safe directly when isNative is true.
+   This fallback handles any other sticky headers. */
+.cap-native [data-native-header] {
+  padding-top: max(env(safe-area-inset-top), 12px);
+}
+
+/* Ensure anything fixed to the bottom clears the home indicator */
+.cap-native [data-native-bottom],
+.cap-native .fixed.bottom-0,
+.cap-native .fixed.bottom-4 {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+/* Hide web-only UI in native context */
+/* Cookie consent banner is irrelevant in a native app */
+.cap-native [data-cookie-consent],
+.cap-native [data-testid="cookie-banner"] {
+  display: none !important;
+}
+
+/* Improve scroll performance on scrollable containers */
+.cap-native [data-scroll],
+.cap-native .overflow-y-auto,
+.cap-native .overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Native-app-quality smooth scroll */
+.cap-native html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent double-tap zoom on buttons / links */
+.cap-native a,
+.cap-native button {
+  touch-action: manipulation;
+}
+
+/* ── Print styles for artwork tags ─────────────────────────────────────── */
 @media print {
   @page {
     margin: 0.5in;

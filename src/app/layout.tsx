@@ -21,6 +21,7 @@ import { UtmCapture } from "~/components/utm-capture";
 import { TrialBanner } from "~/components/trial-banner";
 import { TacoBubble } from "~/components/taco-bubble";
 import { NativeInit } from "~/components/native-init";
+import { NativeTabBar } from "~/components/native-tab-bar";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
 import { cn } from "@kit/ui/utils";
@@ -175,6 +176,7 @@ export default async function RootLayout({
               <UtmCapture />
               <GalleryProfileNotification />
               {children}
+              <NativeTabBar />
               <RoleSelectionModal />
               <TacoBubble isSignedIn={!!initialUser} />
             </OnboardingGuard>
@@ -182,7 +184,7 @@ export default async function RootLayout({
           </LegalModalProvider>
         </RootProviders>
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}
-        <Toaster position="bottom-center" />
+        <Toaster position="bottom-center" offset="calc(var(--tabbar-h, 0px) + env(safe-area-inset-bottom, 0px) + 1rem)" />
         <ClientAnalytics />
       </body>
     </html>
