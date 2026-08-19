@@ -5,21 +5,9 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type { JwtPayload } from '@supabase/supabase-js';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Award,
-  Building2,
-  ChevronDown,
-  ClipboardList,
-  FileText,
-  GalleryVerticalEnd,
-  Globe,
-  Mail,
-  Newspaper,
-  Target,
-  Users,
-  Wrench,
-} from 'lucide-react';
+import { ChevronDown, Wrench } from 'lucide-react';
+import type { ToolboxItem, InfoItem } from '~/config/app-nav-items';
+import { TOOLBOX_ITEMS, INFO_ITEMS } from '~/config/app-nav-items';
 import { cn } from '@kit/ui/utils';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { Button } from '@kit/ui/button';
@@ -62,86 +50,8 @@ const dropdownTriggerClass = cn(
   'group cursor-pointer select-none',
 );
 
-type ToolboxItem =
-  | { href: string; label: string; description: string; icon: LucideIcon; image?: never }
-  | { href: string; label: string; description: string; image: string; icon?: never };
 
-type InfoItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  i18nKey?: string;
-  defaults?: string;
-};
 
-/**
- * Toolbox entries — shared between desktop dropdown and mobile menu.
- */
-const TOOLBOX_ITEMS: ToolboxItem[] = [
-  {
-    href: '/taco',
-    label: 'Ask Taco',
-    description: 'Your studio AI — chat, images & docs',
-    image: '/taco-cat.png',
-  },
-  {
-    href: '/goals',
-    label: 'Goals',
-    description: 'Track your practice streaks & check in',
-    icon: Target,
-  },
-  {
-    href: '/profile/site',
-    label: 'Website Editor',
-    description: 'Design, edit & publish your site',
-    icon: Globe,
-  },
-  {
-    href: '/exhibitions',
-    label: 'Exhibitions',
-    description: 'Plan and showcase your shows',
-    icon: GalleryVerticalEnd,
-  },
-  {
-    href: '/grants',
-    label: 'Grants',
-    description: 'Find funding & write applications',
-    icon: Award,
-  },
-  {
-    href: '/portal/or',
-    label: 'CRM',
-    description: 'Contacts, collectors & outreach',
-    icon: Users,
-  },
-  {
-    href: '/mailing-list',
-    label: 'Mailing List',
-    description: 'Contacts & email outreach',
-    icon: Mail,
-  },
-  {
-    href: '/operations',
-    label: 'Operations',
-    description: 'Logistics, inventory & tasks',
-    icon: ClipboardList,
-  },
-];
-
-/**
- * Info dropdown items (always visible — no auth gate).
- */
-const INFO_ITEMS: InfoItem[] = [
-  { href: '/blog', label: 'Blog', icon: Newspaper, i18nKey: 'marketing:blog', defaults: 'Blog' },
-  {
-    href: '/about',
-    label: 'About',
-    icon: Building2,
-    i18nKey: 'common:navigation.about',
-    defaults: 'About',
-  },
-  { href: '/docs', label: 'Docs', icon: FileText },
-];
 
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
@@ -149,6 +59,14 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+
+  useEffect(() => {
+    // Detect Capacitor native environment for safe-area / UI adjustments.
+    import('~/lib/capacitor/is-native').then(({ isNativePlatform }) => {
+      setIsNative(isNativePlatform());
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -165,7 +83,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, []); 
 
   // Investor pages have their own nav; preview and docs have their own shells.
   if (
@@ -180,8 +98,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     <>
       <nav
         className={cn(
-          'relative z-[100] flex items-center justify-between px-4 sm:px-6 pl-safe pr-safe py-3 sm:py-4 border-b bg-parchment/95 backdrop-blur-sm sticky top-0 transition-[border-color,box-shadow] duration-300',
+          'relative z-[100] flex items-center justify-between py-3 sm:py-4 border-b bg-parchment/95 backdrop-blur-sm sticky top-0 transition-[border-color,box-shadow] duration-300',
+          // Safe-area + inset so the wordmark and hamburger never hug the iPhone edge.
+          'pl-[calc(env(safe-area-inset-left,0px)+1.5rem)] pr-[calc(env(safe-area-inset-right,0px)+1.5rem)]',
           scrolled ? 'border-wine/35 shadow-md shadow-wine/5' : 'border-wine/20 shadow-sm',
+          isNative && 'pt-safe',
         )}
       >
         {/* Logo — left-pinned flex child */}
@@ -196,7 +117,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           Desktop nav — absolutely centered so it is always at 50% of the bar
           regardless of how wide the logo or actions cluster are at any breakpoint.
         */}
-        <div className="hidden md:flex items-center gap-5 absolute left-1/2 -translate-x-1/2 pointer-events-auto">
+        <div className={cn('hidden md:flex items-center gap-5 absolute left-1/2 -translate-x-1/2 pointer-events-auto', isNative && 'md:hidden')}>
           <Link href="/artworks" className={navLinkClass('/artworks', pathname)}>
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
@@ -333,7 +254,8 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               {/* Notifications — always visible */}
               <NotificationBadge />
 
-              {/* Add Artwork — desktop / tablet only */}
+              {/* Add Artwork — desktop/tablet only; hidden in native (Add tab replaces it) */}
+              {!isNative && (
               <Button
                 asChild
                 size="sm"
@@ -343,6 +265,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                   <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
                 </Link>
               </Button>
+              )}
 
               {/* User dropdown — always visible */}
               <ProfileAccountDropdownContainer />
@@ -371,10 +294,11 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             </>
           )}
 
-          {/* Mobile hamburger — always last so it stays at the right edge */}
+          {/* Mobile hamburger — hidden in native when signed in (More sheet replaces it) */}
+          {!(isNative && user.data) && (
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden -mr-1 p-2 text-wine hover:text-wine/80 transition-colors touch-manipulation"
+            className="md:hidden p-2 text-wine hover:text-wine/80 transition-colors touch-manipulation"
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -415,6 +339,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               />
             </svg>
           </button>
+          )}
         </div>
       </nav>
 

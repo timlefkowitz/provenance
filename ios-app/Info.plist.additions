@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Info.plist permission usage strings for Provenance iOS.
+
+  Copy these key-value pairs into ios/App/App/Info.plist inside
+  the root <dict> element after running `pnpm ios:add`.
+
+  Required only for permissions your app actually requests at runtime:
+  – Camera: used for photographing artworks
+  – Photo Library: used for selecting existing artwork photos
+  – Push Notifications: used for collection update alerts (optional)
+  – Face ID: used if you enable biometric authentication
+-->
+
+<!-- Camera — artwork photography -->
+<key>NSCameraUsageDescription</key>
+<string>Provenance uses your camera to photograph and document artworks in your collection.</string>
+
+<!-- Photo Library Read — selecting existing images -->
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Provenance accesses your photo library so you can select images of artworks to add to your collection.</string>
+
+<!-- Photo Library Write — saving exported certificates / images -->
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Provenance saves provenance certificates and artwork images to your photo library.</string>
+
+<!-- Push Notifications — optional, for collection updates and trial reminders -->
+<!-- (Xcode adds this automatically when you enable Push Notifications capability; 
+     no manual Info.plist entry is needed for basic remote notifications) -->
+
+<!-- Face ID / biometric — if you enable biometric re-auth for account deletion or sensitive actions -->
+<key>NSFaceIDUsageDescription</key>
+<string>Provenance uses Face ID to quickly verify your identity for sensitive account actions.</string>

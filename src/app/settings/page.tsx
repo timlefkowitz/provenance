@@ -58,7 +58,7 @@ export default async function SettingsPage({
       getUserGalleryProfiles(user.id),
       asUntyped(client)
         .from('subscriptions')
-        .select('id, role, status, current_period_end, trial_end')
+        .select('id, role, status, current_period_end, trial_end, provider')
         .eq('user_id', user.id)
         .in('status', ['active', 'trialing'])
         .or(

@@ -205,8 +205,8 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
           nudge && !open ? 'animate-bounce' : '',
         ].join(' ')}
         style={{
-          // Offset from the bottom, respecting iOS home indicator safe area
-          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+          // Offset from the bottom, respecting iOS home indicator safe area and native tab bar
+          bottom: 'calc(1.5rem + var(--tabbar-h, 0px) + env(safe-area-inset-bottom, 0px))',
           right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
         }}
       >

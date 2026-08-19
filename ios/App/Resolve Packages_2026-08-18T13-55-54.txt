@@ -1,0 +1,54 @@
+
+Showing Recent Messages
+Failed to resolve dependencies Dependencies could not be resolved because 'purchases-capacitor' depends on 'purchases-hybrid-common' 18.4.0.
+'purchases-hybrid-common' 18.4.0 cannot be used because 'purchases-hybrid-common' 18.4.0 depends on 'purchases-ios-spm' 5.70.0 and no versions of 'purchases-ios-spm' match the requirement 5.70.0.
+
+
+CapApp-SPM
+
+
+capacitor-swift-pm
+
+Fetching from https://github.com/ionic-team/capacitor-swift-pm.git (cached)
+Creating working copy
+Checking out 8.5.0
+Updating from https://github.com/ionic-team/capacitor-swift-pm.git
+
+ion-ios-camera
+
+Fetching from https://github.com/ionic-team/ion-ios-camera.git (cached)
+Creating working copy
+Checking out 1.0.5
+Updating from https://github.com/ionic-team/ion-ios-camera.git
+
+status-bar
+
+
+camera
+
+
+app
+
+
+splash-screen
+
+
+push-notifications
+
+
+purchases-capacitor
+
+
+haptics
+
+
+purchases-hybrid-common
+
+Fetching from https://github.com/RevenueCat/purchases-hybrid-common.git (cached)
+
+purchases-ios-spm
+
+Fetching from https://github.com/RevenueCat/purchases-ios-spm (cached)
+
+
+Resolving Package Graph Failed    8/18/26, 1:55 PM    4.5 seconds

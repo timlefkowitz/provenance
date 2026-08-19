@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useLegalModal } from '~/components/legal/legal-modal-context';
 import { gtmService } from '~/lib/gtm';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
 
 const CONSENT_KEY = 'provenance_cookie_consent';
 
@@ -15,6 +16,8 @@ type StoredConsent = 'granted' | 'denied';
  * - On "Accept": updates Consent Mode v2 to 'granted' and persists to localStorage.
  * - On "Decline": updates Consent Mode v2 to 'denied' and persists to localStorage.
  * - Re-applies stored consent on every page load so GTM tags honour prior choice.
+ * - In native Capacitor mode: auto-grants silently — iOS App Store rules govern
+ *   analytics collection, not the EU cookie directive.
  */
 export function CookieConsentBanner() {
   const { openLegalDocument } = useLegalModal();
@@ -22,6 +25,13 @@ export function CookieConsentBanner() {
   const [resolved, setResolved] = useState<StoredConsent | 'unresolved'>('unresolved');
 
   useEffect(() => {
+    // Native apps don't show cookie banners — silently grant and move on.
+    if (isNativePlatform()) {
+      gtmService.grantConsent();
+      setResolved('granted');
+      return;
+    }
+
     const stored = localStorage.getItem(CONSENT_KEY) as StoredConsent | null;
 
     if (stored === 'granted') {
