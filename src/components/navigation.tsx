@@ -62,9 +62,10 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const [isNative, setIsNative] = useState(false);
 
   useEffect(() => {
-    // Detect Capacitor native environment for safe-area / UI adjustments.
-    import('~/lib/capacitor/is-native').then(({ isNativePlatform }) => {
-      setIsNative(isNativePlatform());
+    // Detect app-mode environment (Capacitor native or installed PWA) for
+    // safe-area / UI adjustments.
+    import('~/lib/app-mode').then(({ isAppMode }) => {
+      setIsNative(isAppMode());
     });
   }, []);
 

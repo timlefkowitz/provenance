@@ -20,6 +20,7 @@ import {
 import { cn } from '@kit/ui/utils';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { TOOLBOX_ITEMS, INFO_ITEMS } from '~/config/app-nav-items';
+import { isAppMode } from '~/lib/app-mode';
 
 // Suppressed routes — same set used by navigation.tsx
 const SUPPRESSED_PREFIXES = ['/investors', '/profile/site/preview', '/docs'];
@@ -62,9 +63,7 @@ export function NativeTabBar() {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    import('~/lib/capacitor/is-native').then(({ isNativePlatform }) => {
-      setIsNative(isNativePlatform());
-    });
+    setIsNative(isAppMode());
   }, []);
 
   useEffect(() => {

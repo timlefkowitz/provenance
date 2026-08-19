@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { isStandalonePWA } from '~/lib/app-mode';
 import { getRevenueCatApiKeyIOS } from '~/lib/capacitor/revenuecat-config';
 
 type Props = {
@@ -14,12 +15,12 @@ type Props = {
  */
 export function NativeInit({ userId }: Props) {
   useEffect(() => {
-    if (!isNativePlatform()) return;
+    const native = isNativePlatform();
+    const standalone = isStandalonePWA();
 
-    // Mark <html> so CSS can target native-only rules.
-    document.documentElement.classList.add('cap-native');
+    if (!native && !standalone) return;
 
-    // Prevent pinch-to-zoom — feels like a browser, not an app.
+    // Prevent pinch-to-zoom — feels like a native app, not a browser.
     const meta = document.querySelector('meta[name="viewport"]');
     if (meta) {
       const current = meta.getAttribute('content') ?? '';
@@ -27,6 +28,16 @@ export function NativeInit({ userId }: Props) {
         meta.setAttribute('content', current + ', user-scalable=no');
       }
     }
+
+    if (standalone && !native) {
+      // Mark <html> for CSS so standalone-PWA shell rules apply.
+      document.documentElement.classList.add('pwa-standalone');
+      console.log('[NativeInit] Running as standalone PWA');
+      return;
+    }
+
+    // Mark <html> so CSS can target native-only rules.
+    document.documentElement.classList.add('cap-native');
 
     async function initNative() {
       try {

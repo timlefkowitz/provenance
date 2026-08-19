@@ -22,6 +22,7 @@ import { TrialBanner } from "~/components/trial-banner";
 import { TacoBubble } from "~/components/taco-bubble";
 import { NativeInit } from "~/components/native-init";
 import { NativeTabBar } from "~/components/native-tab-bar";
+import { AppSplash } from "~/components/app-splash";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
 import { cn } from "@kit/ui/utils";
@@ -76,7 +77,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    apple: "/icons/icon-192.png",
   },
   appleWebApp: {
     capable: true,
@@ -168,6 +169,7 @@ export default async function RootLayout({
         <RootProviders lang={currentLang} theme={currentTheme}>
           <LegalModalProvider>
             <OnboardingGuard>
+              <AppSplash />
               <Navigation initialUser={initialUser} />
               <NativeInit userId={initialUser?.sub ?? null} />
               <TrialBanner />

@@ -269,42 +269,73 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
-/* ── Capacitor native wrapper styles ───────────────────────────────────── */
+/* ── App-shell styles (Capacitor native + installed PWA) ────────────────── */
 /*
- * Applied when the app is running inside the Provenance iOS Capacitor shell.
- * NativeInit adds `cap-native` to <html> at runtime.
+ * `.cap-native`    — Capacitor iOS/Android wrapper (added by NativeInit)
+ * `.pwa-standalone` — browser PWA in standalone display mode (added by NativeInit)
+ *
+ * Rules shared by both modes use :is(.cap-native, .pwa-standalone).
+ * Capacitor-only rules (native SDK quirks, cookie-banner hiding, aggressive
+ * text-selection lockdown) stay on .cap-native alone.
  */
 
-/* Base native resets */
-.cap-native {
+/* ── Shared: tab bar height variable ── */
+:is(.cap-native, .pwa-standalone) {
   --tabbar-h: 4rem;
 }
 
-.cap-native,
-.cap-native body {
-  /* Prevent body from bouncing/overscrolling — feels like a browser */
+/* ── Shared: prevent overscroll bounce and fix text-size-adjust ── */
+:is(.cap-native, .pwa-standalone),
+:is(.cap-native, .pwa-standalone) body {
   overscroll-behavior: none;
-  /* Disable the iOS text-size-adjust that can make fonts look odd */
   -webkit-text-size-adjust: 100%;
 }
 
-/* Push page content above the native tab bar */
-.cap-native body {
+/* ── Shared: push page content above the bottom tab bar ── */
+:is(.cap-native, .pwa-standalone) body {
   padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
 }
 
-/* Remove the blue tap flash on interactive elements */
-.cap-native * {
+/* ── Shared: remove tap flash on interactive elements ── */
+:is(.cap-native, .pwa-standalone) * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Disable text selection everywhere except inputs/textareas */
+/* ── Shared: push sticky headers below the status bar / notch ── */
+:is(.cap-native, .pwa-standalone) [data-native-header] {
+  padding-top: max(env(safe-area-inset-top), 12px);
+}
+
+/* ── Shared: ensure bottom-fixed elements clear the home indicator ── */
+:is(.cap-native, .pwa-standalone) [data-native-bottom],
+:is(.cap-native, .pwa-standalone) .fixed.bottom-0,
+:is(.cap-native, .pwa-standalone) .fixed.bottom-4 {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+/* ── Shared: momentum scrolling on scrollable containers ── */
+:is(.cap-native, .pwa-standalone) [data-scroll],
+:is(.cap-native, .pwa-standalone) .overflow-y-auto,
+:is(.cap-native, .pwa-standalone) .overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Shared: smooth scroll and double-tap zoom prevention ── */
+:is(.cap-native, .pwa-standalone) html {
+  scroll-behavior: smooth;
+}
+
+:is(.cap-native, .pwa-standalone) a,
+:is(.cap-native, .pwa-standalone) button {
+  touch-action: manipulation;
+}
+
+/* ── Capacitor-only: disable text selection (too aggressive for PWA) ── */
 .cap-native *:not(input):not(textarea):not([contenteditable]) {
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Re-enable selection for content that should be selectable */
 .cap-native p,
 .cap-native h1,
 .cap-native h2,
@@ -321,43 +352,10 @@
   user-select: text;
 }
 
-/* Push main content below the status bar using safe-area-inset-top.
-   The Navigation component adds pt-safe directly when isNative is true.
-   This fallback handles any other sticky headers. */
-.cap-native [data-native-header] {
-  padding-top: max(env(safe-area-inset-top), 12px);
-}
-
-/* Ensure anything fixed to the bottom clears the home indicator */
-.cap-native [data-native-bottom],
-.cap-native .fixed.bottom-0,
-.cap-native .fixed.bottom-4 {
-  padding-bottom: max(env(safe-area-inset-bottom), 16px);
-}
-
-/* Hide web-only UI in native context */
-/* Cookie consent banner is irrelevant in a native app */
+/* ── Capacitor-only: hide web-only UI (cookie banner irrelevant in native) ── */
 .cap-native [data-cookie-consent],
 .cap-native [data-testid="cookie-banner"] {
   display: none !important;
-}
-
-/* Improve scroll performance on scrollable containers */
-.cap-native [data-scroll],
-.cap-native .overflow-y-auto,
-.cap-native .overflow-y-scroll {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Native-app-quality smooth scroll */
-.cap-native html {
-  scroll-behavior: smooth;
-}
-
-/* Prevent double-tap zoom on buttons / links */
-.cap-native a,
-.cap-native button {
-  touch-action: manipulation;
 }
 
 /* ── Print styles for artwork tags ─────────────────────────────────────── */
