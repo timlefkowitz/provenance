@@ -7,6 +7,7 @@ import {
   APPLE_PRODUCT_TO_PLAN,
   getRevenueCatSecretKey,
 } from '~/lib/capacitor/revenuecat-config';
+import { isAppleProductId } from '~/lib/capacitor/revenuecat-transaction-id';
 import type { SubscriptionRole } from '~/lib/stripe-config';
 
 type RevenueCatSubscriberEntitlement = {
@@ -58,11 +59,12 @@ export async function syncAppleEntitlement(
       return { success: false, error: 'unknown_product' };
     }
 
-    // Optionally verify with RevenueCat REST API to cross-check expiration.
-    // This is best-effort — if RC API is slow we still trust the SDK's data.
     let currentPeriodEnd: string | null = expirationDateMs
       ? new Date(expirationDateMs).toISOString()
       : null;
+
+    // Prefer RevenueCat REST API for the authoritative original_transaction_id.
+    let resolvedOriginalTransactionId: string | null = null;
 
     const rcSecretKey = getRevenueCatSecretKey();
     if (rcSecretKey) {
@@ -79,10 +81,30 @@ export async function syncAppleEntitlement(
           if (sub?.expires_date) {
             currentPeriodEnd = sub.expires_date;
           }
+          if (sub?.original_transaction_id) {
+            resolvedOriginalTransactionId = sub.original_transaction_id;
+          }
         }
       } catch (rcErr) {
         console.error('[RevenueCat] syncAppleEntitlement: RC REST API call failed (non-fatal)', rcErr);
       }
+    }
+
+    // Fall back to client-provided ID only when it is not a product identifier.
+    if (
+      !resolvedOriginalTransactionId &&
+      originalTransactionId &&
+      !isAppleProductId(originalTransactionId)
+    ) {
+      resolvedOriginalTransactionId = originalTransactionId;
+    }
+
+    if (!resolvedOriginalTransactionId) {
+      console.error('[RevenueCat] syncAppleEntitlement: could not resolve original_transaction_id', {
+        productId,
+        originalTransactionId,
+      });
+      return { success: false, error: 'missing_transaction_id' };
     }
 
     const admin = asUntyped(getSupabaseServerAdminClient());
@@ -91,7 +113,7 @@ export async function syncAppleEntitlement(
         user_id: user.id,
         provider: 'apple_iap',
         revenuecat_subscriber_id: user.id,
-        apple_original_transaction_id: originalTransactionId,
+        apple_original_transaction_id: resolvedOriginalTransactionId,
         role: plan.role as SubscriptionRole,
         status: 'active',
         current_period_end: currentPeriodEnd,

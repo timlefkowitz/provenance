@@ -18,6 +18,7 @@ import {
   APPLE_PRODUCT_TO_PLAN,
   RC_OFFERING_IDENTIFIER,
 } from '~/lib/capacitor/revenuecat-config';
+import { resolveOriginalTransactionId } from '~/lib/capacitor/revenuecat-transaction-id';
 import { syncAppleEntitlement } from '../_actions/sync-apple-entitlement';
 
 type SubscriptionRow = {
@@ -219,21 +220,20 @@ export function SubscriptionContent({
 
       // Eagerly sync to our DB without waiting for the webhook.
       const expMs =
-        purchaseResult.customerInfo.allExpirationDatesByProduct?.[targetProductId!] ?? null;
+        customerInfo.allExpirationDatesByProduct?.[targetProductId!] ?? null;
       const expDate = expMs ? new Date(expMs).getTime() : null;
 
-      // Get the original transaction ID for this purchase
-      const originalTransactionId =
-        customerInfo.allPurchaseDatesByProduct?.[targetProductId!]
-          ? targetProductId! // fallback; RC SDK v13 exposes this differently
-          : targetProductId!;
+      const originalTransactionId = resolveOriginalTransactionId(
+        customerInfo,
+        targetProductId!,
+        purchaseResult.transaction,
+      );
 
-      // Try to get the real original transaction ID from active subscriptions
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const subs = (customerInfo as any).activeSubscriptions as string[] | undefined;
-      const activeSub = subs?.[0] ?? targetProductId!;
-
-      const syncResult = await syncAppleEntitlement(activeSub, targetProductId!, expDate);
+      const syncResult = await syncAppleEntitlement(
+        originalTransactionId ?? '',
+        targetProductId!,
+        expDate,
+      );
       if (!syncResult.success) {
         console.error('[IAP] Eager sync failed (webhook will catch it)', syncResult.error);
       }
@@ -274,7 +274,14 @@ export function SubscriptionContent({
 
         const expMs = customerInfo.allExpirationDatesByProduct?.[productId] ?? null;
         const expDate = expMs ? new Date(expMs).getTime() : null;
-        const result = await syncAppleEntitlement(productId, productId, expDate);
+
+        const originalTransactionId = resolveOriginalTransactionId(customerInfo, productId);
+        if (!originalTransactionId) {
+          console.warn('[IAP] Restore: no store transaction ID for product', { productId });
+          continue;
+        }
+
+        const result = await syncAppleEntitlement(originalTransactionId, productId, expDate);
         if (result.success) {
           synced = true;
           break;
