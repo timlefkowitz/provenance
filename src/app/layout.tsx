@@ -23,6 +23,7 @@ import { TacoBubble } from "~/components/taco-bubble";
 import { NativeInit } from "~/components/native-init";
 import { NativeTabBar } from "~/components/native-tab-bar";
 import { AppSplash } from "~/components/app-splash";
+import { AppLinkInterceptor } from "~/components/app-link-interceptor";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
 import { cn } from "@kit/ui/utils";
@@ -170,6 +171,7 @@ export default async function RootLayout({
           <LegalModalProvider>
             <OnboardingGuard>
               <AppSplash />
+              <AppLinkInterceptor />
               <Navigation initialUser={initialUser} />
               <NativeInit userId={initialUser?.sub ?? null} />
               <TrialBanner />
