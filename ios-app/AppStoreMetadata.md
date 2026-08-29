@@ -197,9 +197,10 @@ artists, collectors, and galleries.
 
 Key features shown:
 1. User authentication via email/password and Sign in with Apple.
-2. Photo capture for documenting artworks (camera permission is requested).
-3. Blockchain-backed provenance records (read-only view; no cryptocurrency
-   transactions occur in-app).
+2. Photo capture for documenting artworks (camera and photo library
+   permissions are requested).
+3. Provenance records and certificates of authenticity (documentation
+   tools; not a guarantee of authenticity or value).
 4. Subscription via Apple In-App Purchase (Artist, Collector, or Gallery plans).
    The free 14-day trial allows full exploration without payment.
 
