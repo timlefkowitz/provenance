@@ -3,10 +3,10 @@ import appConfig from '~/config/app.config';
 export type LegalDocumentId = 'privacy' | 'cookies' | 'terms' | 'billing';
 
 export const LEGAL_CONFIG = {
-  entityName: 'Provenance Platform',
+  entityName: 'Provenance Guru, Inc.',
   contactEmail: 'privacy@provenance.guru',
   siteUrl: appConfig.url,
-  lastUpdated: 'June 9, 2026',
+  lastUpdated: 'August 29, 2026',
 } as const;
 
 export const LEGAL_DOCUMENT_LABELS: Record<LegalDocumentId, string> = {

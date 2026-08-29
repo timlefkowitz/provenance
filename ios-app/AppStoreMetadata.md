@@ -19,6 +19,14 @@ Fields marked `TODO(you):` require information only you can provide.
 
 ---
 
+## Promotional Text (≤ 170 chars, editable anytime without a new build)
+
+```
+Give every piece you own a permanent record: certificates, provenance, and exhibition history you can share with galleries, insurers, and buyers.
+```
+
+---
+
 ## Description
 
 ### Short Description (for Search Ads, ≤ 100 chars)
@@ -30,8 +38,8 @@ Track and verify your art collection's history with provenance records.
 
 ```
 Provenance is your personal journal for art, objects, and their histories.
-Document your collection with verified provenance records that tell the complete
-story of each piece — from creation to your hands.
+Document your collection with detailed provenance records that tell the
+complete story of each piece — from creation to your hands.
 
 FEATURES
 
@@ -39,37 +47,41 @@ FEATURES
 Catalog artworks, antiques, and collectibles with rich details including
 provenance history, condition reports, and exhibition records.
 
-• Verified Provenance
-Create immutable provenance records backed by blockchain technology on Avalanche.
-Every transfer, exhibition, and restoration is permanently recorded.
-
-• Beautiful Photography
-Capture high-quality photos of your pieces directly from the app. Document
-condition, details, and context with your camera.
-
-• Private & Secure
-Your collection remains private by default. Share only what you choose,
-when you choose.
+• Certificates of Authenticity
+Generate professional certificates and share them with galleries, insurers,
+or potential buyers — each with a scannable code that verifies the record.
 
 • Ownership History
 Track the complete chain of custody from creation to your collection.
 Link to galleries, auction records, and previous owners.
 
-• Export & Share
-Generate professional provenance certificates and share collection highlights
-with galleries, insurers, or potential buyers.
+• Capture From Your Camera
+Photograph your pieces directly from the app to document condition,
+detail, and context as you build each record.
+
+• Private & Secure
+Your collection remains private by default. Share only what you choose,
+when you choose.
+
+• Valuation Research
+Get AI-assisted research to help inform your understanding of a piece's
+market context and value.
 
 • Grants & Opportunities
-Artists get access to a curated grants list, open calls, and residencies — plus
-AI-assisted grant writing tools.
+Artists get access to a curated grants list, open calls, and residencies —
+plus AI-assisted writing tools for applications.
+
+• Hosted Artist Websites
+Every paid plan includes a personal website to showcase and sell your
+work, built from your profile and collection.
 
 • Gallery Tools
-Exhibition management, artist roster, CRM, and white-label website hosting for
-galleries and institutions.
+Exhibition management, artist roster, CRM, and white-label website
+hosting for galleries and institutions.
 
-Whether you're a seasoned collector, gallery owner, or artist beginning your
-journey, Provenance helps you understand and document the stories behind the
-pieces that matter to you.
+Whether you're a seasoned collector, gallery owner, or artist beginning
+your journey, Provenance helps you understand and document the stories
+behind the pieces that matter to you.
 ```
 
 ---
@@ -77,10 +89,10 @@ pieces that matter to you.
 ## Keywords
 
 ```
-art, collection, provenance, gallery, artwork, antiques, collectibles, authentication, blockchain, museum, catalog, inventory, ownership, history, certificate
+appraisal,valuation,coa,registry,estate,antiques,memorabilia,notarize,catalog,artist,collector
 ```
 
-*(15 keywords max, comma-separated, no spaces after commas in App Store Connect)*
+*(100 char limit total, comma-separated, no spaces after commas in App Store Connect. "Art," "collection," and "provenance" are deliberately omitted — Apple already indexes words in the App Name and Subtitle, so repeating them wastes keyword budget.)*
 
 ---
 
@@ -205,6 +217,8 @@ marketplace, guideline 3.1.3(a) exception). Subscription plans use Apple IAP.
 | **Marketing URL** | `https://www.provenance.guru` |
 | **Contact Email** | `privacy@provenance.guru` |
 
+*(Support URL is a real user guide, not a placeholder — but it has no visible "contact support" link or email on the page. Worth adding one before submission, since reviewers sometimes check.)*
+
 ---
 
 ## Version & Rating
@@ -213,6 +227,7 @@ marketplace, guideline 3.1.3(a) exception). Subscription plans use Apple IAP.
 |---|---|
 | **Version** | 1.0.0 |
 | **Build** | (set by Xcode) |
+| **Copyright** | `© 2026 Provenance Guru, Inc.` |
 | **Age Rating** | 4+ |
 | **Availability** | All territories (or restrict as needed) |
 | **Price** | Free (in-app purchases for subscriptions) |
