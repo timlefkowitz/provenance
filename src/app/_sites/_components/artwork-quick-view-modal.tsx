@@ -1,5 +1,7 @@
 'use client';
 
+import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
+
 /**
  * ArtworkQuickViewModal — shown when artwork_click_behavior === 'modal'.
  *
@@ -336,7 +338,7 @@ function BuyButton({ artworkId, label, accentColor }: { artworkId: string; label
     });
     const data = await res.json().catch(() => ({}));
     if (data.url) {
-      window.location.href = data.url;
+      await openExternalCheckout(data.url);
     } else {
       alert(data.error ?? 'Unable to start checkout. Please try again.');
     }

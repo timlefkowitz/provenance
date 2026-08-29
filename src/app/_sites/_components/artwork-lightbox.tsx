@@ -1,5 +1,7 @@
 'use client';
 
+import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
+
 /**
  * ArtworkLightbox — shown when artwork_click_behavior === 'lightbox'.
  *
@@ -406,7 +408,7 @@ function LightboxBuyButton({ artworkId, label, accentColor }: { artworkId: strin
     });
     const data = await res.json().catch(() => ({}));
     if (data.url) {
-      window.location.href = data.url;
+      await openExternalCheckout(data.url);
     } else {
       alert(data.error ?? 'Unable to start checkout. Please try again.');
     }

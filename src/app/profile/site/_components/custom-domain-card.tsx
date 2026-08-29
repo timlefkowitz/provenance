@@ -24,6 +24,7 @@ import {
 } from '../_actions/attach-custom-domain';
 import { removeCustomDomainAction } from '../_actions/remove-custom-domain';
 import { searchDomainAvailabilityAction } from '../_actions/search-domain-availability';
+import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
 
 type DomainSearchResult = {
   tld: string;
@@ -202,7 +203,7 @@ export function CustomDomainCard({
       }
 
       if (data.url) {
-        window.location.href = data.url;
+        await openExternalCheckout(data.url);
       } else {
         toast.error('Invalid checkout response');
       }

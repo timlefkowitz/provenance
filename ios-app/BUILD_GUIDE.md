@@ -32,7 +32,7 @@ middleware continues to work exactly as on the web.
 2. Click **+** → **App IDs** → **App**.
 3. Fill in:
    - **Description:** `Provenance`
-   - **Bundle ID (Explicit):** `com.provenance.app`
+   - **Bundle ID (Explicit):** `guru.provenance.app`
 4. Enable these **Capabilities**:
    - **Push Notifications**
    - **Sign In with Apple** ← already configured in Supabase; enable here too
@@ -69,7 +69,7 @@ If asked to create a Distribution certificate manually:
 2. Click **+** → **New App** → fill in:
    - Platform: **iOS**
    - Name: **Provenance**
-   - Bundle ID: select `com.provenance.app`
+   - Bundle ID: select `guru.provenance.app`
    - SKU: `provenance-ios`
 3. In the app page, go to **In-App Purchases** → **Manage** → **+**.
 4. Create **Auto-Renewable Subscription** products — one subscription **group** called `Provenance Plans`, then these 6 products:
@@ -95,7 +95,7 @@ description matching `ios-app/AppStoreMetadata.md`.
 1. Sign up / log in at [RevenueCat](https://app.revenuecat.com).
 2. Create a new **Project**: name `Provenance`.
 3. Under **Apps**, add an **iOS** app:
-   - Bundle ID: `com.provenance.app`
+   - Bundle ID: `guru.provenance.app`
    - Connect to App Store Connect using an **App Store Connect API key**
      (App Store Connect → Users → Keys → generate a new one with **Admin** role).
 4. Under **Entitlements**, create 3 entitlements:
@@ -122,6 +122,30 @@ Add these to your Vercel project (Settings → Environment Variables):
 
 ---
 
+## Part 2b — Apple Pay for Stripe Marketplace Checkout
+
+Artwork and domain purchases use Stripe Checkout (physical/real-world goods
+exception, Guideline 3.1.3(a)). On the native app these now open in
+**SFSafariViewController** — a full browser context where Apple Pay works.
+
+### 2b.1 Enable Apple Pay in Stripe Dashboard
+
+1. Go to [Stripe Dashboard → Settings → Payment methods](https://dashboard.stripe.com/settings/payment_methods).
+2. Turn on **Apple Pay**.
+3. Stripe automatically handles the Apple Pay domain verification for
+   `checkout.stripe.com` (hosted Checkout pages). No manual domain
+   registration needed.
+
+### 2b.2 Verify Stripe Checkout sessions use automatic payment methods
+
+The existing checkout session creation in `src/app/api/stripe/create-artwork-checkout-session/route.ts`
+and `src/app/api/stripe/create-domain-checkout-session/route.ts` do **not**
+specify `payment_method_types`, which means Stripe uses the Dashboard's
+configured payment methods automatically (including Apple Pay). No code change
+is needed; just enabling Apple Pay in the Dashboard is sufficient.
+
+---
+
 ## Part 3 — Build the Native App (Xcode)
 
 ### 3.1 Generate the iOS project (one-time)
@@ -139,11 +163,25 @@ This runs `npx cap add ios`, which:
 
 ### 3.2 Sync plugins and config
 
-Run this any time you add or update a Capacitor plugin:
+Run this any time you add or update a Capacitor plugin (including after the
+`@capacitor/browser` addition — already done):
 
 ```bash
 pnpm ios:sync
 ```
+
+### 3.2a Add the In-App Purchase capability in Xcode
+
+**Required** before sandbox or production IAP purchases work.
+
+1. Open Xcode: `pnpm ios:open`
+2. Select the **App** project → **App** target → **Signing & Capabilities**.
+3. Click **+ Capability** → search for **In-App Purchase** → double-click to add.
+4. Verify: the entitlements file (`App.entitlements`) now includes
+   `com.apple.developer.in-app-payments` (Xcode creates this automatically).
+
+Without this capability RevenueCat's `purchasePackage` will return a
+`STORE_PROBLEM` error at runtime.
 
 ### 3.3 Copy Info.plist additions
 
@@ -167,7 +205,7 @@ submitting.
 2. Select the **App** target → **Signing & Capabilities**.
 3. Check **Automatically manage signing**.
 4. Select your **Team** (your Apple Developer account).
-5. The Bundle Identifier should read `com.provenance.app` (from `capacitor.config.ts`).
+5. The Bundle Identifier should read `guru.provenance.app` (from `capacitor.config.ts`).
 
 ### 3.6 Add Push Notifications capability
 
@@ -297,7 +335,8 @@ pnpm ios:run
 | `ios-app/BUILD_GUIDE.md` | This file |
 | `src/lib/capacitor/is-native.ts` | Platform detection helper |
 | `src/lib/capacitor/revenuecat-config.ts` | Product ID → role mapping + API key helpers |
-| `src/components/native-init.tsx` | RevenueCat SDK initialisation (runs on every page load) |
+| `src/lib/capacitor/open-external-checkout.ts` | Opens Stripe checkout in SFSafariViewController on native (Apple Pay) |
+| `src/components/native-init.tsx` | RevenueCat SDK init + auth state tracking |
 | `src/app/api/webhooks/revenuecat/route.ts` | RevenueCat webhook → subscriptions table |
 | `src/app/subscription/_actions/sync-apple-entitlement.ts` | Eager post-purchase sync |
 | `src/app/subscription/_components/subscription-content.tsx` | IAP branch for native |

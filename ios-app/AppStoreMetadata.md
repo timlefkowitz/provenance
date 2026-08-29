@@ -11,7 +11,7 @@ Fields marked `TODO(you):` require information only you can provide.
 |---|---|
 | **App Name** | Provenance |
 | **Subtitle** | Art Collection Journal |
-| **Bundle ID** | `com.provenance.app` |
+| **Bundle ID** | `guru.provenance.app` |
 | **Primary Category** | Lifestyle |
 | **Secondary Category** | Reference |
 | **Content Rating** | 4+ |
@@ -112,13 +112,12 @@ Configure these in App Store Connect under "App Privacy":
 
 ### Privacy Policy URL
 ```
-TODO(you): https://provenance.guru/privacy-policy
+https://www.provenance.guru/privacy-policy
 ```
-*(Already live at /privacy-policy on provenance.guru — just fill in the full URL)*
 
 ### Terms of Use URL
 ```
-TODO(you): https://provenance.guru/terms-of-service
+https://www.provenance.guru/terms-of-service
 ```
 
 ---
@@ -162,12 +161,22 @@ A draft icon concept (Provenance branding, parchment + wine tones) is available 
 ## App Review Information
 
 ### Demo Account
+
+**Sign-up alone is not enough.** Email/password registration requires email
+confirmation before the reviewer can sign in. Provide ready-to-use credentials
+in App Store Connect → App Review Information so the reviewer can log in
+immediately without creating an account or checking email.
+
 ```
-TODO(you): Create a test account at https://provenance.guru/auth/sign-in
-  Email:    [your test email]
-  Password: [your test password]
+Email:    [your dedicated review account — e.g. appreview@provenance.guru]
+Password: [password]
 ```
-Upload at least 2–3 test artworks so the reviewer can explore the app.
+
+Before submitting:
+- Create this account and confirm the email yourself.
+- Pre-populate it with 2–3 artworks so core flows are visible on first login.
+- Do not enable MFA on the review account.
+- In review notes, also mention that new users can sign up or use Sign in with Apple.
 
 ### Notes for Reviewer
 ```
@@ -192,9 +201,9 @@ marketplace, guideline 3.1.3(a) exception). Subscription plans use Apple IAP.
 
 | Field | Value |
 |---|---|
-| **Support URL** | `TODO(you): https://provenance.guru/docs` or support@provenance.guru |
-| **Marketing URL** | `TODO(you): https://provenance.guru` |
-| **Contact Email** | `TODO(you): your support email` |
+| **Support URL** | `https://www.provenance.guru/docs` |
+| **Marketing URL** | `https://www.provenance.guru` |
+| **Contact Email** | `privacy@provenance.guru` |
 
 ---
 

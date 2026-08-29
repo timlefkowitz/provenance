@@ -39,9 +39,35 @@ function getStripe(): Stripe | null {
   return new Stripe(trimmed);
 }
 
+/**
+ * Returns true when the request originates from the Capacitor WKWebView.
+ * WKWebViews omit the "Safari/" token present in real Mobile Safari UAs.
+ * App Store Guideline 3.1.1 requires iOS subscriptions to use Apple IAP —
+ * the native app shows the "Subscribe with Apple" button instead of Stripe.
+ */
+function isCapacitorWebView(request: NextRequest): boolean {
+  const ua = request.headers.get('user-agent') ?? '';
+  return (
+    ua.includes('AppleWebKit') &&
+    ua.includes('Mobile') &&
+    !ua.includes('Safari/')
+  );
+}
+
 export async function POST(request: NextRequest) {
   console.log('[Stripe] createCheckoutSession started');
   try {
+    // Block subscription checkout from the native iOS WKWebView. On native the
+    // UI shows "Subscribe with Apple" (RevenueCat IAP) instead of this button.
+    // Apple Guideline 3.1.1 requires in-app purchases for digital subscriptions.
+    if (isCapacitorWebView(request)) {
+      console.error('[Stripe] createCheckoutSession blocked: native WKWebView request');
+      return NextResponse.json(
+        { error: 'Subscriptions must use Apple In-App Purchase on iOS. Please tap "Subscribe with Apple".' },
+        { status: 403 },
+      );
+    }
+
     const client = getSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
 

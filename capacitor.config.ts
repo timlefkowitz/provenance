@@ -13,7 +13,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * takes over immediately on launch).
  */
 const config: CapacitorConfig = {
-  appId: 'com.provenance.app',
+  appId: 'guru.provenance.app',
   appName: 'Provenance',
   webDir: 'www',
 
@@ -26,9 +26,16 @@ const config: CapacitorConfig = {
       'provenance.guru',       // apex, for any hard-coded apex links
       '*.provenance.guru',     // www (canonical), auth.provenance.guru, {handle} sites
       '*.supabase.co',         // legacy Supabase auth/storage host
-      'checkout.stripe.com',   // artwork, domain, subscription checkout
-      'billing.stripe.com',    // billing portal
-      'connect.stripe.com',    // Stripe Connect onboarding
+      // OAuth provider authorization pages — must stay in the WKWebView so the
+      // PKCE code_verifier cookie (set by signInWithOAuth) is present when
+      // /auth/callback calls exchangeCodeForSession. Ejecting to Safari loses
+      // the cookie and the session exchange fails.
+      'appleid.apple.com',     // Sign in with Apple
+      'accounts.google.com',   // Sign in with Google
+      // Stripe checkout, billing portal, and Connect onboarding intentionally
+      // omitted — on native those URLs open in SFSafariViewController (via
+      // openExternalCheckout) where Apple Pay is available. Keeping them here
+      // would load them in the WKWebView where Apple Pay does not appear.
     ],
   },
 

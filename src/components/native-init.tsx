@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
 import { getRevenueCatApiKeyIOS } from '~/lib/capacitor/revenuecat-config';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 
 type Props = {
   userId: string | null;
@@ -13,7 +14,8 @@ type Props = {
  * Initializes native-only SDKs and applies native CSS when running inside the
  * Provenance Capacitor iOS shell. Safe no-op in any browser.
  */
-export function NativeInit({ userId }: Props) {
+export function NativeInit({ userId: _userId }: Props) {
+  // ── Shell / PWA setup ─────────────────────────────────────────────────────
   useEffect(() => {
     const native = isNativePlatform();
     const standalone = isStandalonePWA();
@@ -62,8 +64,14 @@ export function NativeInit({ userId }: Props) {
     void initNative();
   }, []);
 
+  // ── RevenueCat — configure once, then track auth state ───────────────────
+  //
+  // RevenueCat must be configured before any purchase call. We configure with
+  // the public iOS key immediately and then use Supabase onAuthStateChange to
+  // call logIn/logOut as the user signs in or out — including after email sign-
+  // in where the root Server Component may not remount to pass a new userId prop.
   useEffect(() => {
-    if (!isNativePlatform() || !userId) return;
+    if (!isNativePlatform()) return;
 
     const apiKey = getRevenueCatApiKeyIOS();
     if (!apiKey) {
@@ -71,18 +79,53 @@ export function NativeInit({ userId }: Props) {
       return;
     }
 
-    async function initRevenueCat() {
+    let unsubscribeAuth: (() => void) | null = null;
+    let cancelled = false;
+
+    async function init() {
       try {
         const { Purchases } = await import('@revenuecat/purchases-capacitor');
-        await Purchases.configure({ apiKey, appUserID: userId! });
-        console.log('[NativeInit] RevenueCat configured', { userId });
+
+        // Configure the SDK (idempotent). No appUserID here — logIn below
+        // associates the purchase record with the signed-in Supabase user.
+        await Purchases.configure({ apiKey });
+        console.log('[NativeInit] RevenueCat configured');
+
+        if (cancelled) return;
+
+        const supabase = getSupabaseBrowserClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            try {
+              if (session?.user && event !== 'SIGNED_OUT') {
+                // Associate (or re-associate) RevenueCat with the current user.
+                await Purchases.logIn({ appUserID: session.user.id });
+                console.log('[NativeInit] RevenueCat logged in', { userId: session.user.id, event });
+              } else if (event === 'SIGNED_OUT') {
+                // Revert to anonymous RevenueCat ID so a new user starts clean.
+                await Purchases.logOut();
+                console.log('[NativeInit] RevenueCat logged out');
+              }
+            } catch (err) {
+              // logOut throws when no user is logged in to RC — that is fine.
+              console.error('[NativeInit] RevenueCat auth change handler failed', { event, err });
+            }
+          },
+        );
+
+        unsubscribeAuth = () => subscription.unsubscribe();
       } catch (err) {
         console.error('[NativeInit] RevenueCat configure failed', err);
       }
     }
 
-    void initRevenueCat();
-  }, [userId]);
+    void init();
+
+    return () => {
+      cancelled = true;
+      unsubscribeAuth?.();
+    };
+  }, []);
 
   return null;
 }

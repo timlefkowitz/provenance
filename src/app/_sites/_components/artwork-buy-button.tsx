@@ -1,5 +1,7 @@
 'use client';
 
+import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
+
 type Props = {
   artworkId: string;
   label: string;
@@ -16,7 +18,7 @@ export function ArtworkBuyButton({ artworkId, label, accentColor }: Props) {
     });
     const data = await res.json().catch(() => ({}));
     if (data.url) {
-      window.location.href = data.url;
+      await openExternalCheckout(data.url);
     } else {
       alert(data.error ?? 'Unable to start checkout. Please try again.');
     }
