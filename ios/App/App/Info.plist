@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Provenance uses your camera to take photos of your collectibles when adding them to your collection.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Provenance accesses your photo library so you can choose existing photos of your collectibles when adding them to your collection.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
