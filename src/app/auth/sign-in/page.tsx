@@ -3,11 +3,14 @@ import Link from 'next/link';
 import { SignInMethodsContainer } from '@kit/auth/sign-in';
 import { Button } from '@kit/ui/button';
 import { Heading } from '@kit/ui/heading';
+import { Separator } from '@kit/ui/separator';
 
 import authConfig from '~/config/auth.config';
 import pathsConfig from '~/config/paths.config';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import { UsernamePasswordSignInContainer } from '../_components/username-password-sign-in-container';
+import { CollapsibleSignUpSection } from '../_components/collapsible-sign-up-section';
 
 export const generateMetadata = async () => {
   const i18n = await createI18nServerInstance();
@@ -44,6 +47,15 @@ function SignInPage() {
       </div>
 
       <SignInMethodsContainer paths={paths} providers={authConfig.providers} />
+
+      {authConfig.providers.password && (
+        <>
+          <Separator />
+          <CollapsibleSignUpSection label="Sign in with username">
+            <UsernamePasswordSignInContainer homePath={paths.home} />
+          </CollapsibleSignUpSection>
+        </>
+      )}
 
       <div className={'flex justify-center pt-1'}>
         <span className="text-sm" style={{ color: '#111111', opacity: 0.5 }}>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "provenance-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["NEXT_PUBLIC_CSP_ALLOW_EVAL=1", "pnpm", "with-env", "next", "dev"],
+      "port": 3000
+    }
+  ]
+}

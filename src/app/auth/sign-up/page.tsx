@@ -10,6 +10,7 @@ import pathsConfig from '~/config/paths.config';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 import { CustomEmailPasswordSignUpContainer } from '../_components/custom-password-sign-up-container';
+import { UsernamePasswordSignUpContainer } from '../_components/username-password-sign-up-container';
 import { CollapsibleSignUpSection } from '../_components/collapsible-sign-up-section';
 
 export const generateMetadata = async () => {
@@ -45,6 +46,18 @@ function SignUpPage() {
             displayTermsCheckbox={authConfig.displayTermsCheckbox}
           />
         </CollapsibleSignUpSection>
+      )}
+
+      {authConfig.providers.password && (
+        <>
+          <Separator />
+          <CollapsibleSignUpSection label="Sign up with username">
+            <UsernamePasswordSignUpContainer
+              appHomePath={paths.appHome}
+              displayTermsCheckbox={authConfig.displayTermsCheckbox}
+            />
+          </CollapsibleSignUpSection>
+        </>
       )}
 
       {authConfig.providers.oAuth.length > 0 && (
