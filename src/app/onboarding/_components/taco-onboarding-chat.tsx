@@ -253,30 +253,30 @@ export function TacoOnboardingChat() {
   /* ---- Render ---- */
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-parchment/30">
+    <div className="flex min-h-[calc(100dvh-var(--nav-h)-var(--tabbar-h)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center px-4 py-8 bg-parchment/30">
       <div className="w-full max-w-lg">
         {/* Taco header */}
-        <div className="mb-6 flex items-center gap-3">
-          <div className="relative">
+        <div className="mb-7 flex items-center gap-4">
+          <div className="relative shrink-0">
             <Image
               src="/taco-cat.png"
               alt="Taco the cat"
-              width={52}
-              height={52}
+              width={60}
+              height={60}
               className="rounded-full object-cover ring-2 ring-wine/20 shadow-sm"
               priority
             />
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 border-2 border-parchment" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-parchment" />
           </div>
           <div>
-            <h1 className="font-display text-2xl text-wine leading-none mb-0.5">Taco the cat</h1>
-            <p className="text-xs text-ink/50 font-serif">Studio onboarding · a few quick questions</p>
+            <h1 className="font-display text-[1.7rem] text-wine leading-none mb-1">Taco the cat</h1>
+            <p className="text-sm text-ink/55 font-serif">Studio onboarding · a few quick questions</p>
           </div>
         </div>
 
         {/* Chat thread */}
-        <div className="rounded-2xl border border-wine/15 bg-white shadow-sm overflow-hidden">
-          <div className="flex flex-col gap-4 p-5 max-h-[400px] overflow-y-auto">
+        <div className="rounded-2xl border border-wine/15 bg-white shadow-editorial overflow-hidden">
+          <div className="flex flex-col gap-5 p-6 max-h-[48vh] overflow-y-auto">
             {messages.map((msg) =>
               msg.role === 'taco' ? (
                 <TacoMsg key={msg.id} content={msg.content} />
@@ -289,13 +289,13 @@ export function TacoOnboardingChat() {
           </div>
 
           {/* Action area */}
-          <div className="border-t border-wine/10 bg-parchment/40 px-5 py-4">
+          <div className="border-t border-wine/10 bg-parchment/40 px-6 py-5">
             {step === 'welcome' && (
               <div className="flex gap-2">
-                <Button onClick={handleWelcomeReady} className="flex-1 font-serif bg-wine text-parchment hover:bg-wine/80">
+                <Button onClick={handleWelcomeReady} className="flex-1 font-serif text-[15px] font-medium bg-wine text-parchment hover:bg-wine/80 py-5">
                   Ready — let&apos;s go
                 </Button>
-                <Button variant="outline" onClick={() => router.push('/artworks/add?first_run=1')} className="font-serif text-ink/50 border-wine/20 hover:bg-wine/5">
+                <Button variant="outline" onClick={() => router.push('/artworks/add?first_run=1')} className="font-serif text-[15px] text-ink/50 border-wine/20 hover:bg-wine/5 py-5">
                   Skip all
                 </Button>
               </div>
@@ -323,20 +323,20 @@ export function TacoOnboardingChat() {
                   }}
                 />
                 {cvFile && !cvUploaded && (
-                  <div className="flex items-center gap-2 rounded-lg border border-wine/15 bg-white px-3 py-2 text-sm font-serif text-ink/70">
+                  <div className="flex items-center gap-2 rounded-lg border border-wine/15 bg-white px-3.5 py-2.5 text-[15px] font-serif text-ink/70">
                     <FileText className="h-4 w-4 text-wine/50 shrink-0" />
                     <span className="truncate flex-1">{cvFile.name}</span>
                     {cvUploading && <Loader2 className="h-3.5 w-3.5 animate-spin text-wine/50 shrink-0" />}
                   </div>
                 )}
                 {cvError && (
-                  <p className="text-xs text-red-500 font-serif">{cvError}</p>
+                  <p className="text-sm text-red-500 font-serif">{cvError}</p>
                 )}
                 <div className="flex gap-2">
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={cvUploading}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-wine/25 bg-wine/5 px-4 py-2.5 text-sm font-serif text-wine hover:bg-wine hover:text-parchment transition-colors disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-wine/25 bg-wine/5 px-4 py-3 text-[15px] font-serif font-medium text-wine hover:bg-wine hover:text-parchment transition-colors disabled:opacity-50"
                   >
                     <Upload className="h-4 w-4" />
                     {cvUploading ? 'Uploading…' : 'Upload CV'}
@@ -366,13 +366,13 @@ export function TacoOnboardingChat() {
             )}
 
             {step === 'medium' && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2.5">
                   {MEDIUM_OPTIONS.map((m) => (
                     <button
                       key={m}
                       onClick={() => handleMedium(m)}
-                      className="rounded-xl border border-wine/20 bg-white px-3 py-1.5 text-sm font-serif text-ink hover:bg-wine hover:text-parchment hover:border-wine transition-colors"
+                      className="rounded-xl border border-wine/20 bg-white px-4 py-2 text-[15px] font-serif font-medium text-ink hover:bg-wine hover:text-parchment hover:border-wine transition-colors"
                     >
                       {m}
                     </button>
@@ -380,7 +380,7 @@ export function TacoOnboardingChat() {
                 </div>
                 <button
                   onClick={handleSkip}
-                  className="text-xs text-ink/40 font-serif hover:text-ink/70 transition-colors mt-1"
+                  className="text-sm text-ink/40 font-serif hover:text-ink/70 transition-colors mt-1"
                 >
                   Skip for now
                 </button>
@@ -396,7 +396,7 @@ export function TacoOnboardingChat() {
             )}
 
             {step === 'done' && (
-              <div className="flex items-center gap-2 text-sm font-serif text-ink/60">
+              <div className="flex items-center gap-2 text-[15px] font-serif text-ink/60">
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-wine/50" />
@@ -413,7 +413,7 @@ export function TacoOnboardingChat() {
           </div>
         </div>
 
-        <p className="mt-4 text-center text-xs text-ink/30 font-serif">
+        <p className="mt-5 text-center text-[13px] text-ink/40 font-serif">
           You can update all of this from your profile settings anytime.
         </p>
       </div>
@@ -427,11 +427,11 @@ export function TacoOnboardingChat() {
 
 function TacoMsg({ content }: { content: string }) {
   return (
-    <div className="flex items-end gap-2">
-      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full">
-        <Image src="/taco-cat.png" alt="" fill className="object-cover object-top" sizes="28px" />
+    <div className="flex items-end gap-2.5">
+      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-wine/10">
+        <Image src="/taco-cat.png" alt="" fill className="object-cover object-top" sizes="32px" />
       </div>
-      <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-wine/10 bg-parchment/60 px-4 py-3 text-sm font-serif text-ink leading-relaxed shadow-xs">
+      <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-wine/10 bg-parchment/60 px-5 py-3.5 text-[15px] font-serif font-medium text-ink leading-relaxed shadow-xs">
         {content}
       </div>
     </div>
@@ -441,7 +441,7 @@ function TacoMsg({ content }: { content: string }) {
 function UserMsg({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-wine px-4 py-2.5 text-sm font-serif text-parchment leading-relaxed">
+      <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-wine px-5 py-3 text-[15px] font-serif font-medium text-parchment leading-relaxed">
         {content}
       </div>
     </div>
@@ -450,11 +450,11 @@ function UserMsg({ content }: { content: string }) {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-end gap-2">
-      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full">
-        <Image src="/taco-cat.png" alt="" fill className="object-cover object-top" sizes="28px" />
+    <div className="flex items-end gap-2.5">
+      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-wine/10">
+        <Image src="/taco-cat.png" alt="" fill className="object-cover object-top" sizes="32px" />
       </div>
-      <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-wine/10 bg-parchment/60 px-3 py-2.5 shadow-xs">
+      <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-wine/10 bg-parchment/60 px-3.5 py-3 shadow-xs">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-wine/50 [animation-delay:0ms]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-wine/50 [animation-delay:150ms]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-wine/50 [animation-delay:300ms]" />
@@ -473,13 +473,13 @@ function QuickReplies({
   onSkip?: () => void;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex flex-col gap-2">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2.5">
         {options.map((o) => (
           <button
             key={o.value}
             onClick={() => onSelect(o.value)}
-            className="w-full rounded-xl border border-wine/20 bg-white px-4 py-2.5 text-left text-sm font-serif text-ink hover:bg-wine hover:text-parchment hover:border-wine transition-colors"
+            className="w-full rounded-xl border border-wine/20 bg-white px-5 py-3 text-left text-[15px] font-serif font-medium text-ink hover:bg-wine hover:text-parchment hover:border-wine transition-colors"
           >
             {o.label}
           </button>
@@ -488,7 +488,7 @@ function QuickReplies({
       {onSkip && (
         <button
           onClick={onSkip}
-          className="text-xs text-ink/40 font-serif hover:text-ink/70 transition-colors"
+          className="text-sm text-ink/40 font-serif hover:text-ink/70 transition-colors"
         >
           Skip for now
         </button>

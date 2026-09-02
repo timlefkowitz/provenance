@@ -11,7 +11,7 @@ export const config = {
      * Skip static assets, API, and SEO files so crawlers (e.g. Google Search Console)
      * never depend on middleware + Supabase for /sitemap.xml or /robots.txt.
      */
-    '/((?!_next/static|_next/image|images|locales|assets|api/|sitemap\\.xml|robots\\.txt|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2)$).*)',
+    '/((?!_next/static|_next/image|images|locales|assets|api/|\\.well-known/|sitemap\\.xml|robots\\.txt|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2)$).*)',
   ],
 };
 

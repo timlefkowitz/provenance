@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
 import { getRevenueCatApiKeyIOS } from '~/lib/capacitor/revenuecat-config';
@@ -15,6 +16,48 @@ type Props = {
  * Provenance Capacitor iOS shell. Safe no-op in any browser.
  */
 export function NativeInit({ userId: _userId }: Props) {
+  const router = useRouter();
+
+  // ── Universal Links ───────────────────────────────────────────────────────
+  // iOS opens the app (instead of Safari) for any tapped https://www.provenance.guru
+  // link once Associated Domains is configured (see ios/App/App/App.entitlements).
+  // That only launches/foregrounds the app and loads the configured server.url
+  // home page though — it doesn't navigate the already-running WebView to the
+  // tapped path. appUrlOpen fires with that original URL so we can route there
+  // ourselves (covers magic links, email confirmations, shared artwork/profile
+  // links, etc.).
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+
+    let cancelled = false;
+    let removeListener: (() => void) | null = null;
+
+    async function setup() {
+      const { App } = await import('@capacitor/app');
+      const handle = await App.addListener('appUrlOpen', ({ url }) => {
+        try {
+          const target = new URL(url);
+          router.push(`${target.pathname}${target.search}`);
+        } catch (err) {
+          console.error('[NativeInit] appUrlOpen handling failed', { url, err });
+        }
+      });
+
+      if (cancelled) {
+        handle.remove();
+        return;
+      }
+      removeListener = () => handle.remove();
+    }
+
+    void setup();
+
+    return () => {
+      cancelled = true;
+      removeListener?.();
+    };
+  }, [router]);
+
   // ── Shell / PWA setup ─────────────────────────────────────────────────────
   useEffect(() => {
     const native = isNativePlatform();

@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "446FDP9GB5.guru.provenance.app",
+        "appIDs": ["446FDP9GB5.guru.provenance.app"],
+        "paths": ["*"]
+      }
+    ]
+  }
+}

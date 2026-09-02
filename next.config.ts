@@ -91,6 +91,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // iOS Universal Links: must be served as JSON, without a redirect, for
+        // the associated-domains entitlement in ios/App/App/App.entitlements
+        // to let tapped links open the app instead of Safari.
+        source: '/.well-known/apple-app-site-association',
+        headers: [{ key: 'Content-Type', value: 'application/json' }],
+      },
+      {
         source: '/portal',
         headers: [
           {
