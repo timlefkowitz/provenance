@@ -9,13 +9,15 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
     const pathname = headersList.get('x-pathname') || '';
 
     // Skip check on onboarding page, auth pages, and fully public pages.
-    // Note: /artworks/add is intentionally NOT excluded so new users are
-    // funnelled through role selection before creating their first certificate.
+    // Note: /artworks/add and /settings are intentionally NOT excluded so new
+    // users are funnelled through role selection no matter which page they land
+    // on first (this used to also be enforced by a client-side RoleSelectionModal
+    // mounted on every route; that duplicate check was removed in favor of this
+    // single server-side gate).
     if (
-      pathname.startsWith('/onboarding') || 
+      pathname.startsWith('/onboarding') ||
       pathname.startsWith('/auth') ||
       pathname.startsWith('/about') || // Public about page
-      pathname.startsWith('/settings') || // Account/settings page (redirects to sign-in if not authenticated)
       pathname.startsWith('/artists') || // Public artist profiles
       pathname.startsWith('/registry') || // Public directory (includes /artists index redirect target)
       pathname.startsWith('/g/') // Public gallery pages by slug

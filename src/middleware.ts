@@ -28,6 +28,21 @@ const MAIN_HOSTNAME = (() => {
 const customDomainCache = new Map<string, { handle: string | null; expiresAt: number }>();
 const CUSTOM_DOMAIN_CACHE_TTL_MS = 60_000;
 
+// getUser() only refreshes the auth cookie here — nothing in middleware gates
+// access on its result — so a slow/flaky network must never let it block the
+// whole page response. Cap it and just skip the refresh if it doesn't return in time.
+const GET_USER_TIMEOUT_MS = 3_000;
+
+async function getUserWithTimeout(supabase: {
+  auth: { getUser(): Promise<unknown> };
+}): Promise<void> {
+  const timeout = new Promise<void>((resolve) => {
+    setTimeout(resolve, GET_USER_TIMEOUT_MS);
+  });
+
+  await Promise.race([supabase.auth.getUser().catch(() => undefined), timeout]);
+}
+
 /**
  * Resolve a published site handle from a custom domain hostname.
  * Uses Supabase REST with the anon key — published sites are publicly readable via RLS.
@@ -254,7 +269,7 @@ export async function middleware(request: NextRequest) {
 
     try {
       const supabase = createMiddlewareClient(request, response);
-      await supabase.auth.getUser();
+      await getUserWithTimeout(supabase);
     } catch (error) {
       console.error('[Collectibles] middleware Supabase error:', error);
     }
@@ -269,7 +284,7 @@ export async function middleware(request: NextRequest) {
 
   try {
     const supabase = createMiddlewareClient(request, response);
-    await supabase.auth.getUser();
+    await getUserWithTimeout(supabase);
   } catch (error) {
     // If Supabase connection fails (e.g., invalid env vars), log but don't crash
     console.error('Middleware Supabase error:', error);

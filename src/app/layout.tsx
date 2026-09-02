@@ -8,8 +8,8 @@ import { Toaster } from "@kit/ui/sonner";
 import { getSupabaseServerClient } from "@kit/supabase/server-client";
 import { RootProviders } from "~/components/root-providers";
 import { OnboardingGuard } from "~/components/onboarding-guard";
+
 import { Navigation } from "~/components/navigation";
-import { RoleSelectionModal } from "~/components/role-selection-modal";
 import { GalleryProfileNotification } from "~/components/gallery-profile-notification";
 import { ClientAnalytics } from "~/components/client-analytics";
 import { GoogleTagManager } from "~/components/google-tag-manager";
@@ -181,7 +181,6 @@ export default async function RootLayout({
               <GalleryProfileNotification />
               {children}
               <NativeTabBar />
-              <RoleSelectionModal />
               <TacoBubble isSignedIn={!!initialUser} />
             </OnboardingGuard>
             <CookieConsentBanner />

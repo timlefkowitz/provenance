@@ -30,13 +30,13 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-2xl space-y-8">
         <div className="text-center">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-wine">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-[#4A2F25]">
             <Trans i18nKey="onboarding:welcomeTitle" defaults="Welcome to Provenance" />
           </h1>
           <p className="mt-2 text-sm text-stone-600 font-body">
-            <Trans i18nKey="onboarding:selectRoleDescription" defaults="Select your role to get started." />
+            <Trans i18nKey="onboarding:selectRoleDescription" defaults="How will you be using Provenance?" />
           </p>
         </div>
 
