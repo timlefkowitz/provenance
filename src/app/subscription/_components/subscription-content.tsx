@@ -19,6 +19,7 @@ import {
   RC_OFFERING_IDENTIFIER,
 } from '~/lib/capacitor/revenuecat-config';
 import { resolveOriginalTransactionId } from '~/lib/capacitor/revenuecat-transaction-id';
+import { waitForRevenueCatReady } from '~/lib/capacitor/revenuecat-status';
 import { syncAppleEntitlement } from '../_actions/sync-apple-entitlement';
 
 type SubscriptionRow = {
@@ -187,6 +188,13 @@ export function SubscriptionContent({
     setLoading(true);
     console.log('[IAP] Starting native purchase', { role: selectedRole, interval });
     try {
+      const ready = await waitForRevenueCatReady();
+      if (!ready) {
+        setError('Subscriptions are temporarily unavailable. Please try again in a moment.');
+        console.error('[IAP] RevenueCat not configured — aborting purchase');
+        return;
+      }
+
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
 
       const offeringsResult = await Purchases.getOfferings();
@@ -261,6 +269,13 @@ export function SubscriptionContent({
     setLoading(true);
     console.log('[IAP] Restoring purchases');
     try {
+      const ready = await waitForRevenueCatReady();
+      if (!ready) {
+        setError('Subscriptions are temporarily unavailable. Please try again in a moment.');
+        console.error('[IAP] RevenueCat not configured — aborting restore');
+        return;
+      }
+
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
       const { customerInfo } = await Purchases.restorePurchases();
 

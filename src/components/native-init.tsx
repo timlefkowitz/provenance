@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
 import { getRevenueCatApiKeyIOS } from '~/lib/capacitor/revenuecat-config';
+import { markRevenueCatReady, markRevenueCatUnavailable } from '~/lib/capacitor/revenuecat-status';
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 
 type Props = {
@@ -119,6 +120,7 @@ export function NativeInit({ userId: _userId }: Props) {
     const apiKey = getRevenueCatApiKeyIOS();
     if (!apiKey) {
       console.error('[NativeInit] NEXT_PUBLIC_REVENUECAT_API_KEY_IOS is not set');
+      markRevenueCatUnavailable();
       return;
     }
 
@@ -133,6 +135,7 @@ export function NativeInit({ userId: _userId }: Props) {
         // associates the purchase record with the signed-in Supabase user.
         await Purchases.configure({ apiKey });
         console.log('[NativeInit] RevenueCat configured');
+        markRevenueCatReady();
 
         if (cancelled) return;
 
@@ -159,6 +162,7 @@ export function NativeInit({ userId: _userId }: Props) {
         unsubscribeAuth = () => subscription.unsubscribe();
       } catch (err) {
         console.error('[NativeInit] RevenueCat configure failed', err);
+        markRevenueCatUnavailable();
       }
     }
 
