@@ -70,6 +70,7 @@ export default async function SubscriptionPage({
     <div className="container py-10">
       <SubscriptionContent
         subscription={subscription}
+        userId={user.id}
         defaultRole={defaultRole}
         success={success}
         canceled={canceled}

@@ -4,9 +4,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
-import { getRevenueCatApiKeyIOS } from '~/lib/capacitor/revenuecat-config';
-import { markRevenueCatReady, markRevenueCatUnavailable } from '~/lib/capacitor/revenuecat-status';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
+import { StoreKit } from '~/lib/capacitor/storekit';
+import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
+import { syncAppleEntitlement } from '~/app/subscription/_actions/sync-apple-entitlement';
 
 type Props = {
   userId: string | null;
@@ -108,69 +108,39 @@ export function NativeInit({ userId: _userId }: Props) {
     void initNative();
   }, []);
 
-  // ── RevenueCat — configure once, then track auth state ───────────────────
+  // ── Apple IAP reconciliation ───────────────────────────────────────────────
   //
-  // RevenueCat must be configured before any purchase call. We configure with
-  // the public iOS key immediately and then use Supabase onAuthStateChange to
-  // call logIn/logOut as the user signs in or out — including after email sign-
-  // in where the root Server Component may not remount to pass a new userId prop.
+  // StoreKit 2 needs no SDK configuration or login/logout lifecycle. On launch,
+  // walk current entitlements and re-sync any that match our products — this
+  // self-heals the case where an eager sync after purchase() never reached our
+  // server (app killed mid-purchase, transient network failure). StoreKit's
+  // local transaction store is independent of whether our upsert succeeded, so
+  // this reliably catches up every time the app opens.
   useEffect(() => {
     if (!isNativePlatform()) return;
 
-    const apiKey = getRevenueCatApiKeyIOS();
-    if (!apiKey) {
-      console.error('[NativeInit] NEXT_PUBLIC_REVENUECAT_API_KEY_IOS is not set');
-      markRevenueCatUnavailable();
-      return;
-    }
-
-    let unsubscribeAuth: (() => void) | null = null;
     let cancelled = false;
 
-    async function init() {
+    async function reconcile() {
       try {
-        const { Purchases } = await import('@revenuecat/purchases-capacitor');
-
-        // Configure the SDK (idempotent). No appUserID here — logIn below
-        // associates the purchase record with the signed-in Supabase user.
-        await Purchases.configure({ apiKey });
-        console.log('[NativeInit] RevenueCat configured');
-        markRevenueCatReady();
-
-        if (cancelled) return;
-
-        const supabase = getSupabaseBrowserClient();
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            try {
-              if (session?.user && event !== 'SIGNED_OUT') {
-                // Associate (or re-associate) RevenueCat with the current user.
-                await Purchases.logIn({ appUserID: session.user.id });
-                console.log('[NativeInit] RevenueCat logged in', { userId: session.user.id, event });
-              } else if (event === 'SIGNED_OUT') {
-                // Revert to anonymous RevenueCat ID so a new user starts clean.
-                await Purchases.logOut();
-                console.log('[NativeInit] RevenueCat logged out');
-              }
-            } catch (err) {
-              // logOut throws when no user is logged in to RC — that is fine.
-              console.error('[NativeInit] RevenueCat auth change handler failed', { event, err });
-            }
-          },
-        );
-
-        unsubscribeAuth = () => subscription.unsubscribe();
+        const { transactions } = await StoreKit.getCurrentEntitlements();
+        for (const t of transactions) {
+          if (cancelled) return;
+          if (!APPLE_PRODUCT_TO_PLAN[t.productId]) continue;
+          const result = await syncAppleEntitlement(t.jwsRepresentation, t.productId);
+          if (!result.success) {
+            console.error('[NativeInit] Launch-time entitlement sync failed', { productId: t.productId, error: result.error });
+          }
+        }
       } catch (err) {
-        console.error('[NativeInit] RevenueCat configure failed', err);
-        markRevenueCatUnavailable();
+        console.error('[NativeInit] Launch-time entitlement reconciliation failed', err);
       }
     }
 
-    void init();
+    void reconcile();
 
     return () => {
       cancelled = true;
-      unsubscribeAuth?.();
     };
   }, []);
 

@@ -2,8 +2,8 @@
 
 This is a step-by-step runbook covering every manual action needed to build,
 test, and submit the Provenance native iOS app. Code-side tasks (Capacitor
-config, RevenueCat webhook, Apple IAP client, account deletion) are already
-done on the `ios-wrapper` branch.
+config, Apple Server Notifications webhook, Apple IAP client via StoreKit 2,
+account deletion) are already done on the `ios-wrapper` branch.
 
 **Architecture recap:** Capacitor wraps `https://provenance.guru` in a native
 WKWebView using remote-server mode. There is no static export — the app loads
@@ -61,7 +61,7 @@ If asked to create a Distribution certificate manually:
 
 ---
 
-## Part 2 — RevenueCat + App Store Connect IAP Products
+## Part 2 — App Store Connect IAP Products + Server Notifications
 
 ### 2.1 Create subscription products in App Store Connect
 
@@ -90,35 +90,33 @@ description matching `ios-app/AppStoreMetadata.md`.
    - Review screenshot: a screenshot showing the plan selection UI.
    - Review notes: "User selects plan, taps Subscribe with Apple, and completes purchase through the native IAP sheet."
 
-### 2.2 Create a RevenueCat project
+### 2.2 Point App Store Server Notifications at our webhook
 
-1. Sign up / log in at [RevenueCat](https://app.revenuecat.com).
-2. Create a new **Project**: name `Provenance`.
-3. Under **Apps**, add an **iOS** app:
-   - Bundle ID: `guru.provenance.app`
-   - Connect to App Store Connect using an **App Store Connect API key**
-     (App Store Connect → Users → Keys → generate a new one with **Admin** role).
-4. Under **Entitlements**, create 3 entitlements:
-   - `provenance_artist`
-   - `provenance_collector`
-   - `provenance_gallery`
-5. Under **Products**, add all 6 product IDs from step 2.1 and attach each to its entitlement.
-6. Under **Offerings** → **default offering**, add 6 packages (or 2 per role).
-7. Under **Project Settings → Webhooks**, create a webhook pointing at:
+No third-party vendor is involved — the app verifies Apple's signed payloads
+directly (`@apple/app-store-server-library`, using Apple's own root
+certificates checked into `src/lib/apple/certs/`). Just register the URL:
+
+1. In App Store Connect → your app → **App Information**, scroll to
+   **App Store Server Notifications**.
+2. Set both the **Production Server URL** and **Sandbox Server URL** to:
    ```
-   https://provenance.guru/api/webhooks/revenuecat
+   https://provenance.guru/api/webhooks/apple
    ```
-   Copy the **Shared Secret** that RevenueCat generates.
+3. Select **Version 2** for the notification format.
+4. Use the **Send Test Notification** button after deploying to confirm the
+   endpoint responds (check Vercel logs for `[AppleIAP] Webhook event received`).
 
 ### 2.3 Set environment variables
 
-Add these to your Vercel project (Settings → Environment Variables):
+Add this to your Vercel project (Settings → Environment Variables):
 
 | Variable | Where to find it | Exposed to client? |
 |---|---|---|
-| `NEXT_PUBLIC_REVENUECAT_API_KEY_IOS` | RevenueCat → Project Settings → API Keys → Public iOS key | Yes (NEXT_PUBLIC_) |
-| `REVENUECAT_API_KEY_SECRET` | RevenueCat → Project Settings → API Keys → Secret key | No |
-| `REVENUECAT_WEBHOOK_SECRET` | RevenueCat → Webhooks → Shared Secret | No |
+| `APPLE_IAP_ENVIRONMENT` | Optional — set to `sandbox` in preview/staging to accept Sandbox-signed transactions; omit (defaults to Production) elsewhere | No |
+
+No secret keys are required — JWS signature verification (against Apple's
+bundled root certificates) is sufficient for both the eager client-side sync
+and the webhook. No App Store Connect API key needed for this setup.
 
 ---
 
@@ -180,8 +178,7 @@ pnpm ios:sync
 4. Verify: the entitlements file (`App.entitlements`) now includes
    `com.apple.developer.in-app-payments` (Xcode creates this automatically).
 
-Without this capability RevenueCat's `purchasePackage` will return a
-`STORE_PROBLEM` error at runtime.
+Without this capability StoreKit's `purchase()` call will fail at runtime.
 
 ### 3.3 Copy Info.plist additions
 
@@ -240,8 +237,11 @@ In **Signing & Capabilities**:
 1. In App Store Connect → Users → Sandbox Testers, create a test Apple ID.
 2. On your iPhone: **Settings → App Store** → scroll to **Sandbox Account**, sign in.
 3. Run the app and attempt a subscription purchase. Sandbox purchases are free.
-4. Verify the RevenueCat webhook fires at `provenance.guru/api/webhooks/revenuecat`
-   (check Vercel logs) and the `subscriptions` table gets an `apple_iap` row.
+4. Verify the Apple Server Notifications webhook fires at
+   `provenance.guru/api/webhooks/apple` (check Vercel logs) and the
+   `subscriptions` table gets an `apple_iap` row. Note: purchases in a local
+   Xcode `.storekit` configuration file are Xcode-signed, not Apple-signed —
+   only a real Sandbox purchase exercises the server-side JWS verification.
 5. Test "Restore previous purchases" too.
 
 ---
@@ -296,10 +296,8 @@ In App Store Connect → My Apps → Provenance → **iOS App → 1.0 Prepare fo
 Add all of these to Vercel before deploying the production build:
 
 ```
-# RevenueCat
-NEXT_PUBLIC_REVENUECAT_API_KEY_IOS=  # RevenueCat iOS public key
-REVENUECAT_API_KEY_SECRET=           # RevenueCat server secret key
-REVENUECAT_WEBHOOK_SECRET=           # RevenueCat webhook shared secret
+# Apple IAP (optional — omit to default to Production)
+APPLE_IAP_ENVIRONMENT=  # "sandbox" in preview/staging, unset in production
 ```
 
 ---
@@ -334,10 +332,14 @@ pnpm ios:run
 | `ios-app/icon-1024.png` | Draft 1024×1024 app icon |
 | `ios-app/BUILD_GUIDE.md` | This file |
 | `src/lib/capacitor/is-native.ts` | Platform detection helper |
-| `src/lib/capacitor/revenuecat-config.ts` | Product ID → role mapping + API key helpers |
+| `src/lib/capacitor/apple-iap-config.ts` | Product ID → role mapping |
+| `src/lib/capacitor/storekit.ts` | TS bridge to the native StoreKit 2 plugin |
+| `ios/App/CapApp-SPM/Sources/CapApp-SPM/StoreKitPlugin.swift` | Native StoreKit 2 purchase/restore plugin |
+| `src/lib/apple/verify-apple-jws.ts` | Verifies Apple-signed transactions/notifications (Apple's root CA is inlined here) |
+| `src/lib/apple/certs/` | Reference copy of Apple's root CA certificate (from apple.com/certificateauthority) |
 | `src/lib/capacitor/open-external-checkout.ts` | Opens Stripe checkout in SFSafariViewController on native (Apple Pay) |
-| `src/components/native-init.tsx` | RevenueCat SDK init + auth state tracking |
-| `src/app/api/webhooks/revenuecat/route.ts` | RevenueCat webhook → subscriptions table |
+| `src/components/native-init.tsx` | Launch-time Apple IAP entitlement reconciliation |
+| `src/app/api/webhooks/apple/route.ts` | App Store Server Notifications V2 → subscriptions table |
 | `src/app/subscription/_actions/sync-apple-entitlement.ts` | Eager post-purchase sync |
 | `src/app/subscription/_components/subscription-content.tsx` | IAP branch for native |
 | `src/app/settings/_actions/delete-account.ts` | Account deletion (Guideline 5.1.1(v)) |

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   console.log('[Stripe] createCheckoutSession started');
   try {
     // Block subscription checkout from the native iOS WKWebView. On native the
-    // UI shows "Subscribe with Apple" (RevenueCat IAP) instead of this button.
+    // UI shows "Subscribe with Apple" (StoreKit IAP) instead of this button.
     // Apple Guideline 3.1.1 requires in-app purchases for digital subscriptions.
     if (isCapacitorWebView(request)) {
       console.error('[Stripe] createCheckoutSession blocked: native WKWebView request');

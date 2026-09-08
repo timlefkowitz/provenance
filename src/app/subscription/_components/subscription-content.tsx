@@ -14,12 +14,8 @@ import { getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 import { Loader2, TrendingDown, Apple } from 'lucide-react';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
-import {
-  APPLE_PRODUCT_TO_PLAN,
-  RC_OFFERING_IDENTIFIER,
-} from '~/lib/capacitor/revenuecat-config';
-import { resolveOriginalTransactionId } from '~/lib/capacitor/revenuecat-transaction-id';
-import { waitForRevenueCatReady } from '~/lib/capacitor/revenuecat-status';
+import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
+import { StoreKit } from '~/lib/capacitor/storekit';
 import { syncAppleEntitlement } from '../_actions/sync-apple-entitlement';
 
 type SubscriptionRow = {
@@ -33,6 +29,7 @@ type SubscriptionRow = {
 
 type Props = {
   subscription: SubscriptionRow;
+  userId: string;
   defaultRole: SubscriptionRole | null;
   success?: boolean;
   canceled?: boolean;
@@ -80,6 +77,7 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
 
 export function SubscriptionContent({
   subscription,
+  userId,
   defaultRole,
   success,
   canceled,
@@ -181,67 +179,36 @@ export function SubscriptionContent({
     }
   }
 
-  // ── Native Apple IAP (RevenueCat) ─────────────────────────────────────────
+  // ── Native Apple IAP (StoreKit 2) ─────────────────────────────────────────
 
   async function handleNativePurchase() {
     setError(null);
     setLoading(true);
     console.log('[IAP] Starting native purchase', { role: selectedRole, interval });
     try {
-      const ready = await waitForRevenueCatReady();
-      if (!ready) {
-        setError('Subscriptions are temporarily unavailable. Please try again in a moment.');
-        console.error('[IAP] RevenueCat not configured — aborting purchase');
-        return;
-      }
-
-      const { Purchases } = await import('@revenuecat/purchases-capacitor');
-
-      const offeringsResult = await Purchases.getOfferings();
-      const offering =
-        offeringsResult.current ??
-        offeringsResult.all[RC_OFFERING_IDENTIFIER] ??
-        null;
-
-      if (!offering) {
-        setError('No subscription plans available. Please try again.');
-        return;
-      }
-
-      // Find the package whose product ID matches our selected role + interval.
       const targetProductId = Object.entries(APPLE_PRODUCT_TO_PLAN).find(
         ([, plan]) => plan.role === selectedRole && plan.interval === interval,
       )?.[0];
 
-      const pkg = offering.availablePackages.find(
-        (p) => p.product.productIdentifier === targetProductId,
-      );
-
-      if (!pkg) {
+      if (!targetProductId) {
         setError('Selected plan not available in the App Store. Please try again.');
-        console.error('[IAP] Package not found for', { selectedRole, interval, targetProductId });
+        console.error('[IAP] No product mapped for', { selectedRole, interval });
         return;
       }
 
-      const purchaseResult = await Purchases.purchasePackage({ aPackage: pkg });
-      const customerInfo = purchaseResult.customerInfo;
+      const result = await StoreKit.purchase({ productId: targetProductId, appAccountToken: userId });
+
+      if (result.status === 'cancelled') {
+        console.log('[IAP] Purchase cancelled by user');
+        return;
+      }
+      if (result.status === 'pending') {
+        setError('Purchase is pending approval (e.g. Ask to Buy). It will complete automatically once approved.');
+        return;
+      }
 
       // Eagerly sync to our DB without waiting for the webhook.
-      const expMs =
-        customerInfo.allExpirationDatesByProduct?.[targetProductId!] ?? null;
-      const expDate = expMs ? new Date(expMs).getTime() : null;
-
-      const originalTransactionId = resolveOriginalTransactionId(
-        customerInfo,
-        targetProductId!,
-        purchaseResult.transaction,
-      );
-
-      const syncResult = await syncAppleEntitlement(
-        originalTransactionId ?? '',
-        targetProductId!,
-        expDate,
-      );
+      const syncResult = await syncAppleEntitlement(result.jwsRepresentation, result.productId);
       if (!syncResult.success) {
         console.error('[IAP] Eager sync failed (webhook will catch it)', syncResult.error);
       }
@@ -249,14 +216,7 @@ export function SubscriptionContent({
       console.log('[IAP] Purchase completed', { role: selectedRole, interval });
       // Reload the page so the server re-reads the new subscription row.
       window.location.reload();
-    } catch (err: unknown) {
-      // RevenueCat throws a specific error when the user cancels
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((err as any)?.code === 'PURCHASE_CANCELLED') {
-        setError(null);
-        console.log('[IAP] Purchase cancelled by user');
-        return;
-      }
+    } catch (err) {
       console.error('[IAP] Purchase failed', err);
       setError(err instanceof Error ? err.message : 'Purchase failed. Please try again.');
     } finally {
@@ -269,34 +229,13 @@ export function SubscriptionContent({
     setLoading(true);
     console.log('[IAP] Restoring purchases');
     try {
-      const ready = await waitForRevenueCatReady();
-      if (!ready) {
-        setError('Subscriptions are temporarily unavailable. Please try again in a moment.');
-        console.error('[IAP] RevenueCat not configured — aborting restore');
-        return;
-      }
+      const { transactions } = await StoreKit.restorePurchases();
 
-      const { Purchases } = await import('@revenuecat/purchases-capacitor');
-      const { customerInfo } = await Purchases.restorePurchases();
-
-      // Sync any active subscription found after restore.
-      const activeProductIds = Object.keys(customerInfo.allExpirationDatesByProduct ?? {});
       let synced = false;
+      for (const t of transactions) {
+        if (!APPLE_PRODUCT_TO_PLAN[t.productId]) continue;
 
-      for (const productId of activeProductIds) {
-        const plan = APPLE_PRODUCT_TO_PLAN[productId];
-        if (!plan) continue;
-
-        const expMs = customerInfo.allExpirationDatesByProduct?.[productId] ?? null;
-        const expDate = expMs ? new Date(expMs).getTime() : null;
-
-        const originalTransactionId = resolveOriginalTransactionId(customerInfo, productId);
-        if (!originalTransactionId) {
-          console.warn('[IAP] Restore: no store transaction ID for product', { productId });
-          continue;
-        }
-
-        const result = await syncAppleEntitlement(originalTransactionId, productId, expDate);
+        const result = await syncAppleEntitlement(t.jwsRepresentation, t.productId);
         if (result.success) {
           synced = true;
           break;

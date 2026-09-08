@@ -3,50 +3,25 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { asUntyped } from '~/lib/supabase-untyped';
-import {
-  APPLE_PRODUCT_TO_PLAN,
-  getRevenueCatSecretKey,
-} from '~/lib/capacitor/revenuecat-config';
-import { isAppleProductId } from '~/lib/capacitor/revenuecat-transaction-id';
+import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
+import { verifyTransactionJWS } from '~/lib/apple/verify-apple-jws';
 import type { SubscriptionRole } from '~/lib/stripe-config';
 
-type RevenueCatSubscriberEntitlement = {
-  expires_date: string | null;
-  product_identifier: string;
-  purchase_date: string;
-  original_purchase_date: string;
-  ownership_type: string;
-  period_type: string;
-};
-
-type RevenueCatSubscriberInfo = {
-  subscriber: {
-    entitlements: Record<string, RevenueCatSubscriberEntitlement>;
-    subscriptions: Record<string, {
-      expires_date: string | null;
-      original_transaction_id: string | null;
-      billing_issues_detected_at: string | null;
-      period_type: string;
-    }>;
-  };
-};
-
 /**
- * Eagerly syncs Apple IAP entitlement from RevenueCat REST API after a native
- * purchase. Called client-side immediately after Purchases.purchasePackage()
- * succeeds so the user doesn't have to wait for the webhook.
+ * Eagerly syncs an Apple IAP entitlement after a native purchase or restore.
+ * Called client-side immediately after StoreKit's purchase()/restorePurchases()
+ * resolves, so the user doesn't have to wait for the App Store Server
+ * Notifications webhook.
  *
- * Args:
- *   originalTransactionId — from the RevenueCat CustomerInfo returned by the SDK
- *   productId             — e.g. "com.provenance.app.artist.monthly"
- *   expirationDateMs      — from the SDK's CustomerInfo (ms since epoch), or null
+ * jwsRepresentation is StoreKit 2's own signed transaction — verifying it here
+ * (rather than trusting client-supplied fields) makes originalTransactionId
+ * and expiresDate authoritative without any round-trip to Apple's servers.
  */
 export async function syncAppleEntitlement(
-  originalTransactionId: string,
+  jwsRepresentation: string,
   productId: string,
-  expirationDateMs: number | null,
 ): Promise<{ success: boolean; error?: string }> {
-  console.log('[RevenueCat] syncAppleEntitlement started', { originalTransactionId, productId });
+  console.log('[AppleIAP] syncAppleEntitlement started', { productId });
 
   try {
     const supabase = getSupabaseServerClient();
@@ -55,56 +30,24 @@ export async function syncAppleEntitlement(
 
     const plan = APPLE_PRODUCT_TO_PLAN[productId];
     if (!plan) {
-      console.error('[RevenueCat] syncAppleEntitlement: unknown productId', { productId });
+      console.error('[AppleIAP] syncAppleEntitlement: unknown productId', { productId });
       return { success: false, error: 'unknown_product' };
     }
 
-    let currentPeriodEnd: string | null = expirationDateMs
-      ? new Date(expirationDateMs).toISOString()
-      : null;
-
-    // Prefer RevenueCat REST API for the authoritative original_transaction_id.
-    let resolvedOriginalTransactionId: string | null = null;
-
-    const rcSecretKey = getRevenueCatSecretKey();
-    if (rcSecretKey) {
-      try {
-        const res = await fetch(`https://api.revenuecat.com/v1/subscribers/${user.id}`, {
-          headers: {
-            Authorization: `Bearer ${rcSecretKey}`,
-            'X-Platform': 'ios',
-          },
-        });
-        if (res.ok) {
-          const body = (await res.json()) as RevenueCatSubscriberInfo;
-          const sub = body.subscriber?.subscriptions?.[productId];
-          if (sub?.expires_date) {
-            currentPeriodEnd = sub.expires_date;
-          }
-          if (sub?.original_transaction_id) {
-            resolvedOriginalTransactionId = sub.original_transaction_id;
-          }
-        }
-      } catch (rcErr) {
-        console.error('[RevenueCat] syncAppleEntitlement: RC REST API call failed (non-fatal)', rcErr);
-      }
+    let decoded;
+    try {
+      decoded = await verifyTransactionJWS(jwsRepresentation);
+    } catch (err) {
+      console.error('[AppleIAP] syncAppleEntitlement: JWS verification failed', err);
+      return { success: false, error: 'verification_failed' };
     }
 
-    // Fall back to client-provided ID only when it is not a product identifier.
-    if (
-      !resolvedOriginalTransactionId &&
-      originalTransactionId &&
-      !isAppleProductId(originalTransactionId)
-    ) {
-      resolvedOriginalTransactionId = originalTransactionId;
-    }
-
-    if (!resolvedOriginalTransactionId) {
-      console.error('[RevenueCat] syncAppleEntitlement: could not resolve original_transaction_id', {
-        productId,
-        originalTransactionId,
+    if (decoded.productId !== productId || !decoded.originalTransactionId) {
+      console.error('[AppleIAP] syncAppleEntitlement: decoded transaction mismatch', {
+        expectedProductId: productId,
+        decodedProductId: decoded.productId,
       });
-      return { success: false, error: 'missing_transaction_id' };
+      return { success: false, error: 'mismatched_transaction' };
     }
 
     const admin = asUntyped(getSupabaseServerAdminClient());
@@ -113,10 +56,10 @@ export async function syncAppleEntitlement(
         user_id: user.id,
         provider: 'apple_iap',
         revenuecat_subscriber_id: user.id,
-        apple_original_transaction_id: resolvedOriginalTransactionId,
+        apple_original_transaction_id: decoded.originalTransactionId,
         role: plan.role as SubscriptionRole,
         status: 'active',
-        current_period_end: currentPeriodEnd,
+        current_period_end: decoded.expiresDate ? new Date(decoded.expiresDate).toISOString() : null,
         updated_at: new Date().toISOString(),
         stripe_customer_id: null,
         stripe_subscription_id: null,
@@ -126,18 +69,18 @@ export async function syncAppleEntitlement(
     );
 
     if (error) {
-      console.error('[RevenueCat] syncAppleEntitlement: upsert failed', error);
+      console.error('[AppleIAP] syncAppleEntitlement: upsert failed', error);
       return { success: false, error: 'upsert_failed' };
     }
 
-    console.log('[RevenueCat] syncAppleEntitlement completed', {
+    console.log('[AppleIAP] syncAppleEntitlement completed', {
       userId: user.id,
       role: plan.role,
       productId,
     });
     return { success: true };
   } catch (err) {
-    console.error('[RevenueCat] syncAppleEntitlement threw', err);
+    console.error('[AppleIAP] syncAppleEntitlement threw', err);
     return { success: false, error: (err as Error).message };
   }
 }
