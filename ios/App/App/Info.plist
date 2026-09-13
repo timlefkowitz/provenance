@@ -28,6 +28,8 @@
 	<string>Provenance uses your camera to take photos of your collectibles when adding them to your collection.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Provenance accesses your photo library so you can choose existing photos of your collectibles when adding them to your collection.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Provenance uses your location when you scan an artwork certificate so the artwork owner can see where it was scanned.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

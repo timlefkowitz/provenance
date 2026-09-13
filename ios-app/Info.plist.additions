@@ -24,6 +24,10 @@
 <key>NSPhotoLibraryAddUsageDescription</key>
 <string>Provenance saves provenance certificates and artwork images to your photo library.</string>
 
+<!-- Location — optional certificate QR-code scan location -->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Provenance uses your location when you scan an artwork certificate so the artwork owner can see where it was scanned.</string>
+
 <!-- Push Notifications — optional, for collection updates and trial reminders -->
 <!-- (Xcode adds this automatically when you enable Push Notifications capability; 
      no manual Info.plist entry is needed for basic remote notifications) -->

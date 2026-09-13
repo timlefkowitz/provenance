@@ -1,7 +1,14 @@
+'use client';
+
+import { useSyncExternalStore } from 'react';
+
 import Script from 'next/script';
+
+import { isNativePlatform } from '~/lib/capacitor/is-native';
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+const subscribeToPlatform = () => () => undefined;
 
 /**
  * Renders Google Tag Manager, Google Ads gtag, and Consent Mode v2 defaults.
@@ -10,14 +17,25 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
  * request header. Passing it to every <Script> allows browsers enforcing a
  * nonce-based CSP to execute these inline/external scripts without 'unsafe-inline'.
  *
- * Mount order matters — the consent-defaults script uses `strategy="beforeInteractive"`
- * so it runs in the HTML head before any other script. Tag loaders use
- * `strategy="afterInteractive"` to avoid blocking page paint.
+ * The consent-defaults script is rendered before tag loaders so they all start
+ * in the denied state. The scripts run after interactive so the native-shell
+ * gate can reliably prevent them from loading.
  *
  * Renders nothing when neither NEXT_PUBLIC_GTM_ID nor NEXT_PUBLIC_GOOGLE_ADS_ID
  * is set (dev / CI environments).
  */
 export function GoogleTagManager({ nonce }: { nonce?: string }) {
+  // The native iOS shell is intentionally analytics- and ads-free. In
+  // particular, it must not load a third-party tag before an ATT authorization
+  // flow. The web product continues to use its existing consent controls.
+  // Start false so these scripts are absent from the server-rendered HTML too.
+  const shouldLoad = useSyncExternalStore(
+    subscribeToPlatform,
+    () => !isNativePlatform(),
+    () => false,
+  );
+
+  if (!shouldLoad) return null;
   if (!GTM_ID && !GOOGLE_ADS_ID) return null;
 
   const adsConfigLine = GOOGLE_ADS_ID
@@ -29,7 +47,7 @@ export function GoogleTagManager({ nonce }: { nonce?: string }) {
       {/* Consent Mode v2 defaults — must fire before tags so all tags see denied state. */}
       <Script
         id="gtm-consent-defaults"
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
         nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `

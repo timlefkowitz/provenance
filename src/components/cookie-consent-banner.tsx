@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+
 import { useLegalModal } from '~/components/legal/legal-modal-context';
-import { gtmService } from '~/lib/gtm';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { gtmService } from '~/lib/gtm';
 
 const CONSENT_KEY = 'provenance_cookie_consent';
+const subscribeToPlatform = () => () => undefined;
+
+function getStoredConsent(): StoredConsent | null {
+  return localStorage.getItem(CONSENT_KEY) as StoredConsent | null;
+}
 
 type StoredConsent = 'granted' | 'denied';
 
@@ -16,85 +22,86 @@ type StoredConsent = 'granted' | 'denied';
  * - On "Accept": updates Consent Mode v2 to 'granted' and persists to localStorage.
  * - On "Decline": updates Consent Mode v2 to 'denied' and persists to localStorage.
  * - Re-applies stored consent on every page load so GTM tags honour prior choice.
- * - In native Capacitor mode: auto-grants silently — iOS App Store rules govern
- *   analytics collection, not the EU cookie directive.
+ * - In native Capacitor mode: analytics and advertising scripts are not loaded;
+ *   the app therefore has no cookie-consent state to grant.
  */
 export function CookieConsentBanner() {
   const { openLegalDocument } = useLegalModal();
-  // 'unresolved' = we haven't yet read localStorage (avoids SSR / hydration flash)
-  const [resolved, setResolved] = useState<StoredConsent | 'unresolved'>('unresolved');
+  const [selectedConsent, setSelectedConsent] = useState<StoredConsent | null>(
+    null,
+  );
+  const nativePlatform = useSyncExternalStore(
+    subscribeToPlatform,
+    isNativePlatform,
+    () => false,
+  );
+  const storedConsent = useSyncExternalStore(
+    subscribeToPlatform,
+    getStoredConsent,
+    () => null,
+  );
 
   useEffect(() => {
-    // Native apps don't show cookie banners — silently grant and move on.
-    if (isNativePlatform()) {
-      gtmService.grantConsent();
-      setResolved('granted');
-      return;
-    }
+    // Native apps don't show cookie banners. Their tracking scripts are gated
+    // out at the component level, so do not grant Consent Mode here.
+    if (nativePlatform) return;
 
-    const stored = localStorage.getItem(CONSENT_KEY) as StoredConsent | null;
-
-    if (stored === 'granted') {
+    if (storedConsent === 'granted') {
       gtmService.grantConsent();
-      setResolved('granted');
-    } else if (stored === 'denied') {
+    } else if (storedConsent === 'denied') {
       gtmService.denyConsent();
-      setResolved('denied');
-    } else {
-      // No prior choice — show the banner
-      setResolved('unresolved');
     }
-  }, []);
+  }, [nativePlatform, storedConsent]);
 
   const handleAccept = () => {
     console.log('[GTM] Cookie consent accepted');
     localStorage.setItem(CONSENT_KEY, 'granted');
     gtmService.grantConsent();
-    setResolved('granted');
+    setSelectedConsent('granted');
   };
 
   const handleDecline = () => {
     console.log('[GTM] Cookie consent declined');
     localStorage.setItem(CONSENT_KEY, 'denied');
     gtmService.denyConsent();
-    setResolved('denied');
+    setSelectedConsent('denied');
   };
 
   // Don't render until we've checked localStorage, and don't render once resolved
-  if (resolved !== 'unresolved') return null;
+  if (nativePlatform || selectedConsent || storedConsent) return null;
 
   return (
     <div
       role="dialog"
       aria-label="Cookie consent"
       aria-live="polite"
-      className="fixed bottom-0 inset-x-0 z-50 px-4 pb-4 pointer-events-none"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 px-4 pb-4"
     >
-      <div className="max-w-3xl mx-auto pointer-events-auto bg-parchment/95 backdrop-blur-sm border border-wine/20 rounded-xl shadow-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
-        <p className="flex-1 text-sm font-serif text-ink/80 leading-relaxed">
+      <div className="bg-parchment/95 border-wine/20 pointer-events-auto mx-auto flex max-w-3xl flex-col gap-4 rounded-xl border px-5 py-4 shadow-xl backdrop-blur-sm sm:flex-row sm:items-center">
+        <p className="text-ink/80 flex-1 font-serif text-sm leading-relaxed">
           We use cookies to measure ad performance and improve your experience.
-          By clicking <strong className="text-ink font-semibold">Accept</strong>, you
-          consent to our use of advertising and analytics cookies.{' '}
+          By clicking <strong className="text-ink font-semibold">Accept</strong>
+          , you consent to our use of advertising and analytics cookies.{' '}
           <button
             type="button"
             onClick={() => openLegalDocument('cookies')}
-            className="text-wine underline underline-offset-2 hover:text-wine/80 transition-colors"
+            className="text-wine hover:text-wine/80 underline underline-offset-2 transition-colors"
           >
             Learn more
           </button>
           .
         </p>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={handleDecline}
-            className="px-4 py-2 text-sm font-serif border border-wine/30 text-ink/80 rounded-lg hover:bg-wine/5 hover:border-wine/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/40"
+            className="border-wine/30 text-ink/80 hover:bg-wine/5 hover:border-wine/50 focus-visible:ring-wine/40 rounded-lg border px-4 py-2 font-serif text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
             Decline
           </button>
           <button
             onClick={handleAccept}
-            className="px-4 py-2 text-sm font-serif bg-wine text-parchment rounded-lg hover:bg-wine/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/40"
+            className="bg-wine text-parchment hover:bg-wine/90 focus-visible:ring-wine/40 rounded-lg px-4 py-2 font-serif text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
             Accept
           </button>

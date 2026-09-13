@@ -1,32 +1,49 @@
 'use client';
 
-import { useState, useTransition, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, useTransition } from 'react';
+
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+
 import { track } from '@vercel/analytics';
 import exifr from 'exifr';
+import { Camera, MapPin, Upload, X } from 'lucide-react';
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@kit/ui/accordion';
+import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
-import { Textarea } from '@kit/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
 import { Switch } from '@kit/ui/switch';
-import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
-import { Camera, X, Upload, MapPin } from 'lucide-react';
-import { createArtworksBatch } from '../_actions/create-artworks-batch';
-import type { UserRole } from '~/lib/user-roles';
-import { gtmService } from '~/lib/gtm';
-import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
-import type { UserExhibition } from '../_actions/get-user-exhibitions';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-import { CreateExhibitionDialog } from './create-exhibition-dialog';
-import type { PastArtist } from '../_actions/get-past-artists';
+import { Textarea } from '@kit/ui/textarea';
+
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@kit/ui/accordion';
-import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { UpgradePrompt } from '~/components/upgrade-prompt';
-
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { gtmService } from '~/lib/gtm';
 import { asUntyped } from '~/lib/supabase-untyped';
+import type { UserRole } from '~/lib/user-roles';
+import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
+
+import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
+import { createArtworksBatch } from '../_actions/create-artworks-batch';
+import type { PastArtist } from '../_actions/get-past-artists';
+import type { UserExhibition } from '../_actions/get-user-exhibitions';
+import { CreateExhibitionDialog } from './create-exhibition-dialog';
+
 type ImagePreview = {
   id?: string;
   file: File;
@@ -91,9 +108,13 @@ async function maybeCompressImage(file: File): Promise<File> {
       );
     });
 
-    const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpeg', {
-      type: 'image/jpeg',
-    });
+    const compressed = new File(
+      [blob],
+      file.name.replace(/\.[^/.]+$/, '') + '.jpeg',
+      {
+        type: 'image/jpeg',
+      },
+    );
 
     console.info('[AddArtworkForm] Compressed image', {
       name: file.name,
@@ -103,12 +124,17 @@ async function maybeCompressImage(file: File): Promise<File> {
 
     return compressed.size < file.size ? compressed : file;
   } catch (err) {
-    console.warn('[AddArtworkForm] Image compression failed, using original', err);
+    console.warn(
+      '[AddArtworkForm] Image compression failed, using original',
+      err,
+    );
     return file;
   }
 }
 
-async function readFileSignature(file: File): Promise<{ hex: string; ascii: string }> {
+async function readFileSignature(
+  file: File,
+): Promise<{ hex: string; ascii: string }> {
   const head = await file.slice(0, 16).arrayBuffer();
   const bytes = Array.from(new Uint8Array(head));
   const hex = bytes.map((b) => b.toString(16).padStart(2, '0')).join(' ');
@@ -119,7 +145,11 @@ async function readFileSignature(file: File): Promise<{ hex: string; ascii: stri
 }
 
 function isHeicSignature(ascii: string): boolean {
-  return ascii.includes('ftypheic') || ascii.includes('ftypheif') || ascii.includes('ftypmif1');
+  return (
+    ascii.includes('ftypheic') ||
+    ascii.includes('ftypheif') ||
+    ascii.includes('ftypmif1')
+  );
 }
 
 /** Renders preview from File: blob URL first, then data URL fallback for picky JPEGs (e.g. Safari). */
@@ -152,11 +182,14 @@ function PreviewFromFile({
 
   const handleError = () => {
     if (!triedDataUrl && url?.startsWith('blob:')) {
-      console.warn('[ArtworkPreview] Blob preview failed, trying bitmap fallback', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      });
+      console.warn(
+        '[ArtworkPreview] Blob preview failed, trying bitmap fallback',
+        {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        },
+      );
       if (blobUrlRef.current === url) {
         blobUrlRef.current = null;
         URL.revokeObjectURL(url);
@@ -191,7 +224,10 @@ function PreviewFromFile({
           });
         })
         .catch(async (err) => {
-          const sig = await readFileSignature(file).catch(() => ({ ascii: '', hex: '' }));
+          const sig = await readFileSignature(file).catch(() => ({
+            ascii: '',
+            hex: '',
+          }));
           if (isHeicSignature(sig.ascii)) {
             try {
               const convert = (await import('heic-convert/browser')).default;
@@ -201,16 +237,21 @@ function PreviewFromFile({
                 format: 'JPEG',
                 quality: 0.9,
               });
-              const blob = new Blob([jpegBuffer as BlobPart], { type: 'image/jpeg' });
+              const blob = new Blob([jpegBuffer as BlobPart], {
+                type: 'image/jpeg',
+              });
               const blobUrl = URL.createObjectURL(blob);
               blobUrlRef.current = blobUrl;
               setUrl(blobUrl);
-              console.info('[ArtworkPreview] HEIC convert succeeded', { name: file.name });
+              console.info('[ArtworkPreview] HEIC convert succeeded', {
+                name: file.name,
+              });
               return;
             } catch (heicErr) {
               console.warn('[ArtworkPreview] HEIC convert failed', {
                 name: file.name,
-                error: heicErr instanceof Error ? heicErr.message : String(heicErr),
+                error:
+                  heicErr instanceof Error ? heicErr.message : String(heicErr),
               });
             }
           } else {
@@ -240,20 +281,22 @@ function PreviewFromFile({
 
   if (failed) {
     return (
-      <div
-        className={className}
-        style={{ minHeight: '12rem' }}
-        aria-hidden
-      >
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1 rounded-lg bg-parchment/80 border border-wine/20 text-center px-3 py-8">
-          <p className="text-sm text-ink/70 font-serif">Preview not available</p>
-          <p className="text-xs text-ink/50 font-serif">Your image will still upload correctly.</p>
+      <div className={className} style={{ minHeight: '12rem' }} aria-hidden>
+        <div className="bg-parchment/80 border-wine/20 flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border px-3 py-8 text-center">
+          <p className="text-ink/70 font-serif text-sm">
+            Preview not available
+          </p>
+          <p className="text-ink/50 font-serif text-xs">
+            Your image will still upload correctly.
+          </p>
         </div>
       </div>
     );
   }
   if (!url) {
-    return <div className={className} style={{ minHeight: '12rem' }} aria-hidden />;
+    return (
+      <div className={className} style={{ minHeight: '12rem' }} aria-hidden />
+    );
   }
   return (
     <Image
@@ -269,8 +312,8 @@ function PreviewFromFile({
   );
 }
 
-export function AddArtworkForm({ 
-  userId, 
+export function AddArtworkForm({
+  userId,
   defaultArtistName = '',
   defaultMedium = '',
   userRole = null,
@@ -281,7 +324,7 @@ export function AddArtworkForm({
   hasPaidPlan = false,
   sellingEnabled = false,
   onExhibitionsChange,
-}: { 
+}: {
   userId: string;
   defaultArtistName?: string;
   defaultMedium?: string;
@@ -300,9 +343,13 @@ export function AddArtworkForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<{ batch: number; totalBatches: number } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    batch: number;
+    totalBatches: number;
+  } | null>(null);
   const [primaryTitle, setPrimaryTitle] = useState('');
-  const [localExhibitions, setLocalExhibitions] = useState<UserExhibition[]>(exhibitions);
+  const [localExhibitions, setLocalExhibitions] =
+    useState<UserExhibition[]>(exhibitions);
 
   const defaultIsPublicForRole = (role: UserRole | null | undefined) =>
     role !== USER_ROLES.COLLECTOR;
@@ -354,7 +401,7 @@ export function AddArtworkForm({
 
   // Update form data when defaults change (only if fields are empty)
   useEffect(() => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       artistName: prev.artistName || defaultArtistName,
       medium: prev.medium || defaultMedium,
@@ -363,13 +410,17 @@ export function AddArtworkForm({
 
   // Auto-select gallery profile if there's only one
   useEffect(() => {
-    if (userRole === USER_ROLES.GALLERY && galleryProfiles.length === 1 && !formData.galleryProfileId) {
-      setFormData(prev => ({
+    if (
+      userRole === USER_ROLES.GALLERY &&
+      galleryProfiles.length === 1 &&
+      !formData.galleryProfileId
+    ) {
+      setFormData((prev) => ({
         ...prev,
         galleryProfileId: galleryProfiles[0].id,
       }));
     } else if (userRole !== USER_ROLES.GALLERY) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         galleryProfileId: '',
         sourceCoaCertificateNumber: '',
@@ -387,15 +438,15 @@ export function AddArtworkForm({
   const handlePrimaryTitleChange = (value: string) => {
     setPrimaryTitle(value);
     if (imagePreviews.length === 1) {
-      setImagePreviews(prev =>
-        prev.map((img, i) => (i === 0 ? { ...img, title: value } : img))
+      setImagePreviews((prev) =>
+        prev.map((img, i) => (i === 0 ? { ...img, title: value } : img)),
       );
     }
   };
 
   const handleImageTitleChange = (index: number, value: string) => {
-    setImagePreviews(prev =>
-      prev.map((img, i) => (i === index ? { ...img, title: value } : img))
+    setImagePreviews((prev) =>
+      prev.map((img, i) => (i === index ? { ...img, title: value } : img)),
     );
     if (index === 0) {
       setPrimaryTitle(value);
@@ -449,7 +500,9 @@ export function AddArtworkForm({
         if (file.size > MAX_SINGLE_IMAGE_BYTES) {
           file = await maybeCompressImage(file);
           if (file.size > MAX_SINGLE_IMAGE_BYTES) {
-            setError(`"${file.name}" is too large. Please choose images under 4 MB.`);
+            setError(
+              `"${file.name}" is too large. Please choose images under 4 MB.`,
+            );
             return;
           }
         }
@@ -461,7 +514,7 @@ export function AddArtworkForm({
           if (exifData?.latitude && exifData?.longitude) {
             try {
               const response = await fetch(
-                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${exifData.latitude}&longitude=${exifData.longitude}&localityLanguage=en`
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${exifData.latitude}&longitude=${exifData.longitude}&localityLanguage=en`,
               );
               const geoData = await response.json();
               location = {
@@ -492,14 +545,20 @@ export function AddArtworkForm({
           id: previewId,
           file,
           preview: '', // not used; PreviewFromFile uses file + blob URL
-          title: file.name.replace(/\.[^/.]+$/, '') || `Artwork ${imagePreviews.length + index + 1}`,
+          title:
+            file.name.replace(/\.[^/.]+$/, '') ||
+            `Artwork ${imagePreviews.length + index + 1}`,
           location,
         });
       }
 
-      setImagePreviews(prev => [...prev, ...newPreviews]);
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
     } catch (err) {
-      console.error('[AddArtworkForm] Error processing selected images:', (err as Error)?.message ?? err, (err as Error)?.stack);
+      console.error(
+        '[AddArtworkForm] Error processing selected images:',
+        (err as Error)?.message ?? err,
+        (err as Error)?.stack,
+      );
       setError('Failed to process images. Please try again.');
     } finally {
       if (fileInputRef.current) {
@@ -509,7 +568,7 @@ export function AddArtworkForm({
   };
 
   const removeImage = (index: number) => {
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -522,14 +581,18 @@ export function AddArtworkForm({
     }
 
     // Validate all images have titles
-    const missingTitles = imagePreviews.filter(img => !img.title.trim());
+    const missingTitles = imagePreviews.filter((img) => !img.title.trim());
     if (missingTitles.length > 0) {
       setError('Please provide a title for all artworks');
       return;
     }
 
     // Validate gallery profile selection if user is a gallery with multiple profiles
-    if (userRole === USER_ROLES.GALLERY && galleryProfiles.length > 1 && !formData.galleryProfileId) {
+    if (
+      userRole === USER_ROLES.GALLERY &&
+      galleryProfiles.length > 1 &&
+      !formData.galleryProfileId
+    ) {
       setError('Please select which gallery you are posting as');
       return;
     }
@@ -546,7 +609,9 @@ export function AddArtworkForm({
       const size = img.file.size;
 
       if (size > MAX_BATCH_BYTES) {
-        setError(`"${img.file.name}" is too large. Please choose images under 4 MB.`);
+        setError(
+          `"${img.file.name}" is too large. Please choose images under 4 MB.`,
+        );
         return;
       }
 
@@ -573,7 +638,7 @@ export function AddArtworkForm({
         const platform =
           typeof navigator !== 'undefined'
             ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ((navigator as any).platform as string | undefined) ?? ''
+              (((navigator as any).platform as string | undefined) ?? '')
             : '';
         const viewport =
           typeof window !== 'undefined'
@@ -585,10 +650,7 @@ export function AddArtworkForm({
           const chunk = chunks[c];
 
           const formDataToSend = new FormData();
-          const totalBytes = chunk.reduce(
-            (sum, img) => sum + img.file.size,
-            0,
-          );
+          const totalBytes = chunk.reduce((sum, img) => sum + img.file.size, 0);
 
           console.log('[AddArtworkForm] Submitting artwork chunk', {
             batch: c + 1,
@@ -607,7 +669,10 @@ export function AddArtworkForm({
           chunk.forEach((img) => {
             formDataToSend.append('images', img.file);
             formDataToSend.append('titles', img.title);
-            formDataToSend.append('locations', img.location ? JSON.stringify(img.location) : '');
+            formDataToSend.append(
+              'locations',
+              img.location ? JSON.stringify(img.location) : '',
+            );
           });
           formDataToSend.append('description', formData.description);
           formDataToSend.append('artistName', formData.artistName);
@@ -617,17 +682,32 @@ export function AddArtworkForm({
           formDataToSend.append('dimensions', formData.dimensions);
           formDataToSend.append('formerOwners', formData.formerOwners);
           formDataToSend.append('auctionHistory', formData.auctionHistory);
-          formDataToSend.append('exhibitionHistory', formData.exhibitionHistory);
+          formDataToSend.append(
+            'exhibitionHistory',
+            formData.exhibitionHistory,
+          );
           formDataToSend.append('historicContext', formData.historicContext);
           formDataToSend.append('celebrityNotes', formData.celebrityNotes);
           formDataToSend.append('value', formData.value);
-          formDataToSend.append('valueIsPublic', formData.valueIsPublic.toString());
+          formDataToSend.append(
+            'valueIsPublic',
+            formData.valueIsPublic.toString(),
+          );
           formDataToSend.append('edition', formData.edition);
-          formDataToSend.append('productionLocation', formData.productionLocation);
+          formDataToSend.append(
+            'productionLocation',
+            formData.productionLocation,
+          );
           formDataToSend.append('ownedBy', formData.ownedBy);
-          formDataToSend.append('ownedByIsPublic', formData.ownedByIsPublic.toString());
+          formDataToSend.append(
+            'ownedByIsPublic',
+            formData.ownedByIsPublic.toString(),
+          );
           formDataToSend.append('soldBy', formData.soldBy);
-          formDataToSend.append('soldByIsPublic', formData.soldByIsPublic.toString());
+          formDataToSend.append(
+            'soldByIsPublic',
+            formData.soldByIsPublic.toString(),
+          );
 
           if (userAgent) {
             formDataToSend.append('debugUserAgent', userAgent);
@@ -638,8 +718,13 @@ export function AddArtworkForm({
           if (viewport) {
             formDataToSend.append('debugViewport', viewport);
           }
-          if (formData.exhibitionId) formDataToSend.append('exhibitionId', formData.exhibitionId);
-          if (formData.galleryProfileId) formDataToSend.append('galleryProfileId', formData.galleryProfileId);
+          if (formData.exhibitionId)
+            formDataToSend.append('exhibitionId', formData.exhibitionId);
+          if (formData.galleryProfileId)
+            formDataToSend.append(
+              'galleryProfileId',
+              formData.galleryProfileId,
+            );
           // Explicitly tell the server which perspective the user is posting from
           formDataToSend.append('posterRole', userRole ?? '');
           if (formData.sourceCoaCertificateNumber.trim()) {
@@ -649,7 +734,10 @@ export function AddArtworkForm({
             );
           }
           // Sales & Inquiries
-          formDataToSend.append('inquireEnabled', formData.inquireEnabled.toString());
+          formDataToSend.append(
+            'inquireEnabled',
+            formData.inquireEnabled.toString(),
+          );
           formDataToSend.append('forSale', formData.forSale.toString());
           if (formData.forSale && formData.salePrice) {
             formDataToSend.append('salePrice', formData.salePrice);
@@ -662,7 +750,7 @@ export function AddArtworkForm({
             setError(
               uploaded > 0
                 ? `${result.error} (${uploaded} of ${imagePreviews.length} uploaded successfully – you can add the rest in a new batch)`
-                : result.error
+                : result.error,
             );
             setUploadProgress(null);
             return;
@@ -672,11 +760,13 @@ export function AddArtworkForm({
           }
         }
         setUploadProgress(null);
-        track('artwork_upload_completed', {
-          uploadedCount: allArtworkIds.length,
-          attemptedCount: imagePreviews.length,
-          batchCount: chunks.length,
-        });
+        if (!isNativePlatform()) {
+          track('artwork_upload_completed', {
+            uploadedCount: allArtworkIds.length,
+            attemptedCount: imagePreviews.length,
+            batchCount: chunks.length,
+          });
+        }
         gtmService.trackArtworkCreated(!hasExistingArtworks);
         if (allArtworkIds.length === 1) {
           router.push(`/artworks/${allArtworkIds[0]}/certificate`);
@@ -692,16 +782,22 @@ export function AddArtworkForm({
             message,
           );
 
-        console.error('[AddArtworkForm] Upload error', {
-          errorMessage: message,
-          uploaded,
-          totalImages: imagePreviews.length,
-        }, e);
-        track('artwork_upload_failed', {
-          uploadedCount: uploaded,
-          attemptedCount: imagePreviews.length,
-          errorMessage: message.slice(0, 120),
-        });
+        console.error(
+          '[AddArtworkForm] Upload error',
+          {
+            errorMessage: message,
+            uploaded,
+            totalImages: imagePreviews.length,
+          },
+          e,
+        );
+        if (!isNativePlatform()) {
+          track('artwork_upload_failed', {
+            uploadedCount: uploaded,
+            attemptedCount: imagePreviews.length,
+            errorMessage: message.slice(0, 120),
+          });
+        }
 
         // Best-effort: send error details to server so we can see them in Vercel logs,
         // even when debugging from mobile without a JS console.
@@ -711,7 +807,7 @@ export function AddArtworkForm({
           const platformInfo =
             typeof navigator !== 'undefined'
               ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ((navigator as any).platform as string | undefined) ?? ''
+                (((navigator as any).platform as string | undefined) ?? '')
               : '';
           const viewportSize =
             typeof window !== 'undefined'
@@ -742,7 +838,7 @@ export function AddArtworkForm({
             ? 'Photo(s) are too large to upload in a single batch. Try one image at a time or use smaller photos (under 10MB each).'
             : uploaded > 0
               ? `Something went wrong. ${uploaded} of ${imagePreviews.length} uploaded – you can add the rest in a new batch.`
-              : 'Something went wrong. Please try again.'
+              : 'Something went wrong. Please try again.',
         );
       }
     });
@@ -769,15 +865,16 @@ export function AddArtworkForm({
           autoComplete="off"
           autoCorrect="off"
         />
-        <p className="text-xs text-ink/60 font-serif">
-          This will be applied to the first artwork. You can still edit individual titles under each photo.
+        <p className="text-ink/60 font-serif text-xs">
+          This will be applied to the first artwork. You can still edit
+          individual titles under each photo.
         </p>
       </div>
 
       {/* Image Upload Section */}
       <div className="space-y-2">
         <Label htmlFor="images">Artwork Images *</Label>
-        <div className="border-2 border-dashed border-wine/30 rounded-lg p-6 bg-parchment/50">
+        <div className="border-wine/30 bg-parchment/50 rounded-lg border-2 border-dashed p-6">
           {/* File Input */}
           <input
             ref={fileInputRef}
@@ -788,9 +885,9 @@ export function AddArtworkForm({
             onChange={handleFileSelect}
             className="hidden"
           />
-          
+
           {/* Upload Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
             <Button
               type="button"
               onClick={() => {
@@ -801,7 +898,7 @@ export function AddArtworkForm({
                 }
               }}
               variant="outline"
-              className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              className="border-wine/30 hover:bg-wine/10 flex-1 font-serif"
             >
               <Upload className="mr-2 h-4 w-4" />
               Choose Photos
@@ -816,7 +913,7 @@ export function AddArtworkForm({
                 }
               }}
               variant="outline"
-              className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
+              className="border-wine/30 hover:bg-wine/10 flex-1 font-serif"
             >
               <Camera className="mr-2 h-4 w-4" />
               Take Photo
@@ -826,18 +923,22 @@ export function AddArtworkForm({
           {/* Image Previews */}
           {imagePreviews.length > 0 && (
             <div className="space-y-4">
-              <p className="text-sm text-ink/70 font-serif">
-                {imagePreviews.length} {imagePreviews.length === 1 ? 'image' : 'images'} selected
+              <p className="text-ink/70 font-serif text-sm">
+                {imagePreviews.length}{' '}
+                {imagePreviews.length === 1 ? 'image' : 'images'} selected
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {imagePreviews.map((img, index) => {
                   const previewId = img.id ?? `preview-${index}`;
                   return (
-                    <div key={previewId} className="relative border border-wine/20 rounded-lg p-3 bg-white">
+                    <div
+                      key={previewId}
+                      className="border-wine/20 relative rounded-lg border bg-white p-3"
+                    >
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
+                        className="absolute top-2 right-2 z-10 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
                         aria-label="Remove image"
                       >
                         <X className="h-4 w-4" />
@@ -846,23 +947,30 @@ export function AddArtworkForm({
                         <PreviewFromFile
                           file={img.file}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-48 object-cover rounded-lg mb-2"
+                          className="mb-2 h-48 w-full rounded-lg object-cover"
                         />
                         {img.location && (
-                          <div className="absolute top-2 left-2 bg-wine/90 text-parchment px-2 py-1 rounded text-xs font-serif flex items-center gap-1">
+                          <div className="bg-wine/90 text-parchment absolute top-2 left-2 flex items-center gap-1 rounded px-2 py-1 font-serif text-xs">
                             <MapPin className="h-3 w-3" />
-                            <span>{img.location.formatted || 'Location detected'}</span>
+                            <span>
+                              {img.location.formatted || 'Location detected'}
+                            </span>
                           </div>
                         )}
                       </div>
                       <div className="space-y-1 text-left">
-                        <Label htmlFor={`title-${index}`} className="text-xs font-serif text-ink/70">
+                        <Label
+                          htmlFor={`title-${index}`}
+                          className="text-ink/70 font-serif text-xs"
+                        >
                           Title for this artwork *
                         </Label>
                         <Input
                           id={`title-${index}`}
                           value={img.title}
-                          onChange={(e) => handleImageTitleChange(index, e.target.value)}
+                          onChange={(e) =>
+                            handleImageTitleChange(index, e.target.value)
+                          }
                           placeholder="e.g., Dawn over the Valley"
                           className="font-serif text-sm"
                           required
@@ -879,12 +987,13 @@ export function AddArtworkForm({
 
           {/* Empty State */}
           {imagePreviews.length === 0 && (
-            <div className="space-y-2 text-center py-8">
+            <div className="space-y-2 py-8 text-center">
               <p className="text-ink/70 font-serif">
                 Click to upload images or take photos
               </p>
-              <p className="text-xs text-ink/50">
-                PNG, JPG, or WEBP up to 4MB each. You can select multiple images.
+              <p className="text-ink/50 text-xs">
+                PNG, JPG, or WEBP up to 4MB each. You can select multiple
+                images.
               </p>
             </div>
           )}
@@ -898,7 +1007,12 @@ export function AddArtworkForm({
           {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 ? (
             <div className="space-y-2">
               <Select
-                value={formData.artistName && pastArtists.some(a => a.artist_name === formData.artistName) ? formData.artistName : '__none__'}
+                value={
+                  formData.artistName &&
+                  pastArtists.some((a) => a.artist_name === formData.artistName)
+                    ? formData.artistName
+                    : '__none__'
+                }
                 onValueChange={(value) => {
                   if (value && value !== '__none__') {
                     setFormData({ ...formData, artistName: value });
@@ -915,10 +1029,14 @@ export function AddArtworkForm({
                     Enter new artist name
                   </SelectItem>
                   {pastArtists.map((artist) => (
-                    <SelectItem key={artist.artist_name} value={artist.artist_name} className="font-serif">
+                    <SelectItem
+                      key={artist.artist_name}
+                      value={artist.artist_name}
+                      className="font-serif"
+                    >
                       {artist.artist_name}
                       {artist.count > 1 && (
-                        <span className="text-xs text-ink/60 ml-2">
+                        <span className="text-ink/60 ml-2 text-xs">
                           ({artist.count} artworks)
                         </span>
                       )}
@@ -929,7 +1047,9 @@ export function AddArtworkForm({
               <Input
                 id="artistName"
                 value={formData.artistName}
-                onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, artistName: e.target.value })
+                }
                 placeholder="Or type artist name here"
                 className="font-serif"
               />
@@ -938,15 +1058,17 @@ export function AddArtworkForm({
             <Input
               id="artistName"
               value={formData.artistName}
-              onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, artistName: e.target.value })
+              }
               placeholder="Artist or creator name"
               className="font-serif"
             />
           )}
-          <p className="text-xs text-ink/60 font-serif">
+          <p className="text-ink/60 font-serif text-xs">
             This will be applied to all artworks
             {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 && (
-              <span className="block mt-1">
+              <span className="mt-1 block">
                 Select from past artists or enter a new name
               </span>
             )}
@@ -964,7 +1086,7 @@ export function AddArtworkForm({
             userId={userId}
             field="medium"
           />
-          <p className="text-xs text-ink/60 font-serif">
+          <p className="text-ink/60 font-serif text-xs">
             This will be applied to all artworks
           </p>
         </div>
@@ -975,10 +1097,12 @@ export function AddArtworkForm({
             id="creationDate"
             type="date"
             value={formData.creationDate}
-            onChange={(e) => setFormData({ ...formData, creationDate: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, creationDate: e.target.value })
+            }
             className="font-serif"
           />
-          <p className="text-xs text-ink/60 font-serif">
+          <p className="text-ink/60 font-serif text-xs">
             This will be applied to all artworks
           </p>
         </div>
@@ -989,12 +1113,14 @@ export function AddArtworkForm({
         <Textarea
           id="description"
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
           placeholder="Describe the artworks, their history, and any notable features..."
           rows={4}
           className="font-serif"
         />
-        <p className="text-xs text-ink/60 font-serif">
+        <p className="text-ink/60 font-serif text-xs">
           This description will be applied to all artworks
         </p>
       </div>
@@ -1003,13 +1129,13 @@ export function AddArtworkForm({
       <Accordion
         type="single"
         collapsible
-        className="border border-wine/20 rounded-lg bg-parchment/50 px-4 py-2"
+        className="border-wine/20 bg-parchment/50 rounded-lg border px-4 py-2"
       >
         <AccordionItem value="ownedBy">
           <AccordionTrigger className="font-serif">
             <span className="flex items-center gap-2">
               <span>Owned By</span>
-              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
+              <span className="text-ink/60 max-w-[14rem] truncate font-serif text-xs">
                 {formData.ownedBy.trim() ? formData.ownedBy.trim() : 'Optional'}
               </span>
             </span>
@@ -1026,19 +1152,25 @@ export function AddArtworkForm({
                 userId={userId}
                 field="owned_by"
               />
-              <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+              <div className="border-wine/20 bg-parchment/50 flex items-center justify-between rounded-lg border p-3">
                 <div className="space-y-0.5">
-                  <Label htmlFor="ownedByIsPublic" className="text-sm font-serif">
+                  <Label
+                    htmlFor="ownedByIsPublic"
+                    className="font-serif text-sm"
+                  >
                     Make ownership public
                   </Label>
-                  <p className="text-xs text-ink/60 font-serif">
-                    By default, ownership information is private and only visible to you.
+                  <p className="text-ink/60 font-serif text-xs">
+                    By default, ownership information is private and only
+                    visible to you.
                   </p>
                 </div>
                 <Switch
                   id="ownedByIsPublic"
                   checked={formData.ownedByIsPublic}
-                  onCheckedChange={(checked) => setFormData({ ...formData, ownedByIsPublic: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, ownedByIsPublic: checked })
+                  }
                 />
               </div>
             </div>
@@ -1049,7 +1181,7 @@ export function AddArtworkForm({
           <AccordionTrigger className="font-serif">
             <span className="flex items-center gap-2">
               <span>Sold By</span>
-              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
+              <span className="text-ink/60 max-w-[14rem] truncate font-serif text-xs">
                 {formData.soldBy.trim() ? formData.soldBy.trim() : 'Optional'}
               </span>
             </span>
@@ -1066,19 +1198,25 @@ export function AddArtworkForm({
                 userId={userId}
                 field="sold_by"
               />
-              <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+              <div className="border-wine/20 bg-parchment/50 flex items-center justify-between rounded-lg border p-3">
                 <div className="space-y-0.5">
-                  <Label htmlFor="soldByIsPublic" className="text-sm font-serif">
+                  <Label
+                    htmlFor="soldByIsPublic"
+                    className="font-serif text-sm"
+                  >
                     Make seller information public
                   </Label>
-                  <p className="text-xs text-ink/60 font-serif">
-                    By default, seller information is private and only visible to you.
+                  <p className="text-ink/60 font-serif text-xs">
+                    By default, seller information is private and only visible
+                    to you.
                   </p>
                 </div>
                 <Switch
                   id="soldByIsPublic"
                   checked={formData.soldByIsPublic}
-                  onCheckedChange={(checked) => setFormData({ ...formData, soldByIsPublic: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, soldByIsPublic: checked })
+                  }
                 />
               </div>
             </div>
@@ -1089,8 +1227,10 @@ export function AddArtworkForm({
           <AccordionTrigger className="font-serif">
             <span className="flex items-center gap-2">
               <span>Auction History</span>
-              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
-                {formData.auctionHistory.trim() ? formData.auctionHistory.trim() : 'Optional'}
+              <span className="text-ink/60 max-w-[14rem] truncate font-serif text-xs">
+                {formData.auctionHistory.trim()
+                  ? formData.auctionHistory.trim()
+                  : 'Optional'}
               </span>
             </span>
           </AccordionTrigger>
@@ -1100,7 +1240,9 @@ export function AddArtworkForm({
               <Textarea
                 id="auctionHistory"
                 value={formData.auctionHistory}
-                onChange={(e) => setFormData({ ...formData, auctionHistory: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, auctionHistory: e.target.value })
+                }
                 placeholder="Records of previous sales at auction houses including dates and lot numbers (e.g., Sotheby's, New York, May 15, 2010, Lot 45; Christie's, London, November 20, 2015, Lot 123)"
                 rows={4}
                 className="font-serif"
@@ -1113,22 +1255,33 @@ export function AddArtworkForm({
           <AccordionTrigger className="font-serif">
             <span className="flex items-center gap-2">
               <span>Exhibition History / Literature References</span>
-              <span className="text-xs text-ink/60 font-serif truncate max-w-[14rem]">
-                {formData.exhibitionHistory.trim() ? formData.exhibitionHistory.trim() : 'Optional'}
+              <span className="text-ink/60 max-w-[14rem] truncate font-serif text-xs">
+                {formData.exhibitionHistory.trim()
+                  ? formData.exhibitionHistory.trim()
+                  : 'Optional'}
               </span>
             </span>
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              <Label htmlFor="exhibitionHistory">Exhibition History / Literature References</Label>
+              <Label htmlFor="exhibitionHistory">
+                Exhibition History / Literature References
+              </Label>
               <GallerySelector
                 value={formData.exhibitionHistory}
-                onChange={(value) => setFormData({ ...formData, exhibitionHistory: value })}
+                onChange={(value) =>
+                  setFormData({ ...formData, exhibitionHistory: value })
+                }
               />
               <Textarea
                 id="exhibitionHistory"
                 value={formData.exhibitionHistory}
-                onChange={(e) => setFormData({ ...formData, exhibitionHistory: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    exhibitionHistory: e.target.value,
+                  })
+                }
                 placeholder="List exhibitions where the work has been shown or publications where it has been discussed..."
                 rows={4}
                 className="font-serif"
@@ -1141,7 +1294,9 @@ export function AddArtworkForm({
           <AccordionTrigger className="font-serif">
             <span className="flex items-center gap-2">
               <span>More Provenance Details</span>
-              <span className="text-xs text-ink/60 font-serif truncate">Optional</span>
+              <span className="text-ink/60 truncate font-serif text-xs">
+                Optional
+              </span>
             </span>
           </AccordionTrigger>
           <AccordionContent>
@@ -1151,7 +1306,9 @@ export function AddArtworkForm({
                 <Input
                   id="dimensions"
                   value={formData.dimensions}
-                  onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dimensions: e.target.value })
+                  }
                   placeholder="e.g., 24 x 36 inches"
                   className="font-serif"
                 />
@@ -1162,7 +1319,9 @@ export function AddArtworkForm({
                 <ArtworkTextTypeahead
                   id="formerOwners"
                   value={formData.formerOwners}
-                  onChange={(next) => setFormData({ ...formData, formerOwners: next })}
+                  onChange={(next) =>
+                    setFormData({ ...formData, formerOwners: next })
+                  }
                   placeholder="List prominent collectors, estates, galleries, or institutions that previously held the work..."
                   kind="textarea"
                   rows={4}
@@ -1178,23 +1337,30 @@ export function AddArtworkForm({
                   <Input
                     id="value"
                     value={formData.value}
-                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, value: e.target.value })
+                    }
                     placeholder="e.g., $50,000 USD"
                     className="font-serif"
                   />
-                  <div className="flex items-center justify-between p-3 border border-wine/20 rounded-lg bg-parchment/50">
+                  <div className="border-wine/20 bg-parchment/50 flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <Label htmlFor="valueIsPublic" className="text-sm font-serif">
+                      <Label
+                        htmlFor="valueIsPublic"
+                        className="font-serif text-sm"
+                      >
                         Make value public
                       </Label>
-                      <p className="text-xs text-ink/60 font-serif">
+                      <p className="text-ink/60 font-serif text-xs">
                         By default, value is private and only visible to you.
                       </p>
                     </div>
                     <Switch
                       id="valueIsPublic"
                       checked={formData.valueIsPublic}
-                      onCheckedChange={(checked) => setFormData({ ...formData, valueIsPublic: checked })}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, valueIsPublic: checked })
+                      }
                     />
                   </div>
                 </div>
@@ -1206,17 +1372,23 @@ export function AddArtworkForm({
                   <Input
                     id="edition"
                     value={formData.edition}
-                    onChange={(e) => setFormData({ ...formData, edition: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, edition: e.target.value })
+                    }
                     placeholder="e.g., 1/10, Limited Edition, Unique, AP (Artist's Proof)"
                     className="font-serif"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="productionLocation">Production Location</Label>
+                  <Label htmlFor="productionLocation">
+                    Production Location
+                  </Label>
                   <ArtworkTextTypeahead
                     id="productionLocation"
                     value={formData.productionLocation}
-                    onChange={(next) => setFormData({ ...formData, productionLocation: next })}
+                    onChange={(next) =>
+                      setFormData({ ...formData, productionLocation: next })
+                    }
                     placeholder="e.g., Paris, France or Studio Name, City, Country"
                     className="font-serif"
                     userId={userId}
@@ -1226,11 +1398,18 @@ export function AddArtworkForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="historicContext">Historic Context / Origin Information</Label>
+                <Label htmlFor="historicContext">
+                  Historic Context / Origin Information
+                </Label>
                 <Textarea
                   id="historicContext"
                   value={formData.historicContext}
-                  onChange={(e) => setFormData({ ...formData, historicContext: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      historicContext: e.target.value,
+                    })
+                  }
                   placeholder="How and where the work was acquired originally, including any notable historical context..."
                   rows={4}
                   className="font-serif"
@@ -1238,11 +1417,15 @@ export function AddArtworkForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="celebrityNotes">Special Notes on Celebrity or Notable Ownership</Label>
+                <Label htmlFor="celebrityNotes">
+                  Special Notes on Celebrity or Notable Ownership
+                </Label>
                 <Textarea
                   id="celebrityNotes"
                   value={formData.celebrityNotes}
-                  onChange={(e) => setFormData({ ...formData, celebrityNotes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, celebrityNotes: e.target.value })
+                  }
                   placeholder="Highlight any association with famous figures or important collections when relevant..."
                   rows={4}
                   className="font-serif"
@@ -1255,19 +1438,24 @@ export function AddArtworkForm({
 
       {userRole === USER_ROLES.GALLERY && (
         <div className="space-y-2">
-          <Label htmlFor="sourceCoaCertificateNumber">Link to Certificate of Authenticity (optional)</Label>
+          <Label htmlFor="sourceCoaCertificateNumber">
+            Link to Certificate of Authenticity (optional)
+          </Label>
           <Input
             id="sourceCoaCertificateNumber"
             value={formData.sourceCoaCertificateNumber}
             onChange={(e) =>
-              setFormData({ ...formData, sourceCoaCertificateNumber: e.target.value })
+              setFormData({
+                ...formData,
+                sourceCoaCertificateNumber: e.target.value,
+              })
             }
             placeholder="e.g. PROV-XXXXXXXX"
             className="font-serif"
           />
-          <p className="text-xs text-ink/60 font-serif">
-            Enter an artist&apos;s verified certificate number to copy provenance and link this
-            Certificate of Show to that work.
+          <p className="text-ink/60 font-serif text-xs">
+            Enter an artist&apos;s verified certificate number to copy
+            provenance and link this Certificate of Show to that work.
           </p>
         </div>
       )}
@@ -1291,10 +1479,14 @@ export function AddArtworkForm({
             </SelectTrigger>
             <SelectContent>
               {galleryProfiles.map((profile) => (
-                <SelectItem key={profile.id} value={profile.id} className="font-serif">
+                <SelectItem
+                  key={profile.id}
+                  value={profile.id}
+                  className="font-serif"
+                >
                   {profile.name}
                   {profile.location && (
-                    <span className="text-xs text-ink/60 ml-2">
+                    <span className="text-ink/60 ml-2 text-xs">
                       ({profile.location})
                     </span>
                   )}
@@ -1302,7 +1494,7 @@ export function AddArtworkForm({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-ink/60 font-serif">
+          <p className="text-ink/60 font-serif text-xs">
             Select which gallery profile you are posting this artwork as
           </p>
         </div>
@@ -1345,58 +1537,81 @@ export function AddArtworkForm({
               </SelectItem>
               {localExhibitions.length > 0 ? (
                 localExhibitions.map((exhibition) => {
-                  const startDate = exhibition.start_date ? new Date(exhibition.start_date) : null;
-                  const endDate = exhibition.end_date ? new Date(exhibition.end_date) : null;
+                  const startDate = exhibition.start_date
+                    ? new Date(exhibition.start_date)
+                    : null;
+                  const endDate = exhibition.end_date
+                    ? new Date(exhibition.end_date)
+                    : null;
                   const now = new Date();
-                  const isPast = endDate ? endDate < now : startDate ? startDate < now : false;
-                  
+                  const isPast = endDate
+                    ? endDate < now
+                    : startDate
+                      ? startDate < now
+                      : false;
+
                   return (
-                    <SelectItem key={exhibition.id} value={exhibition.id} className="font-serif">
+                    <SelectItem
+                      key={exhibition.id}
+                      value={exhibition.id}
+                      className="font-serif"
+                    >
                       {exhibition.title}
                       {startDate && (
-                        <span className="text-xs text-ink/60 ml-2">
-                          ({startDate.getFullYear()}{isPast ? ' - Past' : ''})
+                        <span className="text-ink/60 ml-2 text-xs">
+                          ({startDate.getFullYear()}
+                          {isPast ? ' - Past' : ''})
                         </span>
                       )}
                     </SelectItem>
                   );
                 })
               ) : (
-                <SelectItem value="__placeholder__" disabled className="font-serif text-ink/40">
+                <SelectItem
+                  value="__placeholder__"
+                  disabled
+                  className="text-ink/40 font-serif"
+                >
                   No exhibitions yet. Create one above.
                 </SelectItem>
               )}
             </SelectContent>
           </Select>
-          <p className="text-xs text-ink/60 font-serif">
+          <p className="text-ink/60 font-serif text-xs">
             Link this artwork to one of your exhibitions (past or current)
           </p>
         </div>
       )}
 
       {/* Sales & Inquiries */}
-      <div className="space-y-4 p-4 border border-wine/20 rounded-lg bg-parchment/50">
+      <div className="border-wine/20 bg-parchment/50 space-y-4 rounded-lg border p-4">
         <div>
-          <p className="text-base font-serif font-medium text-ink">Sales &amp; Inquiries</p>
-          <p className="text-xs text-ink/60 font-serif mt-0.5">
-            Let visitors contact you or purchase this artwork directly from your site.
+          <p className="text-ink font-serif text-base font-medium">
+            Sales &amp; Inquiries
+          </p>
+          <p className="text-ink/60 mt-0.5 font-serif text-xs">
+            Let visitors contact you or purchase this artwork directly from your
+            site.
           </p>
         </div>
 
         {/* Inquire toggle — free for everyone */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="inquireEnabled" className="text-sm font-serif">
+            <Label htmlFor="inquireEnabled" className="font-serif text-sm">
               Allow visitors to inquire
             </Label>
-            <p className="text-xs text-ink/60 font-serif">
-              Shows an &ldquo;Inquire&rdquo; button on this artwork on your creator site.
+            <p className="text-ink/60 font-serif text-xs">
+              Shows an &ldquo;Inquire&rdquo; button on this artwork on your
+              creator site.
             </p>
           </div>
           <Switch
             id="inquireEnabled"
             checked={formData.inquireEnabled}
-            onCheckedChange={(checked) => setFormData({ ...formData, inquireEnabled: checked })}
+            onCheckedChange={(checked) =>
+              setFormData({ ...formData, inquireEnabled: checked })
+            }
           />
         </div>
 
@@ -1410,9 +1625,9 @@ export function AddArtworkForm({
             />
           </div>
         ) : !sellingEnabled ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-serif text-amber-800">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-serif text-sm text-amber-800">
             To list artworks for sale, first{' '}
-            <a href="/settings#selling" className="underline font-medium">
+            <a href="/settings#selling" className="font-medium underline">
               connect your Stripe account
             </a>{' '}
             in Settings and complete onboarding.
@@ -1421,40 +1636,48 @@ export function AddArtworkForm({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="forSale" className="text-sm font-serif">
+                <Label htmlFor="forSale" className="font-serif text-sm">
                   List for sale
                 </Label>
-                <p className="text-xs text-ink/60 font-serif">
-                  Displays a &ldquo;Buy&rdquo; button with checkout on your site.
+                <p className="text-ink/60 font-serif text-xs">
+                  Displays a &ldquo;Buy&rdquo; button with checkout on your
+                  site.
                 </p>
               </div>
               <Switch
                 id="forSale"
                 checked={formData.forSale}
-                onCheckedChange={(checked) => setFormData({ ...formData, forSale: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, forSale: checked })
+                }
               />
             </div>
 
             {formData.forSale && (
               <div className="space-y-1">
-                <Label htmlFor="salePrice" className="text-sm font-serif">
+                <Label htmlFor="salePrice" className="font-serif text-sm">
                   Sale price (USD) *
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/50 text-sm font-serif">$</span>
+                  <span className="text-ink/50 absolute top-1/2 left-3 -translate-y-1/2 font-serif text-sm">
+                    $
+                  </span>
                   <Input
                     id="salePrice"
                     type="number"
                     min="1"
                     step="1"
                     value={formData.salePrice}
-                    onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, salePrice: e.target.value })
+                    }
                     placeholder="0"
-                    className="font-serif pl-7"
+                    className="pl-7 font-serif"
                   />
                 </div>
-                <p className="text-xs text-ink/50 font-serif">
-                  Stripe fees apply. Funds are deposited to your connected bank account.
+                <p className="text-ink/50 font-serif text-xs">
+                  Stripe fees apply. Funds are deposited to your connected bank
+                  account.
                 </p>
               </div>
             )}
@@ -1463,13 +1686,15 @@ export function AddArtworkForm({
       </div>
 
       {/* Privacy Setting */}
-      <div className="space-y-2 p-4 border border-wine/20 rounded-lg bg-parchment/50">
+      <div className="border-wine/20 bg-parchment/50 space-y-2 rounded-lg border p-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="isPublic" className="text-base font-serif">
-              {userRole === USER_ROLES.COLLECTOR ? 'Make items public' : 'Make artworks public'}
+            <Label htmlFor="isPublic" className="font-serif text-base">
+              {userRole === USER_ROLES.COLLECTOR
+                ? 'Make items public'
+                : 'Make artworks public'}
             </Label>
-            <p className="text-sm text-ink/60 font-serif">
+            <p className="text-ink/60 font-serif text-sm">
               {userRole === USER_ROLES.COLLECTOR
                 ? 'Your collection items are private by default — only you can see them unless you make them public.'
                 : 'Public artworks are visible to everyone. Private artworks are only visible to you.'}
@@ -1496,7 +1721,10 @@ export function AddArtworkForm({
             ? uploadProgress
               ? `Uploading batch ${uploadProgress.batch} of ${uploadProgress.totalBatches}…`
               : `Creating ${imagePreviews.length} ${imagePreviews.length === 1 ? 'Certificate' : 'Certificates'}…`
-            : getCreateCertificateButtonLabel(userRole ?? null, imagePreviews.length)}
+            : getCreateCertificateButtonLabel(
+                userRole ?? null,
+                imagePreviews.length,
+              )}
         </Button>
         <Button
           type="button"
@@ -1511,4 +1739,3 @@ export function AddArtworkForm({
     </form>
   );
 }
-

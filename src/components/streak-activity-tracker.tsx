@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { track } from '@vercel/analytics';
+
 import { useCurrentUser } from '~/hooks/use-current-user';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
 
 const LAST_STREAK_PING_KEY = 'streak_last_activity_ping_date';
 
@@ -20,6 +23,10 @@ export function StreakActivityTracker() {
     null;
 
   useEffect(() => {
+    if (isNativePlatform()) {
+      return;
+    }
+
     if (!userId) {
       return;
     }
