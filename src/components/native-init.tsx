@@ -144,5 +144,44 @@ export function NativeInit({ userId: _userId }: Props) {
     };
   }, []);
 
+  // ── Apple IAP out-of-band updates ─────────────────────────────────────────
+  //
+  // StoreKit fires 'transactionsUpdated' for transactions that complete while
+  // we're not waiting on a purchase() call in progress — Ask to Buy approvals,
+  // or a renewal that lands while the app happens to be open. Without this,
+  // those only get picked up by the webhook or the next app launch, so the
+  // UI can look stale for a signed-in session that's been open a while.
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+
+    let removeListener: (() => void) | null = null;
+    let cancelled = false;
+
+    async function setup() {
+      const handle = await StoreKit.addListener('transactionsUpdated', async (transaction) => {
+        if (!APPLE_PRODUCT_TO_PLAN[transaction.productId]) return;
+        const result = await syncAppleEntitlement(transaction.jwsRepresentation, transaction.productId);
+        if (!result.success) {
+          console.error('[NativeInit] transactionsUpdated sync failed', { productId: transaction.productId, error: result.error });
+          return;
+        }
+        router.refresh();
+      });
+
+      if (cancelled) {
+        handle.remove();
+        return;
+      }
+      removeListener = () => handle.remove();
+    }
+
+    void setup();
+
+    return () => {
+      cancelled = true;
+      removeListener?.();
+    };
+  }, [router]);
+
   return null;
 }

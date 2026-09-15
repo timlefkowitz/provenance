@@ -39,15 +39,16 @@ export function getStripePriceId(
 
 /**
  * Display prices for the subscription page (not fetched from Stripe at runtime).
- * Canonical prices: Artist $10/mo | Collector $29.99/mo | Gallery $99/mo.
- * Note: the investor one-pager rounds collector to $30 — the authoritative
- * price is $29.99/mo as entered in Stripe and shown to users here.
+ * Canonical prices: Artist $9.99/mo | Collector $29.99/mo | Gallery $99.99/mo.
+ * These match Apple's App Store subscription price tiers exactly (Apple only
+ * offers a curated set of tiers, mostly $X.99, with no arbitrary flat-dollar
+ * option) so web/Stripe and iOS/Apple IAP charge identical amounts.
  */
 export const SUBSCRIPTION_PRICES: Record<
   SubscriptionRole,
   { monthly: number; yearly: number; yearlyLabel: string }
 > = {
-  artist: { monthly: 10, yearly: 99, yearlyLabel: '$99/year' },
-  collector: { monthly: 29.99, yearly: 299.9, yearlyLabel: '$299.90/year' },
-  gallery: { monthly: 99, yearly: 990, yearlyLabel: '$990/year' },
+  artist: { monthly: 9.99, yearly: 99.99, yearlyLabel: '$99.99/year' },
+  collector: { monthly: 29.99, yearly: 299.99, yearlyLabel: '$299.99/year' },
+  gallery: { monthly: 99.99, yearly: 990, yearlyLabel: '$990/year' },
 };
