@@ -28,8 +28,8 @@ import { UsingGalleryLabel } from './using-gallery-label';
 // Shared base for desktop nav links and dropdown triggers.
 // Uses an ::after underline that scales in on hover / stays full when active.
 const BASE_NAV =
-  'relative inline-flex items-center px-1 py-0.5 text-sm font-bold uppercase tracking-[0.08em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine/30 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment font-nav ' +
-  "after:content-[''] after:absolute after:bottom-[-2px] after:left-0 after:h-[1.5px] after:rounded-full after:bg-wine after:transition-all after:duration-300";
+  'relative inline-flex items-baseline gap-1.5 px-1 py-0.5 font-jetbrains text-[11px] font-medium uppercase tracking-[0.18em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vermillion/30 focus-visible:ring-offset-2 focus-visible:ring-offset-bone ' +
+  "after:content-[''] after:absolute after:bottom-[-2px] after:left-0 after:h-[1.5px] after:rounded-full after:bg-vermillion after:transition-all after:duration-300";
 
 function navLinkClass(path: string, pathname: string | null) {
   const isActive =
@@ -39,17 +39,24 @@ function navLinkClass(path: string, pathname: string | null) {
   return cn(
     BASE_NAV,
     isActive
-      ? 'text-wine after:w-full'
-      : 'text-ink hover:text-wine after:w-0 hover:after:w-full',
+      ? 'text-vermillion after:w-full'
+      : 'text-editorial-ink hover:text-vermillion after:w-0 hover:after:w-full',
   );
 }
 
 const dropdownTriggerClass = cn(
   BASE_NAV,
-  'gap-1.5 text-ink hover:text-wine after:w-0 hover:after:w-full',
-  'data-[state=open]:text-wine data-[state=open]:after:w-full',
+  'text-editorial-ink hover:text-vermillion after:w-0 hover:after:w-full',
+  'data-[state=open]:text-vermillion data-[state=open]:after:w-full',
   'group cursor-pointer select-none',
 );
+
+// Small gilt index number rendered before each top-level nav label.
+function NavIndex({ n }: { n: string }) {
+  return (
+    <span className="font-jetbrains text-[9px] leading-none text-gilt">{n}</span>
+  );
+}
 
 
 
@@ -84,7 +91,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []); 
+  }, []);
 
   // Investor pages have their own nav; preview and docs have their own shells.
   if (
@@ -95,50 +102,59 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     return null;
   }
 
+  // Index numbers mirror the fixed link order below; Info always takes the
+  // next slot after whatever is visible ahead of it (04 signed-out, 06 signed-in).
+  const infoIndex = user.data ? '06' : '03';
+
   return (
     <>
       <nav
         className={cn(
-          'relative z-[100] flex items-center justify-between py-3 sm:py-4 border-b bg-parchment/95 backdrop-blur-sm sticky top-0 transition-[border-color,box-shadow] duration-300',
+          'relative z-[100] flex items-center justify-between py-3 sm:py-4 border-b bg-bone/95 backdrop-blur-sm sticky top-0 transition-[border-color,box-shadow] duration-300',
           // Safe-area + inset so the wordmark and hamburger never hug the iPhone edge.
           'pl-[calc(env(safe-area-inset-left,0px)+1.5rem)] pr-[calc(env(safe-area-inset-right,0px)+1.5rem)]',
-          scrolled ? 'border-wine/35 shadow-md shadow-wine/5' : 'border-wine/20 shadow-sm',
+          scrolled ? 'border-editorial-border shadow-editorial' : 'border-editorial-border/50',
           isNative && 'pt-safe',
         )}
       >
         {/* Logo — left-pinned flex child */}
         <Link
           href="/"
-          className="block shrink-0 max-w-[40vw] truncate text-xl sm:text-2xl font-display font-bold tracking-wide sm:tracking-widest uppercase text-wine hover:text-wine/80 transition-colors"
+          className="block shrink-0 max-w-[40vw] truncate font-fraunces italic text-xl sm:text-2xl leading-none tracking-tight text-editorial-ink hover:text-editorial-ink/80 transition-colors"
         >
-          Provenance
+          Provenance<span className="text-vermillion">.</span>
         </Link>
 
         {/*
           Desktop nav — absolutely centered so it is always at 50% of the bar
           regardless of how wide the logo or actions cluster are at any breakpoint.
         */}
-        <div className={cn('hidden md:flex items-center gap-5 absolute left-1/2 -translate-x-1/2 pointer-events-auto', isNative && 'md:hidden')}>
+        <div className={cn('hidden md:flex items-baseline gap-5 absolute left-1/2 -translate-x-1/2 pointer-events-auto', isNative && 'md:hidden')}>
           <Link href="/artworks" className={navLinkClass('/artworks', pathname)}>
+            <NavIndex n="01" />
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
           {/* Collectibles hidden for now */}
           <Link href="/registry" className={navLinkClass('/registry', pathname)}>
+            <NavIndex n="02" />
             <Trans i18nKey="common:navigation.registry" defaults="Artists" />
           </Link>
 
           {user.data && (
             <>
               <Link href="/artworks/my" className={navLinkClass('/artworks/my', pathname)}>
+                <NavIndex n="03" />
                 Collection
               </Link>
               <Link href="/portal" className={navLinkClass('/portal', pathname)}>
+                <NavIndex n="04" />
                 Portal
               </Link>
 
               {/* Toolbox dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger className={dropdownTriggerClass}>
+                  <NavIndex n="05" />
                   <Wrench className="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:-rotate-12 group-data-[state=open]:-rotate-[24deg] group-data-[state=open]:scale-110" />
                   Toolbox
                   <ChevronDown className="h-3 w-3 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
@@ -146,13 +162,13 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 <DropdownMenuContent
                   align="start"
                   sideOffset={10}
-                  className="toolbox-dropdown z-[200] w-72 p-1.5 rounded-xl border-wine/15 bg-parchment shadow-xl shadow-wine/10"
+                  className="toolbox-dropdown z-[200] w-72 p-1.5 rounded-none border-editorial-border bg-bone shadow-editorial"
                 >
                   <div className="px-3 pt-2 pb-1.5 flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-wine/60">
+                    <span className="font-jetbrains text-[10px] uppercase tracking-[0.2em] text-gilt">
                       Your studio toolbox
                     </span>
-                    <span className="flex-1 h-px bg-wine/10" />
+                    <span className="flex-1 h-px bg-editorial-border/40" />
                   </div>
                   {TOOLBOX_ITEMS.map((item, i) => {
                     const href =
@@ -163,31 +179,31 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                       <DropdownMenuItem
                         key={item.href}
                         asChild
-                        className="animate-toolbox-item rounded-lg p-0 focus:bg-wine/5"
+                        className="animate-toolbox-item rounded-none p-0 focus:bg-vermillion/5"
                         style={{ animationDelay: `${60 + i * 45}ms` }}
                       >
                         <Link
                           href={href}
                           className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
                         >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105 group-hover/item:shadow-md group-hover/item:shadow-wine/25 overflow-hidden">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-vermillion/10 text-vermillion transition-all duration-300 group-hover/item:bg-vermillion group-hover/item:text-bone group-hover/item:scale-105 overflow-hidden">
                             {item.image ? (
                               <Image
                                 src={item.image}
                                 alt={item.label}
                                 width={36}
                                 height={36}
-                                className="h-full w-full object-cover object-top rounded-lg"
+                                className="h-full w-full object-cover object-top"
                               />
                             ) : item.icon ? (
                               <item.icon className="h-4 w-4" />
                             ) : null}
                           </span>
                           <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-ink leading-tight">
+                            <span className="block text-sm font-semibold text-editorial-ink leading-tight">
                               {item.label}
                             </span>
-                            <span className="block text-[11px] text-ink/50 leading-tight mt-0.5">
+                            <span className="block text-[11px] text-editorial-ink/50 leading-tight mt-0.5">
                               {item.description}
                             </span>
                           </span>
@@ -203,34 +219,35 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           {/* Info dropdown — Blog, About, Docs — always visible */}
           <DropdownMenu>
             <DropdownMenuTrigger className={dropdownTriggerClass}>
+              <NavIndex n={infoIndex} />
               Info
               <ChevronDown className="h-3 w-3 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
               sideOffset={10}
-              className="toolbox-dropdown z-[200] w-52 p-1.5 rounded-xl border-wine/15 bg-parchment shadow-xl shadow-wine/10"
+              className="toolbox-dropdown z-[200] w-52 p-1.5 rounded-none border-editorial-border bg-bone shadow-editorial"
             >
               <div className="px-3 pt-2 pb-1.5 flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-wine/60">
+                <span className="font-jetbrains text-[10px] uppercase tracking-[0.2em] text-gilt">
                   Explore
                 </span>
-                <span className="flex-1 h-px bg-wine/10" />
+                <span className="flex-1 h-px bg-editorial-border/40" />
               </div>
               {INFO_ITEMS.map((item) => (
                 <DropdownMenuItem
                   key={item.href}
                   asChild
-                  className="animate-toolbox-item rounded-lg p-0 focus:bg-wine/5"
+                  className="animate-toolbox-item rounded-none p-0 focus:bg-vermillion/5"
                 >
                   <Link
                     href={item.href}
                     className="group/item flex items-center gap-3 px-3 py-2.5 cursor-pointer"
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine transition-all duration-300 group-hover/item:bg-wine group-hover/item:text-parchment group-hover/item:scale-105">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-vermillion/10 text-vermillion transition-all duration-300 group-hover/item:bg-vermillion group-hover/item:text-bone group-hover/item:scale-105">
                       <item.icon className="h-3.5 w-3.5" />
                     </span>
-                    <span className="text-sm font-semibold text-ink">
+                    <span className="text-sm font-semibold text-editorial-ink">
                       {item.i18nKey ? (
                         <Trans i18nKey={item.i18nKey} defaults={item.defaults} />
                       ) : (
@@ -260,7 +277,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               <Button
                 asChild
                 size="sm"
-                className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
+                className="hidden md:inline-flex rounded-none bg-editorial-ink text-bone hover:bg-vermillion font-jetbrains text-[11px] uppercase tracking-[0.14em]"
               >
                 <Link href="/artworks/add">
                   <Trans i18nKey="common:navigation.addArtwork" defaults="Add Artwork" />
@@ -277,7 +294,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                 asChild
                 variant="ghost"
                 size="sm"
-                className="hidden md:inline-flex text-ink hover:text-wine hover:bg-wine/10"
+                className="hidden md:inline-flex rounded-none font-jetbrains text-[11px] uppercase tracking-[0.14em] text-editorial-ink hover:text-vermillion hover:bg-vermillion/10"
               >
                 <Link href={pathsConfig.auth.signIn}>
                   <Trans i18nKey="common:navigation.logIn" defaults="Log In" />
@@ -286,7 +303,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               <Button
                 asChild
                 size="sm"
-                className="hidden md:inline-flex bg-wine text-parchment hover:bg-wine/90"
+                className="hidden md:inline-flex rounded-none bg-editorial-ink text-bone hover:bg-vermillion font-jetbrains text-[11px] uppercase tracking-[0.14em]"
               >
                 <Link href={pathsConfig.auth.signUp}>
                   <Trans i18nKey="common:navigation.signUp" defaults="Sign Up" />
@@ -299,7 +316,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           {!(isNative && user.data) && (
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-wine hover:text-wine/80 transition-colors touch-manipulation"
+            className="md:hidden p-2 text-editorial-ink hover:text-vermillion transition-colors touch-manipulation"
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -347,7 +364,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
       {/* Mobile fullscreen menu — lives outside <nav> so nav's backdrop-filter
           does not create a new containing block breaking position:fixed on iOS. */}
       {mobileMenuOpen && (
-        <div className="fixed inset-x-0 bottom-0 top-[var(--nav-h)] bg-parchment md:hidden z-[90] flex flex-col overflow-y-auto pb-safe">
+        <div className="fixed inset-x-0 bottom-0 top-[var(--nav-h)] bg-bone md:hidden z-[90] flex flex-col overflow-y-auto pb-safe">
           {user.data && (
             <div className="shrink-0 px-6 pt-4 flex flex-col items-center gap-2">
               <UsingGalleryLabel />
@@ -358,7 +375,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           <div className="flex-1 flex flex-col items-center justify-center gap-1 px-6 py-8 w-full max-w-sm mx-auto">
             <Link
               href="/artworks"
-              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+              className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
@@ -366,7 +383,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             {/* Collectibles hidden for now */}
             <Link
               href="/registry"
-              className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+              className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trans i18nKey="common:navigation.registry" defaults="Artists" />
@@ -376,21 +393,21 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               <>
                 <Link
                   href="/artworks/add"
-                  className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+                  className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Add Artwork
                 </Link>
                 <Link
                   href="/artworks/my"
-                  className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+                  className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Collection
                 </Link>
                 <Link
                   href="/portal"
-                  className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+                  className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Portal
@@ -398,12 +415,12 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
 
                 {/* Toolbox section */}
                 <div className="w-full flex items-center gap-2.5 pt-4 pb-2 px-1">
-                  <span className="flex-1 h-px bg-wine/15" />
-                  <span className="inline-flex items-center gap-1.5 text-xs font-display text-wine/70 uppercase tracking-widest">
+                  <span className="flex-1 h-px bg-editorial-border/50" />
+                  <span className="inline-flex items-center gap-1.5 font-jetbrains text-[11px] text-gilt uppercase tracking-[0.18em]">
                     <Wrench className="h-3.5 w-3.5" />
                     Toolbox
                   </span>
-                  <span className="flex-1 h-px bg-wine/15" />
+                  <span className="flex-1 h-px bg-editorial-border/50" />
                 </div>
                 <div className="w-full grid grid-cols-2 gap-2 pb-2">
                   {TOOLBOX_ITEMS.map((item, i) => {
@@ -417,21 +434,21 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                         key={item.href}
                         href={href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`animate-toolbox-item rounded-xl border transition-colors touch-manipulation ${
+                        className={`animate-toolbox-item border transition-colors touch-manipulation ${
                           featured
-                            ? 'col-span-2 flex items-center gap-3 border-wine/30 bg-wine/5 px-4 py-3 hover:border-wine/50 active:bg-wine/10'
-                            : 'flex flex-col items-center gap-1.5 border-wine/15 bg-white/50 px-2 py-3.5 text-center hover:border-wine/40 hover:bg-wine/5 active:bg-wine/10'
+                            ? 'col-span-2 flex items-center gap-3 border-editorial-border bg-vermillion/5 px-4 py-3 hover:border-vermillion/40 active:bg-vermillion/10'
+                            : 'flex flex-col items-center gap-1.5 border-editorial-border bg-cream/40 px-2 py-3.5 text-center hover:border-vermillion/40 hover:bg-vermillion/5 active:bg-vermillion/10'
                         }`}
                         style={{ animationDelay: `${i * 45}ms` }}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine overflow-hidden">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-vermillion/10 text-vermillion overflow-hidden">
                           {item.image ? (
                             <Image
                               src={item.image}
                               alt={item.label}
                               width={36}
                               height={36}
-                              className="h-full w-full object-cover object-top rounded-lg"
+                              className="h-full w-full object-cover object-top"
                             />
                           ) : item.icon ? (
                             <item.icon className="h-4 w-4" />
@@ -439,15 +456,15 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
                         </span>
                         {featured ? (
                           <span className="min-w-0 text-left">
-                            <span className="block text-sm font-serif font-semibold text-ink leading-tight">
+                            <span className="block text-sm font-semibold text-editorial-ink leading-tight">
                               {item.label}
                             </span>
-                            <span className="block text-[11px] font-serif text-ink/50 leading-tight mt-0.5">
+                            <span className="block text-[11px] text-editorial-ink/50 leading-tight mt-0.5">
                               {item.description}
                             </span>
                           </span>
                         ) : (
-                          <span className="text-xs font-serif font-semibold text-ink leading-tight">
+                          <span className="font-jetbrains text-[10px] uppercase tracking-wide text-editorial-ink leading-tight">
                             {item.label}
                           </span>
                         )}
@@ -460,17 +477,17 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
 
             {/* Info section — Blog, About, Docs */}
             <div className="w-full flex items-center gap-2.5 pt-4 pb-2 px-1">
-              <span className="flex-1 h-px bg-wine/15" />
-              <span className="text-xs font-display text-wine/70 uppercase tracking-widest">
+              <span className="flex-1 h-px bg-editorial-border/50" />
+              <span className="font-jetbrains text-[11px] text-gilt uppercase tracking-[0.18em]">
                 Info
               </span>
-              <span className="flex-1 h-px bg-wine/15" />
+              <span className="flex-1 h-px bg-editorial-border/50" />
             </div>
             {INFO_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="w-full text-center text-lg font-display text-ink hover:text-wine transition-colors py-3"
+                className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.i18nKey ? (
@@ -483,7 +500,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
 
             <Link
               href="/feedback"
-              className="w-full text-center text-base font-serif text-ink/70 hover:text-wine transition-colors py-2"
+              className="w-full text-center font-jetbrains text-[11px] uppercase tracking-[0.14em] text-editorial-ink/60 hover:text-vermillion transition-colors py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Feedback
@@ -495,7 +512,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               <Button
                 asChild
                 variant="outline"
-                className="w-full border-wine/30 text-ink hover:bg-wine/10"
+                className="w-full rounded-none border-editorial-border text-editorial-ink hover:bg-vermillion/10 font-jetbrains text-[11px] uppercase tracking-[0.14em]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Link href={pathsConfig.auth.signIn}>
@@ -504,7 +521,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
               </Button>
               <Button
                 asChild
-                className="w-full bg-wine text-parchment hover:bg-wine/90"
+                className="w-full rounded-none bg-editorial-ink text-bone hover:bg-vermillion font-jetbrains text-[11px] uppercase tracking-[0.14em]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Link href={pathsConfig.auth.signUp}>
