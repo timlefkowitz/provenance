@@ -664,8 +664,15 @@ export default async function ArtistProfilePage({
   };
 
   const requestedTemplate = resolvedSearchParams?.template;
-  const templateId: TemplateId | null =
-    isArtistProfile && isValidTemplateId(requestedTemplate) ? requestedTemplate : null;
+  const persistedTemplate = (account.public_data as Record<string, unknown> | null)
+    ?.template as string | undefined;
+  const templateId: TemplateId | null = isArtistProfile
+    ? isValidTemplateId(requestedTemplate)
+      ? requestedTemplate
+      : isValidTemplateId(persistedTemplate)
+        ? persistedTemplate
+        : null
+    : null;
 
   if (isArtistProfile) {
     console.log('[ArtistProfile] template resolved', {
@@ -725,7 +732,7 @@ export default async function ArtistProfilePage({
   const TemplateComponent =
     templateId && artistTemplateProps ? getTemplateComponent(templateId) : null;
 
-  const artistTemplateSwitcher = isArtistProfile ? (
+  const artistTemplateSwitcher = isArtistProfile && isOwner ? (
     <Suspense fallback={null}>
       <TemplateSwitcher current={templateId} />
     </Suspense>

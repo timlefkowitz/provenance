@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useTransition } from 'react';
 import { LayoutGrid, X } from 'lucide-react';
 import {
   TEMPLATE_OPTIONS,
   type TemplateId,
 } from './template-registry';
+import { updateArtistTemplate } from '../_actions/update-template';
 
 type TemplateSwitcherProps = {
   current: TemplateId | null;
@@ -17,18 +18,26 @@ export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const setTemplate = useCallback(
     (templateId: TemplateId | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (templateId) {
-        params.set('template', templateId);
-      } else {
-        params.delete('template');
-      }
-      const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
       setOpen(false);
+
+      // Drop any `?template=` preview override so the persisted choice shows through.
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('template');
+      const qs = params.toString();
+
+      startTransition(async () => {
+        const result = await updateArtistTemplate(templateId);
+        if (result?.error) {
+          console.error(result.error);
+          return;
+        }
+        router.push(qs ? `${pathname}?${qs}` : pathname);
+        router.refresh();
+      });
     },
     [router, pathname, searchParams],
   );
@@ -39,8 +48,9 @@ export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
         <div className="rounded-lg border border-parchment/20 bg-ink/90 text-parchment backdrop-blur-md shadow-xl p-2 min-w-[160px] font-mono text-[11px]">
           <button
             type="button"
+            disabled={isPending}
             onClick={() => setTemplate(null)}
-            className={`w-full text-left px-3 py-2 rounded hover:bg-parchment/10 transition-colors ${
+            className={`w-full text-left px-3 py-2 rounded hover:bg-parchment/10 transition-colors disabled:opacity-50 ${
               current === null ? 'bg-wine/40 text-parchment' : 'text-parchment/80'
             }`}
           >
@@ -50,8 +60,9 @@ export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
             <button
               key={opt.id}
               type="button"
+              disabled={isPending}
               onClick={() => setTemplate(opt.id)}
-              className={`w-full text-left px-3 py-2 rounded hover:bg-parchment/10 transition-colors ${
+              className={`w-full text-left px-3 py-2 rounded hover:bg-parchment/10 transition-colors disabled:opacity-50 ${
                 current === opt.id ? 'bg-wine/40 text-parchment' : 'text-parchment/80'
               }`}
             >
