@@ -30,6 +30,8 @@ import { Switch } from '@kit/ui/switch';
 import { Textarea } from '@kit/ui/textarea';
 
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
+import { ArtworkTagPicker } from '~/app/artworks/_components/artwork-tag-picker';
+import type { Tag } from '~/app/artworks/_actions/tags';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { UpgradePrompt } from '~/components/upgrade-prompt';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
@@ -348,6 +350,7 @@ export function AddArtworkForm({
     totalBatches: number;
   } | null>(null);
   const [primaryTitle, setPrimaryTitle] = useState('');
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [localExhibitions, setLocalExhibitions] =
     useState<UserExhibition[]>(exhibitions);
 
@@ -720,6 +723,12 @@ export function AddArtworkForm({
           }
           if (formData.exhibitionId)
             formDataToSend.append('exhibitionId', formData.exhibitionId);
+          if (selectedTags.length > 0) {
+            formDataToSend.append(
+              'tagIds',
+              JSON.stringify(selectedTags.map((t) => t.id)),
+            );
+          }
           if (formData.galleryProfileId)
             formDataToSend.append(
               'galleryProfileId',
@@ -1088,6 +1097,14 @@ export function AddArtworkForm({
           />
           <p className="text-ink/60 font-serif text-xs">
             This will be applied to all artworks
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <ArtworkTagPicker selectedTags={selectedTags} onChange={setSelectedTags} />
+          <p className="text-ink/60 font-serif text-xs">
+            Group these works (e.g. by medium or series) so you can filter or
+            share them later. Applied to all artworks in this batch.
           </p>
         </div>
 

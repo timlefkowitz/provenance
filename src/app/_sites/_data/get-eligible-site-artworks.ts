@@ -77,6 +77,25 @@ export async function getEligibleSiteArtworks(
     q = q.in('certificate_type', allowedTypes);
   }
 
+  const tagIds = filters.tag_ids ?? [];
+  if (tagIds.length > 0) {
+    const { data: taggedRows, error: tagError } = await sb
+      .from('artwork_tags')
+      .select('artwork_id')
+      .in('tag_id', tagIds);
+
+    if (tagError) {
+      console.error('[Sites] getEligibleSiteArtworks tag lookup failed', tagError);
+      return [];
+    }
+
+    const taggedArtworkIds = Array.from(
+      new Set((taggedRows ?? []).map((row: { artwork_id: string }) => row.artwork_id)),
+    );
+    if (taggedArtworkIds.length === 0) return [];
+    q = q.in('id', taggedArtworkIds);
+  }
+
   const { data, error } = await q;
   if (error) {
     console.error('[Sites] getEligibleSiteArtworks failed', error);

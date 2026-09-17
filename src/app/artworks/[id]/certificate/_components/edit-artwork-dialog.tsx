@@ -24,6 +24,8 @@ import Image from 'next/image';
 import { X, Upload } from 'lucide-react';
 import { sendArtistClaimInvite } from '../_actions/send-artist-claim-invite';
 import { CERTIFICATE_TYPES, type CertificateType } from '~/lib/user-roles';
+import { ArtworkTagPicker } from '~/app/artworks/_components/artwork-tag-picker';
+import { getArtworkTags, setArtworkTags, type Tag } from '~/app/artworks/_actions/tags';
 import {
   isLikelyImageFile,
   prepareImageForUpload,
@@ -76,6 +78,12 @@ export function EditArtworkDialog({
     request_message: '',
   });
   const [artistInviteEmail, setArtistInviteEmail] = useState('');
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    if (!open || !isCreator) return;
+    getArtworkTags(artwork.id).then(setSelectedTags);
+  }, [open, isCreator, artwork.id]);
 
   // Check if user owns the current exhibition
   const [userOwnsExhibition, setUserOwnsExhibition] = useState(false);
@@ -210,6 +218,10 @@ export function EditArtworkDialog({
           toast.error(result.error);
         } else {
           if (isCreator) {
+            const tagsResult = await setArtworkTags(artwork.id, selectedTags.map((t) => t.id));
+            if (!tagsResult.success) {
+              toast.error(tagsResult.error || 'Artwork saved, but tags could not be updated');
+            }
             toast.success('Artwork updated successfully');
           } else {
             toast.success('Edit request submitted. The creator will review your request.');
@@ -295,6 +307,10 @@ export function EditArtworkDialog({
                 required
               />
             </div>
+
+            {isCreator && (
+              <ArtworkTagPicker selectedTags={selectedTags} onChange={setSelectedTags} />
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="image">Image</Label>

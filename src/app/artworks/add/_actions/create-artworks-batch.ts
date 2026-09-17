@@ -39,6 +39,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
     const galleryProfileId = formData.get('galleryProfileId') as string || null;
+    const tagIdsRaw = formData.get('tagIds') as string || '';
+    const tagIds = tagIdsRaw ? (JSON.parse(tagIdsRaw) as string[]) : [];
     const posterRoleRaw = (formData.get('posterRole') as string | null) ?? null;
 
     const dimensions = formData.get('dimensions') as string || '';
@@ -571,7 +573,21 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               // Don't fail artwork creation if exhibition linking fails
             }
           }
-          
+
+          // Apply tags selected for this batch to the new artwork
+          if (tagIds.length > 0 && artwork.id) {
+            const { error: tagInsertError } = await asUntyped(client)
+              .from('artwork_tags')
+              .insert(tagIds.map((tagId) => ({ artwork_id: artwork.id, tag_id: tagId })));
+            if (tagInsertError) {
+              logger.error('create_artworks_batch_tag_link_insert_failed', {
+                artworkId: artwork.id,
+                error: tagInsertError,
+              });
+              // Don't fail artwork creation if tagging fails
+            }
+          }
+
           // Send certification email for this artwork (non-blocking)
           if (accountEmail) {
             try {

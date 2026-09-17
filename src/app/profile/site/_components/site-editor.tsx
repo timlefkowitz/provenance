@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef, useMemo, useCallback } from 'react';
+import { useState, useTransition, useRef, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -51,6 +51,8 @@ import { CustomDomainCard } from './custom-domain-card';
 import { AccentColorPicker } from './accent-color-picker';
 import { FeaturedArtworksPicker } from './featured-artworks-picker';
 import { FeaturedExhibitionsPicker } from './featured-exhibitions-picker';
+import { listMyTags, type Tag } from '~/app/artworks/_actions/tags';
+import { ArtworkSharesManager } from './artwork-shares-manager';
 import { buildGoogleFontsUrl } from '~/app/_sites/_templates/palette';
 import type { ManageableProfile } from '../_actions/get-manageable-profiles';
 import type { SiteConfig } from '../_actions/get-site-config';
@@ -498,6 +500,21 @@ export function SiteEditor({
         // Always keep at least one; if user tries to clear last, restore default
         certificate_types: next.length > 0 ? next : prev.certificate_types,
       };
+    });
+  }
+
+  // ── Tag filter ──
+  const [myTags, setMyTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    listMyTags().then(setMyTags);
+  }, []);
+
+  function toggleTagFilter(tagId: string) {
+    setArtworkFilters((prev) => {
+      const current = prev.tag_ids ?? [];
+      const has = current.includes(tagId);
+      const next = has ? current.filter((id) => id !== tagId) : [...current, tagId];
+      return { ...prev, tag_ids: next };
     });
   }
 
@@ -1068,6 +1085,47 @@ export function SiteEditor({
               );
             })}
           </div>
+        </section>
+
+        {/* ── TAG FILTER ── */}
+        {myTags.length > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold text-ink font-serif mb-1">Filter by tag</h2>
+            <p className="text-xs text-ink/50 font-serif mb-3">
+              Optionally only show works carrying one of these tags — e.g. show just your
+              &ldquo;Street Photography&rdquo; works. Leave all unchecked to show every eligible work.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {myTags.map((tag) => {
+                const checked = (artworkFilters.tag_ids ?? []).includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => { toggleTagFilter(tag.id); markUnsaved(); }}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs font-serif transition-all',
+                      checked
+                        ? 'border-wine bg-wine/5 text-wine'
+                        : 'border-wine/15 text-ink/70 hover:border-wine/30',
+                    )}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── PRIVATE SHARE LINKS ── */}
+        <section>
+          <h2 className="text-sm font-semibold text-ink font-serif mb-1">Share privately</h2>
+          <p className="text-xs text-ink/50 font-serif mb-3">
+            Send one person a private link to all the works under a tag — e.g. &ldquo;all my
+            Street Photography&rdquo; — without publishing anything.
+          </p>
+          <ArtworkSharesManager tags={myTags} />
         </section>
 
         {/* ── SECTIONS ── */}

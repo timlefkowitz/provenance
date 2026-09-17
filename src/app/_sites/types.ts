@@ -227,6 +227,8 @@ export type CertificateTypeKey = 'authenticity' | 'ownership' | 'show';
 
 export type SiteArtworkFilters = {
   certificate_types: CertificateTypeKey[];
+  /** Only show artworks carrying at least one of these tag ids. Empty = no tag filtering. */
+  tag_ids?: string[];
 };
 
 export type SiteArtwork = {
