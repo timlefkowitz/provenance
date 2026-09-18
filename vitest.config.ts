@@ -7,6 +7,7 @@ export default defineConfig({
     include: [
       'src/lib/audio-denoise/**/*.test.ts',
       'src/lib/seo/**/*.test.ts',
+      'src/lib/apple/**/*.test.ts',
     ],
   },
   resolve: {

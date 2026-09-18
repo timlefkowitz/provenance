@@ -217,7 +217,14 @@ export function SubscriptionContent({
       // Eagerly sync to our DB without waiting for the webhook.
       const syncResult = await syncAppleEntitlement(result.jwsRepresentation, result.productId);
       if (!syncResult.success) {
-        console.error('[IAP] Eager sync failed (webhook will catch it)', syncResult.error);
+        // Don't reload: that would look like nothing happened. The purchase
+        // itself succeeded with Apple, so tell the user and point at Restore.
+        console.error('[IAP] Eager sync failed', syncResult.error);
+        setError(
+          `Your purchase went through with Apple, but we couldn't activate it yet (${syncResult.error ?? 'unknown error'}). ` +
+            'Tap "Restore previous purchases" to try again, or contact support if it persists.',
+        );
+        return;
       }
 
       console.log('[IAP] Purchase completed', { role: selectedRole, interval });
@@ -239,6 +246,7 @@ export function SubscriptionContent({
       const { transactions } = await StoreKit.restorePurchases();
 
       let synced = false;
+      let lastError: string | undefined;
       for (const t of transactions) {
         if (!APPLE_PRODUCT_TO_PLAN[t.productId]) continue;
 
@@ -247,13 +255,18 @@ export function SubscriptionContent({
           synced = true;
           break;
         }
+        lastError = result.error;
       }
 
       if (synced) {
         console.log('[IAP] Restore succeeded, reloading');
         window.location.reload();
       } else {
-        setError('No active subscriptions found to restore.');
+        setError(
+          lastError
+            ? `We found a subscription but couldn't activate it (${lastError}). Please try again or contact support.`
+            : 'No active subscriptions found to restore.',
+        );
       }
     } catch (err) {
       console.error('[IAP] Restore failed', err);

@@ -112,7 +112,7 @@ Add this to your Vercel project (Settings → Environment Variables):
 
 | Variable | Where to find it | Exposed to client? |
 |---|---|---|
-| `APPLE_IAP_ENVIRONMENT` | Optional — set to `sandbox` in preview/staging to accept Sandbox-signed transactions; omit (defaults to Production) elsewhere | No |
+| `APPLE_APP_ID` | Numeric Apple ID of the app (App Store Connect → App Information → General Information → Apple ID). Required to verify Production transactions; Sandbox ones (App Review, TestFlight, sandbox testers) are detected automatically and don't need it | Yes |
 
 No secret keys are required — JWS signature verification (against Apple's
 bundled root certificates) is sufficient for both the eager client-side sync
@@ -297,7 +297,7 @@ Add all of these to Vercel before deploying the production build:
 
 ```
 # Apple IAP (optional — omit to default to Production)
-APPLE_IAP_ENVIRONMENT=  # "sandbox" in preview/staging, unset in production
+APPLE_APP_ID=  # numeric Apple ID from App Store Connect
 ```
 
 ---
