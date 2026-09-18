@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { gtmService } from '~/lib/gtm';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
@@ -91,11 +91,18 @@ export function SubscriptionContent({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [native, setNative] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   // Detect native platform client-side (safe for SSR)
   useEffect(() => {
     setNative(isNativePlatform());
   }, []);
+
+  // The plan picker is long, so an error rendered at the top of the page is
+  // off-screen when the buy button is tapped — bring it into view.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
 
   // Fire a GTM purchase event exactly once when Stripe redirects back with ?success=1
   useEffect(() => {
@@ -306,11 +313,13 @@ export function SubscriptionContent({
       )}
 
       {error && (
-        <Card className="border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/30">
-          <CardContent className="pt-6">
-            <p className="font-serif text-red-800 dark:text-red-200">{error}</p>
-          </CardContent>
-        </Card>
+        <div ref={errorRef} role="alert">
+          <Card className="border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/30">
+            <CardContent className="pt-6">
+              <p className="font-serif text-red-800 dark:text-red-200">{error}</p>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {isActiveSubscription && subscription && (
