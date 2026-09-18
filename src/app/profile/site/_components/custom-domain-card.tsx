@@ -25,6 +25,7 @@ import {
 import { removeCustomDomainAction } from '../_actions/remove-custom-domain';
 import { searchDomainAvailabilityAction } from '../_actions/search-domain-availability';
 import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
 
 type DomainSearchResult = {
   tld: string;
@@ -57,6 +58,13 @@ export function CustomDomainCard({
   onDomainChange,
 }: Props) {
   const searchParams = useSearchParams();
+
+  // Guideline 3.1.1: don't sell domains (a digital service) via Stripe inside
+  // the iOS app. Connecting a domain you already own stays available.
+  const [native, setNative] = useState(false);
+  useEffect(() => {
+    setNative(isNativePlatform());
+  }, []);
 
   const [domainInput, setDomainInput] = useState('');
   const [customDomain, setCustomDomain] = useState(initialDomain);
@@ -228,8 +236,9 @@ export function CustomDomainCard({
             </h2>
             <p className="text-xs text-ink/55 font-serif leading-relaxed mb-4">
               Connect your own domain (e.g.{' '}
-              <span className="font-medium text-ink">yourname.com</span>) or buy one
-              directly — and remove Provenance branding from your site.
+              <span className="font-medium text-ink">yourname.com</span>)
+              {native ? '' : ' or buy one directly'} — and remove Provenance branding from
+              your site.
             </p>
             <Button
               asChild
@@ -251,8 +260,8 @@ export function CustomDomainCard({
         <h2 className="text-sm font-semibold text-ink font-serif">Custom domain</h2>
       </div>
       <p className="text-xs text-ink/50 font-serif mb-4">
-        Connect a domain you already own, or search and buy one here. Your site will be
-        white-label with no Provenance navbar or footer.
+        {native ? 'Connect a domain you already own.' : 'Connect a domain you already own, or search and buy one here.'}{' '}
+        Your site will be white-label with no Provenance navbar or footer.
       </p>
 
       {customDomain ? (
@@ -372,6 +381,7 @@ export function CustomDomainCard({
             </div>
           </div>
 
+          {!native && (
           <div className="border-t border-wine/10 pt-4">
             <button
               type="button"
@@ -480,6 +490,7 @@ export function CustomDomainCard({
               </div>
             )}
           </div>
+          )}
         </div>
       )}
     </section>

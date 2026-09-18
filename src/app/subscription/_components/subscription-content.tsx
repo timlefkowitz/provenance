@@ -14,7 +14,8 @@ import { getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 import { Loader2, TrendingDown, Apple } from 'lucide-react';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
-import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
+import { APPLE_PRODUCT_TO_PLAN, getAppleProductId } from '~/lib/capacitor/apple-iap-config';
+import { useLegalModal } from '~/components/legal/legal-modal-context';
 import { StoreKit } from '~/lib/capacitor/storekit';
 import { describeIapError, iapLog } from '~/lib/capacitor/iap-log';
 import { syncAppleEntitlement } from '../_actions/sync-apple-entitlement';
@@ -93,11 +94,28 @@ export function SubscriptionContent({
   const [error, setError] = useState<string | null>(null);
   const [native, setNative] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
+  const { openLegalDocument } = useLegalModal();
+  // App Store display prices (localized, e.g. "$9.99"), keyed by product id.
+  const [applePrices, setApplePrices] = useState<Record<string, string>>({});
 
   // Detect native platform client-side (safe for SSR)
   useEffect(() => {
     setNative(isNativePlatform());
   }, []);
+
+  // Guideline 3.1.2: on iOS show the price StoreKit returns, not our web price.
+  useEffect(() => {
+    if (!native) return;
+    StoreKit.getProducts({ productIds: Object.keys(APPLE_PRODUCT_TO_PLAN) })
+      .then(({ products }) => {
+        setApplePrices(Object.fromEntries(products.map((p) => [p.id, p.displayPrice])));
+        iapLog('info', 'products_loaded', { count: products.length });
+      })
+      .catch((err) => {
+        const { message, code } = describeIapError(err);
+        iapLog('warn', 'products_load_failed', { message, code: code ?? '' });
+      });
+  }, [native]);
 
   // The plan picker is long, so an error rendered at the top of the page is
   // off-screen when the buy button is tapped — bring it into view.
@@ -416,7 +434,9 @@ export function SubscriptionContent({
               <p className="text-sm text-ink/60 font-serif">
                 {isTrialing
                   ? 'Pick Artist, Collector, or Gallery and monthly or yearly billing, then continue to payment.'
-                  : 'Professional Artist $10/mo or $99/yr. Collectors and Galleries get the same ~2 months free when you pay yearly.'}
+                  : native
+                    ? 'Choose Artist, Collector, or Gallery. Yearly plans save about 2 months.'
+                    : 'Professional Artist $9.99/mo or $99.99/yr. Collectors and Galleries get the same ~2 months free when you pay yearly.'}
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -458,8 +478,12 @@ export function SubscriptionContent({
                   const prices = SUBSCRIPTION_PRICES[role];
                   const amount =
                     interval === 'year' ? prices.yearly : prices.monthly;
-                  const label =
-                    interval === 'year'
+                  const applePrice = native
+                    ? applePrices[getAppleProductId(role, interval) ?? '']
+                    : undefined;
+                  const label = applePrice
+                    ? `${applePrice}/${interval === 'year' ? 'year' : 'month'}`
+                    : interval === 'year'
                       ? prices.yearlyLabel
                       : `$${amount}/month`;
                   const isSelected = selectedRole === role;
@@ -519,9 +543,39 @@ export function SubscriptionContent({
                     )}
                     {isTrialing ? 'Upgrade with Apple' : 'Subscribe with Apple'}
                   </Button>
-                  <p className="text-xs text-ink/50 text-center">
-                    Payment will be charged to your Apple ID at confirmation.
-                  </p>
+                  <div className="space-y-2 text-xs leading-relaxed text-ink/60 font-serif">
+                    <p className="font-semibold text-ink/80">
+                      {getRoleLabel(selectedRole)} — {interval === 'year' ? 'Yearly' : 'Monthly'} subscription
+                      {applePrices[getAppleProductId(selectedRole, interval) ?? '']
+                        ? `, ${applePrices[getAppleProductId(selectedRole, interval) ?? '']} per ${interval === 'year' ? 'year' : 'month'}`
+                        : ''}
+                    </p>
+                    <p>
+                      Payment is charged to your Apple ID at confirmation of purchase. The
+                      subscription automatically renews at the same price and length unless it
+                      is canceled at least 24 hours before the end of the current period. Your
+                      account is charged for renewal within 24 hours before the period ends.
+                      Manage or cancel anytime in Settings → Apple ID → Subscriptions on your
+                      device.
+                    </p>
+                    <p>
+                      <button
+                        type="button"
+                        onClick={() => openLegalDocument('terms')}
+                        className="text-wine underline hover:no-underline"
+                      >
+                        Terms of Use
+                      </button>
+                      {' · '}
+                      <button
+                        type="button"
+                        onClick={() => openLegalDocument('privacy')}
+                        className="text-wine underline hover:no-underline"
+                      >
+                        Privacy Policy
+                      </button>
+                    </p>
+                  </div>
                   <div className="text-center">
                     <button
                       type="button"

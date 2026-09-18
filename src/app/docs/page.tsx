@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LEGAL_CONFIG } from '~/lib/legal/legal.config';
 import {
   DOC_SECTIONS,
   docHref,
@@ -21,6 +22,21 @@ export default function DocsHomePage() {
           grants, and CRM. Developers can integrate via the Verification API.
         </p>
       </header>
+
+      <p className="mb-8 max-w-2xl font-mono text-sm text-slate-400">
+        Need help? Email{' '}
+        <a
+          href={`mailto:${LEGAL_CONFIG.contactEmail}`}
+          className="text-[#67d4ff] underline underline-offset-4 hover:no-underline"
+        >
+          {LEGAL_CONFIG.contactEmail}
+        </a>{' '}
+        or use the{' '}
+        <Link href="/feedback" className="text-[#67d4ff] underline underline-offset-4 hover:no-underline">
+          feedback form
+        </Link>
+        .
+      </p>
 
       {DOC_SECTIONS.map((section) => {
         const entries = getDocsByGroup(section.id);
