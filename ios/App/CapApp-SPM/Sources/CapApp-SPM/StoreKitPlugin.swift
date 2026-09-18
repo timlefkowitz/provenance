@@ -2,6 +2,7 @@ import Capacitor
 import Foundation
 import OSLog
 import StoreKit
+import UIKit
 
 /// Native Apple IAP purchases via StoreKit 2. Our own backend independently
 /// verifies every transaction's `jwsRepresentation`
@@ -110,7 +111,15 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                     options.insert(.appAccountToken(appAccountToken))
                 }
 
-                let result = try await product.purchase(options: options)
+                // On iPad the app can be windowed / in Stage Manager, so tell StoreKit
+                // which scene should present the payment sheet (iOS 17+).
+                let scene = await MainActor.run { self.bridge?.viewController?.view.window?.windowScene }
+                let result: Product.PurchaseResult
+                if #available(iOS 17.0, *), let scene {
+                    result = try await product.purchase(confirmIn: scene, options: options)
+                } else {
+                    result = try await product.purchase(options: options)
+                }
                 Self.log.info("purchase: result received for \(productId, privacy: .public)")
 
                 switch result {
