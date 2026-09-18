@@ -6,6 +6,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { verifyTransactionJWS } from '~/lib/apple/verify-apple-jws';
 import type { SubscriptionRole } from '~/lib/stripe-config';
+import { logger } from '~/lib/logger';
 
 /**
  * Eagerly syncs an Apple IAP entitlement after a native purchase or restore.
@@ -38,7 +39,11 @@ export async function syncAppleEntitlement(
     try {
       decoded = await verifyTransactionJWS(jwsRepresentation);
     } catch (err) {
-      console.error('[AppleIAP] syncAppleEntitlement: JWS verification failed', err);
+      logger.error('apple_iap_sync_verification_failed', {
+        productId,
+        message: (err as Error)?.message,
+        status: (err as { status?: unknown })?.status as number | undefined,
+      });
       return { success: false, error: 'verification_failed' };
     }
 
@@ -69,7 +74,12 @@ export async function syncAppleEntitlement(
     );
 
     if (error) {
-      console.error('[AppleIAP] syncAppleEntitlement: upsert failed', error);
+      logger.error('apple_iap_sync_upsert_failed', {
+        userId: user.id,
+        productId,
+        message: error.message,
+        code: error.code,
+      });
       return { success: false, error: 'upsert_failed' };
     }
 

@@ -16,6 +16,7 @@ import { Loader2, TrendingDown, Apple } from 'lucide-react';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { StoreKit } from '~/lib/capacitor/storekit';
+import { describeIapError, iapLog } from '~/lib/capacitor/iap-log';
 import { syncAppleEntitlement } from '../_actions/sync-apple-entitlement';
 
 type SubscriptionRow = {
@@ -191,7 +192,13 @@ export function SubscriptionContent({
   async function handleNativePurchase() {
     setError(null);
     setLoading(true);
-    console.log('[IAP] Starting native purchase', { role: selectedRole, interval });
+    iapLog('info', 'purchase_started', { role: selectedRole, interval });
+    // If StoreKit never answers (e.g. the payment sheet is dismissed oddly),
+    // record it — otherwise this looks like a silent no-op.
+    const watchdog = window.setTimeout(
+      () => iapLog('warn', 'purchase_slow', { role: selectedRole, interval, waitedSeconds: 20 }),
+      20_000,
+    );
     try {
       const targetProductId = Object.entries(APPLE_PRODUCT_TO_PLAN).find(
         ([, plan]) => plan.role === selectedRole && plan.interval === interval,
@@ -199,14 +206,14 @@ export function SubscriptionContent({
 
       if (!targetProductId) {
         setError('Selected plan not available in the App Store. Please try again.');
-        console.error('[IAP] No product mapped for', { selectedRole, interval });
+        iapLog('error', 'purchase_no_product_mapped', { role: selectedRole, interval });
         return;
       }
 
       const result = await StoreKit.purchase({ productId: targetProductId, appAccountToken: userId });
+      iapLog('info', 'purchase_result', { status: result.status, productId: targetProductId });
 
       if (result.status === 'cancelled') {
-        console.log('[IAP] Purchase cancelled by user');
         return;
       }
       if (result.status === 'pending') {
@@ -219,7 +226,7 @@ export function SubscriptionContent({
       if (!syncResult.success) {
         // Don't reload: that would look like nothing happened. The purchase
         // itself succeeded with Apple, so tell the user and point at Restore.
-        console.error('[IAP] Eager sync failed', syncResult.error);
+        iapLog('error', 'purchase_sync_failed', { productId: result.productId, syncError: syncResult.error ?? 'unknown' });
         setError(
           `Your purchase went through with Apple, but we couldn't activate it yet (${syncResult.error ?? 'unknown error'}). ` +
             'Tap "Restore previous purchases" to try again, or contact support if it persists.',
@@ -227,13 +234,15 @@ export function SubscriptionContent({
         return;
       }
 
-      console.log('[IAP] Purchase completed', { role: selectedRole, interval });
+      iapLog('info', 'purchase_completed', { role: selectedRole, interval });
       // Reload the page so the server re-reads the new subscription row.
       window.location.reload();
     } catch (err) {
-      console.error('[IAP] Purchase failed', err);
-      setError(err instanceof Error ? err.message : 'Purchase failed. Please try again.');
+      const { message, code } = describeIapError(err);
+      iapLog('error', 'purchase_failed', { message, code: code ?? '' });
+      setError(`Purchase failed: ${message}`);
     } finally {
+      window.clearTimeout(watchdog);
       setLoading(false);
     }
   }
@@ -241,9 +250,10 @@ export function SubscriptionContent({
   async function handleRestorePurchases() {
     setError(null);
     setLoading(true);
-    console.log('[IAP] Restoring purchases');
+    iapLog('info', 'restore_started');
     try {
       const { transactions } = await StoreKit.restorePurchases();
+      iapLog('info', 'restore_transactions', { count: transactions.length });
 
       let synced = false;
       let lastError: string | undefined;
@@ -256,10 +266,11 @@ export function SubscriptionContent({
           break;
         }
         lastError = result.error;
+        iapLog('error', 'restore_sync_failed', { productId: t.productId, syncError: result.error ?? 'unknown' });
       }
 
       if (synced) {
-        console.log('[IAP] Restore succeeded, reloading');
+        iapLog('info', 'restore_completed');
         window.location.reload();
       } else {
         setError(
@@ -269,8 +280,9 @@ export function SubscriptionContent({
         );
       }
     } catch (err) {
-      console.error('[IAP] Restore failed', err);
-      setError(err instanceof Error ? err.message : 'Restore failed. Please try again.');
+      const { message, code } = describeIapError(err);
+      iapLog('error', 'restore_failed', { message, code: code ?? '' });
+      setError(`Restore failed: ${message}`);
     } finally {
       setLoading(false);
     }

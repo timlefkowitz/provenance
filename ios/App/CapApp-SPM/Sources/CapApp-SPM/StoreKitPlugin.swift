@@ -1,5 +1,6 @@
 import Capacitor
 import Foundation
+import OSLog
 import StoreKit
 
 /// Native Apple IAP purchases via StoreKit 2. Our own backend independently
@@ -17,7 +18,18 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getCurrentEntitlements", returnType: CAPPluginReturnPromise),
     ]
 
+    private static let log = Logger(subsystem: "guru.provenance.app", category: "StoreKit")
+
     private var updatesTask: Task<Void, Never>?
+
+    /// Surfaces the real StoreKit error to JS (and the device log) rather than a
+    /// generic "Purchase failed" — the underlying domain/code is what tells a
+    /// sandbox-account problem from a config problem.
+    private static func reject(_ call: CAPPluginCall, _ context: String, _ error: Error) {
+        let ns = error as NSError
+        log.error("\(context, privacy: .public): \(ns.domain, privacy: .public) \(ns.code) \(ns.localizedDescription, privacy: .public)")
+        call.reject("\(context): \(ns.localizedDescription) (\(ns.domain) \(ns.code))", "\(ns.domain).\(ns.code)", error)
+    }
 
     override public func load() {
         // Transactions can complete outside an explicit purchase() call —
@@ -72,7 +84,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                     },
                 ])
             } catch {
-                call.reject("Failed to fetch products", nil, error)
+                Self.reject(call, "Failed to fetch products", error)
             }
         }
     }
@@ -87,8 +99,9 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
         Task {
             do {
                 let products = try await Product.products(for: [productId])
+                Self.log.info("purchase: fetched \(products.count) product(s) for \(productId, privacy: .public)")
                 guard let product = products.first else {
-                    call.reject("Product not found in App Store: \(productId)")
+                    call.reject("Product not found in App Store: \(productId)", "product_not_found")
                     return
                 }
 
@@ -98,6 +111,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
 
                 let result = try await product.purchase(options: options)
+                Self.log.info("purchase: result received for \(productId, privacy: .public)")
 
                 switch result {
                 case .success(let verification):
@@ -109,7 +123,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                             await transaction.finish()
                         }
                     } else if case .unverified(_, let error) = verification {
-                        call.reject("Transaction failed local verification", nil, error)
+                        Self.reject(call, "Transaction failed local verification", error)
                     }
                 case .userCancelled:
                     call.resolve(["status": "cancelled"])
@@ -119,7 +133,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.reject("Unknown purchase result")
                 }
             } catch {
-                call.reject("Purchase failed", nil, error)
+                Self.reject(call, "Purchase failed", error)
             }
         }
     }
@@ -130,7 +144,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                 try await AppStore.sync()
                 call.resolve(["transactions": await Self.currentEntitlements()])
             } catch {
-                call.reject("Restore failed", nil, error)
+                Self.reject(call, "Restore failed", error)
             }
         }
     }
