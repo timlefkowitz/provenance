@@ -5,6 +5,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { verifyNotificationPayload, verifyTransactionJWS } from '~/lib/apple/verify-apple-jws';
 import type { SubscriptionRole } from '~/lib/stripe-config';
+import { upsertAppleSubscription } from '~/lib/apple/upsert-apple-subscription';
 
 export const runtime = 'nodejs';
 
@@ -135,22 +136,19 @@ export async function POST(request: NextRequest) {
   }
 
   if (userId && plan) {
-    const { error } = await admin.from('subscriptions').upsert(
-      {
-        user_id: userId,
-        provider: 'apple_iap',
-        revenuecat_subscriber_id: userId,
-        apple_original_transaction_id: transaction.originalTransactionId,
-        role: plan.role as SubscriptionRole,
-        status,
-        current_period_end: updatePayload.current_period_end,
-        updated_at: updatePayload.updated_at,
-        stripe_customer_id: null,
-        stripe_subscription_id: null,
-        stripe_price_id: null,
-      },
-      { onConflict: 'apple_original_transaction_id' },
-    );
+    const { error } = await upsertAppleSubscription(admin, {
+      user_id: userId,
+      provider: 'apple_iap',
+      revenuecat_subscriber_id: userId,
+      apple_original_transaction_id: transaction.originalTransactionId,
+      role: plan.role as SubscriptionRole,
+      status,
+      current_period_end: updatePayload.current_period_end,
+      updated_at: updatePayload.updated_at,
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      stripe_price_id: null,
+    });
     if (error) {
       console.error('[AppleIAP] Webhook: upsert failed', { error, originalTransactionId: transaction.originalTransactionId });
       return NextResponse.json({ received: true, error: 'upsert_failed' });

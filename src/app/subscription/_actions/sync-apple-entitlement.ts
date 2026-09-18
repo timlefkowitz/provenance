@@ -7,6 +7,7 @@ import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { verifyTransactionJWS } from '~/lib/apple/verify-apple-jws';
 import type { SubscriptionRole } from '~/lib/stripe-config';
 import { logger } from '~/lib/logger';
+import { upsertAppleSubscription } from '~/lib/apple/upsert-apple-subscription';
 
 /**
  * Eagerly syncs an Apple IAP entitlement after a native purchase or restore.
@@ -56,22 +57,19 @@ export async function syncAppleEntitlement(
     }
 
     const admin = asUntyped(getSupabaseServerAdminClient());
-    const { error } = await admin.from('subscriptions').upsert(
-      {
-        user_id: user.id,
-        provider: 'apple_iap',
-        revenuecat_subscriber_id: user.id,
-        apple_original_transaction_id: decoded.originalTransactionId,
-        role: plan.role as SubscriptionRole,
-        status: 'active',
-        current_period_end: decoded.expiresDate ? new Date(decoded.expiresDate).toISOString() : null,
-        updated_at: new Date().toISOString(),
-        stripe_customer_id: null,
-        stripe_subscription_id: null,
-        stripe_price_id: null,
-      },
-      { onConflict: 'apple_original_transaction_id' },
-    );
+    const { error } = await upsertAppleSubscription(admin, {
+      user_id: user.id,
+      provider: 'apple_iap',
+      revenuecat_subscriber_id: user.id,
+      apple_original_transaction_id: decoded.originalTransactionId,
+      role: plan.role as SubscriptionRole,
+      status: 'active',
+      current_period_end: decoded.expiresDate ? new Date(decoded.expiresDate).toISOString() : null,
+      updated_at: new Date().toISOString(),
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      stripe_price_id: null,
+    });
 
     if (error) {
       logger.error('apple_iap_sync_upsert_failed', {
