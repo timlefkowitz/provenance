@@ -51,15 +51,6 @@ const dropdownTriggerClass = cn(
   'group cursor-pointer select-none',
 );
 
-// Small gilt index number rendered before each top-level nav label.
-function NavIndex({ n }: { n: string }) {
-  return (
-    <span className="font-jetbrains text-[9px] leading-none text-gilt">{n}</span>
-  );
-}
-
-
-
 
 export function Navigation(props: { initialUser?: JwtPayload | null }) {
   const pathname = usePathname();
@@ -102,10 +93,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
     return null;
   }
 
-  // Index numbers mirror the fixed link order below; Info always takes the
-  // next slot after whatever is visible ahead of it (04 signed-out, 06 signed-in).
-  const infoIndex = user.data ? '06' : '03';
-
   return (
     <>
       <nav
@@ -131,30 +118,25 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
         */}
         <div className={cn('hidden md:flex items-baseline gap-5 absolute left-1/2 -translate-x-1/2 pointer-events-auto', isNative && 'md:hidden')}>
           <Link href="/artworks" className={navLinkClass('/artworks', pathname)}>
-            <NavIndex n="01" />
             <Trans i18nKey="common:navigation.artworks" defaults="Artworks" />
           </Link>
           {/* Collectibles hidden for now */}
           <Link href="/registry" className={navLinkClass('/registry', pathname)}>
-            <NavIndex n="02" />
             <Trans i18nKey="common:navigation.registry" defaults="Artists" />
           </Link>
 
           {user.data && (
             <>
               <Link href="/artworks/my" className={navLinkClass('/artworks/my', pathname)}>
-                <NavIndex n="03" />
                 Collection
               </Link>
               <Link href="/portal" className={navLinkClass('/portal', pathname)}>
-                <NavIndex n="04" />
                 Portal
               </Link>
 
               {/* Toolbox dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger className={dropdownTriggerClass}>
-                  <NavIndex n="05" />
                   <Wrench className="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:-rotate-12 group-data-[state=open]:-rotate-[24deg] group-data-[state=open]:scale-110" />
                   Toolbox
                   <ChevronDown className="h-3 w-3 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
@@ -219,7 +201,6 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           {/* Info dropdown — Blog, About, Docs — always visible */}
           <DropdownMenu>
             <DropdownMenuTrigger className={dropdownTriggerClass}>
-              <NavIndex n={infoIndex} />
               Info
               <ChevronDown className="h-3 w-3 transition-transform duration-300 ease-out group-data-[state=open]:rotate-180" />
             </DropdownMenuTrigger>
