@@ -151,6 +151,35 @@ const OPTIONAL_PRIMARY_FIELDS = [
 
 type OptionalPrimaryField = (typeof OPTIONAL_PRIMARY_FIELDS)[number];
 
+/** Fields that can be stamped onto every selected artwork at once via "Bulk edit selected". */
+const BULK_EDIT_FIELDS: Array<{
+  key: Exclude<keyof ArtworkFormData, 'title' | 'exhibition_id'>;
+  label: string;
+  kind: 'text' | 'textarea' | 'date' | 'number' | 'boolean';
+}> = [
+  { key: 'medium', label: 'Medium', kind: 'text' },
+  { key: 'dimensions', label: 'Dimensions', kind: 'text' },
+  { key: 'artist_name', label: 'Artist', kind: 'text' },
+  { key: 'creation_date', label: 'Creation date', kind: 'date' },
+  { key: 'edition', label: 'Edition', kind: 'text' },
+  { key: 'production_location', label: 'Production location', kind: 'text' },
+  { key: 'owned_by', label: 'Owned by', kind: 'text' },
+  { key: 'sold_by', label: 'Sold by', kind: 'text' },
+  { key: 'value', label: 'Value', kind: 'text' },
+  { key: 'display_order', label: 'Display order', kind: 'number' },
+  { key: 'description', label: 'Description', kind: 'textarea' },
+  { key: 'former_owners', label: 'Former owners', kind: 'textarea' },
+  { key: 'auction_history', label: 'Auction history', kind: 'textarea' },
+  { key: 'exhibition_history', label: 'Exhibition history', kind: 'textarea' },
+  { key: 'historic_context', label: 'Historic context', kind: 'textarea' },
+  { key: 'celebrity_notes', label: 'Celebrity notes', kind: 'textarea' },
+  { key: 'is_public', label: 'Public listing', kind: 'boolean' },
+  { key: 'value_is_public', label: 'Value is public', kind: 'boolean' },
+  { key: 'owned_by_is_public', label: 'Owned-by is public', kind: 'boolean' },
+  { key: 'sold_by_is_public', label: 'Sold-by is public', kind: 'boolean' },
+  { key: 'is_sold', label: 'Marked as sold', kind: 'boolean' },
+];
+
 const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
   sold: 'Mark as Sold',
   valuation: 'Provenance Valuation',
@@ -611,6 +640,11 @@ export function SpreadsheetEditForm({
   );
   const [artworkSearchTerm, setArtworkSearchTerm] = useState('');
   const [assignConfirmation, setAssignConfirmation] = useState<number | null>(null);
+  const [bulkEditFieldKey, setBulkEditFieldKey] = useState<
+    (typeof BULK_EDIT_FIELDS)[number]['key']
+  >('medium');
+  const [bulkEditTextValue, setBulkEditTextValue] = useState('');
+  const [bulkEditBoolValue, setBulkEditBoolValue] = useState(true);
   const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(() => {
     if (artworks.length === 0 || isAssignFlow) {
       return new Set();
@@ -1174,6 +1208,33 @@ export function SpreadsheetEditForm({
     router.replace('/artworks/my');
   };
 
+  const bulkEditFieldDef = BULK_EDIT_FIELDS.find((f) => f.key === bulkEditFieldKey)!;
+
+  const handleBulkApplyField = () => {
+    const targetIds = Array.from(selectedArtworkIds);
+    if (targetIds.length === 0) {
+      setError('Select at least one artwork above to bulk edit.');
+      return;
+    }
+    const nextValue: ArtworkFormData[typeof bulkEditFieldDef.key] =
+      bulkEditFieldDef.kind === 'boolean' ? bulkEditBoolValue : bulkEditTextValue;
+
+    setArtworkData((prev) => {
+      const next = { ...prev };
+      for (const artworkId of targetIds) {
+        const current = next[artworkId];
+        if (!current) continue;
+        next[artworkId] = { ...current, [bulkEditFieldDef.key]: nextValue };
+      }
+      return next;
+    });
+
+    setError(null);
+    toast.success(
+      `Set "${bulkEditFieldDef.label}" for ${targetIds.length} selected artwork${targetIds.length === 1 ? '' : 's'}. Review below, then Save changes.`,
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-full overflow-x-hidden">
       {isAssignFlow && assignExhibitionId && (
@@ -1440,6 +1501,94 @@ export function SpreadsheetEditForm({
               galleryProfiles={galleryProfiles}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Bulk edit: stamp one field's value onto every currently selected artwork's row */}
+      <div className="rounded-2xl border border-wine/15 bg-gradient-to-b from-parchment to-wine/[0.04] px-4 py-4 sm:px-5 space-y-3 shadow-sm">
+        <div>
+          <p className="text-xs font-display font-semibold uppercase tracking-wide text-wine">
+            Bulk edit selected ({selectedArtworkIds.size})
+          </p>
+          <p className="text-xs text-ink/60 font-serif mt-1 max-w-2xl">
+            Choose a field and a value, then apply it to every selected artwork at once instead of
+            editing each row below individually. Review the rows, then hit Save changes to persist.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="w-full sm:w-[220px]">
+            <p className="text-xs text-ink/60 font-serif mb-1">Field</p>
+            <Select
+              value={bulkEditFieldKey}
+              onValueChange={(value) => {
+                setBulkEditFieldKey(value as typeof bulkEditFieldKey);
+                setBulkEditTextValue('');
+                setBulkEditBoolValue(true);
+              }}
+            >
+              <SelectTrigger className="font-serif h-9 border-wine/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BULK_EDIT_FIELDS.map((field) => (
+                  <SelectItem key={field.key} value={field.key} className="font-serif">
+                    {field.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full flex-1 min-w-0">
+            <p className="text-xs text-ink/60 font-serif mb-1">Value</p>
+            {bulkEditFieldDef.kind === 'boolean' ? (
+              <Select
+                value={bulkEditBoolValue ? 'yes' : 'no'}
+                onValueChange={(value) => setBulkEditBoolValue(value === 'yes')}
+              >
+                <SelectTrigger className="font-serif h-9 border-wine/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes" className="font-serif">
+                    Yes
+                  </SelectItem>
+                  <SelectItem value="no" className="font-serif">
+                    No
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            ) : bulkEditFieldDef.kind === 'textarea' ? (
+              <Textarea
+                value={bulkEditTextValue}
+                onChange={(e) => setBulkEditTextValue(e.target.value)}
+                className="font-serif min-h-9 border-wine/20"
+                rows={2}
+                placeholder={`New ${bulkEditFieldDef.label.toLowerCase()} for all selected`}
+              />
+            ) : (
+              <Input
+                value={bulkEditTextValue}
+                onChange={(e) => setBulkEditTextValue(e.target.value)}
+                type={
+                  bulkEditFieldDef.kind === 'date'
+                    ? 'date'
+                    : bulkEditFieldDef.kind === 'number'
+                      ? 'number'
+                      : 'text'
+                }
+                className="font-serif h-9 border-wine/20"
+                placeholder={`New ${bulkEditFieldDef.label.toLowerCase()} for all selected`}
+              />
+            )}
+          </div>
+          <Button
+            type="button"
+            onClick={handleBulkApplyField}
+            disabled={selectedArtworkIds.size === 0}
+            className="h-9 px-4 font-serif text-sm disabled:opacity-60 shrink-0"
+          >
+            Apply to {selectedArtworkIds.size} selected
+          </Button>
         </div>
       </div>
 
