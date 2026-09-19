@@ -19,6 +19,17 @@ export async function TrialBanner() {
     } = await client.auth.getUser();
     if (!user) return null;
 
+    // Anyone with a paid plan (Stripe or Apple) doesn't need the trial nag,
+    // even though their local signup-trial row may still be unexpired.
+    const { data: paidRows } = await asUntyped(client)
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .or(`current_period_end.is.null,current_period_end.gte.${new Date().toISOString()}`)
+      .limit(1);
+    if (paidRows && paidRows.length > 0) return null;
+
     const { data: rows } = await asUntyped(client)
       .from('subscriptions')
       .select('id, status, stripe_subscription_id, current_period_end')
