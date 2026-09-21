@@ -8,6 +8,7 @@ export default defineConfig({
       'src/lib/audio-denoise/**/*.test.ts',
       'src/lib/seo/**/*.test.ts',
       'src/lib/apple/**/*.test.ts',
+      'src/lib/weekly-digest.test.ts',
     ],
   },
   resolve: {

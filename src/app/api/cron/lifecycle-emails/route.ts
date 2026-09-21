@@ -1,17 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- subscriptions/artworks tables not in generated DB types */
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import OpenAI from 'openai';
 import { sendEmail } from '~/lib/email';
 import {
   buildBulletproofButtonTable,
   buildEmailHtml,
   escapeHtml,
 } from '~/lib/email-layout';
-import { getPresetThemeDefaults } from '~/lib/email-layout-presets';
+import type { EmailTheme } from '~/lib/email-layout';
+import { getResolvedEmailTheme } from '~/lib/email-templates-store';
 
 import { constantTimeEquals } from '~/lib/security/constant-time';
 import { asUntyped } from '~/lib/supabase-untyped';
+import {
+  buildArtistDigest,
+  loadDigestArtists,
+  loadOpenCallCandidates,
+  type ArtistDigest,
+  type DigestArtist,
+  type DigestItem,
+} from '~/lib/weekly-digest';
+
 export const runtime = 'nodejs';
+// One LLM call per recipient; leave headroom for the whole Monday batch.
+export const maxDuration = 300;
 
 /**
  * Lifecycle email cron — runs daily at 10:00 UTC.
@@ -26,8 +39,11 @@ export const runtime = 'nodejs';
  *
  * 2. WEEKLY GRANTS / OPEN-CALLS DIGEST (every Monday)
  *    Artist-role users who have logged in at least once in the past 30 days
- *    receive a digest of the 5 most recent open grant opportunities and open
- *    calls. Keeps the product sticky without needing the user to log in.
+ *    receive a personalised digest: open calls matching their location and
+ *    medium, plus grants/residencies the LLM picks from their CV and profile
+ *    (see ~/lib/weekly-digest). Nothing is sent if there is nothing to show.
+ *    Testing: GET ?digestTo=<email> bypasses the Monday check and sends only
+ *    to that (eligible) user.
  *
  * Auth: protected by CRON_SECRET (Authorization: Bearer ...).
  */
@@ -69,6 +85,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
     return { sent: 0, skipped: 0 };
   }
 
+  const theme = await getResolvedEmailTheme();
   let sent = 0;
   let skipped = 0;
 
@@ -92,7 +109,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
     const trialEnd = new Date(sub.trial_end);
     const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    const html = buildTrialNudgeHtml(name, daysLeft);
+    const html = buildTrialNudgeHtml(name, daysLeft, theme);
 
     await sendEmail({
       to: account.email,
@@ -113,8 +130,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
   return { sent, skipped };
 }
 
-function buildTrialNudgeHtml(name: string, daysLeft: number): string {
-  const theme = getPresetThemeDefaults('mono');
+function buildTrialNudgeHtml(name: string, daysLeft: number, theme: EmailTheme): string {
   const { ink, wine, inkMuted, fontFamily, fontFamilyHeading } = theme;
 
   const safeName = escapeHtml(name);
@@ -148,18 +164,23 @@ ${buildBulletproofButtonTable(`${SITE_URL}/subscription`, 'Upgrade Now', theme)}
 
 // ─── Weekly digest ────────────────────────────────────────────────────────────
 
-async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number }> {
+const DIGEST_CONCURRENCY = 5;
+
+async function sendWeeklyDigest(opts: {
+  force: boolean;
+  onlyEmail: string | null;
+}): Promise<{ sent: number; skipped: number }> {
   const now = new Date();
-  // Only send on Mondays
-  if (now.getUTCDay() !== 1) {
+  // Only send on Mondays (unless forced for testing)
+  if (!opts.force && now.getUTCDay() !== 1) {
     console.log('[CRON/lifecycle-emails] digest skipped — not Monday');
     return { sent: 0, skipped: 0 };
   }
 
-  const admin = asUntyped(getSupabaseServerAdminClient()) as any;
+  const admin = asUntyped(getSupabaseServerAdminClient());
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Active / trialing artist subscribers who were seen in the last 30 days
+  // Active / trialing artist subscribers
   const { data: subs } = await admin
     .from('subscriptions')
     .select('user_id')
@@ -177,55 +198,69 @@ async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number }> {
     .in('user_id', userIds)
     .gte('last_seen_at', thirtyDaysAgo);
 
-  const activeUserIds = new Set((activePresence ?? []).map((p: Record<string, unknown>) => p.user_id));
+  const activeUserIds = [...new Set((activePresence ?? []).map((p: { user_id: string }) => p.user_id))];
+  if (!activeUserIds.length) return { sent: 0, skipped: 0 };
 
-  if (!activeUserIds.size) return { sent: 0, skipped: 0 };
+  let accountsQuery = admin.from('accounts').select('id, email, name').in('id', activeUserIds);
+  if (opts.onlyEmail) accountsQuery = accountsQuery.eq('email', opts.onlyEmail);
+  const { data: accounts } = await accountsQuery;
+  if (!accounts?.length) return { sent: 0, skipped: 0 };
 
-  // Fetch 5 most recent open calls
-  const { data: openCalls } = await admin
-    .from('open_calls')
-    .select('id, title, deadline, description')
-    .gte('deadline', now.toISOString())
-    .order('deadline', { ascending: true })
-    .limit(5);
+  const recipientIds = accounts.map((a: { id: string }) => a.id);
+  const [artists, openCallCandidates] = await Promise.all([
+    loadDigestArtists(admin, recipientIds),
+    loadOpenCallCandidates(admin, now),
+  ]);
 
-  // Fetch 5 most recent grants
-  const { data: grants } = await admin
-    .from('artist_grants')
-    .select('id, title, deadline, description')
-    .gte('deadline', now.toISOString())
-    .order('deadline', { ascending: true })
-    .limit(5)
-    .maybeSingle()
-    .then(() => asUntyped(admin).from('artist_grants').select('id, title, deadline, description').gte('deadline', now.toISOString()).order('deadline', { ascending: true }).limit(5));
+  const theme = await getResolvedEmailTheme();
 
-  // Get accounts for active users
-  const activeUserIdsList = [...activeUserIds];
-  const { data: accounts } = await admin
-    .from('accounts')
-    .select('id, email, name')
-    .in('id', activeUserIdsList);
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) console.error('[CRON/lifecycle-emails] OPENAI_API_KEY not set — digest will have no AI-found grants');
+  const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
   let sent = 0;
   let skipped = 0;
 
-  for (const account of accounts ?? []) {
-    if (!account.email) { skipped++; continue; }
+  const sendOne = async (account: { id: string; email: string | null; name: string | null }) => {
+    if (!account.email) { skipped++; return; }
+    try {
+      const artist = artists.get(account.id);
+      const digest = await buildArtistDigest({
+        admin,
+        openai,
+        artist,
+        userId: account.id,
+        openCallCandidates,
+        siteUrl: SITE_URL,
+        now,
+      });
 
-    const html = buildDigestHtml(
-      account.name || account.email.split('@')[0],
-      openCalls ?? [],
-      grants ?? [],
-    );
+      // Never send an empty digest.
+      if (!digest.openCalls.length && !digest.grants.length) {
+        console.log('[CRON/lifecycle-emails] digest skipped — nothing to show', { userId: account.id });
+        skipped++;
+        return;
+      }
 
-    await sendEmail({
-      to: account.email,
-      subject: 'Your weekly Provenance digest — grants &amp; open calls',
-      html,
-    });
+      await sendEmail({
+        to: account.email,
+        subject: 'Your weekly Provenance digest — grants & open calls',
+        html: buildDigestHtml(account.name || account.email.split('@')[0], digest, theme, artist),
+      });
+      console.log('[CRON/lifecycle-emails] digest sent', {
+        userId: account.id,
+        openCalls: digest.openCalls.length,
+        grants: digest.grants.length,
+      });
+      sent++;
+    } catch (err) {
+      console.error('[CRON/lifecycle-emails] digest failed for user', { userId: account.id, err });
+      skipped++;
+    }
+  };
 
-    console.log('[CRON/lifecycle-emails] digest sent', { userId: account.id });
-    sent++;
+  for (let i = 0; i < accounts.length; i += DIGEST_CONCURRENCY) {
+    await Promise.all(accounts.slice(i, i + DIGEST_CONCURRENCY).map(sendOne));
   }
 
   return { sent, skipped };
@@ -233,59 +268,67 @@ async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number }> {
 
 function formatDeadline(deadline: string | null): string {
   if (!deadline) return '';
-  try {
-    return new Date(deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
+  const d = new Date(deadline);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
-function buildDigestHtml(name: string, openCalls: unknown[], grants: unknown[]): string {
-  const theme = getPresetThemeDefaults('mono');
+function buildDigestHtml(
+  name: string,
+  digest: ArtistDigest,
+  theme: EmailTheme,
+  artist?: DigestArtist,
+): string {
   const { ink, wine, inkMuted, cardBorder, fontFamily, fontFamilyHeading } = theme;
 
   const safeName = escapeHtml(name);
+  const context = [artist?.medium, artist?.location].filter(Boolean).join(' · ');
 
-  const buildSection = (
-    sectionTitle: string,
-    items: { title: string; deadline?: string | null }[],
-    browseHref: string,
-    browseLabel: string,
-  ): string => {
+  const buildSection = (sectionTitle: string, items: DigestItem[], browseHref: string, browseLabel: string): string => {
     if (!items.length) return '';
     const rows = items
-      .map(
-        (item) => `
-      <tr>
-        <td style="padding:14px 0;border-bottom:1px solid ${cardBorder};">
-          <p style="margin:0 0 4px;font-family:${fontFamily};font-size:15px;font-weight:600;color:${ink};">${escapeHtml(item.title)}</p>
-          ${item.deadline ? `<p style="margin:0;font-family:${fontFamily};font-size:12px;letter-spacing:0.06em;color:${wine};text-transform:uppercase;">Deadline: ${formatDeadline(item.deadline)}</p>` : ''}
-        </td>
-      </tr>`,
-      )
+      .map((item) => {
+        const title = escapeHtml(item.title);
+        const titleHtml = item.url
+          ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" style="color:${wine};text-decoration:none;">${title}</a>`
+          : title;
+        const meta = [item.deadline ? `Deadline ${formatDeadline(item.deadline)}` : '', item.detail ?? '']
+          .filter(Boolean)
+          .map(escapeHtml)
+          .join(' &middot; ');
+        return `
+  <tr>
+    <td style="padding:16px 0;border-bottom:1px solid ${cardBorder};">
+      <p style="margin:0;font-family:${fontFamily};font-size:16px;font-weight:600;color:${wine};">${titleHtml}</p>
+      ${meta ? `<p style="margin:4px 0 0;font-family:${fontFamily};font-size:14px;line-height:1.55;color:${inkMuted};">${meta}</p>` : ''}
+    </td>
+  </tr>`;
+      })
       .join('');
 
     return `
-<p style="margin:28px 0 4px;font-family:${fontFamily};font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:${wine};">${escapeHtml(sectionTitle)}</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${cardBorder};border-collapse:collapse;">
-  ${rows}
+<h3 style="margin:28px 0 4px;font-family:${fontFamilyHeading};font-size:17px;font-weight:600;color:${ink};line-height:1.4;">${escapeHtml(sectionTitle)}</h3>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;border-top:1px solid ${cardBorder};">${rows}
 </table>
-<p style="margin:10px 0 0;font-family:${fontFamily};font-size:13px;">
-  <a href="${browseHref}" target="_blank" rel="noopener noreferrer" style="color:${wine};text-decoration:none;font-weight:500;">${escapeHtml(browseLabel)} &rarr;</a>
-</p>`;
+<p style="margin:12px 0 0;font-family:${fontFamily};font-size:14px;line-height:1.6;"><a href="${browseHref}" target="_blank" rel="noopener noreferrer" style="color:${wine};text-decoration:none;font-weight:500;">${escapeHtml(browseLabel)} &rarr;</a></p>`;
   };
 
-  const innerHtml = `
-<h1 style="margin:0 0 4px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">Your weekly digest</h1>
-<p style="margin:0 0 20px;font-family:${fontFamily};font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:${wine};">Grants &amp; open calls, curated for artists</p>
-<p style="margin:0 0 4px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">Hi ${safeName}, here's what's open this week.</p>
-${buildSection('Open Calls', openCalls, `${SITE_URL}/open-calls/browse`, 'Browse all open calls')}
-${buildSection('Grants', grants, `${SITE_URL}/grants`, 'Browse all grants')}
-<p style="margin:28px 0 0;font-family:${fontFamily};font-size:12px;line-height:1.6;color:${inkMuted};">
-  <a href="${SITE_URL}/settings" target="_blank" rel="noopener noreferrer" style="color:${inkMuted};text-decoration:underline;">Manage email preferences</a>
-</p>`;
+  const intro = context
+    ? `Hi ${safeName}, here are this week's grants and open calls picked for your practice (${escapeHtml(context)}).`
+    : `Hi ${safeName}, here's what's open this week.`;
 
-  return buildEmailHtml('Your weekly Provenance digest', `<div>${innerHtml}</div>`, theme);
+  const body = `
+<h2 style="margin:0 0 16px;font-family:${fontFamilyHeading};font-size:21px;font-weight:600;color:${wine};line-height:1.3;letter-spacing:-0.01em;">Your weekly digest</h2>
+<p style="margin:0 0 16px;font-family:${fontFamily};font-size:16px;line-height:1.7;color:${ink};">${intro}</p>
+${buildSection('Open calls', digest.openCalls, `${SITE_URL}/open-calls/browse`, 'Browse all open calls')}
+${buildSection('Grants &amp; residencies', digest.grants, `${SITE_URL}/grants`, 'Find more grants')}
+${buildBulletproofButtonTable(`${SITE_URL}/grants`, 'Open Grants Assistant', theme)}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 24px;border-collapse:collapse;"><tr><td height="1" bgcolor="${cardBorder}" style="height:1px;line-height:1px;font-size:1px;background-color:${cardBorder};">&nbsp;</td></tr></table>
+<p style="margin:0 0 16px;font-family:${fontFamily};font-size:14px;line-height:1.6;color:${inkMuted};">Grant suggestions are AI-generated from your profile &mdash; please confirm deadlines and eligibility on each program's official site.</p>
+<p style="margin:0 0 16px;font-family:${fontFamily};font-size:16px;line-height:1.7;color:${ink};">Best,<br />The Provenance team</p>
+<p style="margin:0;font-family:${fontFamily};font-size:12px;line-height:1.6;color:${inkMuted};"><a href="${SITE_URL}/settings" target="_blank" rel="noopener noreferrer" style="color:${inkMuted};text-decoration:underline;">Manage email preferences</a></p>`;
+
+  return buildEmailHtml('Your weekly Provenance digest', `<div>${body}</div>`, theme);
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -306,8 +349,10 @@ export async function GET(request: NextRequest) {
     results.trialNudgeError = String(err);
   }
 
+  const digestTo = request.nextUrl.searchParams.get('digestTo')?.trim() || null;
+
   try {
-    results.weeklyDigest = await sendWeeklyDigest();
+    results.weeklyDigest = await sendWeeklyDigest({ force: Boolean(digestTo), onlyEmail: digestTo });
   } catch (err) {
     console.error('[CRON/lifecycle-emails] weekly digest failed', err);
     results.weeklyDigestError = String(err);
