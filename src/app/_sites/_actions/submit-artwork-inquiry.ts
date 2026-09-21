@@ -57,15 +57,34 @@ export async function submitArtworkInquiry(
 
     // Capture lead into owner's CRM (best-effort; do not block on failure)
     try {
-      await captureCrmContacts(input.ownerAccountId, [
-        {
-          name,
-          email,
-          notes: message ?? undefined,
-          source: 'site_inquiry',
+      // Visitors have no session, so capture runs with the admin client. Take the owner
+      // from the artwork itself: input.ownerAccountId is client-supplied and must not
+      // decide whose mailing list receives a contact.
+      const { data: artwork } = await asUntyped(admin)
+        .from('artworks')
+        .select('account_id')
+        .eq('id', input.artworkId)
+        .maybeSingle();
+
+      if (artwork?.account_id) {
+        await captureCrmContacts(
+          artwork.account_id as string,
+          [
+            {
+              name,
+              email,
+              notes: message ?? undefined,
+              source: 'site_inquiry',
+              artworkId: input.artworkId,
+            },
+          ],
+          { client: asUntyped(admin) },
+        );
+      } else {
+        console.warn('[ArtworkInquiry] CRM capture skipped — artwork not found', {
           artworkId: input.artworkId,
-        },
-      ]);
+        });
+      }
     } catch (crmErr) {
       console.error('[ArtworkInquiry] CRM capture failed (non-fatal)', crmErr);
     }

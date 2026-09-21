@@ -4,6 +4,7 @@ type Row = Record<string, unknown>;
 type Result = { error: { code?: string; message: string } | null };
 
 const state = vi.hoisted(() => ({
+  sessionClientCalls: 0,
   existing: null as Row | null,
   insertResults: [] as Result[],
   inserts: [] as Row[],
@@ -11,8 +12,7 @@ const state = vi.hoisted(() => ({
   updateResults: [] as Result[],
 }));
 
-vi.mock('@kit/supabase/server-client', () => ({
-  getSupabaseServerClient: () => ({
+const makeClient = vi.hoisted(() => () => ({
     from: () => {
       // Every lookup filter returns the same chain; the lookup resolves to `existing`.
       const chain: Record<string, unknown> = {};
@@ -31,16 +31,24 @@ vi.mock('@kit/supabase/server-client', () => ({
         },
       };
     },
-  }),
+}));
+
+vi.mock('@kit/supabase/server-client', () => ({
+  getSupabaseServerClient: () => {
+    state.sessionClientCalls++;
+    return makeClient();
+  },
 }));
 
 vi.mock('./owner', () => ({ resolveArtistUserId: async () => 'artist-1' }));
 
 import { captureCrmContacts } from './capture-contact';
+import type { UntypedSupabaseClient } from '~/lib/supabase-untyped';
 
 const FK_ERROR: Result = { error: { code: '23503', message: 'fk violation' } };
 
 beforeEach(() => {
+  state.sessionClientCalls = 0;
   state.existing = null;
   state.insertResults = [];
   state.inserts = [];
@@ -94,5 +102,18 @@ describe('captureCrmContacts artwork link', () => {
   it('works unchanged for callers that pass no artwork', async () => {
     await captureCrmContacts('u1', [{ email: 'a@b.co', source: 'invoice' }]);
     expect(state.inserts[0]).toMatchObject({ contact_email: 'a@b.co', artwork_id: null });
+  });
+
+  it('uses an injected client (sessionless callers) and never opens the session client', async () => {
+    const admin = makeClient() as unknown as UntypedSupabaseClient;
+    await captureCrmContacts('owner-1', [{ email: 'a@b.co', source: 'site_inquiry', artworkId: 'art-1' }], { client: admin });
+    expect(state.inserts).toHaveLength(1);
+    expect(state.inserts[0]).toMatchObject({ artist_user_id: 'artist-1', artwork_id: 'art-1' });
+    expect(state.sessionClientCalls).toBe(0);
+  });
+
+  it('defaults to the session client when none is injected', async () => {
+    await captureCrmContacts('u1', [{ email: 'a@b.co', source: 'sale' }]);
+    expect(state.sessionClientCalls).toBe(1);
   });
 });

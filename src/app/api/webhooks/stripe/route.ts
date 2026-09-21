@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
                     source: 'artwork_purchase',
                     artworkId,
                   },
-                ]);
+                ], { client: admin }); // no user session in a webhook; owner id comes from our signed session metadata
               } catch (crmErr) {
                 console.error('[ArtworkSale] Webhook: CRM capture failed (non-fatal)', crmErr);
               }

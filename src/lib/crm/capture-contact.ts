@@ -1,4 +1,4 @@
-import { asUntyped } from '~/lib/supabase-untyped';
+import { asUntyped, type UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { resolveArtistUserId } from './owner';
 
@@ -29,10 +29,16 @@ function hasContactData(input: CaptureContactInput): boolean {
 /**
  * Upserts mailing-list contacts into artist_leads with is_lead=false.
  * Failures are logged and swallowed so primary actions are never blocked.
+ *
+ * By default runs as the signed-in user (RLS applies). Callers with no user
+ * session — the Stripe webhook, public artist-site forms — must pass the admin
+ * client, and must derive `actingUserId` from trusted server data, never from
+ * request input, since the admin client bypasses RLS.
  */
 export async function captureCrmContacts(
   actingUserId: string,
   contacts: CaptureContactInput[],
+  options?: { client?: UntypedSupabaseClient },
 ): Promise<void> {
   const valid = contacts.filter(hasContactData);
   if (valid.length === 0) return;
@@ -40,7 +46,7 @@ export async function captureCrmContacts(
   console.log('[CRM] captureCrmContacts started', { count: valid.length, actingUserId });
 
   try {
-    const client = asUntyped(getSupabaseServerClient());
+    const client = options?.client ?? asUntyped(getSupabaseServerClient());
     const artistUserId = await resolveArtistUserId(client, actingUserId);
 
     for (const input of valid) {
