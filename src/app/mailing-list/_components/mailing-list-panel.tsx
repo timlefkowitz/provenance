@@ -61,12 +61,13 @@ function escapeCsv(value: string) {
 }
 
 function downloadCsv(contacts: ArtistLead[]) {
-  const header = ['Name', 'Email', 'Phone', 'Source', 'Notes', 'On pipeline'];
+  const header = ['Name', 'Email', 'Phone', 'Source', 'Artwork', 'Notes', 'On pipeline'];
   const rows = contacts.map((c) => [
     c.contact_name ?? '',
     c.contact_email ?? '',
     c.contact_phone ?? '',
     sourceLabel(c.source),
+    c.artwork?.title ?? '',
     c.notes ?? '',
     c.is_lead ? 'yes' : 'no',
   ]);
