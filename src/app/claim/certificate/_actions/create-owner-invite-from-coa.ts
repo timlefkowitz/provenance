@@ -125,6 +125,7 @@ export async function createOwnerInviteFromCoa(
         email: inviteeEmail,
         name: inviteeName || null,
         source: 'certificate',
+        artworkId,
         notes: `Certificate of ownership invite — ${artworkTitle}`,
       },
     ]);

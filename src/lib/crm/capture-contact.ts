@@ -8,6 +8,8 @@ export type CaptureContactInput = {
   phone?: string | null;
   source: string;
   notes?: string | null;
+  /** Artwork this contact came from (sale, certificate, inquiry…); shown on hover in the mailing list. */
+  artworkId?: string | null;
 };
 
 function normalizeEmail(email: string | null | undefined): string | null {
@@ -47,13 +49,14 @@ export async function captureCrmContacts(
       const phone = input.phone?.trim() || null;
       const notes = input.notes?.trim() || null;
       const source = input.source?.trim() || null;
+      const artworkId = input.artworkId?.trim() || null;
 
-      let existing: { id: string; contact_name: string | null; contact_email: string | null; contact_phone: string | null; notes: string | null; source: string | null } | null = null;
+      let existing: { id: string; contact_name: string | null; contact_email: string | null; contact_phone: string | null; notes: string | null; source: string | null; artwork_id: string | null } | null = null;
 
       if (email) {
         const { data: byEmail } = await asUntyped(client)
           .from('artist_leads')
-          .select('id, contact_name, contact_email, contact_phone, notes, source')
+          .select('id, contact_name, contact_email, contact_phone, notes, source, artwork_id')
           .eq('artist_user_id', artistUserId)
           .ilike('contact_email', email)
           .limit(1)
@@ -64,7 +67,7 @@ export async function captureCrmContacts(
       if (!existing && name && !email) {
         const { data: byName } = await asUntyped(client)
           .from('artist_leads')
-          .select('id, contact_name, contact_email, contact_phone, notes, source')
+          .select('id, contact_name, contact_email, contact_phone, notes, source, artwork_id')
           .eq('artist_user_id', artistUserId)
           .is('contact_email', null)
           .ilike('contact_name', name)
@@ -82,13 +85,30 @@ export async function captureCrmContacts(
         if (phone && !existing.contact_phone) patch.contact_phone = phone;
         if (notes && !existing.notes) patch.notes = notes;
         if (source && !existing.source) patch.source = source;
+        // Keep the first linked artwork; never overwrite an existing link.
+        if (artworkId && !existing.artwork_id) patch.artwork_id = artworkId;
 
         if (Object.keys(patch).length > 1) {
-          const { error: updateError } = await asUntyped(client)
-            .from('artist_leads')
-            .update(patch)
-            .eq('id', existing.id)
-            .eq('artist_user_id', artistUserId);
+          const applyPatch = (p: Record<string, unknown>) =>
+            asUntyped(client)
+              .from('artist_leads')
+              .update(p)
+              .eq('id', existing.id)
+              .eq('artist_user_id', artistUserId);
+
+          let { error: updateError } = await applyPatch(patch);
+
+          // A stale artwork id (FK violation) must not block the other field updates.
+          if (updateError?.code === '23503' && 'artwork_id' in patch) {
+            console.warn('[CRM] captureCrmContacts: artwork link rejected on update', { artworkId });
+            const { artwork_id: _dropped, ...rest } = patch;
+            void _dropped;
+            if (Object.keys(rest).length > 1) {
+              ({ error: updateError } = await applyPatch(rest));
+            } else {
+              updateError = null;
+            }
+          }
 
           if (updateError) {
             console.error('[CRM] captureCrmContacts update failed', updateError);
@@ -97,7 +117,7 @@ export async function captureCrmContacts(
         continue;
       }
 
-      const { error: insertError } = await client.from('artist_leads').insert({
+      const row = {
         artist_user_id: artistUserId,
         contact_name: name,
         contact_email: email,
@@ -107,7 +127,17 @@ export async function captureCrmContacts(
         stage: 'interested',
         is_lead: false,
         intel: {},
-      });
+      };
+
+      let { error: insertError } = await client
+        .from('artist_leads')
+        .insert({ ...row, artwork_id: artworkId });
+
+      // A stale artwork id (FK violation) must not cost us the contact itself.
+      if (insertError?.code === '23503' && artworkId) {
+        console.warn('[CRM] captureCrmContacts: artwork link rejected, saving contact without it', { artworkId });
+        ({ error: insertError } = await client.from('artist_leads').insert(row));
+      }
 
       if (insertError) {
         console.error('[CRM] captureCrmContacts insert failed', insertError);

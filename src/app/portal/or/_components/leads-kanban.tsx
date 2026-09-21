@@ -92,6 +92,7 @@ import {
 import {
   LEAD_STAGES,
   LEAD_SOURCES,
+  SOURCE_LABELS,
   STAGE_LABELS,
   STAGE_STYLES,
   type LeadStage,
@@ -145,10 +146,9 @@ function FollowUpBadge({ date }: { date: string | null }) {
 
 function SourceBadge({ source }: { source: string | null }) {
   if (!source) return null;
-  const found = LEAD_SOURCES.find((s) => s.value === source);
   return (
     <span className="inline-flex items-center text-[10px] bg-parchment border border-wine/15 rounded px-1.5 py-0.5 font-serif text-ink/60">
-      {found?.label ?? source}
+      {SOURCE_LABELS[source] ?? source}
     </span>
   );
 }

@@ -16,9 +16,29 @@ export const LEAD_SOURCES = [
   { value: 'other',       label: 'Other' },
 ] as const;
 
-export const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
-  LEAD_SOURCES.map((s) => [s.value, s.label]),
-);
+/**
+ * Sources written automatically by contact capture (invoices, vendors, site
+ * inquiries, operations records…). Labelled for display but deliberately not in
+ * LEAD_SOURCES, which drives the manual "how you met" picker.
+ */
+const SYSTEM_SOURCE_LABELS: Record<string, string> = {
+  invoice: 'Invoice',
+  vendor: 'Vendor',
+  site_inquiry: 'Website Inquiry',
+  artwork_purchase: 'Artwork Purchase',
+  loan: 'Loan',
+  consignment: 'Consignment',
+  shipment: 'Shipment',
+  insurance: 'Insurance',
+  acquisition: 'Acquisition',
+  exhibition_plan: 'Exhibition Plan',
+  apify_lead: 'Imported Lead',
+};
+
+export const SOURCE_LABELS: Record<string, string> = {
+  ...SYSTEM_SOURCE_LABELS,
+  ...Object.fromEntries(LEAD_SOURCES.map((s) => [s.value, s.label])),
+};
 
 export type LeadSource = (typeof LEAD_SOURCES)[number]['value'];
 

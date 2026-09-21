@@ -208,6 +208,7 @@ export async function markArtworkSold(
           name: buyerName,
           email: buyerEmail,
           source: 'sale',
+          artworkId: input.artworkId,
           notes: `Marked sold — ${(artwork.title as string) || 'Untitled'}`,
         },
       ]);

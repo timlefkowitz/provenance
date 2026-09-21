@@ -297,6 +297,7 @@ export async function POST(request: NextRequest) {
                     email: buyerEmail,
                     name: buyerName ?? undefined,
                     source: 'artwork_purchase',
+                    artworkId,
                   },
                 ]);
               } catch (crmErr) {

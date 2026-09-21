@@ -11,31 +11,47 @@ import {
   ArrowUpRight,
   UserPlus,
   Loader2,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ImageIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Input } from '@kit/ui/input';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import {
-  SOURCE_LABELS,
-  type ArtistLead,
-} from '~/app/portal/or/_actions/leads-constants';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@kit/ui/tooltip';
+import type { ArtistLead } from '~/app/portal/or/_actions/leads-constants';
 import {
   createContact,
   deleteLead,
   promoteContactToLead,
 } from '~/app/portal/or/_actions/leads';
-
-function displayName(lead: ArtistLead) {
-  return lead.contact_name?.trim() || lead.contact_email || 'No name';
-}
-
-function sourceLabel(source: string | null) {
-  if (!source) return 'Unknown';
-  return SOURCE_LABELS[source] ?? source.replace(/_/g, ' ');
-}
+import {
+  ALL_SOURCES,
+  NO_SOURCE,
+  displayName,
+  filterAndSortContacts,
+  sourceLabel,
+  sourceOptions,
+  type SortDir,
+  type SortKey,
+} from '../_lib/contact-view';
 
 function escapeCsv(value: string) {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -64,10 +80,60 @@ function downloadCsv(contacts: ArtistLead[]) {
   URL.revokeObjectURL(url);
 }
 
+/** Hovering a contact reveals the artwork it was linked to (sale, certificate, inquiry…). */
+function LinkedArtworkHover({
+  artwork,
+  children,
+}: {
+  artwork: ArtistLead['artwork'];
+  children: React.ReactNode;
+}) {
+  if (!artwork) return <>{children}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="cursor-default">{children}</div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="right"
+        align="start"
+        className="bg-white text-ink border border-wine/15 shadow-lg p-2.5 max-w-[260px]"
+      >
+        <p className="text-[10px] uppercase tracking-wider text-ink/45 font-serif mb-1.5">
+          Linked artwork
+        </p>
+        <div className="flex items-center gap-2.5">
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded bg-parchment">
+            {artwork.image_url ? (
+              <Image src={artwork.image_url} alt="" fill className="object-cover" unoptimized />
+            ) : (
+              <ImageIcon className="absolute inset-0 m-auto h-5 w-5 text-ink/25" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-serif text-sm font-semibold leading-snug text-ink break-words">
+              {artwork.title || 'Untitled'}
+            </p>
+            <Link
+              href={`/artworks/${artwork.id}/certificate`}
+              className="text-[11px] font-serif text-wine/75 hover:text-wine hover:underline"
+            >
+              View artwork &rarr;
+            </Link>
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function MailingListPanel({ initialContacts }: { initialContacts: ArtistLead[] }) {
   const router = useRouter();
   const [contacts, setContacts] = useState<ArtistLead[]>(initialContacts);
   const [q, setQ] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<string>(ALL_SOURCES);
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -81,23 +147,35 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
     setContacts(initialContacts);
   }, [initialContacts]);
 
-  const rows = useMemo(() => {
-    let list = contacts.filter(
-      (c) => c.contact_name?.trim() || c.contact_email?.trim(),
-    );
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      list = list.filter(
-        (c) =>
-          c.contact_name?.toLowerCase().includes(s) ||
-          c.contact_email?.toLowerCase().includes(s) ||
-          c.contact_phone?.toLowerCase().includes(s) ||
-          c.notes?.toLowerCase().includes(s) ||
-          sourceLabel(c.source).toLowerCase().includes(s),
-      );
+  const sources = useMemo(() => sourceOptions(contacts), [contacts]);
+
+  // A filtered source can disappear (e.g. its last contact deleted); fall back to all.
+  const activeSource = sourceFilter === ALL_SOURCES || sources.some((o) => o.value === sourceFilter)
+    ? sourceFilter
+    : ALL_SOURCES;
+
+  const rows = useMemo(
+    () => filterAndSortContacts(contacts, { query: q, source: activeSource, sortKey, sortDir }),
+    [contacts, q, activeSource, sortKey, sortDir],
+  );
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
     }
-    return list.sort((a, b) => displayName(a).localeCompare(displayName(b)));
-  }, [contacts, q]);
+  };
+
+  const sortIcon = (key: SortKey) =>
+    sortKey !== key ? (
+      <ArrowUpDown className="h-3 w-3 opacity-40" />
+    ) : sortDir === 'asc' ? (
+      <ArrowUp className="h-3 w-3" />
+    ) : (
+      <ArrowDown className="h-3 w-3" />
+    );
 
   const resetForm = () => {
     setName('');
@@ -164,6 +242,24 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
             className="pl-8 font-serif text-sm h-10 border-wine/20 rounded-xl"
           />
         </div>
+        {sources.length > 0 && (
+          <Select value={activeSource} onValueChange={setSourceFilter}>
+            <SelectTrigger
+              aria-label="Filter by source"
+              className="w-[200px] h-10 font-serif text-sm border-wine/20 rounded-xl"
+            >
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_SOURCES}>All sources ({contacts.length})</SelectItem>
+              {sources.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label} ({o.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <p className="text-xs font-serif text-ink/40 shrink-0">
           {rows.length} contact{rows.length !== 1 ? 's' : ''}
         </p>
@@ -282,19 +378,30 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
           </Button>
         </div>
       ) : (
+        <TooltipProvider delayDuration={150}>
         <div className="rounded-2xl border border-wine/12 overflow-hidden bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm font-serif">
               <thead>
                 <tr className="bg-parchment/60 border-b border-wine/10">
-                  <th className="px-5 py-3 text-left text-[10px] uppercase tracking-wider text-ink/50 font-semibold">
-                    Contact
+                  <th
+                    className="px-5 py-3 text-left text-[10px] uppercase tracking-wider text-ink/50 font-semibold"
+                    aria-sort={sortKey === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    <button type="button" onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-wine">
+                      Contact {sortIcon('name')}
+                    </button>
                   </th>
                   <th className="px-5 py-3 text-left hidden sm:table-cell text-[10px] uppercase tracking-wider text-ink/50 font-semibold">
                     Phone
                   </th>
-                  <th className="px-5 py-3 text-left hidden md:table-cell text-[10px] uppercase tracking-wider text-ink/50 font-semibold">
-                    Source
+                  <th
+                    className="px-5 py-3 text-left hidden md:table-cell text-[10px] uppercase tracking-wider text-ink/50 font-semibold"
+                    aria-sort={sortKey === 'source' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    <button type="button" onClick={() => toggleSort('source')} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-wine">
+                      Source {sortIcon('source')}
+                    </button>
                   </th>
                   <th className="px-5 py-3 text-right text-[10px] uppercase tracking-wider text-ink/50 font-semibold">
                     Actions
@@ -305,8 +412,18 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
                 {rows.map((contact) => (
                   <tr key={contact.id} className="hover:bg-parchment/40 transition-colors group">
                     <td className="px-5 py-3.5 align-top min-w-0">
+                      <LinkedArtworkHover artwork={contact.artwork}>
                       <div className="flex items-start gap-2">
                         <p className="font-semibold text-ink text-sm leading-snug">{displayName(contact)}</p>
+                        {contact.artwork && (
+                          <Link
+                            href={`/artworks/${contact.artwork.id}/certificate`}
+                            aria-label={`Linked artwork: ${contact.artwork.title || 'Untitled'}`}
+                            className="text-wine/45 hover:text-wine shrink-0 mt-0.5"
+                          >
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          </Link>
+                        )}
                         {contact.is_lead && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
                             Pipeline
@@ -325,6 +442,7 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
                       {contact.notes && (
                         <p className="text-[11px] text-ink/40 mt-0.5 line-clamp-1">{contact.notes}</p>
                       )}
+                      </LinkedArtworkHover>
                     </td>
                     <td className="px-5 py-3.5 align-top text-ink/55 text-xs hidden sm:table-cell">
                       {contact.contact_phone ? (
@@ -337,9 +455,14 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
                       )}
                     </td>
                     <td className="px-5 py-3.5 align-top hidden md:table-cell">
-                      <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-wine/8 text-wine/80 font-medium">
+                      <button
+                        type="button"
+                        title="Show only this source"
+                        onClick={() => setSourceFilter(contact.source?.trim() || NO_SOURCE)}
+                        className="text-[11px] px-2.5 py-0.5 rounded-full bg-wine/8 text-wine/80 font-medium hover:bg-wine/15 transition-colors"
+                      >
                         {sourceLabel(contact.source)}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-3 py-3 text-right align-top">
                       <div className="flex items-center justify-end gap-1">
@@ -373,12 +496,24 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
               </tbody>
             </table>
           </div>
-          {rows.length === 0 && q.trim() && (
+          {rows.length === 0 && (q.trim() || activeSource !== ALL_SOURCES) && (
             <div className="px-5 py-10 text-center">
-              <p className="font-serif text-sm text-ink/40">No contacts match &ldquo;{q}&rdquo;</p>
+              <p className="font-serif text-sm text-ink/40">
+                No contacts match{q.trim() ? <> &ldquo;{q}&rdquo;</> : ' this filter'}
+              </p>
+              {activeSource !== ALL_SOURCES && (
+                <button
+                  type="button"
+                  onClick={() => setSourceFilter(ALL_SOURCES)}
+                  className="mt-2 text-xs font-serif text-wine/70 hover:text-wine underline"
+                >
+                  Show all sources
+                </button>
+              )}
             </div>
           )}
         </div>
+        </TooltipProvider>
       )}
 
       <p className="text-xs font-serif text-ink/35 text-center">

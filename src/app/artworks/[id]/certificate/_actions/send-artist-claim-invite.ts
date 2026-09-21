@@ -125,6 +125,7 @@ export async function sendArtistClaimInvite(
       {
         email: normalizedEmail,
         source: 'certificate',
+        artworkId,
         notes: `Artist claim invite sent — artwork ${artworkId}`,
       },
     ]);

@@ -63,6 +63,7 @@ export async function submitArtworkInquiry(
           email,
           notes: message ?? undefined,
           source: 'site_inquiry',
+          artworkId: input.artworkId,
         },
       ]);
     } catch (crmErr) {

@@ -136,6 +136,7 @@ export async function createArtworkTransferInvite(
           email: buyerEmail,
           name: params.buyerName ?? null,
           source: 'sale',
+          artworkId,
           notes: `Certificate of ownership — ${workTitle}`,
         },
       ]);
