@@ -51,6 +51,8 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Extra headers, e.g. List-Unsubscribe for one-click unsubscribe. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -75,6 +77,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
       subject: options.subject,
       html: options.html,
       text: options.text || stripHtml(options.html),
+      ...(options.headers ? { headers: options.headers } : {}),
     });
 
     if (error) {

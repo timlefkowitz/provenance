@@ -9,6 +9,7 @@ export default defineConfig({
       'src/lib/seo/**/*.test.ts',
       'src/lib/apple/**/*.test.ts',
       'src/lib/weekly-digest.test.ts',
+      'src/lib/email-preferences.test.ts',
       'src/app/mailing-list/**/*.test.ts',
       'src/lib/crm/**/*.test.ts',
     ],

@@ -11,6 +11,7 @@ import {
 import type { EmailTheme } from '~/lib/email-layout';
 import { getResolvedEmailTheme } from '~/lib/email-templates-store';
 
+import { digestUnsubscribeUrls, getDigestOptOuts } from '~/lib/email-preferences';
 import { constantTimeEquals } from '~/lib/security/constant-time';
 import { asUntyped } from '~/lib/supabase-untyped';
 import {
@@ -169,7 +170,7 @@ const DIGEST_CONCURRENCY = 5;
 async function sendWeeklyDigest(opts: {
   force: boolean;
   onlyEmail: string | null;
-}): Promise<{ sent: number; skipped: number }> {
+}): Promise<{ sent: number; skipped: number; blocked?: string }> {
   const now = new Date();
   // Only send on Mondays (unless forced for testing)
   if (!opts.force && now.getUTCDay() !== 1) {
@@ -206,7 +207,22 @@ async function sendWeeklyDigest(opts: {
   const { data: accounts } = await accountsQuery;
   if (!accounts?.length) return { sent: 0, skipped: 0 };
 
-  const recipientIds = accounts.map((a: { id: string }) => a.id);
+  // Honour opt-outs. Fail closed: if they can't be read (e.g. the preferences migration
+  // isn't applied) nothing is sent, rather than emailing people who unsubscribed or
+  // sending an unsubscribe link that cannot work.
+  const optOuts = await getDigestOptOuts(
+    admin,
+    accounts.map((a: { id: string }) => a.id),
+  );
+  if (!optOuts.ready) {
+    console.error('[CRON/lifecycle-emails] digest blocked —', optOuts.reason);
+    return { sent: 0, skipped: 0, blocked: optOuts.reason };
+  }
+  const subscribedAccounts = accounts.filter((a: { id: string }) => !optOuts.optedOut.has(a.id));
+  const optedOutCount = accounts.length - subscribedAccounts.length;
+  if (!subscribedAccounts.length) return { sent: 0, skipped: optedOutCount };
+
+  const recipientIds = subscribedAccounts.map((a: { id: string }) => a.id);
   const [artists, openCallCandidates] = await Promise.all([
     loadDigestArtists(admin, recipientIds),
     loadOpenCallCandidates(admin, now),
@@ -242,10 +258,16 @@ async function sendWeeklyDigest(opts: {
         return;
       }
 
+      const unsubscribeUrls = digestUnsubscribeUrls(SITE_URL, account.id);
       await sendEmail({
         to: account.email,
         subject: 'Your weekly Provenance digest — grants & open calls',
-        html: buildDigestHtml(account.name || account.email.split('@')[0], digest, theme, artist),
+        html: buildDigestHtml(account.name || account.email.split('@')[0], digest, theme, unsubscribeUrls.page, artist),
+        headers: {
+          // Lets Gmail / Apple Mail show a native Unsubscribe button (RFC 8058 one-click).
+          'List-Unsubscribe': `<${unsubscribeUrls.oneClick}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       });
       console.log('[CRON/lifecycle-emails] digest sent', {
         userId: account.id,
@@ -259,11 +281,11 @@ async function sendWeeklyDigest(opts: {
     }
   };
 
-  for (let i = 0; i < accounts.length; i += DIGEST_CONCURRENCY) {
-    await Promise.all(accounts.slice(i, i + DIGEST_CONCURRENCY).map(sendOne));
+  for (let i = 0; i < subscribedAccounts.length; i += DIGEST_CONCURRENCY) {
+    await Promise.all(subscribedAccounts.slice(i, i + DIGEST_CONCURRENCY).map(sendOne));
   }
 
-  return { sent, skipped };
+  return { sent, skipped: skipped + optedOutCount };
 }
 
 function formatDeadline(deadline: string | null): string {
@@ -277,6 +299,7 @@ function buildDigestHtml(
   name: string,
   digest: ArtistDigest,
   theme: EmailTheme,
+  unsubscribeUrl: string,
   artist?: DigestArtist,
 ): string {
   const { ink, wine, inkMuted, cardBorder, fontFamily, fontFamilyHeading } = theme;
@@ -326,7 +349,7 @@ ${buildBulletproofButtonTable(`${SITE_URL}/grants`, 'Open Grants Assistant', the
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 24px;border-collapse:collapse;"><tr><td height="1" bgcolor="${cardBorder}" style="height:1px;line-height:1px;font-size:1px;background-color:${cardBorder};">&nbsp;</td></tr></table>
 <p style="margin:0 0 16px;font-family:${fontFamily};font-size:14px;line-height:1.6;color:${inkMuted};">Grant suggestions are AI-generated from your profile &mdash; please confirm deadlines and eligibility on each program's official site.</p>
 <p style="margin:0 0 16px;font-family:${fontFamily};font-size:16px;line-height:1.7;color:${ink};">Best,<br />The Provenance team</p>
-<p style="margin:0;font-family:${fontFamily};font-size:12px;line-height:1.6;color:${inkMuted};"><a href="${SITE_URL}/settings" target="_blank" rel="noopener noreferrer" style="color:${inkMuted};text-decoration:underline;">Manage email preferences</a></p>`;
+<p style="margin:0;font-family:${fontFamily};font-size:12px;line-height:1.6;color:${inkMuted};"><a href="${escapeHtml(unsubscribeUrl)}" target="_blank" rel="noopener noreferrer" style="color:${inkMuted};text-decoration:underline;">Unsubscribe from this digest</a></p>`;
 
   return buildEmailHtml('Your weekly Provenance digest', `<div>${body}</div>`, theme);
 }
