@@ -80,6 +80,8 @@ export type ArtistLead = {
   created_at: string;
   updated_at: string;
   artwork?: { id: string; title: string; image_url: string | null } | null;
+  /** Every artwork the contact is linked to (repeat buyers, batch invites); includes `artwork`. */
+  artworks?: { id: string; title: string; image_url: string | null }[];
 };
 
 export const STAGE_LABELS: Record<LeadStage, string> = {

@@ -67,7 +67,7 @@ function downloadCsv(contacts: ArtistLead[]) {
     c.contact_email ?? '',
     c.contact_phone ?? '',
     sourceLabel(c.source),
-    c.artwork?.title ?? '',
+    linkedArtworks(c).map((a) => a.title || 'Untitled').join('; '),
     c.notes ?? '',
     c.is_lead ? 'yes' : 'no',
   ]);
@@ -81,15 +81,27 @@ function downloadCsv(contacts: ArtistLead[]) {
   URL.revokeObjectURL(url);
 }
 
-/** Hovering a contact reveals the artwork it was linked to (sale, certificate, inquiry…). */
+type LinkedArtwork = NonNullable<ArtistLead['artworks']>[number];
+
+/** All artworks a contact is linked to; falls back to the single legacy link. */
+function linkedArtworks(contact: ArtistLead): LinkedArtwork[] {
+  if (contact.artworks?.length) return contact.artworks;
+  return contact.artwork ? [contact.artwork] : [];
+}
+
+const HOVER_MAX_ARTWORKS = 4;
+
+/** Hovering a contact reveals the artworks it was linked to (sale, certificate, inquiry…). */
 function LinkedArtworkHover({
-  artwork,
+  artworks,
   children,
 }: {
-  artwork: ArtistLead['artwork'];
+  artworks: LinkedArtwork[];
   children: React.ReactNode;
 }) {
-  if (!artwork) return <>{children}</>;
+  if (artworks.length === 0) return <>{children}</>;
+  const shown = artworks.slice(0, HOVER_MAX_ARTWORKS);
+  const extra = artworks.length - shown.length;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -98,31 +110,38 @@ function LinkedArtworkHover({
       <TooltipContent
         side="right"
         align="start"
-        className="bg-white text-ink border border-wine/15 shadow-lg p-2.5 max-w-[260px]"
+        className="bg-white text-ink border border-wine/15 shadow-lg p-2.5 max-w-[280px]"
       >
         <p className="text-[10px] uppercase tracking-wider text-ink/45 font-serif mb-1.5">
-          Linked artwork
+          Linked artwork{artworks.length > 1 ? `s (${artworks.length})` : ''}
         </p>
-        <div className="flex items-center gap-2.5">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded bg-parchment">
-            {artwork.image_url ? (
-              <Image src={artwork.image_url} alt="" fill className="object-cover" unoptimized />
-            ) : (
-              <ImageIcon className="absolute inset-0 m-auto h-5 w-5 text-ink/25" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="font-serif text-sm font-semibold leading-snug text-ink break-words">
-              {artwork.title || 'Untitled'}
-            </p>
-            <Link
-              href={`/artworks/${artwork.id}/certificate`}
-              className="text-[11px] font-serif text-wine/75 hover:text-wine hover:underline"
-            >
-              View artwork &rarr;
-            </Link>
-          </div>
-        </div>
+        <ul className="space-y-2">
+          {shown.map((artwork) => (
+            <li key={artwork.id} className="flex items-center gap-2.5">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-parchment">
+                {artwork.image_url ? (
+                  <Image src={artwork.image_url} alt="" fill className="object-cover" unoptimized />
+                ) : (
+                  <ImageIcon className="absolute inset-0 m-auto h-5 w-5 text-ink/25" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-serif text-sm font-semibold leading-snug text-ink break-words">
+                  {artwork.title || 'Untitled'}
+                </p>
+                <Link
+                  href={`/artworks/${artwork.id}/certificate`}
+                  className="text-[11px] font-serif text-wine/75 hover:text-wine hover:underline"
+                >
+                  View artwork &rarr;
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {extra > 0 && (
+          <p className="mt-2 text-[11px] font-serif text-ink/50">+{extra} more</p>
+        )}
       </TooltipContent>
     </Tooltip>
   );
@@ -413,16 +432,19 @@ export function MailingListPanel({ initialContacts }: { initialContacts: ArtistL
                 {rows.map((contact) => (
                   <tr key={contact.id} className="hover:bg-parchment/40 transition-colors group">
                     <td className="px-5 py-3.5 align-top min-w-0">
-                      <LinkedArtworkHover artwork={contact.artwork}>
+                      <LinkedArtworkHover artworks={linkedArtworks(contact)}>
                       <div className="flex items-start gap-2">
                         <p className="font-semibold text-ink text-sm leading-snug">{displayName(contact)}</p>
-                        {contact.artwork && (
+                        {linkedArtworks(contact)[0] && (
                           <Link
-                            href={`/artworks/${contact.artwork.id}/certificate`}
-                            aria-label={`Linked artwork: ${contact.artwork.title || 'Untitled'}`}
-                            className="text-wine/45 hover:text-wine shrink-0 mt-0.5"
+                            href={`/artworks/${linkedArtworks(contact)[0].id}/certificate`}
+                            aria-label={`Linked artwork: ${linkedArtworks(contact).map((a) => a.title || 'Untitled').join(', ')}`}
+                            className="text-wine/45 hover:text-wine shrink-0 mt-0.5 inline-flex items-center gap-0.5"
                           >
                             <ImageIcon className="h-3.5 w-3.5" />
+                            {linkedArtworks(contact).length > 1 && (
+                              <span className="text-[10px] font-serif">{linkedArtworks(contact).length}</span>
+                            )}
                           </Link>
                         )}
                         {contact.is_lead && (

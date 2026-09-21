@@ -81,6 +81,7 @@ export async function batchSendCollectorInvites(
         email: normalizedEmail,
         name: inviteeName || null,
         source: 'certificate',
+        artworkIds: rows.map((r) => r.source_artwork_id),
         notes: `Batch certificate of ownership invite (${result.sent} work${result.sent === 1 ? '' : 's'})`,
       },
     ]);

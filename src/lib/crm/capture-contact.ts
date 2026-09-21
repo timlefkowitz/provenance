@@ -1,6 +1,7 @@
 import { asUntyped, type UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { resolveArtistUserId } from './owner';
+import { uniqueArtworkIds } from './lead-artworks';
 
 export type CaptureContactInput = {
   email?: string | null;
@@ -10,6 +11,8 @@ export type CaptureContactInput = {
   notes?: string | null;
   /** Artwork this contact came from (sale, certificate, inquiry…); shown on hover in the mailing list. */
   artworkId?: string | null;
+  /** Several artworks at once (batch invites, repeat buyers). Merged with `artworkId`. */
+  artworkIds?: string[] | null;
 };
 
 function normalizeEmail(email: string | null | undefined): string | null {
@@ -24,6 +27,37 @@ function normalizeName(name: string | null | undefined): string | null {
 
 function hasContactData(input: CaptureContactInput): boolean {
   return Boolean(normalizeEmail(input.email) || normalizeName(input.name));
+}
+
+/**
+ * Links a contact to artworks in artist_lead_artworks. Best-effort: a missing
+ * table or a stale artwork id must never cost us the contact itself.
+ */
+async function linkArtworks(
+  client: UntypedSupabaseClient,
+  leadId: string,
+  artworkIds: string[],
+  source: string | null,
+): Promise<void> {
+  if (artworkIds.length === 0) return;
+  const rows = artworkIds.map((artwork_id) => ({ lead_id: leadId, artwork_id, source }));
+  const write = (r: typeof rows) =>
+    client.from('artist_lead_artworks').upsert(r, { onConflict: 'lead_id,artwork_id', ignoreDuplicates: true });
+
+  const { error } = await write(rows);
+  if (!error) return;
+
+  if (error.code === '23503') {
+    // At least one artwork id is stale; link the rest one by one.
+    for (const row of rows) {
+      const { error: rowError } = await write([row]);
+      if (rowError && rowError.code !== '23503') {
+        console.error('[CRM] captureCrmContacts link failed', rowError);
+      }
+    }
+    return;
+  }
+  console.error('[CRM] captureCrmContacts link failed', error);
 }
 
 /**
@@ -55,7 +89,8 @@ export async function captureCrmContacts(
       const phone = input.phone?.trim() || null;
       const notes = input.notes?.trim() || null;
       const source = input.source?.trim() || null;
-      const artworkId = input.artworkId?.trim() || null;
+      const artworkIds = uniqueArtworkIds(input.artworkId, input.artworkIds);
+      const artworkId = artworkIds[0] ?? null;
 
       let existing: { id: string; contact_name: string | null; contact_email: string | null; contact_phone: string | null; notes: string | null; source: string | null; artwork_id: string | null } | null = null;
 
@@ -120,6 +155,7 @@ export async function captureCrmContacts(
             console.error('[CRM] captureCrmContacts update failed', updateError);
           }
         }
+        await linkArtworks(client, existing.id, artworkIds, source);
         continue;
       }
 
@@ -135,18 +171,26 @@ export async function captureCrmContacts(
         intel: {},
       };
 
-      let { error: insertError } = await client
+      let { data: inserted, error: insertError } = await client
         .from('artist_leads')
-        .insert({ ...row, artwork_id: artworkId });
+        .insert({ ...row, artwork_id: artworkId })
+        .select('id')
+        .maybeSingle();
 
       // A stale artwork id (FK violation) must not cost us the contact itself.
       if (insertError?.code === '23503' && artworkId) {
         console.warn('[CRM] captureCrmContacts: artwork link rejected, saving contact without it', { artworkId });
-        ({ error: insertError } = await client.from('artist_leads').insert(row));
+        ({ data: inserted, error: insertError } = await client
+          .from('artist_leads')
+          .insert(row)
+          .select('id')
+          .maybeSingle());
       }
 
       if (insertError) {
         console.error('[CRM] captureCrmContacts insert failed', insertError);
+      } else if (inserted?.id) {
+        await linkArtworks(client, inserted.id as string, artworkIds, source);
       }
     }
 

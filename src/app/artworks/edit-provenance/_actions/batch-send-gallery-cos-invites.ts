@@ -102,6 +102,7 @@ export async function batchSendGalleryCoSInvites(
       {
         email: normalizedEmail,
         source: 'certificate',
+        artworkIds: rows.map((r) => r.source_artwork_id),
         notes: `Gallery CoS invite (${recipientRole}, ${result.sent} work${result.sent === 1 ? '' : 's'})`,
       },
     ]);

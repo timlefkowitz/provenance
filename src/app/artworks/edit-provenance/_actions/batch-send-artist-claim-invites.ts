@@ -80,6 +80,7 @@ export async function batchSendArtistClaimInvites(
       {
         email: normalizedEmail,
         source: 'certificate',
+        artworkIds: rows.map((r) => r.source_artwork_id),
         notes: `Batch artist claim invite (${result.sent} work${result.sent === 1 ? '' : 's'})`,
       },
     ]);

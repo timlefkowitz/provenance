@@ -9,6 +9,7 @@ import {
   normalizeIntel,
 } from './crm-intel';
 import { type ArtistLead, type CrmLeadIntel, type LeadStage } from './leads-constants';
+import { mergeLeadArtworks } from '~/lib/crm/lead-artworks';
 
 const CRM_PATHS = ['/portal/or', '/mailing-list'] as const;
 
@@ -34,16 +35,25 @@ const SELECT_FIELDS = `
   intel,
   created_at,
   updated_at,
-  artwork:artworks(id, title, image_url)
+  artwork:artworks!artwork_id(id, title, image_url)
+`;
+
+// `!artwork_id` pins the direct relationship: with the artist_lead_artworks link table
+// there are two paths from leads to artworks and an unhinted embed would be ambiguous.
+const SELECT_FIELDS_WITH_LINKS = `${SELECT_FIELDS.trimEnd()},
+  lead_artworks:artist_lead_artworks(artwork:artworks(id, title, image_url))
 `;
 
 function normalizeLeads(rows: unknown[]): ArtistLead[] {
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
+    const artwork = (Array.isArray(r.artwork) ? (r.artwork as unknown[])[0] ?? null : r.artwork ?? null) as ArtistLead['artwork'];
+    const { lead_artworks: linked, ...rest } = r;
     return {
-      ...r,
+      ...rest,
       is_lead: r.is_lead !== false,
-      artwork: Array.isArray(r.artwork) ? (r.artwork as unknown[])[0] ?? null : r.artwork ?? null,
+      artwork,
+      artworks: mergeLeadArtworks(artwork, linked),
       intel: normalizeIntel(r.intel),
     } as ArtistLead;
   });
@@ -61,11 +71,20 @@ export async function getLeadsForArtist(): Promise<ArtistLead[]> {
 
   const artistUserId = await resolveArtistUserId(client, user.id);
 
-  const { data, error } = await asUntyped(client)
-    .from('artist_leads')
-    .select(SELECT_FIELDS)
-    .eq('artist_user_id', artistUserId)
-    .order('updated_at', { ascending: false });
+  const fetchLeads = (fields: string) =>
+    asUntyped(client)
+      .from('artist_leads')
+      .select(fields)
+      .eq('artist_user_id', artistUserId)
+      .order('updated_at', { ascending: false });
+
+  let { data, error } = await fetchLeads(SELECT_FIELDS_WITH_LINKS);
+
+  // If the link table is unavailable, still show contacts (with their single linked artwork).
+  if (error) {
+    console.error('[Leads] getLeadsForArtist with artwork links failed, retrying without', error);
+    ({ data, error } = await fetchLeads(SELECT_FIELDS));
+  }
 
   if (error) {
     console.error('[Leads] getLeadsForArtist failed', error);
