@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { asUntyped } from '~/lib/supabase-untyped';
 import {
   Activity,
@@ -594,24 +595,30 @@ export async function AdminUserAnalytics() {
                 ) : (
                   <ul className="space-y-2">
                     {newestAccounts.map((u) => (
-                      <li key={u.id} className="flex items-center gap-2">
-                        <Avatar label={bestLabel(u)} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-mono text-[13px] text-slate-200">
-                            {bestLabel(u)}
-                          </p>
-                          {u.email && u.name && (
-                            <p className="truncate font-mono text-[11px] text-slate-500">{u.email}</p>
-                          )}
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-mono text-[11px] tabular-nums text-slate-400">
-                            {formatAccountCreated(u.createdAt)}
-                          </p>
-                          <p className="font-mono text-[10px] text-slate-600">
-                            {formatRelative(u.createdAt)}
-                          </p>
-                        </div>
+                      <li key={u.id}>
+                        <Link
+                          href={`/artists/${u.id}`}
+                          title={`View profile: ${bestLabel(u)}`}
+                          className="-mx-1 flex items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-[#1793d1]/10"
+                        >
+                          <Avatar label={bestLabel(u)} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-mono text-[13px] text-slate-200">
+                              {bestLabel(u)}
+                            </p>
+                            {u.email && u.name && (
+                              <p className="truncate font-mono text-[11px] text-slate-500">{u.email}</p>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="font-mono text-[11px] tabular-nums text-slate-400">
+                              {formatAccountCreated(u.createdAt)}
+                            </p>
+                            <p className="font-mono text-[10px] text-slate-600">
+                              {formatRelative(u.createdAt)}
+                            </p>
+                          </div>
+                        </Link>
                       </li>
                     ))}
                   </ul>
