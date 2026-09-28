@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { escapeIlike } from '~/lib/escape-ilike';
 import { seededShuffle } from '~/lib/seeded-shuffle';
+import { getBlockedUserIds, isOwnedByBlocked } from '~/lib/moderation/blocks';
+import { getDirectoryHiddenAccountIds } from '~/lib/directory-hidden';
 
 const FeedQuerySchema = z.object({
   seed: z.string().min(1).max(100),
@@ -111,6 +113,18 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = client as any;
 
+    // Guideline 1.2: never show a blocked user's artworks to the blocker.
+    // Internal accounts (App Review demo logins) stay out of the public feed,
+    // except for their own owner.
+    const [blocked, hidden] = await Promise.all([getBlockedUserIds(user?.id), getDirectoryHiddenAccountIds()]);
+    if (user) hidden.delete(user.id);
+    const visible = (list: ArtworkRow[]): ArtworkRow[] =>
+      list.filter(
+        (a) =>
+          !isOwnedByBlocked(blocked, a.account_id, a.artist_account_id) &&
+          !isOwnedByBlocked(hidden, a.account_id, a.artist_account_id),
+      );
+
     // "Following" requires auth — return empty immediately if signed out
     if (sort === 'following' && !user) {
       console.log('[API/artworks/feed] Following sort requested but user not signed in');
@@ -119,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     // --- sort: exhibitions ---
     if (sort === 'exhibitions') {
-      const exhibitionArtworks = await fetchExhibitionArtworks(db, q);
+      const exhibitionArtworks = visible(await fetchExhibitionArtworks(db, q));
 
       const sorted = [...exhibitionArtworks].sort((a, b) => {
         const da = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -164,7 +178,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch artworks' }, { status: 500 });
       }
 
-      const all = rows ?? [];
+      const all = visible(rows ?? []);
       const items = all.slice(offset, offset + limit);
       const hasMore = offset + limit < all.length;
 
@@ -187,7 +201,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch artworks' }, { status: 500 });
       }
 
-      const all = rows ?? [];
+      const all = visible(rows ?? []);
 
       if (all.length === 0) {
         return NextResponse.json({ items: [], hasMore: false });
@@ -251,7 +265,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch artworks' }, { status: 500 });
       }
 
-      const all = rows ?? [];
+      const all = visible(rows ?? []);
       const shuffled = seededShuffle(all, seed);
       const items = shuffled.slice(offset, offset + limit);
       const hasMore = offset + limit < shuffled.length;
@@ -282,7 +296,7 @@ export async function GET(request: NextRequest) {
     const mainArtworks = rows ?? [];
     const mainIds = new Set(mainArtworks.map((a: ArtworkRow) => a.id));
     const newExhibitionArtworks = exhibitionArtworks.filter((a) => !mainIds.has(a.id));
-    const all = [...mainArtworks, ...newExhibitionArtworks];
+    const all = visible([...mainArtworks, ...newExhibitionArtworks]);
 
     const shuffled = seededShuffle(all, seed);
     const items = shuffled.slice(offset, offset + limit);

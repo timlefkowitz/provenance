@@ -5,6 +5,8 @@ import { getUserRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES, CERTIFI
 import { isPublicDirectoryGallery } from '~/config/public-registry-galleries';
 import { MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY } from '~/config/registry-directory-requirements';
 import { registryRowKey } from './_lib/registry-row-key';
+import { getBlockedUserIds } from '~/lib/moderation/blocks';
+import { getDirectoryHiddenAccountIds } from '~/lib/directory-hidden';
 
 export const metadata = {
   title: 'Artists | Provenance',
@@ -415,8 +417,17 @@ export default async function RegistryPage() {
     };
   });
 
+  // Guideline 1.2: hide accounts the viewer has blocked. Also hide internal
+  // accounts (App Review demo logins) flagged hidden_from_directory.
+  const { data: { user: viewer } } = await client.auth.getUser();
+  const [blockedIds, hiddenIds] = await Promise.all([
+    getBlockedUserIds(viewer?.id),
+    getDirectoryHiddenAccountIds(),
+  ]);
+
   const minWorks = MIN_VERIFIED_ARTWORKS_FOR_DIRECTORY;
   const directoryAccounts = withPreview
+    .filter((a) => !blockedIds.has(a.id) && !hiddenIds.has(a.id))
     .filter((a) => {
       const key = registryRowKey(a);
       return (artworkCounts[key] ?? 0) >= minWorks;
@@ -427,6 +438,9 @@ export default async function RegistryPage() {
       const bTime = b.latestArtworkAt ? new Date(b.latestArtworkAt).getTime() : 0;
       return bTime - aTime;
     });
+
+  // Don't leak hidden / blocked accounts' ids through the counts map either.
+  for (const id of [...hiddenIds, ...blockedIds]) delete artworkCounts[id];
 
   console.log('[Registry] RegistryPage load finished', {
     combined: withPreview.length,

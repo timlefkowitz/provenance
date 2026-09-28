@@ -1,10 +1,9 @@
 'use server';
 
-import { asUntyped } from '~/lib/supabase-untyped';
 import { headers } from 'next/headers';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { createNotification } from '~/lib/notifications';
+import { notifyAdmins } from '~/lib/admin-notify';
 import { checkRateLimit } from '~/lib/rate-limit';
 
 const VALID_CATEGORIES = ['bug', 'idea', 'praise', 'question', 'other'] as const;
@@ -33,60 +32,17 @@ function normalizeCategory(input: unknown): FeedbackCategory {
     : 'other';
 }
 
-/**
- * Notify all admins. We treat `accounts.public_data->admin = true` as
- * the source of truth (matches `~/lib/admin.ts`). Best-effort — failures
- * to notify do NOT roll back the ticket.
- */
-async function notifyAdmins(ticketId: string, summary: string, isAnonymous: boolean) {
-  try {
-    const admin = getSupabaseServerAdminClient();
-    // public_data may not be in the typed columns set for accounts in
-    // every environment; cast to any to keep this resilient.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: adminAccounts, error } = await asUntyped(admin)
-      .from('accounts')
-      .select('id, public_data');
-
-    if (error) {
-      console.error('[Feedback] failed to load admin accounts', error);
-      return;
-    }
-
-    const adminIds = (adminAccounts ?? [])
-      .filter((row) => {
-        const pd = row.public_data as Record<string, unknown> | null;
-        return pd?.admin === true;
-      })
-      .map((row) => row.id as string);
-
-    console.log('[Feedback] notifying admins', { ticketId, count: adminIds.length });
-
-    await Promise.all(
-      adminIds.map((adminId) =>
-        createNotification({
-          userId: adminId,
-          // Reuses an existing notification type so the badge / list
-          // renders without a schema change. The metadata.kind discriminator
-          // lets us specialize the rendering later.
-          type: 'message',
-          title: isAnonymous
-            ? 'New anonymous feedback'
-            : 'New feedback ticket',
-          message: summary.slice(0, 200),
-          metadata: {
-            kind: 'feedback_ticket',
-            ticket_id: ticketId,
-            href: `/admin/feedback#${ticketId}`,
-          },
-        }).catch((err) => {
-          console.error('[Feedback] notify admin failed', adminId, err);
-        }),
-      ),
-    );
-  } catch (err) {
-    console.error('[Feedback] notifyAdmins threw', err);
-  }
+async function notifyAdminsOfTicket(ticketId: string, summary: string, isAnonymous: boolean) {
+  await notifyAdmins({
+    title: isAnonymous ? 'New anonymous feedback' : 'New feedback ticket',
+    message: summary,
+    metadata: {
+      kind: 'feedback_ticket',
+      ticket_id: ticketId,
+      href: `/admin/feedback#${ticketId}`,
+    },
+    logTag: 'Feedback',
+  });
 }
 
 export async function submitFeedback(
@@ -184,7 +140,7 @@ export async function submitFeedback(
     return { ok: false, error: 'Could not save your feedback. Please try again.' };
   }
 
-  await notifyAdmins(data.id as string, message, isAnonymous);
+  await notifyAdminsOfTicket(data.id as string, message, isAnonymous);
 
   return { ok: true, ticketId: data.id as string };
 }

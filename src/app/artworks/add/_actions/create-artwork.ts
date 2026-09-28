@@ -10,6 +10,7 @@ import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-r
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
 export async function createArtwork(formData: FormData, userId: string) {
   try {
@@ -25,6 +26,9 @@ export async function createArtwork(formData: FormData, userId: string) {
 
     if (!imageFile || !title) {
       return { error: 'Title and image are required' };
+    }
+    if (containsObjectionableText(title, description, artistName, medium)) {
+      return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
     // Ensure account exists and get role for certificate type (Gallery → Show, Collector → Collection, Artist → Authenticity)

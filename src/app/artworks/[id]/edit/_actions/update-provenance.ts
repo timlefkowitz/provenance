@@ -9,6 +9,7 @@ import {
   canManageExhibition,
 } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
 export async function updateProvenance(
   artworkId: string,
@@ -48,6 +49,18 @@ export async function updateProvenance(
 
     if (!user) {
       return { error: 'You must be signed in to update provenance' };
+    }
+    if (
+      containsObjectionableText(
+        provenance.title,
+        provenance.description,
+        provenance.artist_name,
+        provenance.medium,
+        provenance.historicContext,
+        provenance.celebrityNotes,
+      )
+    ) {
+      return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
     // Fetch current artwork state — includes all provenance fields + existing history

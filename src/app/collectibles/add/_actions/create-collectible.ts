@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
 /**
  * Create a single collectible with a Certificate of Ownership.
@@ -44,6 +45,9 @@ export async function createCollectible(formData: FormData, userId: string) {
     }
     if (!title) {
       return { error: 'A title is required' };
+    }
+    if (containsObjectionableText(title, description, manufacturer)) {
+      return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
     const year = yearRaw ? parseInt(yearRaw, 10) : null;

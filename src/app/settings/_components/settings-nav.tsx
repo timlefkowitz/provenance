@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@kit/ui/utils';
-import { User, Palette, CreditCard, Users, LogOut, Layers, ShieldCheck } from 'lucide-react';
+import { User, Palette, CreditCard, Users, LogOut, Layers, ShieldCheck, Lock } from 'lucide-react';
 
 type Section = {
   id: string;
@@ -17,6 +17,7 @@ const SECTIONS: Section[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
   { id: 'teams', label: 'Teams', icon: <Users className="h-4 w-4" /> },
   { id: 'security', label: 'Security', icon: <ShieldCheck className="h-4 w-4" /> },
+  { id: 'privacy', label: 'Privacy', icon: <Lock className="h-4 w-4" /> },
   { id: 'account-actions', label: 'Account Actions', icon: <LogOut className="h-4 w-4" /> },
 ];
 

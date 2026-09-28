@@ -13,6 +13,8 @@ import { Button } from '@kit/ui/button';
 import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
+import { getBlockedUserIds } from '~/lib/moderation/blocks';
+import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,6 +123,11 @@ export default async function ExhibitionPage({
   const isOwner =
     !!user && (await canManageExhibition(user.id, exhibition.gallery_id));
 
+  // Guideline 1.2: hide content from users the viewer has blocked.
+  if (!isOwner && (await getBlockedUserIds(user?.id)).has(exhibition.gallery_id)) {
+    return <BlockedContentNotice ownerId={exhibition.gallery_id} />;
+  }
+
   const memories = await getExhibitionMemories(id);
 
   // Resolve back link
@@ -213,6 +220,14 @@ export default async function ExhibitionPage({
                   Edit
                 </Link>
               </Button>
+            )}
+            {!isOwner && (
+              <ContentSafetyMenu
+                targetType="exhibition"
+                targetId={id}
+                ownerId={exhibition.gallery_id}
+                currentUserId={user?.id ?? null}
+              />
             )}
           </div>
 

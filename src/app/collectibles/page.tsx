@@ -9,6 +9,7 @@ import {
   type CollectibleRow,
 } from '~/lib/collectibles/constants';
 import { formatMoneyCents, parseDeclaredValueCents } from '~/lib/collectibles/value';
+import { getBlockedUserIds } from '~/lib/moderation/blocks';
 
 export const metadata = {
   title: 'Collectibles | Provenance',
@@ -50,7 +51,9 @@ export default async function CollectiblesPage({
   if (error) {
     console.error('[Collectibles] browse fetch failed', error);
   }
-  const collectibles = (data ?? []) as CollectibleRow[];
+  // Guideline 1.2: hide collectibles owned by users the viewer has blocked.
+  const blockedIds = await getBlockedUserIds(user?.id);
+  const collectibles = ((data ?? []) as CollectibleRow[]).filter((c) => !blockedIds.has(c.account_id));
   console.log('[Collectibles] browse loaded', {
     count: collectibles.length,
     activeCategory,

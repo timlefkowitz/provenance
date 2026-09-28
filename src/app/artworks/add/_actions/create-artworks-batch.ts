@@ -19,6 +19,7 @@ import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
 import { createArtworkStripeListing } from './create-artwork-stripe-listing';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -92,6 +93,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
     if (images.length !== titles.length) {
       return { error: 'Each image must have a title' };
+    }
+    if (containsObjectionableText(...titles, description, artistName, medium)) {
+      return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
     // Ensure account exists

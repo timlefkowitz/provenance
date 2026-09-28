@@ -6,6 +6,7 @@ import { USER_ROLES } from '~/lib/user-roles';
 import { dedupeNewsPublications } from '~/lib/news-publications';
 import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
 export interface UpdateProfileInput {
   profileId: string;
@@ -58,6 +59,9 @@ export async function updateProfile(input: UpdateProfileInput) {
 
     if (!isOwner && !isGalleryTeamMember) {
       return { error: 'You do not have permission to update this profile' };
+    }
+    if (containsObjectionableText(input.name, input.bio, input.medium, input.location)) {
+      return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
     // Build update object

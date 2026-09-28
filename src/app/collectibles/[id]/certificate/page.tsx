@@ -5,6 +5,8 @@ import { formatCategoryLabel, type CollectibleRow } from '~/lib/collectibles/con
 import { CollectibleCertificate } from './_components/collectible-certificate';
 import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
+import { getBlockedUserIds } from '~/lib/moderation/blocks';
+import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +112,11 @@ export default async function CollectibleCertificatePage({
     console.error('[Collectibles] owner name lookup failed', err);
   }
 
+  // Guideline 1.2: hide content from users the viewer has blocked.
+  if (!isOwner && (await getBlockedUserIds(user?.id)).has(collectible.account_id)) {
+    return <BlockedContentNotice ownerId={collectible.account_id} ownerName={ownerName} />;
+  }
+
   const pageUrl = new URL(`/collectibles/${collectible.id}/certificate`, appConfig.url).href;
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -130,6 +137,17 @@ export default async function CollectibleCertificatePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
+      {!isOwner && (
+        <div className="container mx-auto max-w-5xl px-4 pt-3 flex justify-end">
+          <ContentSafetyMenu
+            targetType="collectible"
+            targetId={collectible.id}
+            ownerId={collectible.account_id}
+            ownerName={ownerName}
+            currentUserId={user?.id ?? null}
+          />
+        </div>
+      )}
       <CollectibleCertificate collectible={collectible} isOwner={isOwner} ownerName={ownerName} />
     </>
   );

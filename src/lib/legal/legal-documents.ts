@@ -36,11 +36,12 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
       heading: 'Information we collect',
       paragraphs: [
         'Account information: email address, password (hashed), username, and profile details you provide (name, bio, location, website, medium, profile photo).',
-        'Authentication data: if you sign in with Google, we receive your email address, display name, and profile photo URL from Google. See the "Information from Google Sign-In" section below for full details.',
+        'Authentication data: if you sign in with Google, we receive your email address, display name, and profile photo URL from Google. See the "Information from Google Sign-In" section below for full details. If you sign in with Apple, we receive a stable Apple user identifier and, if you choose to share them, your name and email address (which may be an Apple private relay address).',
         'Content you upload: artwork images, titles, provenance records, exhibition details, press links, CVs, and other materials you submit to the platform.',
         'Creator site data: handle, template choices, hero images, logos, taglines, and section visibility settings for your public artist or gallery website.',
-        'Billing information: subscription role, plan interval, and payment status. Payment card details are processed by Stripe; we do not store full card numbers on our servers.',
-        'Usage and analytics: pages visited, features used, referral data, and advertising performance metrics collected via Google Tag Manager and related analytics tools, subject to your cookie consent choices.',
+        'Billing information: subscription role, plan interval, and payment status. On the web, payment card details are processed by Stripe; in the iOS app, subscriptions are purchased through Apple In-App Purchase and we receive a signed transaction record (product, purchase and expiry dates, and a transaction identifier) but no payment details. We do not store full card numbers on our servers.',
+        'Usage and analytics: pages visited, features used, referral data, and advertising performance metrics collected via Google Tag Manager and related analytics tools on our website, subject to your cookie consent choices. Our iOS app does not load these analytics or advertising tools and does not track you across other companies\' apps or websites.',
+        'Location: if you allow it, we use your device location when you scan an artwork or collectible certificate so the owner can see where it was scanned. When you add an artwork or collectible, we also read the GPS coordinates saved in the photo (if any) to pre-fill its location, which you can edit or remove. To turn coordinates into a city and country name, we send them to BigDataCloud\'s reverse-geocoding service.',
         'Technical data: IP address, browser type, device information, cookies, and localStorage entries (including language, theme, and consent preferences).',
       ],
     },
@@ -58,7 +59,8 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
       paragraphs: [
         'Provide and operate the platform, including certificates, registries, exhibitions, operations tools, and creator websites.',
         'Authenticate users, prevent fraud, and enforce our Terms of Service.',
-        'Process subscriptions and trials through Stripe.',
+        'Process subscriptions and trials through Stripe (web) and Apple In-App Purchase (iOS).',
+        'Provide optional AI features, with your permission, as described in "AI features and third-party AI" below.',
         'Send transactional emails (welcome messages, notifications, billing confirmations).',
         'Measure and improve product performance, including ad and analytics measurement where you have consented.',
         'Comply with legal obligations and respond to lawful requests.',
@@ -67,10 +69,20 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
     {
       heading: 'How we share information',
       paragraphs: [
-        'Service providers: we use Supabase (database and authentication), Stripe (payments), Vercel (hosting), Google (OAuth and analytics/tag management), and email delivery providers to operate the service. These providers process data on our behalf under their own terms and privacy policies.',
+        'Service providers: we use Supabase (database and authentication), Stripe (payments), Apple (Sign in with Apple and In-App Purchase), Vercel (hosting), OpenAI (AI features, only with your permission), BigDataCloud (turning location coordinates into place names), Google (OAuth and analytics/tag management), and email delivery providers to operate the service. These providers process data on our behalf and are required to protect it to the same standard described in this policy.',
         'Public content: artwork, profiles, exhibitions, and published creator sites may be visible to other users and the public according to your visibility and publish settings.',
         'Legal requirements: we may disclose information if required by law, court order, or to protect the rights, safety, and security of our users and the platform.',
         'We do not sell your personal information for money. Where applicable law defines "sale" or "sharing" to include certain analytics or advertising uses, you may contact us to exercise opt-out rights.',
+      ],
+    },
+    {
+      heading: 'AI features and third-party AI',
+      paragraphs: [
+        'Some features use artificial intelligence provided by OpenAI, L.L.C.: the Taco assistant, the grants and opportunities assistants, CV import, exhibition checklist scanning, press article search, provenance valuations, and AI-selected grants in the weekly digest email.',
+        'We only send your data to OpenAI after you give explicit permission. We ask the first time you use an AI feature, and you can give or withdraw permission at any time in Settings → Privacy. If you do not give permission, AI features stay off and the rest of the platform works normally.',
+        'When you use an AI feature, we send OpenAI only the information that feature needs. Depending on the feature, that can include your messages and any images or documents you attach; profile details such as your name, role, medium, location, and bio; the text of an uploaded CV or exhibition checklist; and details of your artworks, collection, exhibitions, and provenance records. We never send your password or payment details.',
+        'OpenAI processes this data to generate a response and returns it to us. Under OpenAI\'s API terms, data sent through its API is not used to train its models, and it may be retained by OpenAI for up to 30 days for abuse monitoring before deletion. AI output can be inaccurate; valuations and recommendations are estimates, not professional appraisals or advice.',
+        'Some AI features search the public web for information about artists, galleries, and artworks (for example, press coverage or auction results). These searches use names and details from your profile or artwork records only when you start the feature.',
       ],
     },
     {
@@ -88,7 +100,8 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
     {
       heading: 'Your rights',
       paragraphs: [
-        'Depending on your location, you may have rights to access, correct, delete, or export your personal data, object to or restrict certain processing, and withdraw consent for cookies/analytics.',
+        'Depending on your location, you may have rights to access, correct, delete, or export your personal data, object to or restrict certain processing, and withdraw consent for cookies/analytics and for AI data sharing (Settings → Privacy).',
+        'You can delete your account at any time from Settings → Account Actions, including in the iOS app. Deleting your account permanently removes your profile, artworks, and other content, subject to the retention requirements described above. Subscriptions purchased through Apple must be cancelled separately in your Apple ID settings.',
         `To exercise these rights, contact us at ${contactEmail}. We will respond within the timeframes required by applicable law.`,
       ],
     },
@@ -211,6 +224,8 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
       heading: 'Acceptable use',
       paragraphs: [
         'You agree not to: violate laws; upload malware; scrape or overload the service; circumvent security; harass others; post unlawful or deceptive content; or use the platform to facilitate fraud or money laundering.',
+        'There is no tolerance for objectionable content or abusive users. You may not post content that is hateful, discriminatory, harassing, bullying, threatening, sexually explicit, pornographic, violent, or that exploits minors, and you may not impersonate others or post artwork you do not have the right to share.',
+        'You can report any artwork, collectible, profile, or exhibition from its ⋯ menu, and block any user so you no longer see their content. We review every report within 24 hours, remove content that violates these Terms, and suspend or permanently ban users who post it. You can also contact us at ' + contactEmail + '.',
         'We may suspend or terminate accounts that violate these rules.',
       ],
     },

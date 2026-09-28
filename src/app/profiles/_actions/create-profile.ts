@@ -7,6 +7,7 @@ import { createNotification } from '~/lib/notifications';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 export interface CreateProfileInput {
   role: string;
   name: string;
@@ -39,6 +40,9 @@ export async function createProfile(input: CreateProfileInput) {
 
     if (!isValidRole(input.role)) {
       return { error: 'Invalid role' };
+    }
+    if (containsObjectionableText(input.name, input.bio, input.medium, input.location)) {
+      return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
     // Check if profile already exists for this role (only for artist and collector)

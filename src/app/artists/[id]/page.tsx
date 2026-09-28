@@ -50,6 +50,8 @@ import {
   type TemplateId,
 } from './_components/template-registry';
 import { TemplateSwitcher } from './_components/template-switcher';
+import { getBlockedUserIds } from '~/lib/moderation/blocks';
+import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 
 export async function generateMetadata({
   params,
@@ -290,16 +292,38 @@ export default async function ArtistProfilePage({
     }
 
     return (
-      <UnclaimedArtistPublicView
-        profile={profile}
-        artworks={profileArtworks || []}
-        exhibitions={exhibitions}
-        currentUserId={user?.id}
-      />
+      <>
+        <div className="container mx-auto max-w-6xl px-4 pt-3 flex justify-end">
+          <ContentSafetyMenu targetType="profile" targetId={profile.id} currentUserId={user?.id ?? null} />
+        </div>
+        <UnclaimedArtistPublicView
+          profile={profile}
+          artworks={profileArtworks || []}
+          exhibitions={exhibitions}
+          currentUserId={user?.id}
+        />
+      </>
     );
   }
 
   const isOwner = user?.id === account.id;
+
+  // Guideline 1.2: a blocked user's profile is hidden from the blocker.
+  const isBlocked = !isOwner && (await getBlockedUserIds(user?.id)).has(account.id);
+  if (isBlocked) {
+    return <BlockedContentNotice ownerId={account.id} ownerName={account.name} />;
+  }
+  const safetyMenu = isOwner ? null : (
+    <div className="container mx-auto max-w-6xl px-4 pt-3 flex justify-end">
+      <ContentSafetyMenu
+        targetType="profile"
+        targetId={account.id}
+        ownerId={account.id}
+        ownerName={account.name}
+        currentUserId={user?.id ?? null}
+      />
+    </div>
+  );
   
   // Resolve role: never honor ?role=gallery unless this account is actually a gallery (account role or gallery profile).
   const primaryRole = getUserRole(account.public_data as Record<string, unknown>);
@@ -741,6 +765,7 @@ export default async function ArtistProfilePage({
   if (TemplateComponent && artistTemplateProps) {
     return (
       <>
+        {safetyMenu}
         <TemplateComponent {...artistTemplateProps} />
         {artistTemplateSwitcher}
       </>
@@ -770,6 +795,7 @@ export default async function ArtistProfilePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(profileJsonLd) }}
       />
+      {safetyMenu}
       <div className="min-h-screen">
       {/* ── HERO HEADER ─────────────────────────────────────────── */}
       <div className="border-b border-wine/15">

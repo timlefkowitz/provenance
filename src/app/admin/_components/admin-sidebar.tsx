@@ -8,6 +8,7 @@ import { adminSidebarClass } from './admin-dash-tokens';
 const NAV: { href: string; label: string }[] = [
   { href: '/admin', label: 'overview' },
   { href: '/admin/feedback', label: 'feedback' },
+  { href: '/admin/reports', label: 'reports' },
   { href: '/admin/about', label: 'about' },
   { href: '/admin/pitch', label: 'pitch' },
   { href: '/admin/blog', label: 'blog' },

@@ -13,6 +13,8 @@ import type { ArtworkAttachmentRow } from './_components/upload-attachments-dial
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
+import { getBlockedUserIds, isOwnedByBlocked } from '~/lib/moderation/blocks';
+import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 
 export const dynamic = 'force-dynamic';
 
@@ -331,6 +333,13 @@ export default async function CertificatePage({
     console.error('Error fetching account info:', error);
   }
 
+  // Guideline 1.2: hide content from users the viewer has blocked.
+  const blockedIds = await getBlockedUserIds(user?.id);
+  if (!isOwner && isOwnedByBlocked(blockedIds, artwork.account_id, artwork.artist_account_id)) {
+    const blockedOwner = blockedIds.has(artwork.account_id) ? artwork.account_id : artwork.artist_account_id;
+    return <BlockedContentNotice ownerId={blockedOwner} ownerName={blockedOwner === artwork.account_id ? creatorInfo?.name : artwork.artist_name} />;
+  }
+
   // Fetch exhibition for this artwork
   const exhibition = await getArtworkExhibition(artwork.id);
 
@@ -385,6 +394,17 @@ export default async function CertificatePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(artworkJsonLd) }}
       />
+      {!isOwner && (
+        <div className="container mx-auto max-w-5xl px-4 pt-3 flex justify-end">
+          <ContentSafetyMenu
+            targetType="artwork"
+            targetId={artwork.id}
+            ownerId={artwork.account_id}
+            ownerName={creatorInfo?.name}
+            currentUserId={user?.id ?? null}
+          />
+        </div>
+      )}
       <CertificateOfAuthenticity 
         artwork={artwork} 
         isOwner={isOwner} 

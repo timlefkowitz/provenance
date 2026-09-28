@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { USER_ROLES } from '~/lib/user-roles';
 import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
+import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 import {
   createExhibitionArtistInvites,
   type ExhibitionArtistInviteInput,
@@ -69,6 +70,9 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
 
   if (!title || !startDate) {
     throw new Error('Title and start date are required');
+  }
+  if (containsObjectionableText(title, description, location, curator, theme)) {
+    throw new Error(OBJECTIONABLE_TEXT_MESSAGE);
   }
 
   // Get existing metadata

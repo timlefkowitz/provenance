@@ -13,6 +13,9 @@ import { TeamsSection } from './_components/teams-section';
 import { AccountActionsSection } from './_components/account-actions-section';
 import { StripeConnectCard } from './_components/stripe-connect-card';
 import { SecuritySection } from './_components/security-section';
+import { PrivacySection } from './_components/privacy-section';
+import { hasAiConsent } from '~/lib/ai-consent';
+import { listMyBlockedUsers } from '~/app/_actions/moderation';
 import { getConnectAccount } from '~/lib/stripe-connect';
 
 export const metadata = {
@@ -47,7 +50,7 @@ export default async function SettingsPage({
   }
 
   const subscriptionNowIso = new Date().toISOString();
-  const [accountResult, allProfiles, galleryProfiles, subscriptionResult, connectAccount] =
+  const [accountResult, allProfiles, galleryProfiles, subscriptionResult, connectAccount, aiConsented, blockedUsers] =
     await Promise.all([
       client
         .from('accounts')
@@ -67,6 +70,8 @@ export default async function SettingsPage({
         .order('current_period_end', { ascending: false })
         .limit(1),
       getConnectAccount(user.id),
+      hasAiConsent(user.id),
+      listMyBlockedUsers(),
     ]);
 
   const account = accountResult.data;
@@ -138,6 +143,8 @@ export default async function SettingsPage({
             email={user.email || ''}
             mfaEnrollmentRequired={mfaEnrollmentRequired}
           />
+
+          <PrivacySection aiConsented={aiConsented} blockedUsers={blockedUsers} />
 
           <AccountActionsSection />
         </div>
