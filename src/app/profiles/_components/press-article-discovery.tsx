@@ -7,6 +7,7 @@ import { toast } from '@kit/ui/sonner';
 import { Search, Loader2 } from 'lucide-react';
 import { findPressArticles } from '../_actions/find-press-articles';
 import type { NewsPublication } from '../_actions/get-user-profiles';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 import {
   mergeNewsPublicationsDeduped,
   normalizeNewsPublicationUrl,
@@ -26,6 +27,7 @@ export function PressArticleDiscovery({
   const [pending, startTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<NewsPublication[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const { ensureAiConsent } = useAiConsent();
 
   const existingUrls = useMemo(() => {
     const s = new Set<string>();
@@ -36,7 +38,8 @@ export function PressArticleDiscovery({
     return s;
   }, [existingPublications]);
 
-  const handleFind = () => {
+  const handleFind = async () => {
+    if (!(await ensureAiConsent())) return;
     startTransition(async () => {
       const { articles, error } = await findPressArticles(profileId);
       if (error) {

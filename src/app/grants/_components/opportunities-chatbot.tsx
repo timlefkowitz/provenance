@@ -7,6 +7,7 @@ import { Button } from '@kit/ui/button';
 import { Send, Loader2, ExternalLink, FileText } from 'lucide-react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 export type ChatMessage = {
   role: 'user' | 'assistant';
@@ -47,6 +48,7 @@ export function OpportunitiesChatbot({ hasCv, onOpportunitiesUpdated }: Opportun
   );
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const { ensureAiConsent } = useAiConsent();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function OpportunitiesChatbot({ hasCv, onOpportunitiesUpdated }: Opportun
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || loading) return;
+      if (!(await ensureAiConsent())) return;
       console.log('[Opportunities] chatbot sendMessage', text.trim().slice(0, 60));
       const userMessage: ChatMessage = { role: 'user', content: text.trim() };
       setMessages((prev) => [...prev, userMessage]);
@@ -107,7 +110,7 @@ export function OpportunitiesChatbot({ hasCv, onOpportunitiesUpdated }: Opportun
         setLoading(false);
       }
     },
-    [loading, messages, onOpportunitiesUpdated],
+    [loading, messages, onOpportunitiesUpdated, ensureAiConsent],
   );
 
   return (

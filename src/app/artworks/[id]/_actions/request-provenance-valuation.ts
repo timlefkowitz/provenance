@@ -14,6 +14,7 @@ import {
 import { runLlmValuationPass } from '~/lib/valuation/llm-valuation-pass';
 import { runWebResearchPass } from '~/lib/valuation/web-research-pass';
 import { logger } from '~/lib/logger';
+import { AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 
 const RATE_LIMIT_MS = 5 * 60 * 1000;
 
@@ -39,6 +40,10 @@ export async function requestProvenanceValuation(
 
     if (!user) {
       return { success: false, error: 'You must be signed in to request a valuation' };
+    }
+
+    if (!(await hasAiConsent(user.id))) {
+      return { success: false, error: AI_CONSENT_REQUIRED_MESSAGE };
     }
 
     const { data: artwork, error: fetchError } = await asUntyped(client)

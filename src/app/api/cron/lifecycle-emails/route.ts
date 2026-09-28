@@ -14,6 +14,7 @@ import { getResolvedEmailTheme } from '~/lib/email-templates-store';
 import { digestUnsubscribeUrls, getDigestOptOuts } from '~/lib/email-preferences';
 import { constantTimeEquals } from '~/lib/security/constant-time';
 import { asUntyped } from '~/lib/supabase-untyped';
+import { getAiConsentedUserIds } from '~/lib/ai-consent';
 import {
   buildArtistDigest,
   loadDigestArtists,
@@ -223,9 +224,13 @@ async function sendWeeklyDigest(opts: {
   if (!subscribedAccounts.length) return { sent: 0, skipped: optedOutCount };
 
   const recipientIds = subscribedAccounts.map((a: { id: string }) => a.id);
-  const [artists, openCallCandidates] = await Promise.all([
+  const [artists, openCallCandidates, aiConsentedIds] = await Promise.all([
     loadDigestArtists(admin, recipientIds),
     loadOpenCallCandidates(admin, now),
+    // Guideline 5.1.2(i): only send an artist's profile to OpenAI for AI
+    // grant picks if they've consented; others still get open calls and
+    // stored grants.
+    getAiConsentedUserIds(recipientIds),
   ]);
 
   const theme = await getResolvedEmailTheme();
@@ -243,7 +248,7 @@ async function sendWeeklyDigest(opts: {
       const artist = artists.get(account.id);
       const digest = await buildArtistDigest({
         admin,
-        openai,
+        openai: aiConsentedIds.has(account.id) ? openai : null,
         artist,
         userId: account.id,
         openCallCandidates,

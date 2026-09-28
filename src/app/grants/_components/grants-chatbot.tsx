@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { Send, MessageCircle } from 'lucide-react';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -20,10 +21,12 @@ export function GrantsChatbot({ hasCv, onGrantsUpdated }: GrantsChatbotProps) {
   );
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const { ensureAiConsent } = useAiConsent();
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || loading) return;
+      if (!(await ensureAiConsent())) return;
       console.log('[Grants] chatbot sendMessage', text.trim().slice(0, 50));
       const userMessage: ChatMessage = { role: 'user', content: text.trim() };
       setMessages((prev) => [...prev, userMessage]);
@@ -62,7 +65,7 @@ export function GrantsChatbot({ hasCv, onGrantsUpdated }: GrantsChatbotProps) {
         setLoading(false);
       }
     },
-    [loading, messages, onGrantsUpdated]
+    [loading, messages, onGrantsUpdated, ensureAiConsent]
   );
 
   const handleFindGrants = useCallback(() => {

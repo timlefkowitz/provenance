@@ -6,6 +6,7 @@ import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { Paperclip, Send, Loader2, X, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@kit/ui/button';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -235,6 +236,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
     },
   ]);
   const [input, setInput] = useState('');
+  const { ensureAiConsent } = useAiConsent();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -301,6 +303,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
   const sendMessage = useCallback(
     async (text: string, pendingAttachments: Attachment[] = attachments) => {
       if ((!text.trim() && pendingAttachments.length === 0) || loading) return;
+      if (!(await ensureAiConsent())) return;
 
       console.log('[Taco] sendMessage', text.trim().slice(0, 80));
 
@@ -368,7 +371,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
         setLoading(false);
       }
     },
-    [loading, messages, attachments],
+    [loading, messages, attachments, ensureAiConsent],
   );
 
   const handleKeyDown = useCallback(

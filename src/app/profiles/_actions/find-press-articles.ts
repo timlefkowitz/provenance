@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { NewsPublicationInput } from '~/lib/news-publications';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 export type PressArticleSuggestion = NewsPublicationInput;
 
 /** Chat Completions web-search model (see OpenAI web search docs; Responses API uses different model IDs). */
@@ -62,6 +63,14 @@ export async function findPressArticles(profileId: string): Promise<{
   error: string | null;
 }> {
   console.log('[Press] findPressArticles started', { profileId });
+
+  const { data: { user } } = await getSupabaseServerClient().auth.getUser();
+  if (!user) {
+    return { articles: [], error: 'You must be signed in to search for articles.' };
+  }
+  if (!(await hasAiConsent(user.id))) {
+    return { articles: [], error: AI_CONSENT_REQUIRED_MESSAGE };
+  }
 
   const rawKey = process.env.OPENAI_API_KEY;
   const apiKey = typeof rawKey === 'string' ? rawKey.trim() : undefined;

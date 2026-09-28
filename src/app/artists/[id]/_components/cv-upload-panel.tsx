@@ -6,6 +6,7 @@ import { Button } from '@kit/ui/button';
 import { Upload, Download, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { uploadArtistCv } from '~/app/grants/_actions/upload-artist-cv';
 import { getOriginalCvSignedUrl } from '../_actions/get-original-cv-signed-url';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 type Props = {
   /** The artist user_profile id — needed to mint the signed URL. */
@@ -20,6 +21,7 @@ export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props)
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const { ensureAiConsent } = useAiConsent();
 
   const handleUpload = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
@@ -32,6 +34,7 @@ export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props)
         setUploadError('Please select a file first');
         return;
       }
+      if (!(await ensureAiConsent())) return;
       console.log('[ArtistCV] CvUploadPanel upload started', { name: file.name, type: file.type });
       setUploading(true);
       const result = await uploadArtistCv(new FormData(form));
@@ -44,7 +47,7 @@ export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props)
         setUploadError(result.error);
       }
     },
-    [router],
+    [router, ensureAiConsent],
   );
 
   const handleDownload = useCallback(async () => {

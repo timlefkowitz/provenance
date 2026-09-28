@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from '@kit/ui/sheet';
 import { cn } from '@kit/ui/utils';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 import {
   requestProvenanceValuation,
@@ -148,9 +149,11 @@ export function ProvenanceValuationBlock({
   const [localPublic, setLocalPublic] = useState(valuation?.is_public ?? false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [current, setCurrent] = useState<ProvenanceValuation | null>(valuation);
+  const { ensureAiConsent } = useAiConsent();
 
-  const handleRequest = () => {
+  const handleRequest = async () => {
     setRequestError(null);
+    if (!(await ensureAiConsent())) return;
     startTransition(async () => {
       try {
         console.log('[Valuation] UI requesting valuation', { artworkId });

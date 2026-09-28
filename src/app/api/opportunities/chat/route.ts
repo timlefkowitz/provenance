@@ -6,6 +6,7 @@ import { USER_ROLES } from '~/lib/user-roles';
 import { getActiveSubscription } from '~/lib/subscription';
 import type { ArtistCvJson, Grant } from '~/lib/grants';
 import { ALL_TOOLS } from './tools';
+import { AI_CONSENT_REQUIRED, AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 import {
   handleSearchArtKnowledge,
   handleSearchOpenCalls,
@@ -87,6 +88,14 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       console.error('[Opportunities] auth failed', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await hasAiConsent(user.id))) {
+      console.warn('[Opportunities] AI consent missing', { userId: user.id });
+      return NextResponse.json(
+        { error: AI_CONSENT_REQUIRED_MESSAGE, code: AI_CONSENT_REQUIRED },
+        { status: 403 },
+      );
     }
 
     const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);

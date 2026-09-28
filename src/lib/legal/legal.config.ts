@@ -6,7 +6,7 @@ export const LEGAL_CONFIG = {
   entityName: 'Provenance Guru, Inc.',
   contactEmail: 'privacy@provenance.guru',
   siteUrl: appConfig.url,
-  lastUpdated: 'August 29, 2026',
+  lastUpdated: 'September 28, 2026',
 } as const;
 
 export const LEGAL_DOCUMENT_LABELS: Record<LegalDocumentId, string> = {

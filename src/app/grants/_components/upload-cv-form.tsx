@@ -5,6 +5,7 @@ import { Button } from '@kit/ui/button';
 import { Upload, FileText, Loader2, Sparkles } from 'lucide-react';
 import { uploadArtistCv } from '../_actions/upload-artist-cv';
 import { useRouter } from 'next/navigation';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 export function UploadCvForm() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function UploadCvForm() {
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const { ensureAiConsent } = useAiConsent();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = useCallback(
@@ -25,6 +27,7 @@ export function UploadCvForm() {
         setError('Please select a file');
         return;
       }
+      if (!(await ensureAiConsent())) return;
       console.log('[Grants] UploadCvForm submit', file.name, file.type);
       setUploading(true);
       const result = await uploadArtistCv(new FormData(form));
@@ -37,7 +40,7 @@ export function UploadCvForm() {
         setError(result.error ?? 'Upload failed');
       }
     },
-    [router],
+    [router, ensureAiConsent],
   );
 
   function handleDrop(e: React.DragEvent) {

@@ -8,6 +8,7 @@ import { USER_ROLES } from '~/lib/user-roles';
 import { extractTextFromCvBuffer } from './extract-text-from-cv';
 import { extractCvToJson } from './extract-cv-to-json';
 import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
+import { AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 
 const ARTIST_CVS_BUCKET = 'artist-cvs';
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -32,6 +33,10 @@ export async function uploadArtistCv(formData: FormData): Promise<UploadArtistCv
   if (authError || !user) {
     console.error('[Grants] uploadArtistCv auth failed', authError);
     return { success: false, error: 'You must be signed in to upload a CV' };
+  }
+
+  if (!(await hasAiConsent(user.id))) {
+    return { success: false, error: AI_CONSENT_REQUIRED_MESSAGE };
   }
 
   const file = formData.get('file') as File | null;

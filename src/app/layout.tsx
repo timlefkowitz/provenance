@@ -15,6 +15,7 @@ import { ClientAnalytics } from "~/components/client-analytics";
 import { GoogleTagManager } from "~/components/google-tag-manager";
 import { CookieConsentBanner } from "~/components/cookie-consent-banner";
 import { LegalModalProvider } from "~/components/legal/legal-modal-context";
+import { AiConsentProvider } from "~/components/ai-consent/ai-consent-provider";
 import { StreakActivityTracker } from "~/components/streak-activity-tracker";
 import { PresenceTracker } from "~/components/presence-tracker";
 import { UtmCapture } from "~/components/utm-capture";
@@ -169,21 +170,23 @@ export default async function RootLayout({
       >
         <RootProviders lang={currentLang} theme={currentTheme}>
           <LegalModalProvider>
-            <OnboardingGuard>
-              <AppSplash />
-              <AppLinkInterceptor />
-              <Navigation initialUser={initialUser} />
-              <NativeInit userId={initialUser?.sub ?? null} />
-              <TrialBanner />
-              <StreakActivityTracker />
-              <PresenceTracker />
-              <UtmCapture />
-              <GalleryProfileNotification />
-              {children}
-              <NativeTabBar />
-              <TacoBubble isSignedIn={!!initialUser} />
-            </OnboardingGuard>
-            <CookieConsentBanner />
+            <AiConsentProvider>
+              <OnboardingGuard>
+                <AppSplash />
+                <AppLinkInterceptor />
+                <Navigation initialUser={initialUser} />
+                <NativeInit userId={initialUser?.sub ?? null} />
+                <TrialBanner />
+                <StreakActivityTracker />
+                <PresenceTracker />
+                <UtmCapture />
+                <GalleryProfileNotification />
+                {children}
+                <NativeTabBar />
+                <TacoBubble isSignedIn={!!initialUser} />
+              </OnboardingGuard>
+              <CookieConsentBanner />
+            </AiConsentProvider>
           </LegalModalProvider>
         </RootProviders>
         {/* bottom-* avoids Sonner’s full-width top layer (z-index ~1e9) covering the sticky nav on mobile */}

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Upload, FileText, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { saveOnboardingAnswers, type OnboardingAnswers } from '../_actions/save-onboarding-answers';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 /* -------------------------------------------------------------------------- */
 /*  Step definitions                                                          */
@@ -90,6 +91,7 @@ let msgId = 1;
 export function TacoOnboardingChat() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('welcome');
+  const { ensureAiConsent } = useAiConsent();
   const [answers, setAnswers] = useState<Answers>({
     has_cv: null,
     has_sold_work: null,
@@ -147,6 +149,7 @@ export function TacoOnboardingChat() {
   }
 
   async function handleCvUpload(file: File) {
+    if (!(await ensureAiConsent())) return;
     setCvFile(file);
     setCvError(null);
     setCvUploading(true);

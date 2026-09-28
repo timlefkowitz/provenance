@@ -8,6 +8,7 @@ import { Button } from '@kit/ui/button';
 import { cn } from '@kit/ui/utils';
 
 import { requestProvenanceValuation } from '~/app/artworks/[id]/_actions/request-provenance-valuation';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 interface RequestValuationRowProps {
   artworkId: string;
@@ -19,10 +20,12 @@ export function RequestValuationRow({ artworkId, className }: RequestValuationRo
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [llmUsed, setLlmUsed] = useState(false);
+  const { ensureAiConsent } = useAiConsent();
 
-  const handleClick = () => {
+  const handleClick = async () => {
     setMessage(null);
     setError(null);
+    if (!(await ensureAiConsent())) return;
     startTransition(async () => {
       try {
         console.log('[Valuation] editor submitting valuation', { artworkId });

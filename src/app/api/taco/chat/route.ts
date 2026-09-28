@@ -7,6 +7,7 @@ import { getActiveSubscription } from '~/lib/subscription';
 import { checkRateLimit } from '~/lib/rate-limit';
 import { extractTextFromCvBuffer } from '~/app/grants/_actions/extract-text-from-cv';
 import { ALL_TACO_TOOLS } from './tools';
+import { AI_CONSENT_REQUIRED, AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 import {
   handleSearchArtworks,
   handleSearchArtists,
@@ -215,6 +216,14 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       console.error('[Taco] auth failed', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await hasAiConsent(user.id))) {
+      console.warn('[Taco] AI consent missing', { userId: user.id });
+      return NextResponse.json(
+        { error: AI_CONSENT_REQUIRED_MESSAGE, code: AI_CONSENT_REQUIRED },
+        { status: 403 },
+      );
     }
 
     // -- Subscription gate --

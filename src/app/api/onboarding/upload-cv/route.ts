@@ -5,6 +5,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { extractTextFromCvBuffer } from '~/app/grants/_actions/extract-text-from-cv';
 import { extractCvToJson } from '~/app/grants/_actions/extract-cv-to-json';
 import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
+import { AI_CONSENT_REQUIRED, AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 
 const ARTIST_CVS_BUCKET = 'artist-cvs';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -34,6 +35,14 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       console.error('[Onboarding] upload-cv auth failed', authError);
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await hasAiConsent(user.id))) {
+      console.warn('[Onboarding] upload-cv AI consent missing', { userId: user.id });
+      return NextResponse.json(
+        { success: false, error: AI_CONSENT_REQUIRED_MESSAGE, code: AI_CONSENT_REQUIRED },
+        { status: 403 },
+      );
     }
 
     const formData = await request.formData();

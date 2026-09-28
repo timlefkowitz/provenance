@@ -6,6 +6,7 @@ import { saveArtistGrants } from '~/app/grants/_actions/save-artist-grants';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getActiveSubscription } from '~/lib/subscription';
 import type { Grant } from '~/lib/grants';
+import { AI_CONSENT_REQUIRED, AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 
 const RECOMMEND_GRANTS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: 'function',
@@ -54,6 +55,14 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       console.error('[Grants] chat auth failed', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await hasAiConsent(user.id))) {
+      console.warn('[Grants] AI consent missing', { userId: user.id });
+      return NextResponse.json(
+        { error: AI_CONSENT_REQUIRED_MESSAGE, code: AI_CONSENT_REQUIRED },
+        { status: 403 },
+      );
     }
 
     const artistProfile = await getProfileByRole(user.id, USER_ROLES.ARTIST);

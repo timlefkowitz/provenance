@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { ExternalLink, Send, X, Maximize2 } from 'lucide-react';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -90,6 +91,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
+  const { ensureAiConsent } = useAiConsent();
   const [messages, setMessages] = useState<BubbleMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -128,6 +130,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || loading) return;
+      if (!(await ensureAiConsent())) return;
 
       console.log('[TacoBubble] sendMessage', trimmed.slice(0, 80));
 
@@ -178,7 +181,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
         setLoading(false);
       }
     },
-    [loading, messages, pathname],
+    [loading, messages, pathname, ensureAiConsent],
   );
 
   if (!isSignedIn || hidden) return null;
