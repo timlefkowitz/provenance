@@ -30,8 +30,9 @@ export interface CollectibleScanLocation {
 
 /**
  * Record a QR code scan for a collectible. Mirrors the artwork scan action:
- * appends to collectibles.metadata.scan_locations[] with GPS (when granted) or
- * server-side IP geolocation from Vercel edge headers, and notifies the owner.
+ * appends to collectibles.metadata.scan_locations[] with GPS plus Vercel IP
+ * geolocation when location was granted (no location otherwise), and notifies
+ * the owner.
  */
 export async function recordCollectibleScanLocation(
   collectibleId: string,
@@ -50,11 +51,16 @@ export async function recordCollectibleScanLocation(
   });
 
   const requestHeaders = await headers();
-  const ipCity = requestHeaders.get('x-vercel-ip-city') ?? undefined;
-  const ipRegion = requestHeaders.get('x-vercel-ip-region') ?? undefined;
-  const ipCountry = requestHeaders.get('x-vercel-ip-country') ?? undefined;
-  const ipLatRaw = requestHeaders.get('x-vercel-ip-latitude');
-  const ipLngRaw = requestHeaders.get('x-vercel-ip-longitude');
+  // Guideline 5.1.5 / 5.1.1(iv): IP-based location is only recorded alongside
+  // a scan whose viewer granted location permission. If they declined, the
+  // scan event is still logged (so the owner sees it happened) but with no
+  // location of any kind.
+  const ipHeader = (name: string) => (gpsLocation ? requestHeaders.get(name) ?? undefined : undefined);
+  const ipCity = ipHeader('x-vercel-ip-city');
+  const ipRegion = ipHeader('x-vercel-ip-region');
+  const ipCountry = ipHeader('x-vercel-ip-country');
+  const ipLatRaw = ipHeader('x-vercel-ip-latitude');
+  const ipLngRaw = ipHeader('x-vercel-ip-longitude');
   const ipLatitude = ipLatRaw ? parseFloat(ipLatRaw) : undefined;
   const ipLongitude = ipLngRaw ? parseFloat(ipLngRaw) : undefined;
   const userAgent = requestHeaders.get('user-agent') ?? undefined;

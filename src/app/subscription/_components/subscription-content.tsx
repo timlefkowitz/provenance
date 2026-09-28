@@ -404,6 +404,11 @@ export function SubscriptionContent({
                   <span>Subscribed via Apple. Manage your subscription in <strong>Settings → Apple ID → Subscriptions</strong> on your device.</span>
                 </div>
               </div>
+            ) : native ? (
+              // Guideline 3.1.1(a): no links out to external payment management in the iOS app.
+              <p className="rounded-lg border border-ink/15 bg-ink/5 px-4 py-3 text-sm font-serif text-ink/70">
+                You subscribed on the web. Billing for this plan is managed from your account on the Provenance website.
+              </p>
             ) : (
               <Button
                 onClick={handlePortal}

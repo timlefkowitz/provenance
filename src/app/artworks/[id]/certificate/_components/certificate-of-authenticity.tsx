@@ -413,7 +413,7 @@ export function CertificateOfAuthenticity({
         },
         async (error) => {
           // User denied geolocation or it errored — still record the scan event
-          // so the owner sees it happened. Server-side IP data will be captured.
+          // so the owner sees it happened (no location is recorded).
           console.log('[CertificateScan] Geolocation not available:', error);
           try {
             const result = await recordScanLocation(artwork.id, null);
@@ -433,7 +433,7 @@ export function CertificateOfAuthenticity({
         }
       );
     } else {
-      // Geolocation API not available — still record the scan with server-side data
+      // Geolocation API not available — still record the scan event (no location)
       console.log('[CertificateScan] Geolocation not supported by this browser');
       void (async () => {
         try {

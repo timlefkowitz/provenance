@@ -37,8 +37,8 @@ export interface ScanLocation {
  * Record a QR code scan event for an artwork.
  *
  * `gpsLocation` is optional — if the viewer denies the browser location prompt
- * (or it errors), callers pass `null` and we still record the scan with
- * server-side IP geolocation + device context so the owner knows it happened.
+ * (or it errors), callers pass `null` and we still record the scan (time +
+ * device context, no location) so the owner knows it happened.
  */
 export async function recordScanLocation(
   artworkId: string,
@@ -60,11 +60,16 @@ export async function recordScanLocation(
 
   // Vercel sets these headers at the edge with IP-based geolocation.
   // In local development they will be absent — that is fine.
-  const ipCity = requestHeaders.get('x-vercel-ip-city') ?? undefined;
-  const ipRegion = requestHeaders.get('x-vercel-ip-region') ?? undefined;
-  const ipCountry = requestHeaders.get('x-vercel-ip-country') ?? undefined;
-  const ipLatRaw = requestHeaders.get('x-vercel-ip-latitude');
-  const ipLngRaw = requestHeaders.get('x-vercel-ip-longitude');
+  // Guideline 5.1.5 / 5.1.1(iv): IP-based location is only recorded alongside
+  // a scan whose viewer granted location permission. If they declined, the
+  // scan event is still logged (so the owner sees it happened) but with no
+  // location of any kind.
+  const ipHeader = (name: string) => (gpsLocation ? requestHeaders.get(name) ?? undefined : undefined);
+  const ipCity = ipHeader('x-vercel-ip-city');
+  const ipRegion = ipHeader('x-vercel-ip-region');
+  const ipCountry = ipHeader('x-vercel-ip-country');
+  const ipLatRaw = ipHeader('x-vercel-ip-latitude');
+  const ipLngRaw = ipHeader('x-vercel-ip-longitude');
   const ipLatitude = ipLatRaw ? parseFloat(ipLatRaw) : undefined;
   const ipLongitude = ipLngRaw ? parseFloat(ipLngRaw) : undefined;
   const userAgent = requestHeaders.get('user-agent') ?? undefined;

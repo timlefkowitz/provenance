@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
 import { getRoleLabel, type UserRole } from '~/lib/user-roles';
 import { Apple, CreditCard, ExternalLink, Loader2 } from 'lucide-react';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+
+const subscribeToPlatform = () => () => undefined;
 
 type SubscriptionData = {
   id: string;
@@ -37,6 +40,7 @@ export function BillingSection({ subscription }: Props) {
   const isActive = subscription?.status === 'active';
   const isTrialing = subscription?.status === 'trialing';
   const isApple = subscription?.provider === 'apple_iap';
+  const native = useSyncExternalStore(subscribeToPlatform, isNativePlatform, () => false);
 
   async function handleOpenPortal() {
     setError(null);
@@ -110,6 +114,11 @@ export function BillingSection({ subscription }: Props) {
                   <Apple className="h-4 w-4 flex-shrink-0" aria-hidden />
                   <span>Subscribed via Apple. Go to <strong>Settings → Apple ID → Subscriptions</strong> to manage.</span>
                 </div>
+              ) : native ? (
+                // Guideline 3.1.1(a): no links out to external payment management in the iOS app.
+                <p className="rounded-lg border border-ink/15 bg-ink/5 px-4 py-3 text-sm font-serif text-ink/70">
+                  You subscribed on the web. Billing for this plan is managed from your account on the Provenance website.
+                </p>
               ) : (
                 <Button
                   onClick={handleOpenPortal}

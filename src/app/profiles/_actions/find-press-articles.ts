@@ -6,6 +6,7 @@ import type { NewsPublicationInput } from '~/lib/news-publications';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
+import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 export type PressArticleSuggestion = NewsPublicationInput;
 
 /** Chat Completions web-search model (see OpenAI web search docs; Responses API uses different model IDs). */
@@ -82,13 +83,23 @@ export async function findPressArticles(profileId: string): Promise<{
   const supabase = asUntyped(getSupabaseServerClient());
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('name, role, location')
+    .select('name, role, location, user_id')
     .eq('id', profileId)
     .single();
 
   if (profileError || !profile) {
     console.error('[Press] Failed to fetch profile for article search', profileError);
     return { articles: [], error: 'Could not load profile for article search.' };
+  }
+
+  // Guideline 5.1.1(viii): only search the web about a profile the user owns
+  // or manages — never compile information about someone else.
+  const ownsProfile =
+    profile.user_id === user.id ||
+    (profile.role === 'gallery' && (await canManageGallery(user.id, profileId)));
+  if (!ownsProfile) {
+    console.warn('[Press] findPressArticles denied: not the profile owner', { profileId, userId: user.id });
+    return { articles: [], error: 'You can only search for press about your own profile.' };
   }
 
   const { name, role, location } = profile as { name: string; role: string; location: string | null };

@@ -43,7 +43,7 @@ export function UpgradePrompt({
       <p className="mt-3 font-serif text-sm text-ink/70">
         Certificates are free forever. Upgrade to unlock{' '}
         <strong>Grants, CRM, Open Calls, Operations, and your own artist website</strong>{' '}
-        — starting at $10/month, or save ~2 months with an annual plan.
+        — monthly or annual plans, with about 2 months free when you pay yearly.
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">

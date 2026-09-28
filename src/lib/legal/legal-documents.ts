@@ -273,17 +273,17 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
     {
       paragraphs: [
         `Last updated: ${lastUpdated}`,
-        `This Billing & Refunds policy describes subscription pricing, trials, renewals, cancellations, and refunds for paid plans on ${siteUrl}, processed by Stripe on behalf of ${entityName}.`,
+        `This Billing & Refunds policy describes subscription pricing, trials, renewals, cancellations, and refunds for paid plans on ${siteUrl} (processed by Stripe on behalf of ${entityName}) and in our iOS app (processed by Apple through In-App Purchase).`,
         'We are currently in beta; pricing and features may evolve. Subscriptions help support ongoing development.',
       ],
     },
     {
       heading: 'Plans and pricing',
       paragraphs: [
-        'Artist: $10/month or $99/year.',
-        'Collector: $29.99/month or $299.90/year.',
-        'Gallery: $99/month or $990/year.',
-        'Yearly plans reflect approximately two months free compared to paying monthly for twelve months. Display prices are shown on the subscription page; the amount charged is confirmed at Stripe checkout.',
+        'Artist: $9.99/month or $99.99/year.',
+        'Collector: $29.99/month or $299.99/year.',
+        'Gallery: $99.99/month or $990/year.',
+        'Prices are in US dollars. Yearly plans reflect approximately two months free compared to paying monthly for twelve months. On the web the amount charged is confirmed at Stripe checkout; in the iOS app, prices are shown in your local currency by the App Store and may differ from US prices.',
         'Every paid plan includes a hosted website at yourname.provenance.app, populated from your profile and artworks, where you can showcase and sell your work.',
         'Certificates and many core features remain free. Paid subscriptions unlock Toolbox features such as Grants, Open Calls, CRM, and Operations tools, as described on the site.',
       ],
@@ -300,13 +300,15 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
         'Subscriptions renew automatically at the end of each billing period (monthly or yearly) until canceled.',
         'Payment is processed by Stripe. We accept payment methods supported by Stripe at checkout, which may include card and Apple Pay.',
         'You are responsible for keeping payment information current. Failed payments may result in suspension of paid features.',
+        'In the iOS app, payment is charged to your Apple ID at confirmation of purchase. The subscription renews automatically at the same price and length unless it is canceled at least 24 hours before the end of the current period, and your Apple ID is charged for renewal within 24 hours before the period ends.',
       ],
     },
     {
       heading: 'Cancellation',
       paragraphs: [
         'You may cancel renewal at any time through the Stripe Customer Portal ("Manage Billing & Payment" on the subscription page). Cancellation stops future charges; you typically retain access through the end of the current paid period unless otherwise stated.',
-        'Deleting your account does not automatically cancel an active Stripe subscription; cancel billing first to avoid further charges.',
+        'Subscriptions purchased in the iOS app are managed and canceled in your device settings (Settings → Apple ID → Subscriptions); refunds for those purchases are handled by Apple.',
+        'Deleting your account does not automatically cancel an active Stripe or Apple subscription; cancel billing first to avoid further charges.',
       ],
     },
     {
