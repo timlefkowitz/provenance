@@ -10,7 +10,10 @@ import { Alert, AlertDescription } from '@kit/ui/alert';
 import { toast } from '@kit/ui/sonner';
 import { createExhibition } from '../_actions/create-exhibition';
 import { updateExhibition } from '../_actions/update-exhibition';
+import { createQuickExhibitionListings } from '../_actions/create-exhibition-listings';
 import { ParticipantSelector, type ExhibitionArtistInvite } from './participant-selector';
+import { ChecklistImport, type ChecklistRow } from './checklist-import';
+import type { ExhibitionChecklist } from '../_helpers/checklist-parsing';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 type Artist = {
@@ -33,6 +36,7 @@ export function ExhibitionForm({
   
   const [selectedArtists, setSelectedArtists] = useState<Artist[]>(initialArtists);
   const [selectedInvites, setSelectedInvites] = useState<ExhibitionArtistInvite[]>([]);
+  const [checklistRows, setChecklistRows] = useState<ChecklistRow[]>([]);
 
   const [formData, setFormData] = useState({
     title: exhibition?.title || '',
@@ -47,6 +51,17 @@ export function ExhibitionForm({
     curator: initialMetadata.curator || '',
     theme: initialMetadata.theme || '',
   });
+
+  // Only fill fields the user hasn't typed into yet.
+  const handleChecklistExtracted = (checklist: ExhibitionChecklist) => {
+    setFormData((prev) => ({
+      ...prev,
+      title: prev.title || checklist.exhibitionTitle,
+      startDate: prev.startDate || checklist.startDate,
+      endDate: prev.endDate || checklist.endDate,
+      location: prev.location || checklist.location,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +101,32 @@ export function ExhibitionForm({
           router.push(`/exhibitions/${exhibition.id}/edit#artworks`);
         } else {
           const result = await createExhibition(formDataObj);
-          toast.success('Exhibition created. Add artworks below.');
+          const checklistItems = checklistRows.filter((r) => r.title.trim());
+          if (result?.exhibitionId && checklistItems.length > 0) {
+            const listingsFd = new FormData();
+            listingsFd.append('exhibitionId', result.exhibitionId);
+            listingsFd.append(
+              'items',
+              JSON.stringify(
+                checklistItems.map(({ key, title, artistName, price, dimensions }) => ({
+                  key,
+                  title,
+                  artistName,
+                  price,
+                  dimensions,
+                })),
+              ),
+            );
+            const listings = await createQuickExhibitionListings(listingsFd);
+            if (listings.success) {
+              toast.success(`Exhibition created with ${listings.created} artwork${listings.created === 1 ? '' : 's'}.`);
+            } else {
+              console.error('[ExhibitionForm] Checklist listings failed', listings.error);
+              toast.error(`Exhibition created, but artworks could not be added: ${listings.error}`);
+            }
+          } else {
+            toast.success('Exhibition created. Add artworks below.');
+          }
           if (result?.exhibitionId) {
             router.push(`/exhibitions/${result.exhibitionId}/edit#artworks`);
           } else {
@@ -110,6 +150,14 @@ export function ExhibitionForm({
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {!exhibition && (
+        <ChecklistImport
+          rows={checklistRows}
+          onRowsChange={setChecklistRows}
+          onExtracted={handleChecklistExtracted}
+        />
       )}
 
       <div className="space-y-4">

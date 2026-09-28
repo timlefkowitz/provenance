@@ -225,7 +225,7 @@ function getBinarySignature(input: ArrayBuffer): { hex: string; ascii: string } 
 }
 
 /** Convert image to standard JPEG. Returns buffer on success, null if conversion fails. */
-async function normalizeToJpeg(input: ArrayBuffer): Promise<ArrayBuffer | null> {
+export async function normalizeToJpeg(input: ArrayBuffer): Promise<ArrayBuffer | null> {
   const buf = Buffer.from(input);
 
   // HEIC: sharp often lacks libheif; use heic-convert.
