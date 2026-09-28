@@ -8,6 +8,7 @@ import { getManageableProfiles } from './_actions/get-manageable-profiles';
 import { findProfileWithSite } from './_actions/find-profile-with-site';
 import { SiteEditor } from './_components/site-editor';
 import { Button } from '@kit/ui/button';
+import { Badge } from '@kit/ui/badge';
 
 export const metadata = {
   title: 'My Website | Provenance',
@@ -97,7 +98,12 @@ export default async function ProfileSitePage({
               <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-1">
                 Creator Website
               </p>
-              <h1 className="text-xl font-display font-bold text-ink">Your Website</h1>
+              <h1 className="text-xl font-display font-bold text-ink flex items-center gap-2">
+                Your Website
+                <Badge className="bg-wine/10 text-wine border-wine/20 font-serif text-[10px] uppercase tracking-widest">
+                  Beta
+                </Badge>
+              </h1>
             </div>
             <Button asChild variant="ghost" size="sm" className="font-serif text-ink/60 hover:text-ink shrink-0">
               <Link href="/profile">← Back to profile</Link>

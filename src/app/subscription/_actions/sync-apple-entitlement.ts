@@ -7,7 +7,7 @@ import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { verifyTransactionJWS } from '~/lib/apple/verify-apple-jws';
 import type { SubscriptionRole } from '~/lib/stripe-config';
 import { logger } from '~/lib/logger';
-import { upsertAppleSubscription } from '~/lib/apple/upsert-apple-subscription';
+import { cancelLocalTrial, upsertAppleSubscription } from '~/lib/apple/upsert-apple-subscription';
 
 /**
  * Eagerly syncs an Apple IAP entitlement after a native purchase or restore.
@@ -79,6 +79,13 @@ export async function syncAppleEntitlement(
         code: error.code,
       });
       return { success: false, error: 'upsert_failed' };
+    }
+
+    if (!decoded.expiresDate || decoded.expiresDate > Date.now()) {
+      const { error: trialError } = await cancelLocalTrial(admin, user.id);
+      if (trialError) {
+        logger.error('apple_iap_sync_cancel_trial_failed', { userId: user.id, message: trialError.message });
+      }
     }
 
     console.log('[AppleIAP] syncAppleEntitlement completed', {

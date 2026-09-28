@@ -36,3 +36,22 @@ export async function upsertAppleSubscription(
   if (insertError?.code === '23505') return update();
   return { error: insertError };
 }
+
+/**
+ * A paid Apple subscription now covers this user — cancel any lingering
+ * app-provisioned signup trial (stripe_subscription_id `trial_*`) so the
+ * trial banner, expiry notifications and trial-nudge emails stop. Mirrors the
+ * same cleanup in the Stripe webhook.
+ */
+export async function cancelLocalTrial(
+  admin: UntypedSupabaseClient,
+  userId: string,
+): Promise<{ error: { message: string; code?: string } | null }> {
+  const { error } = await admin
+    .from('subscriptions')
+    .update({ status: 'canceled', updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('status', 'trialing')
+    .like('stripe_subscription_id', 'trial_%');
+  return { error };
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UntypedSupabaseClient } from '~/lib/supabase-untyped';
-import { upsertAppleSubscription } from './upsert-apple-subscription';
+import { cancelLocalTrial, upsertAppleSubscription } from './upsert-apple-subscription';
 
 type Err = { message: string; code?: string } | null;
 
@@ -56,5 +56,29 @@ describe('upsertAppleSubscription', () => {
   it('returns other insert errors', async () => {
     const { admin } = fakeAdmin({ existing: false, insertError: { message: 'boom', code: '42501' } });
     expect((await upsertAppleSubscription(admin, row)).error?.code).toBe('42501');
+  });
+});
+
+describe('cancelLocalTrial', () => {
+  it("cancels only the user's app-provisioned trialing rows", async () => {
+    const filters: unknown[][] = [];
+    let patch: Record<string, unknown> | undefined;
+    const chain = {
+      eq: (...args: unknown[]) => (filters.push(['eq', ...args]), chain),
+      like: async (...args: unknown[]) => (filters.push(['like', ...args]), { error: null }),
+    };
+    const admin = {
+      from: () => ({
+        update: (p: Record<string, unknown>) => ((patch = p), chain),
+      }),
+    } as unknown as UntypedSupabaseClient;
+
+    expect((await cancelLocalTrial(admin, 'user-1')).error).toBeNull();
+    expect(patch?.status).toBe('canceled');
+    expect(filters).toEqual([
+      ['eq', 'user_id', 'user-1'],
+      ['eq', 'status', 'trialing'],
+      ['like', 'stripe_subscription_id', 'trial_%'],
+    ]);
   });
 });

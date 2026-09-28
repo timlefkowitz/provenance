@@ -53,6 +53,28 @@ export default async function SubscriptionPage({
 
   const subscription = subscriptionRows?.[0] ?? null;
 
+  // With no current plan, surface the most recent one that lapsed so a
+  // returning user sees why they're back on the plan picker.
+  let lapsedPlan: { role: string; endedAt: string; wasTrial: boolean } | null = null;
+  if (!subscription) {
+    const { data: lapsedRows } = await asUntyped(client)
+      .from('subscriptions')
+      .select('role, current_period_end, stripe_subscription_id')
+      .eq('user_id', user.id)
+      .not('current_period_end', 'is', null)
+      .lt('current_period_end', nowIso)
+      .order('current_period_end', { ascending: false })
+      .limit(1);
+    const lapsed = lapsedRows?.[0];
+    if (lapsed?.current_period_end) {
+      lapsedPlan = {
+        role: lapsed.role,
+        endedAt: lapsed.current_period_end,
+        wasTrial: String(lapsed.stripe_subscription_id ?? '').startsWith('trial_'),
+      };
+    }
+  }
+
   const VALID_SUBSCRIPTION_ROLES = ['artist', 'collector', 'gallery'] as const;
   const queryRole = VALID_SUBSCRIPTION_ROLES.includes(params.role as any)
     ? (params.role as SubscriptionRole)
@@ -70,6 +92,7 @@ export default async function SubscriptionPage({
     <div className="container py-10">
       <SubscriptionContent
         subscription={subscription}
+        lapsedPlan={lapsedPlan}
         userId={user.id}
         defaultRole={defaultRole}
         success={success}

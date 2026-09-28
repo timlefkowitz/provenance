@@ -5,7 +5,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { verifyNotificationPayload, verifyTransactionJWS } from '~/lib/apple/verify-apple-jws';
 import type { SubscriptionRole } from '~/lib/stripe-config';
-import { upsertAppleSubscription } from '~/lib/apple/upsert-apple-subscription';
+import { cancelLocalTrial, upsertAppleSubscription } from '~/lib/apple/upsert-apple-subscription';
 
 export const runtime = 'nodejs';
 
@@ -153,12 +153,13 @@ export async function POST(request: NextRequest) {
       console.error('[AppleIAP] Webhook: upsert failed', { error, originalTransactionId: transaction.originalTransactionId });
       return NextResponse.json({ received: true, error: 'upsert_failed' });
     }
+    if (status === 'active') await cancelTrialLogged(admin, userId);
     return NextResponse.json({ received: true });
   }
 
   const { data: existing } = await admin
     .from('subscriptions')
-    .select('id')
+    .select('id, user_id')
     .eq('apple_original_transaction_id', transaction.originalTransactionId)
     .maybeSingle();
 
@@ -180,5 +181,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, error: 'update_failed' });
   }
 
+  if (status === 'active' && existing.user_id) await cancelTrialLogged(admin, existing.user_id);
   return NextResponse.json({ received: true });
+}
+
+async function cancelTrialLogged(admin: Parameters<typeof cancelLocalTrial>[0], userId: string) {
+  const { error } = await cancelLocalTrial(admin, userId);
+  if (error) console.error('[AppleIAP] Webhook: failed to cancel stale trial row', { userId, error });
 }

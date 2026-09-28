@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useSyncExternalStore, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Building2, Check, Gem, Palette } from 'lucide-react';
 
@@ -12,6 +12,9 @@ import { updateUserRole } from '../_actions/update-user-role';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { SUBSCRIPTION_PRICES } from '~/lib/stripe-config';
 import { gtmService } from '~/lib/gtm';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+
+const subscribeToPlatform = () => () => undefined;
 
 const ROLE_OPTIONS = [
   {
@@ -44,6 +47,8 @@ export function OnboardingForm() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | ''>('');
+  // Native shell detection; false during SSR.
+  const native = useSyncExternalStore(subscribeToPlatform, isNativePlatform, () => false);
 
   const handleContinue = () => {
     if (!role) {
@@ -108,7 +113,8 @@ export function OnboardingForm() {
               </span>
               <span className="font-body text-xs text-stone-600">{option.description}</span>
               <span className="font-body text-xs font-medium text-[#4A2F25]">
-                Free for 14 days, then ${price.monthly}/mo
+                {/* Guideline 3.1.2: on iOS, prices come from StoreKit on /subscription. */}
+                {native ? 'Free for 14 days' : `Free for 14 days, then $${price.monthly}/mo`}
               </span>
             </button>
           );

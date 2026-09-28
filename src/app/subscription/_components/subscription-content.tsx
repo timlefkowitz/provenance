@@ -31,6 +31,7 @@ type SubscriptionRow = {
 
 type Props = {
   subscription: SubscriptionRow;
+  lapsedPlan?: { role: string; endedAt: string; wasTrial: boolean } | null;
   userId: string;
   defaultRole: SubscriptionRole | null;
   success?: boolean;
@@ -79,6 +80,7 @@ const ROLE_FEATURES: Record<SubscriptionRole, string[]> = {
 
 export function SubscriptionContent({
   subscription,
+  lapsedPlan,
   userId,
   defaultRole,
   success,
@@ -340,6 +342,20 @@ export function SubscriptionContent({
           <CardContent className="pt-6">
             <p className="font-serif text-ink/80">
               Checkout was canceled. You can choose a plan below when you&apos;re ready.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {lapsedPlan && !subscription && (
+        <Card className="border-ink/20 bg-parchment/40">
+          <CardContent className="pt-6">
+            <p className="font-serif text-ink/80">
+              {lapsedPlan.wasTrial
+                ? `Your free trial ended on ${formatLongDate(lapsedPlan.endedAt)}.`
+                : `Your ${getRoleLabel(lapsedPlan.role as UserRole)} subscription expired on ${formatLongDate(lapsedPlan.endedAt)}.`}{' '}
+              Choose a plan below to regain access to the Toolbox.
+              {native && ' If you already renewed with Apple, tap "Restore previous purchases".'}
             </p>
           </CardContent>
         </Card>
