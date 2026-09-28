@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
+import { revokeAppleSignIn } from '~/lib/apple/sign-in-with-apple';
 
 /**
  * Permanently deletes the current user's account.
@@ -64,7 +65,11 @@ export async function deleteAccount(): Promise<{ success: boolean; error?: strin
       // Non-fatal — the auth user deletion below will cascade-delete this row anyway.
     }
 
-    // 3. Delete the Supabase auth user. All tables with:
+    // 3. Guideline 5.1.1(v): revoke Sign in with Apple before the user is gone
+    //    (the stored token row cascades away with the auth user).
+    await revokeAppleSignIn(user.id);
+
+    // 4. Delete the Supabase auth user. All tables with:
     //      REFERENCES auth.users(id) ON DELETE CASCADE
     //    (artworks, profiles, subscriptions, stripe_customers, etc.) are
     //    automatically cleaned up by the database.

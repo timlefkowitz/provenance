@@ -3,6 +3,7 @@ import 'server-only';
 import {
   AuthError,
   type EmailOtpType,
+  type Session,
   SupabaseClient,
 } from '@supabase/supabase-js';
 
@@ -141,6 +142,7 @@ class AuthCallbackService {
     },
   ): Promise<{
     nextPath: string;
+    session?: Session | null;
   }> {
     const requestUrl = new URL(request.url);
     const searchParams = requestUrl.searchParams;
@@ -151,6 +153,8 @@ class AuthCallbackService {
     const errorPath = params.errorPath ?? '/auth/callback/error';
 
     const nextUrl = nextUrlPathFromParams ?? params.redirectPath;
+
+    let session: Session | null = null;
 
     if (authCode) {
       console.log('[Auth/Callback] exchangeCodeForSession starting', {
@@ -177,6 +181,8 @@ class AuthCallbackService {
             path: errorPath,
           });
         }
+
+        session = data?.session ?? null;
 
         console.log('[Auth/Callback] exchangeCodeForSession succeeded', {
           userId: data?.user?.id,
@@ -218,6 +224,9 @@ class AuthCallbackService {
 
     return {
       nextPath: nextUrl,
+      // Exposes provider tokens (e.g. Apple's refresh token, needed to revoke
+      // Sign in with Apple on account deletion) that only exist right here.
+      session,
     };
   }
 }

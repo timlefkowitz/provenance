@@ -4,6 +4,7 @@ import { createAuthCallbackService } from '@kit/supabase/auth';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { provisionNewUser } from '~/lib/auth/provision-new-user';
+import { isNativeAppRequest, NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
 
 export async function GET(request: NextRequest) {
   // Diagnostic logging: this route fires for token_hash + type email links
@@ -39,7 +40,9 @@ export async function GET(request: NextRequest) {
   if (type === 'email' || type === 'signup') {
     const { data: { user } } = await asUntyped(supabaseClient).auth.getUser().catch(() => ({ data: { user: null } }));
     if (user) {
-      const { isNewUser } = await provisionNewUser(user.id);
+      const { isNewUser } = await provisionNewUser(user.id, {
+        fromNativeApp: isNativeAppRequest(request.cookies.get(NATIVE_PLATFORM_COOKIE)?.value),
+      });
       if (isNewUser) {
         url.searchParams.set('new_user', '1');
         console.log('[GTM] New user confirmed via email — appending ?new_user=1');

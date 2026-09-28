@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server';
 import { createAuthCallbackService } from '@kit/supabase/auth';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { provisionNewUser } from '~/lib/auth/provision-new-user';
+import { isNativeAppRequest, NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
+import { storeAppleRefreshToken } from '~/lib/apple/sign-in-with-apple';
 
 
 export async function GET(request: NextRequest) {
@@ -22,16 +24,21 @@ export async function GET(request: NextRequest) {
   const supabaseClient = getSupabaseServerClient();
   const service = createAuthCallbackService(supabaseClient);
 
-  const { nextPath } = await service.exchangeCodeForSession(request, {
+  const { nextPath, session } = await service.exchangeCodeForSession(request, {
     // Default post-sign-in destination — moved from `/portal` to `/artworks`
     // so users land directly in their collection.
     redirectPath: '/artworks',
   });
 
+  // Guideline 5.1.1(v): keep Apple's refresh token so account deletion can revoke it.
+  await storeAppleRefreshToken(session);
+
   // Provision trial + welcome email; detect new users for the GTM ?new_user=1 signal.
   const { data: { user } } = await asUntyped(supabaseClient).auth.getUser().catch(() => ({ data: { user: null } }));
   const { isNewUser } = user
-    ? await provisionNewUser(user.id)
+    ? await provisionNewUser(user.id, {
+        fromNativeApp: isNativeAppRequest(request.cookies.get(NATIVE_PLATFORM_COOKIE)?.value),
+      })
     : { isNewUser: false };
 
   // Always use the request origin to ensure we redirect to the correct domain

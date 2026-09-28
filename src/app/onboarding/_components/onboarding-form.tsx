@@ -113,8 +113,8 @@ export function OnboardingForm() {
               </span>
               <span className="font-body text-xs text-stone-600">{option.description}</span>
               <span className="font-body text-xs font-medium text-[#4A2F25]">
-                {/* Guideline 3.1.2: on iOS, prices come from StoreKit on /subscription. */}
-                {native ? 'Free for 14 days' : `Free for 14 days, then $${price.monthly}/mo`}
+                {/* Guideline 3.1.2: on iOS the trial is Apple's intro offer and prices come from StoreKit on /subscription. */}
+                {native ? '14-day free trial with Apple' : `Free for 14 days, then $${price.monthly}/mo`}
               </span>
             </button>
           );

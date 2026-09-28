@@ -9,14 +9,17 @@ export type ProvisionResult = {
 };
 
 /**
- * Provision a 14-day free trial and send a welcome email for a user who just
+ * Provision a 14-day free trial (web sign-ups only) and send a welcome email for a user who just
  * completed authentication (OAuth callback or email confirmation). Idempotent —
  * safe to call on every sign-in; the trial row is only created once.
  *
  * Errors are swallowed and logged so they never block the auth redirect.
  */
-export async function provisionNewUser(userId: string): Promise<ProvisionResult> {
-  console.log('[Auth/Provision] started', { userId });
+export async function provisionNewUser(
+  userId: string,
+  options: { fromNativeApp?: boolean } = {},
+): Promise<ProvisionResult> {
+  console.log('[Auth/Provision] started', { userId, fromNativeApp: !!options.fromNativeApp });
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -62,7 +65,12 @@ export async function provisionNewUser(userId: string): Promise<ProvisionResult>
       const hasEligibleSubscription = (eligibleSubscriptionRows?.length ?? 0) > 0;
       const hasExistingTrialRow = (existingTrialRows?.length ?? 0) > 0;
 
-      if (!hasEligibleSubscription && !hasExistingTrialRow) {
+      // Guideline 3.1.2(a): in the iOS app the free trial is Apple's 14-day
+      // introductory offer on each subscription, started through StoreKit —
+      // so accounts created there don't get a server-granted trial.
+      if (options.fromNativeApp) {
+        console.log('[Billing] trial provisioning skipped — iOS app sign-up uses Apple intro offer', { userId });
+      } else if (!hasEligibleSubscription && !hasExistingTrialRow) {
         await admin.from('subscriptions').insert({
           user_id: userId,
           stripe_customer_id: null,

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
+import { NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
 import { StoreKit } from '~/lib/capacitor/storekit';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { syncAppleEntitlement } from '~/app/subscription/_actions/sync-apple-entitlement';
@@ -84,6 +85,10 @@ export function NativeInit({ userId: _userId }: Props) {
 
     // Mark <html> so CSS can target native-only rules.
     document.documentElement.classList.add('cap-native');
+
+    // Let server routes (sign-up trial provisioning) know this is the iOS app:
+    // there, the free trial is Apple's introductory offer, not a server trial.
+    document.cookie = `${NATIVE_PLATFORM_COOKIE}=ios; path=/; max-age=31536000; SameSite=Lax; Secure`;
 
     async function initNative() {
       try {

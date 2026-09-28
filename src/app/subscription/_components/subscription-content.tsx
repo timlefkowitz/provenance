@@ -571,6 +571,15 @@ export function SubscriptionContent({
                         ? `, ${applePrices[getAppleProductId(selectedRole, interval) ?? '']} per ${interval === 'year' ? 'year' : 'month'}`
                         : ''}
                     </p>
+                    {/* Guideline 3.1.2(a): the free trial is Apple's introductory offer. */}
+                    {!isTrialing && (
+                      <p className="text-ink/80">
+                        New subscribers get a 14-day free trial, then{' '}
+                        {applePrices[getAppleProductId(selectedRole, interval) ?? ''] ?? 'the price shown by Apple'} per{' '}
+                        {interval === 'year' ? 'year' : 'month'} unless canceled at least 24 hours before the trial
+                        ends. If you&apos;ve had the free trial before, payment is charged at confirmation.
+                      </p>
+                    )}
                     <p>
                       Payment is charged to your Apple ID at confirmation of purchase. The
                       subscription automatically renews at the same price and length unless it
