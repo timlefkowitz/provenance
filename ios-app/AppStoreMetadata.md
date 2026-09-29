@@ -12,8 +12,8 @@ Fields marked `TODO(you):` require information only you can provide.
 | **App Name**           | Provenance             |
 | **Subtitle**           | Art Collection Journal |
 | **Bundle ID**          | `guru.provenance.app`  |
-| **Primary Category**   | Lifestyle              |
-| **Secondary Category** | Reference              |
+| **Primary Category**   | Utilities              |
+| **Secondary Category** | Productivity           |
 | **Content Rating**     | 13+ (see Version & Rating) |
 | **Primary Language**   | English (U.S.)         |
 
@@ -213,46 +213,34 @@ Before submitting:
 
 ### Notes for Reviewer
 
+As submitted with 1.1 (8) on 2026-09-29. Demo sign-in (App Review Information): appreview-expired@provenance.guru, expired Collector subscription; password is only in App Store Connect.
+
 ```
-Provenance is a collection management and provenance documentation tool for
-artists, collectors, and galleries.
+DEMO ACCOUNT (expired subscription, per your Sept 27 request): appreview-expired@provenance.guru, password in Sign-In Information above. Its Collector subscription expired Sept 21, 2026. After sign-in open Settings > Subscription & Billing > View Plans & Subscribe: the page shows the expired plan and the full Apple In-App Purchase flow (plan picker, StoreKit prices, auto-renew terms, Terms/Privacy links, Restore Purchases). The account has sample items, so collection and certificate features are visible immediately.
 
-Key features shown:
-1. User authentication via email/password and Sign in with Apple.
-2. Photo capture for documenting artworks (camera and photo library
-   permissions are requested).
-3. Provenance records and certificates of authenticity (documentation
-   tools; not a guarantee of authenticity or value).
-4. Subscription via Apple In-App Purchase (Artist, Collector, or Gallery plans).
-   New subscribers get a 14-day free trial as Apple's introductory offer;
-   Restore Purchases is on the Subscription screen.
-5. AI features (valuation research, grant assistant, profile setup chat, CV and
-   exhibition-checklist import) send data to OpenAI only after the user taps
-   "Allow" on an explicit consent prompt. Consent can be withdrawn in
-   Settings → Privacy.
-6. User-generated content: every artwork, collectible, profile and exhibition
-   page has a ⋯ menu to report the content or block its owner. Reports reach
-   our moderation queue and are reviewed within 24 hours. Blocked users are
-   listed in Settings → Privacy.
-7. Account deletion: Settings → Account Actions → Delete Account.
-8. Push notifications are optional. After sign-in the app explains what they're
-   for and only then shows the iOS permission prompt; "Not now" works fine.
-   They mirror the in-app Notifications list (certificate scans, claims,
-   requests).
+NEW IN THIS BUILD (native iPhone/iPad features):
+- Certificate scanner: More tab > Scan a certificate opens a native QR scanner; scanning any Provenance certificate code opens that certificate.
+- Push notifications (optional): after sign-in the app explains them before the iOS prompt; "Not now" works. They mirror the in-app Notifications list.
+- Camera: Add (+) > Take Photo opens the iOS camera.
+- Share: any certificate > Share > Share... opens the iOS share sheet.
+- App Lock: Settings > Security > App Lock requires Face ID or the passcode on open (off by default).
+- Offline screen with Retry when there's no connection.
 
-iPhone features to try:
-9. Certificate scanner: More tab → "Scan a certificate" opens a native QR
-   scanner. Scanning a Provenance certificate code opens that certificate.
-   Any artwork page's certificate shows its QR code to test with.
-10. Camera: Add (+) tab → "Take Photo" opens the iOS camera.
-11. Share: on any certificate, Share → "Share…" opens the iOS share sheet.
-12. App Lock: Settings → Security → App Lock requires Face ID (or the device
-    passcode) when the app opens or returns after a minute in the background.
-    Off by default.
+PRIVACY: no tracking; ads, Google Tag Manager and third-party analytics are disabled in the iOS app. Photos are used only for documentation; location only for the optional certificate-scan feature.
 
-Payments: Artwork sales use Stripe because they are physical goods
-(guideline 3.1.3(e)). Custom-domain purchase is not offered in the iOS app;
-users can only connect a domain they already own. Subscriptions use Apple IAP.
+USER-GENERATED CONTENT (1.2): every artwork, collectible, profile and exhibition has a ⋯ menu to report it or block its owner. Blocked users' content is hidden everywhere (manage in Settings > Privacy). Reports are reviewed within 24 hours; objectionable text is filtered before publishing. Terms state zero tolerance for objectionable content.
+
+AI (5.1.2(i)): AI tools (Taco assistant, grants assistants, profile setup chat, CV/checklist import, press search, valuations) ask for explicit permission before any data is sent to OpenAI; withdraw in Settings > Privacy. Everything else works without it.
+
+ACCOUNT DELETION: Settings > Account Actions > Delete Account.
+
+SUBSCRIPTIONS: Apple In-App Purchase only (Artist, Collector, Gallery; monthly or yearly). Each has a 14-day free trial as an Apple introductory offer, shown with the price after the trial. Artwork sales use Stripe because they are physical goods (3.1.3(e)); buying a custom domain is not offered in the iOS app.
+
+WHAT IT DOES: artists, collectors and galleries catalog artworks and collectibles with photos, condition reports and ownership/exhibition history, then issue certificates of authenticity with a scannable verification code for galleries, insurers or buyers. Artists also get a hosted website and a curated grants/open-calls list; galleries get exhibition management and an artist roster. Certificates are documentation tools, not a guarantee of authenticity or value.
+
+EXTERNAL SERVICES: Supabase (auth, database), Apple IAP, Stripe (artwork sales only), OpenAI (only with permission), Resend (email), BigDataCloud (place names from photo coordinates), Apple Push Notification service.
+
+Tested on iPhone 17 (iOS 26.6); supports iPhone and iPad. No region-gated features.
 ```
 
 ---
@@ -280,18 +268,23 @@ _(The Support URL page links a contact email and the feedback form, which covers
 | **Availability** | All territories (or restrict as needed)   |
 | **Price**        | Free (in-app purchases for subscriptions) |
 
-**Age rating (App Store Connect → App Information → Age Rating):** App Store
-Connect works out the rating from the questionnaire; you can't pick it
-directly. Answer these to reflect the app honestly; with them the result
-should be 13+. If it comes out different, keep the answers and accept the
-computed rating.
+**Age rating (App Store Connect → App Information → Age Ratings)** — set
+2026-09-29. Calculated 13+ (16+ Brazil, 15+ Korea). Saved answers:
 
 | Question | Answer | Why |
 | --- | --- | --- |
-| Violence, sexual content, profanity, horror, drugs/alcohol, gambling, contests, medical | None | Not app content (artwork images are user uploads, covered by the UGC answer) |
-| User-generated content | Yes | Public profiles, artworks, collectibles, exhibitions |
-| Messaging / chat between users | No | No user-to-user chat |
-| AI chatbot / generated content | Yes | Taco assistant, grant and valuation AI |
-| Content controls (report, block, moderation) | Yes | ⋯ menu on every content page, admin review queue |
+| Parental controls, age assurance | No | |
 | Unrestricted web access | No | WebView is limited to provenance.guru and sign-in pages |
-| Age assurance / parental controls | No | |
+| User-generated content | Yes | Public profiles, artworks, collectibles, exhibitions |
+| Social media | Yes | Public artworks feed and registry |
+| Social media disabled for under-13s | No | |
+| Messaging and chat | No | No user-to-user messaging (Taco is an AI assistant) |
+| Advertising | No | No ads or paid promotion; iOS app loads no ad scripts |
+| Sexual content or nudity | Infrequent | Some uploaded artworks include nudes |
+| Mature themes, medical, violence, gambling, contests, loot boxes | None / No | |
+
+**App Privacy labels** (published 2026-09-14, reviewed 2026-09-29, no changes
+needed): no tracking. Linked to you: name, email, phone, physical address,
+emails/text messages, photos/videos, customer support, other user content,
+user ID, purchase history, product interaction. Not linked: precise and coarse
+location (certificate scans store location without the scanner's user ID).
