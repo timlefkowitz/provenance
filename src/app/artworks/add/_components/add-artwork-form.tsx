@@ -35,6 +35,7 @@ import type { Tag } from '~/app/artworks/_actions/tags';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { UpgradePrompt } from '~/components/upgrade-prompt';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { takeNativePhoto } from '~/lib/capacitor/native-camera';
 import { gtmService } from '~/lib/gtm';
 import { asUntyped } from '~/lib/supabase-untyped';
 import type { UserRole } from '~/lib/user-roles';
@@ -456,12 +457,9 @@ export function AddArtworkForm({
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) {
-      console.warn('[AddArtworkForm] File select with no files', {
-        inputId: e.target.id,
-      });
+      console.warn('[AddArtworkForm] File select with no files');
       return;
     }
 
@@ -891,7 +889,7 @@ export function AddArtworkForm({
             id="images"
             accept="image/*"
             multiple
-            onChange={handleFileSelect}
+            onChange={(e) => void handleFiles(e.target.files)}
             className="hidden"
           />
 
@@ -914,7 +912,18 @@ export function AddArtworkForm({
             </Button>
             <Button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                // In the iOS app, use the native camera directly.
+                if (isNativePlatform()) {
+                  try {
+                    const photo = await takeNativePhoto();
+                    if (photo) await handleFiles([photo]);
+                  } catch (err) {
+                    console.error('[AddArtworkForm] native camera failed', err);
+                    setError('Could not open the camera.');
+                  }
+                  return;
+                }
                 // For camera, set capture attribute to use device camera
                 if (fileInputRef.current) {
                   fileInputRef.current.setAttribute('capture', 'environment');

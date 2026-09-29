@@ -26,6 +26,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { USER_ROLES, getRoleLabel, type UserRole } from '~/lib/user-roles';
+import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
 import { createProfile } from '../_actions/create-profile';
 import { uploadProfilePicture } from '../_actions/upload-profile-picture';
 import {
@@ -218,6 +219,11 @@ export function TacoProfileChatbot({
 
   const currentQuestion = questions[stepIndex];
 
+  // Ask for AI consent once per session. Declining isn't a dead end: the
+  // parse-input route falls back to a local heuristic parser without it.
+  const { ensureAiConsent } = useAiConsent();
+  const aiConsentAskedRef = useRef(false);
+
   /* ----- AI SDK streaming object hook ---------------------------------- */
   const {
     object: streamedObject,
@@ -349,11 +355,16 @@ export function TacoProfileChatbot({
 
   /* ----- send an answer ------------------------------------------------ */
   const handleSend = useCallback(
-    (raw: string) => {
+    async (raw: string) => {
       const text = raw.trim();
       if (!text || tacoTyping || stage !== 'questions') return;
       const q = currentQuestion;
       if (!q) return;
+
+      if (!aiConsentAskedRef.current) {
+        aiConsentAskedRef.current = true;
+        await ensureAiConsent();
+      }
 
       setMessages((prev) => [...prev, { id: nextId(), role: 'user', text }]);
       setInput('');
@@ -367,7 +378,7 @@ export function TacoProfileChatbot({
         alreadyKnown: draft,
       });
     },
-    [currentQuestion, draft, role, stage, tacoTyping, submitToTaco],
+    [currentQuestion, draft, role, stage, tacoTyping, submitToTaco, ensureAiConsent],
   );
 
   const handleSkip = useCallback(() => {
@@ -733,7 +744,7 @@ export function TacoProfileChatbot({
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (listening) stopListening();
-                  handleSend(input);
+                  void handleSend(input);
                 }}
                 className="flex items-center gap-2"
               >

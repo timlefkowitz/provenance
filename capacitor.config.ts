@@ -22,6 +22,9 @@ const config: CapacitorConfig = {
     // would otherwise hand off to Safari before the first page even loads.
     url: 'https://www.provenance.guru',
     cleartext: false,
+    // Shown when the live site can't load (offline, DNS, server down) instead
+    // of a blank WebView; App Review tests launch without a connection.
+    errorPath: 'offline.html',
     allowNavigation: [
       'provenance.guru',       // apex, for any hard-coded apex links
       '*.provenance.guru',     // www (canonical), auth.provenance.guru, {handle} sites

@@ -8,6 +8,8 @@ export default defineConfig({
       'src/lib/audio-denoise/**/*.test.ts',
       'src/lib/seo/**/*.test.ts',
       'src/lib/apple/**/*.test.ts',
+      'src/lib/push/**/*.test.ts',
+      'src/lib/capacitor/**/*.test.ts',
       'src/lib/weekly-digest.test.ts',
       'src/lib/email-preferences.test.ts',
       'src/app/mailing-list/**/*.test.ts',

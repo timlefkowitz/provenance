@@ -1,4 +1,6 @@
-'use server';
+// Not a server action: callers (upload-artist-cv, onboarding/upload-cv) do the
+// auth and AI-consent checks before sending CV text to OpenAI.
+import 'server-only';
 
 import OpenAI from 'openai';
 import type { ArtistCvJson } from '~/lib/grants';

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Provenance</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #F8F4F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #4a3728;
+    }
+    .box { text-align: center; padding: 0 32px; max-width: 360px; }
+    h1 { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    p { font-size: 0.95rem; line-height: 1.5; color: #7a6a5a; margin-bottom: 1.5rem; }
+    button {
+      font: inherit;
+      font-size: 1rem;
+      color: #F8F4F0;
+      background: #4A2F25;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 28px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Capacitor server.errorPath: shown when https://www.provenance.guru can't load. -->
+  <div class="box">
+    <h1>You're offline</h1>
+    <p>Provenance needs an internet connection to load your collection. Check your connection and try again.</p>
+    <button type="button" onclick="window.location.replace('https://www.provenance.guru')">Try again</button>
+  </div>
+</body>
+</html>

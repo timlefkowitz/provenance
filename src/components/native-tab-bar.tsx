@@ -16,11 +16,16 @@ import {
   User,
   Bell,
   MessageSquare,
+  ScanLine,
 } from 'lucide-react';
 import { cn } from '@kit/ui/utils';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { TOOLBOX_ITEMS, INFO_ITEMS } from '~/config/app-nav-items';
 import { isAppMode } from '~/lib/app-mode';
+import { toast } from '@kit/ui/sonner';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { Scanner } from '~/lib/capacitor/scanner';
+import { certificatePathFromScan } from '~/lib/capacitor/certificate-scan';
 
 // Suppressed routes — same set used by navigation.tsx
 const SUPPRESSED_PREFIXES = ['/investors', '/profile/site/preview', '/docs'];
@@ -66,6 +71,25 @@ export function NativeTabBar() {
     setIsNative(isAppMode());
   }, []);
 
+  async function handleScan() {
+    setMoreOpen(false);
+    try {
+      const result = await Scanner.scan();
+      if (result.status === 'denied') {
+        toast.error('Camera access is off. Turn it on in Settings → Provenance → Camera to scan certificates.');
+        return;
+      }
+      if (result.status !== 'scanned') return;
+      const path = certificatePathFromScan(result.value);
+      console.log('[NativeTabBar] certificate scan', { recognized: Boolean(path) });
+      if (path) router.push(path);
+      else toast.error("That QR code isn't a Provenance certificate.");
+    } catch (err) {
+      console.error('[NativeTabBar] scan failed', err);
+      toast.error('Could not open the scanner.');
+    }
+  }
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setSelectedProfileId(localStorage.getItem('selected_profile_id'));
@@ -80,6 +104,8 @@ export function NativeTabBar() {
   }, [pathname]);
 
   if (!isNative) return null;
+  // App mode also covers the installed PWA; the scanner needs the iOS shell.
+  const canScan = isNativePlatform();
   if (!user) return null;
   if (isSuppressed(pathname)) return null;
 
@@ -242,6 +268,23 @@ export function NativeTabBar() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-ink/40 px-1 mb-2">
                   Explore
                 </p>
+                {canScan && (
+                  <button
+                    type="button"
+                    onClick={() => void handleScan()}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-wine/5 active:bg-wine/10 transition-colors"
+                  >
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-wine/8 text-wine shrink-0">
+                      <ScanLine className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink leading-tight">Scan a certificate</span>
+                      <span className="block text-[11px] text-ink/50 leading-tight mt-0.5">
+                        Open any Provenance certificate from its QR code
+                      </span>
+                    </span>
+                  </button>
+                )}
                 <MoreLink
                   href="/registry"
                   icon={<Users className="h-5 w-5" />}

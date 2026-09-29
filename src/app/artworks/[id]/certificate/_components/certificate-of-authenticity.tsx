@@ -35,6 +35,7 @@ import { adminDeleteArtwork } from '../../_actions/admin-delete-artwork';
 import { UploadAttachmentsDialog, type ArtworkAttachmentRow } from './upload-attachments-dialog';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
+import { shareLink } from '~/lib/capacitor/share';
 import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
 import { EditArtworkDialog } from './edit-artwork-dialog';
@@ -470,6 +471,20 @@ export function CertificateOfAuthenticity({
     return '';
   }, [artwork.id]);
 
+  const handleShare = async () => {
+    if (!shareUrl) return;
+    const artworkTitle = artwork.title || 'Artwork';
+    const result = await shareLink({
+      title: artworkTitle,
+      text: artwork.artist_name
+        ? `Certificate of Authenticity for "${artworkTitle}" by ${artwork.artist_name}.`
+        : `Certificate of Authenticity for "${artworkTitle}".`,
+      url: shareUrl,
+    });
+    if (result === 'copied') toast.success('Link copied to clipboard.');
+    else if (result === 'failed') await handleCopyLink();
+  };
+
   const handleShareFacebook = () => {
     if (!shareUrl) return;
     console.log('[Certificate] share to Facebook', { artworkId: artwork.id });
@@ -817,6 +832,10 @@ export function CertificateOfAuthenticity({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="font-serif text-sm">
+              <DropdownMenuItem onClick={handleShare}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share…
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopyLink}>
                 <LinkIcon className="mr-2 h-4 w-4" />
                 Copy link

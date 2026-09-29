@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamText, Output } from 'ai';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { checkRateLimit } from '~/lib/rate-limit';
+import { hasAiConsent } from '~/lib/ai-consent';
 import { isValidRole, type UserRole } from '~/lib/user-roles';
 import {
   buildTacoSystemPrompt,
@@ -108,9 +109,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid currentField' }, { status: 400 });
   }
 
-  // -------- heuristic fallback when no API key --------
+  // -------- heuristic fallback when no API key or no AI consent --------
+  // Guideline 5.1.2(i): profile answers (name, address, phone…) only go to
+  // the AI provider once the user has explicitly allowed it.
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
+  if (!apiKey || !(await hasAiConsent(user.id))) {
     const extracted = heuristicParse(safeInput, currentField);
     return staticObjectResponse({
       taco_reply: pickFallbackReply(),

@@ -14,7 +14,7 @@ Fields marked `TODO(you):` require information only you can provide.
 | **Bundle ID**          | `guru.provenance.app`  |
 | **Primary Category**   | Lifestyle              |
 | **Secondary Category** | Reference              |
-| **Content Rating**     | 4+                     |
+| **Content Rating**     | 13+ (see Version & Rating) |
 | **Primary Language**   | English (U.S.)         |
 
 ---
@@ -60,9 +60,13 @@ Link to galleries, auction records, and previous owners.
 Photograph your pieces directly from the app to document condition,
 detail, and context as you build each record.
 
+• Scan Any Certificate
+Point your camera at a Provenance certificate's QR code to open its record
+instantly, and share certificates through the iOS share sheet.
+
 • Private & Secure
 Your collection remains private by default. Share only what you choose,
-when you choose.
+when you choose — and lock the app with Face ID.
 
 • Valuation Research
 Get AI-assisted research to help inform your understanding of a piece's
@@ -166,6 +170,8 @@ Produce screenshots in Simulator (or on device) at these exact sizes:
 3. Provenance certificate / COA
 4. Grant / Toolbox screen (artists)
 5. Camera / artwork upload flow
+6. Certificate QR scanner
+7. Face ID App Lock screen
 
 _Take screenshots in Simulator: Xcode → Window → Devices and Simulators → pick device → Screenshots._
 
@@ -218,10 +224,35 @@ Key features shown:
 3. Provenance records and certificates of authenticity (documentation
    tools; not a guarantee of authenticity or value).
 4. Subscription via Apple In-App Purchase (Artist, Collector, or Gallery plans).
-   The free 14-day trial allows full exploration without payment.
+   New subscribers get a 14-day free trial as Apple's introductory offer;
+   Restore Purchases is on the Subscription screen.
+5. AI features (valuation research, grant assistant, profile setup chat, CV and
+   exhibition-checklist import) send data to OpenAI only after the user taps
+   "Allow" on an explicit consent prompt. Consent can be withdrawn in
+   Settings → Privacy.
+6. User-generated content: every artwork, collectible, profile and exhibition
+   page has a ⋯ menu to report the content or block its owner. Reports reach
+   our moderation queue and are reviewed within 24 hours. Blocked users are
+   listed in Settings → Privacy.
+7. Account deletion: Settings → Account Actions → Delete Account.
+8. Push notifications are optional. After sign-in the app explains what they're
+   for and only then shows the iOS permission prompt; "Not now" works fine.
+   They mirror the in-app Notifications list (certificate scans, claims,
+   requests).
 
-Payments: Artwork marketplace sales use Stripe (physical goods / person-to-person
-marketplace, guideline 3.1.3(a) exception). Subscription plans use Apple IAP.
+iPhone features to try:
+9. Certificate scanner: More tab → "Scan a certificate" opens a native QR
+   scanner. Scanning a Provenance certificate code opens that certificate.
+   Any artwork page's certificate shows its QR code to test with.
+10. Camera: Add (+) tab → "Take Photo" opens the iOS camera.
+11. Share: on any certificate, Share → "Share…" opens the iOS share sheet.
+12. App Lock: Settings → Security → App Lock requires Face ID (or the device
+    passcode) when the app opens or returns after a minute in the background.
+    Off by default.
+
+Payments: Artwork sales use Stripe because they are physical goods
+(guideline 3.1.3(e)). Custom-domain purchase is not offered in the iOS app;
+users can only connect a domain they already own. Subscriptions use Apple IAP.
 ```
 
 ---
@@ -234,7 +265,7 @@ marketplace, guideline 3.1.3(a) exception). Subscription plans use Apple IAP.
 | **Marketing URL** | `https://www.provenance.guru`      |
 | **Contact Email** | `privacy@provenance.guru`          |
 
-_(Support URL is a real user guide, not a placeholder — but it has no visible "contact support" link or email on the page. Worth adding one before submission, since reviewers sometimes check.)_
+_(The Support URL page links a contact email and the feedback form, which covers guidelines 1.2 and 1.5.)_
 
 ---
 
@@ -245,6 +276,22 @@ _(Support URL is a real user guide, not a placeholder — but it has no visible 
 | **Version**      | 1.0.0                                     |
 | **Build**        | (set by Xcode)                            |
 | **Copyright**    | `© 2026 Provenance Guru, Inc.`            |
-| **Age Rating**   | 4+                                        |
+| **Age Rating**   | 13+ (questionnaire answers below)         |
 | **Availability** | All territories (or restrict as needed)   |
 | **Price**        | Free (in-app purchases for subscriptions) |
+
+**Age rating (App Store Connect → App Information → Age Rating):** App Store
+Connect works out the rating from the questionnaire; you can't pick it
+directly. Answer these to reflect the app honestly; with them the result
+should be 13+. If it comes out different, keep the answers and accept the
+computed rating.
+
+| Question | Answer | Why |
+| --- | --- | --- |
+| Violence, sexual content, profanity, horror, drugs/alcohol, gambling, contests, medical | None | Not app content (artwork images are user uploads, covered by the UGC answer) |
+| User-generated content | Yes | Public profiles, artworks, collectibles, exhibitions |
+| Messaging / chat between users | No | No user-to-user chat |
+| AI chatbot / generated content | Yes | Taco assistant, grant and valuation AI |
+| Content controls (report, block, moderation) | Yes | ⋯ menu on every content page, admin review queue |
+| Unrestricted web access | No | WebView is limited to provenance.guru and sign-in pages |
+| Age assurance / parental controls | No | |

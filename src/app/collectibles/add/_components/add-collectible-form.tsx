@@ -24,6 +24,8 @@ import {
   formatCategoryLabel,
   formatConditionLabel,
 } from '~/lib/collectibles/constants';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { takeNativePhoto } from '~/lib/capacitor/native-camera';
 import { createCollectible } from '../_actions/create-collectible';
 
 const MAX_IMAGES = 6;
@@ -126,8 +128,7 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
     });
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     setError(null);
 
@@ -287,7 +288,7 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
             id="images"
             accept="image/*"
             multiple
-            onChange={handleFileSelect}
+            onChange={(e) => void handleFiles(e.target.files)}
             className="hidden"
           />
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -309,7 +310,18 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
               disabled={atCap}
-              onClick={() => {
+              onClick={async () => {
+                // In the iOS app, use the native camera directly.
+                if (isNativePlatform()) {
+                  try {
+                    const photo = await takeNativePhoto();
+                    if (photo) await handleFiles([photo]);
+                  } catch (err) {
+                    console.error('[AddCollectibleForm] native camera failed', err);
+                    setError('Could not open the camera.');
+                  }
+                  return;
+                }
                 fileInputRef.current?.setAttribute('capture', 'environment');
                 fileInputRef.current?.click();
               }}

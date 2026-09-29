@@ -37,6 +37,7 @@ import { toast } from '@kit/ui/sonner';
 import { formatCategoryLabel, formatConditionLabel, type CollectibleRow } from '~/lib/collectibles/constants';
 import { formatMoneyCents, parseDeclaredValueCents } from '~/lib/collectibles/value';
 import { recordCollectibleScanLocation } from '../../_actions/record-collectible-scan-location';
+import { shareLink } from '~/lib/capacitor/share';
 import { updateCollectibleValue } from '../../_actions/update-collectible-value';
 
 // Reuse the artwork Leaflet scan map — it takes generic {latitude, longitude, ...}.
@@ -220,19 +221,13 @@ export function CollectibleCertificate({
   const handleShare = async () => {
     if (!shareUrl) return;
     const title = collectible.title || 'Collectible';
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title,
-          text: `Certificate of Ownership for "${title}" on Provenance.`,
-          url: shareUrl,
-        });
-        return;
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-      }
-    }
-    await handleCopyLink();
+    const result = await shareLink({
+      title,
+      text: `Certificate of Ownership for "${title}" on Provenance.`,
+      url: shareUrl,
+    });
+    if (result === 'copied') toast.success('Link copied to clipboard.');
+    else if (result === 'failed') await handleCopyLink();
   };
 
   const handlePrintQR = () => {
