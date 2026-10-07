@@ -18,7 +18,8 @@
     "./require-user": "./src/require-user.ts",
     "./hooks/*": "./src/hooks/*.ts",
     "./database": "./src/database.types.ts",
-    "./auth": "./src/auth.ts"
+    "./auth": "./src/auth.ts",
+    "./native-oauth": "./src/native-oauth.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

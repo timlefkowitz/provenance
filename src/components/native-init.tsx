@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
 import { NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
+import { handleNativeAuthCallbackUrl, nativeOAuthHandler } from '~/lib/capacitor/native-oauth';
+import { setNativeOAuthHandler } from '@kit/supabase/native-oauth';
 import { StoreKit } from '~/lib/capacitor/storekit';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
 import { syncAppleEntitlement } from '~/app/subscription/_actions/sync-apple-entitlement';
@@ -34,12 +36,24 @@ export function NativeInit({ userId: _userId }: Props) {
     let cancelled = false;
     let removeListener: (() => void) | null = null;
 
+    // Google OAuth runs in SFSafariViewController on native (see native-oauth.ts).
+    setNativeOAuthHandler(nativeOAuthHandler);
+
     async function setup() {
       const { App } = await import('@capacitor/app');
-      const handle = await App.addListener('appUrlOpen', ({ url }) => {
+      const handle = await App.addListener('appUrlOpen', async ({ url }) => {
         try {
           const target = new URL(url);
-          router.push(`${target.pathname}${target.search}`);
+          if (await handleNativeAuthCallbackUrl(target)) return;
+
+          const path = `${target.pathname}${target.search}`;
+          // /auth/* are route handlers that set the session cookie and
+          // redirect — they need a real navigation, not a client transition.
+          if (target.pathname.startsWith('/auth/')) {
+            window.location.assign(path);
+          } else {
+            router.push(path);
+          }
         } catch (err) {
           console.error('[NativeInit] appUrlOpen handling failed', { url, err });
         }
@@ -57,6 +71,7 @@ export function NativeInit({ userId: _userId }: Props) {
     return () => {
       cancelled = true;
       removeListener?.();
+      setNativeOAuthHandler(null);
     };
   }, [router]);
 

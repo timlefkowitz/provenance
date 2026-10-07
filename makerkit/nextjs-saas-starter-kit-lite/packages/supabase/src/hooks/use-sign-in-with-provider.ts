@@ -2,6 +2,7 @@ import type { SignInWithOAuthCredentials } from '@supabase/supabase-js';
 
 import { useMutation } from '@tanstack/react-query';
 
+import { getNativeOAuthHandler } from '../native-oauth';
 import { useSupabase } from './use-supabase';
 
 /**
@@ -13,6 +14,12 @@ export function useSignInWithProvider() {
   const mutationKey = ['auth', 'sign-in-with-provider'];
 
   const mutationFn = async (credentials: SignInWithOAuthCredentials) => {
+    const nativeHandler = getNativeOAuthHandler();
+
+    if (nativeHandler && (await nativeHandler(client, credentials))) {
+      return { provider: credentials.provider, url: null };
+    }
+
     const response = await client.auth.signInWithOAuth(credentials);
 
     if (response.error) {
