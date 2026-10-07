@@ -11,6 +11,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:www.provenance.guru</string>
+		<string>webcredentials:www.provenance.guru</string>
 	</array>
 </dict>
 </plist>

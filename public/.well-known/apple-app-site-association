@@ -8,5 +8,8 @@
         "paths": ["*"]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["446FDP9GB5.guru.provenance.app"]
   }
 }

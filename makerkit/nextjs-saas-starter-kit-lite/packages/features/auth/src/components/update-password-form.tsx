@@ -72,7 +72,7 @@ export function UpdatePasswordForm(params: { redirectTo: string }) {
                   </FormLabel>
 
                   <FormControl>
-                    <Input required type="password" {...field} />
+                    <Input required type="password" autoComplete="new-password" {...field} />
                   </FormControl>
 
                   <FormMessage />
@@ -89,7 +89,7 @@ export function UpdatePasswordForm(params: { redirectTo: string }) {
                   </FormLabel>
 
                   <FormControl>
-                    <Input required type="password" {...field} />
+                    <Input required type="password" autoComplete="new-password" {...field} />
                   </FormControl>
 
                   <FormMessage />

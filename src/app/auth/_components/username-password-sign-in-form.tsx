@@ -50,6 +50,10 @@ export function UsernamePasswordSignInForm({
               <FormControl>
                 <Input
                   data-test={'username-only-sign-in-input'}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   type="text"
                   placeholder="Your username"
@@ -76,6 +80,7 @@ export function UsernamePasswordSignInForm({
                 <Input
                   required
                   data-test={'username-only-sign-in-password-input'}
+                  autoComplete="current-password"
                   type="password"
                   placeholder={''}
                   className="font-serif"

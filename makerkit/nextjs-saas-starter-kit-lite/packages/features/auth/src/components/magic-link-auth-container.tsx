@@ -126,6 +126,7 @@ export function MagicLinkAuthContainer({
                 <FormControl>
                   <Input
                     data-test={'email-input'}
+                    autoComplete="email"
                     required
                     type="email"
                     placeholder={t('auth:emailPlaceholder')}

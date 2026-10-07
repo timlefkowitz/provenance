@@ -117,6 +117,10 @@ export function UsernamePasswordSignUpForm({
                 <div className="relative">
                   <Input
                     data-test={'username-only-input'}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                     type="text"
                     placeholder="Choose a username"
@@ -162,6 +166,7 @@ export function UsernamePasswordSignUpForm({
                 <Input
                   required
                   data-test={'username-only-password-input'}
+                  autoComplete="new-password"
                   type="password"
                   placeholder={''}
                   className="font-serif"
@@ -187,6 +192,7 @@ export function UsernamePasswordSignUpForm({
                 <Input
                   required
                   data-test={'username-only-repeat-password-input'}
+                  autoComplete="new-password"
                   type="password"
                   placeholder={''}
                   className="font-serif"

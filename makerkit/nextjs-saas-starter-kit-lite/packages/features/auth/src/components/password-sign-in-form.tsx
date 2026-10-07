@@ -58,6 +58,7 @@ export function PasswordSignInForm({
               <FormControl>
                 <Input
                   data-test={'email-input'}
+                  autoComplete="username"
                   required
                   type="email"
                   placeholder={t('emailPlaceholder')}
@@ -83,6 +84,7 @@ export function PasswordSignInForm({
                 <Input
                   required
                   data-test={'password-input'}
+                  autoComplete="current-password"
                   type="password"
                   placeholder={''}
                   {...field}

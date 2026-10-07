@@ -131,6 +131,10 @@ export function CustomPasswordSignUpForm({
                 <div className="relative">
                   <Input
                     data-test={'username-input'}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                     type="text"
                     placeholder="Choose a username"
@@ -175,6 +179,7 @@ export function CustomPasswordSignUpForm({
               <FormControl>
                 <Input
                   data-test={'email-input'}
+                  autoComplete="email"
                   required
                   type="email"
                   placeholder={t('emailPlaceholder')}
@@ -201,6 +206,7 @@ export function CustomPasswordSignUpForm({
                 <Input
                   required
                   data-test={'password-input'}
+                  autoComplete="new-password"
                   type="password"
                   placeholder={''}
                   className="font-serif"
@@ -224,6 +230,7 @@ export function CustomPasswordSignUpForm({
 
               <FormControl>
                 <Input
+                  autoComplete="new-password"
                   required
                   data-test={'repeat-password-input'}
                   type="password"

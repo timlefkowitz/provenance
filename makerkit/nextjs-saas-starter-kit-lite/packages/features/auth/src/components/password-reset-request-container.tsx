@@ -96,6 +96,7 @@ export function PasswordResetRequestContainer(params: {
                       <Input
                         required
                         type="email"
+                        autoComplete="email"
                         placeholder={t('emailPlaceholder')}
                         {...field}
                       />
