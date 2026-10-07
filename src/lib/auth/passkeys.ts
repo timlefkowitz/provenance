@@ -1,7 +1,8 @@
 import { isNativePlatform, nativeBuildAtLeast } from '~/lib/capacitor/is-native';
 
 /**
- * First iOS build whose entitlements include `webcredentials:www.provenance.guru`.
+ * First iOS build whose entitlements include `webcredentials:www.provenance.guru`
+ * (uploaded builds 9 and 10 predate it).
  * WKWebView rejects WebAuthn for a relying party the app isn't associated with,
  * so older installs must not be offered passkeys.
  *
@@ -9,7 +10,7 @@ import { isNativePlatform, nativeBuildAtLeast } from '~/lib/capacitor/is-native'
  * step with that entitlement and public/.well-known/apple-app-site-association.
  * Changing it orphans every passkey users have already created.
  */
-const MIN_PASSKEY_NATIVE_BUILD = 9;
+const MIN_PASSKEY_NATIVE_BUILD = 11;
 
 let serverEnabled: Promise<boolean> | null = null;
 

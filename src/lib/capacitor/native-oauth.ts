@@ -18,8 +18,11 @@ export const NATIVE_AUTH_SCHEME = 'guru.provenance.app';
  */
 const SYSTEM_BROWSER_PROVIDERS = new Set(['google']);
 
-/** First iOS build that registers NATIVE_AUTH_SCHEME; older installs would get stuck in the browser sheet. */
-const MIN_NATIVE_OAUTH_BUILD = 9;
+/**
+ * First iOS build that registers NATIVE_AUTH_SCHEME (uploaded build 9 didn't);
+ * older installs would get stuck in the browser sheet.
+ */
+const MIN_NATIVE_OAUTH_BUILD = 10;
 
 /**
  * Runs the provider step in SFSafariViewController. signInWithOAuth still runs
