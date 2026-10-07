@@ -22,6 +22,7 @@ import { UtmCapture } from "~/components/utm-capture";
 import { TrialBanner } from "~/components/trial-banner";
 import { TacoBubble } from "~/components/taco-bubble";
 import { NativeInit } from "~/components/native-init";
+import { PasskeyPrompt } from "~/components/passkey-prompt";
 import { PushNotificationsManager } from "~/components/push-notifications-manager";
 import { AppLock } from "~/components/app-lock";
 import { NativeTabBar } from "~/components/native-tab-bar";
@@ -180,6 +181,7 @@ export default async function RootLayout({
                 <NativeInit userId={initialUser?.sub ?? null} />
                 <PushNotificationsManager userId={initialUser?.sub ?? null} />
                 <AppLock userId={initialUser?.sub ?? null} />
+                <PasskeyPrompt userId={initialUser?.sub ?? null} />
                 <TrialBanner />
                 <StreakActivityTracker />
                 <PresenceTracker />
