@@ -9,11 +9,11 @@ Fields marked `TODO(you):` require information only you can provide.
 
 | Field                  | Value                  |
 | ---------------------- | ---------------------- |
-| **App Name**           | Provenance             |
-| **Subtitle**           | Art Collection Journal |
+| **App Name**           | Provenance Guru: Art Inventory |
+| **Subtitle**           | Certificate of Authenticity |
 | **Bundle ID**          | `guru.provenance.app`  |
-| **Primary Category**   | Utilities              |
-| **Secondary Category** | Productivity           |
+| **Primary Category**   | Business               |
+| **Secondary Category** | Lifestyle              |
 | **Content Rating**     | 13+ (see Version & Rating) |
 | **Primary Language**   | English (U.S.)         |
 
@@ -22,7 +22,7 @@ Fields marked `TODO(you):` require information only you can provide.
 ## Promotional Text (≤ 170 chars, editable anytime without a new build)
 
 ```
-Give every piece you own a permanent record: certificates, provenance, and exhibition history you can share with galleries, insurers, and buyers.
+Free to start. Catalog every artwork, issue certificates of authenticity with a scannable QR code, and keep provenance, condition and exhibition history in one place.
 ```
 
 ---
@@ -94,17 +94,19 @@ behind the pieces that matter to you.
 ## Keywords
 
 ```
-appraisal,valuation,coa,registry,estate,antiques,memorabilia,notarize,catalog,artist,collector
+catalog,collection,artwork,artist,portfolio,collector,gallery,antique,collectible,appraisal,coa
 ```
 
-_(100 char limit total, comma-separated, no spaces after commas in App Store Connect. "Art," "collection," and "provenance" are deliberately omitted — Apple already indexes words in the App Name and Subtitle, so repeating them wastes keyword budget.)_
+_(Set for 1.1.1. 100 char limit total, comma-separated, no spaces. Words already in the name or subtitle (provenance, guru, art, inventory, certificate, authenticity) are deliberately omitted — Apple already indexes words in the App Name and Subtitle, so repeating them wastes keyword budget.)_
 
 ---
 
 ## What's New in This Version
 
 ```
-Initial release of Provenance for iOS. Document your collection, capture provenance, and verify ownership history.
+• The app is now free to download — start with a free Artist, Collector or Gallery account and upgrade any time.
+• Fixed purchasing the Artist yearly plan on iPhone and iPad.
+• Clearer plan names at checkout.
 ```
 
 ---

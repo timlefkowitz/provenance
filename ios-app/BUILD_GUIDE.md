@@ -77,7 +77,7 @@ If asked to create a Distribution certificate manually:
 | Product ID | Display Name | Price Tier |
 |---|---|---|
 | `com.provenance.app.artist.monthly` | Artist Monthly | Tier 1 ($0.99 US) → adjust to $10.99 (Tier ~11) |
-| `com.provenance.app.artist.yearly` | Artist Yearly | $99.99 (Tier ~100) |
+| `.artist.yearly` (truncated in ASC; can't rename) | Artist Yearly | $99.99 (Tier ~100) |
 | `com.provenance.app.collector.monthly` | Collector Monthly | ~$29.99 (Tier ~30) |
 | `com.provenance.app.collector.yearly` | Collector Yearly | $299.99 |
 | `com.provenance.app.gallery.monthly` | Gallery Monthly | $99.99 |

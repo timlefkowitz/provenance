@@ -12,7 +12,8 @@ export const APPLE_PRODUCT_TO_PLAN: Record<string, {
   interval: SubscriptionInterval;
 }> = {
   'com.provenance.app.artist.monthly':   { role: 'artist',    interval: 'month' },
-  'com.provenance.app.artist.yearly':    { role: 'artist',    interval: 'year'  },
+  // Created in App Store Connect with a truncated ID; product IDs can't be renamed.
+  '.artist.yearly':                      { role: 'artist',    interval: 'year'  },
   'com.provenance.app.collector.monthly':{ role: 'collector', interval: 'month' },
   'com.provenance.app.collector.yearly': { role: 'collector', interval: 'year'  },
   'com.provenance.app.gallery.monthly':  { role: 'gallery',   interval: 'month' },
