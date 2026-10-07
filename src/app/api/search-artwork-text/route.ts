@@ -54,8 +54,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ suggestions: [] }, { status: 500 });
     }
 
-    const values = (data || [])
-      .map((row: Record<string, unknown>) => row[field])
+    // `field` is chosen at runtime, so postgrest-js can't infer the row shape.
+    const values = ((data ?? []) as unknown as Record<string, unknown>[])
+      .map((row) => row[field])
       .filter((v): v is string => typeof v === 'string')
       .map((v) => v.trim())
       .filter(Boolean);

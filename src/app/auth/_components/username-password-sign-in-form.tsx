@@ -50,7 +50,7 @@ export function UsernamePasswordSignInForm({
               <FormControl>
                 <Input
                   data-test={'username-only-sign-in-input'}
-                  autoComplete="username"
+                  autoComplete="username webauthn"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}

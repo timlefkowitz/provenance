@@ -40,3 +40,21 @@ export function getNativePlatform(): Platform {
 export function isIOS(): boolean {
   return getNativePlatform() === 'ios';
 }
+
+/**
+ * True when running in the native shell at or above the given iOS build
+ * number (CFBundleVersion). Gates web features that depend on native config
+ * shipped in a specific build — the WebView is remote, so new web code also
+ * reaches older installs.
+ */
+export async function nativeBuildAtLeast(build: number): Promise<boolean> {
+  if (!isNativePlatform()) return false;
+  try {
+    const { App } = await import('@capacitor/app');
+    const info = await App.getInfo();
+    return Number(info.build) >= build;
+  } catch (err) {
+    console.error('[Native] App.getInfo failed', err);
+    return false;
+  }
+}

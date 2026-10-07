@@ -18,7 +18,7 @@
     "@provenance/planet-collectibles": "workspace:*",
     "@provenance/planet-realestate": "workspace:*",
     "@provenance/planet-vehicles": "workspace:*",
-    "@supabase/supabase-js": "2.75.0",
+    "@supabase/supabase-js": "2.117.2",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "next": "15.5.22",

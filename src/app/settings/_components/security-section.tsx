@@ -8,6 +8,7 @@ import { MultiFactorAuthFactorsList } from '@kit/accounts/mfa';
 import { useRequestResetPassword } from '@kit/supabase/hooks/use-request-reset-password';
 import pathsConfig from '~/config/paths.config';
 import { AppLockCard } from './app-lock-card';
+import { PasskeysCard } from './passkeys-card';
 
 type Props = {
   userId: string;
@@ -117,6 +118,8 @@ export function SecuritySection({ userId, email, mfaEnrollmentRequired }: Props)
       </div>
 
       <ChangePasswordCard email={email} />
+
+      <PasskeysCard />
 
       <AppLockCard />
 

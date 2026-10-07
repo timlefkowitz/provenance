@@ -11,6 +11,7 @@ import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
 import { UsernamePasswordSignInContainer } from '../_components/username-password-sign-in-container';
 import { CollapsibleSignUpSection } from '../_components/collapsible-sign-up-section';
+import { PasskeySignIn } from '../_components/passkey-sign-in';
 
 export const generateMetadata = async () => {
   const i18n = await createI18nServerInstance();
@@ -45,6 +46,8 @@ function SignInPage() {
           Sign in to your Provenance account
         </p>
       </div>
+
+      <PasskeySignIn homePath={paths.home} />
 
       <SignInMethodsContainer paths={paths} providers={authConfig.providers} />
 

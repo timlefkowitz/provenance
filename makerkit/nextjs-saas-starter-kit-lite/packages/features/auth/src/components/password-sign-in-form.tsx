@@ -58,7 +58,7 @@ export function PasswordSignInForm({
               <FormControl>
                 <Input
                   data-test={'email-input'}
-                  autoComplete="username"
+                  autoComplete="username webauthn"
                   required
                   type="email"
                   placeholder={t('emailPlaceholder')}

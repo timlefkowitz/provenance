@@ -18,7 +18,7 @@
     "@kit/i18n": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/accounts": "workspace:*",
-    "@supabase/supabase-js": "2.75.0",
+    "@supabase/supabase-js": "2.117.2",
     "@tanstack/react-query": "5.90.2",
     "@vercel/analytics": "^1.6.1",
     "framer-motion": "^12.34.3",

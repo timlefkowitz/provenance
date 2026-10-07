@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "2.75.0",
+    "@supabase/supabase-js": "2.117.2",
     "zod": "^3.25.32"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import type { NativeOAuthHandler } from '@kit/supabase/native-oauth';
 
-import { isNativePlatform } from './is-native';
+import { isNativePlatform, nativeBuildAtLeast } from './is-native';
 
 /**
  * Custom URL scheme registered in ios/App/App/Info.plist (CFBundleURLTypes).
@@ -21,17 +21,6 @@ const SYSTEM_BROWSER_PROVIDERS = new Set(['google']);
 /** First iOS build that registers NATIVE_AUTH_SCHEME; older installs would get stuck in the browser sheet. */
 const MIN_NATIVE_OAUTH_BUILD = 9;
 
-async function nativeBuildSupportsOAuth(): Promise<boolean> {
-  try {
-    const { App } = await import('@capacitor/app');
-    const { build } = await App.getInfo();
-    return Number(build) >= MIN_NATIVE_OAUTH_BUILD;
-  } catch (err) {
-    console.error('[NativeOAuth] App.getInfo failed', err);
-    return false;
-  }
-}
-
 /**
  * Runs the provider step in SFSafariViewController. signInWithOAuth still runs
  * here in the WKWebView so the PKCE code_verifier cookie lands in the WebView's
@@ -40,7 +29,7 @@ async function nativeBuildSupportsOAuth(): Promise<boolean> {
  */
 export const nativeOAuthHandler: NativeOAuthHandler = async (client, credentials) => {
   if (!isNativePlatform() || !SYSTEM_BROWSER_PROVIDERS.has(credentials.provider)) return false;
-  if (!(await nativeBuildSupportsOAuth())) return false;
+  if (!(await nativeBuildAtLeast(MIN_NATIVE_OAUTH_BUILD))) return false;
 
   const webRedirect = new URL(credentials.options?.redirectTo ?? '/auth/callback', window.location.origin);
   const redirectTo = `${NATIVE_AUTH_SCHEME}://auth/callback${webRedirect.search}`;
