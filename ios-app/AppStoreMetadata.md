@@ -104,6 +104,10 @@ _(Set for 1.1.1. 100 char limit total, comma-separated, no spaces. Words already
 ## What's New in This Version
 
 ```
+• Sign in with Google now works in the app.
+• Sign in with a passkey using Face ID or Touch ID. Add one in Settings > Security.
+• Email sign-in links now open straight into the app.
+• A cleaner, faster launch screen.
 • The app is now free to download — start with a free Artist, Collector or Gallery account and upgrade any time.
 • Fixed purchasing the Artist yearly plan on iPhone and iPad.
 • Clearer plan names at checkout.
@@ -215,12 +219,18 @@ Before submitting:
 
 ### Notes for Reviewer
 
-As submitted with 1.1 (8) on 2026-09-29. Demo sign-in (App Review Information): appreview-expired@provenance.guru, expired Collector subscription; password is only in App Store Connect.
+As submitted with 1.1.1 (13) on 2026-10-08. Demo sign-in (App Review Information): appreview-expired@provenance.guru, expired Collector subscription; password is only in App Store Connect.
 
 ```
 DEMO ACCOUNT (expired subscription, per your Sept 27 request): appreview-expired@provenance.guru, password in Sign-In Information above. Its Collector subscription expired Sept 21, 2026. After sign-in open Settings > Subscription & Billing > View Plans & Subscribe: the page shows the expired plan and the full Apple In-App Purchase flow (plan picker, StoreKit prices, auto-renew terms, Terms/Privacy links, Restore Purchases). The account has sample items, so collection and certificate features are visible immediately.
 
-NEW IN THIS BUILD (native iPhone/iPad features):
+NEW IN 1.1.1 (sign-in):
+- Sign in with Google opens Google's page in an in-app Safari sheet (Google blocks sign-in inside embedded web views) and returns to the app signed in.
+- Passkeys: the sign-in screen has "Sign in with a passkey" (Face ID / Touch ID via iCloud Keychain). Signed-in users can add or remove passkeys in Settings > Security > Passkeys. The demo account has no passkey yet, so sign in with its password first.
+- Email sign-in links open directly in the app.
+- Also: new launch screen, Artist yearly purchase fix, free download.
+
+NATIVE iPhone/iPad FEATURES:
 - Certificate scanner: More tab > Scan a certificate opens a native QR scanner; scanning any Provenance certificate code opens that certificate.
 - Push notifications (optional): after sign-in the app explains them before the iOS prompt; "Not now" works. They mirror the in-app Notifications list.
 - Camera: Add (+) > Take Photo opens the iOS camera.
