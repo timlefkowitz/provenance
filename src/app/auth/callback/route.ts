@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { createAuthCallbackService } from '@kit/supabase/auth';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { provisionNewUser } from '~/lib/auth/provision-new-user';
+import { safeNextPath } from '~/lib/auth/safe-next-path';
 import { isNativeAppRequest, NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
 import { storeAppleRefreshToken } from '~/lib/apple/sign-in-with-apple';
 
@@ -41,35 +42,9 @@ export async function GET(request: NextRequest) {
       })
     : { isNewUser: false };
 
-  // Always use the request origin to ensure we redirect to the correct domain
-  // Extract just the pathname if nextPath contains a full URL (e.g., from Supabase redirect)
-  const origin = request.nextUrl.origin;
-  let pathToRedirect = nextPath;
-  
-  // If nextPath is a full URL, extract just the pathname
-  try {
-    const url = new URL(nextPath);
-    pathToRedirect = url.pathname + url.search;
-  } catch {
-    // nextPath is already just a path, use it as-is
-    pathToRedirect = nextPath;
-  }
-
-  // Guard against open redirects (CASA 5.1.2 / CWE-601): the `next` param on this
-  // route comes straight from the query string via @kit/supabase's auth callback
-  // service. The block above strips the host from full absolute URLs
-  // (e.g. `https://evil.com/x` -> `/x`), but protocol-relative URLs like
-  // `//evil.com/x` fail the `new URL(nextPath)` parse (no base), fall into the
-  // catch, and are used as-is. `new URL('//evil.com/x', origin)` then resolves
-  // to `https://evil.com/x` because a leading `//` is a network-path reference
-  // that takes over the host from `origin`. Reject anything that isn't a
-  // same-origin, single-leading-slash path before building the redirect.
-  if (!pathToRedirect.startsWith('/') || pathToRedirect.startsWith('//') || pathToRedirect.startsWith('/\\')) {
-    console.warn('[Auth] Rejected unsafe post-login redirect target', { nextPath });
-    pathToRedirect = '/artworks';
-  }
-
-  const redirectUrl = new URL(pathToRedirect, origin);
+  // Always redirect on the request origin; safeNextPath strips foreign hosts
+  // and rejects protocol-relative targets (open-redirect guard).
+  const redirectUrl = new URL(safeNextPath(nextPath), request.nextUrl.origin);
 
   if (isNewUser) {
     redirectUrl.searchParams.set('new_user', '1');

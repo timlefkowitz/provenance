@@ -36,7 +36,7 @@ export function NativeInit({ userId: _userId }: Props) {
     let cancelled = false;
     let removeListener: (() => void) | null = null;
 
-    // Google OAuth runs in SFSafariViewController on native (see native-oauth.ts).
+    // Google and Apple sign-in use system sheets on native (see native-oauth.ts).
     setNativeOAuthHandler(nativeOAuthHandler);
 
     async function setup() {

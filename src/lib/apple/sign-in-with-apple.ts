@@ -14,6 +14,9 @@ import { asUntyped } from '~/lib/supabase-untyped';
  *   APPLE_SIGNIN_KEY_ID       — the key's 10-char Key ID
  *   APPLE_SIGNIN_PRIVATE_KEY  — contents of the AuthKey_<KeyID>.p8 file
  *                               (literal "\n" sequences are accepted)
+ *   APPLE_SIGNIN_BUNDLE_ID    — optional; the iOS app's bundle ID, which is the
+ *                               client ID for native sign-ins (default
+ *                               guru.provenance.app)
  */
 
 function getConfig() {
@@ -21,8 +24,9 @@ function getConfig() {
   const clientId = process.env.APPLE_SIGNIN_CLIENT_ID?.trim();
   const keyId = process.env.APPLE_SIGNIN_KEY_ID?.trim();
   const privateKey = process.env.APPLE_SIGNIN_PRIVATE_KEY?.replace(/\\n/g, '\n').trim();
+  const bundleId = process.env.APPLE_SIGNIN_BUNDLE_ID?.trim() || 'guru.provenance.app';
   if (!teamId || !clientId || !keyId || !privateKey) return null;
-  return { teamId, clientId, keyId, privateKey };
+  return { teamId, clientId, keyId, privateKey, bundleId };
 }
 
 function base64url(input: Buffer | string): string {
@@ -30,7 +34,10 @@ function base64url(input: Buffer | string): string {
 }
 
 /** ES256 client secret JWT Apple expects on /auth/revoke (valid 5 minutes). */
-export function buildAppleClientSecret(config: NonNullable<ReturnType<typeof getConfig>>, nowSeconds: number): string {
+export function buildAppleClientSecret(
+  config: Pick<NonNullable<ReturnType<typeof getConfig>>, 'teamId' | 'clientId' | 'keyId' | 'privateKey'>,
+  nowSeconds: number,
+): string {
   const header = base64url(JSON.stringify({ alg: 'ES256', kid: config.keyId }));
   const payload = base64url(
     JSON.stringify({
@@ -62,13 +69,61 @@ export async function storeAppleRefreshToken(session: Session | null | undefined
     const { error } = await asUntyped(getSupabaseServerAdminClient())
       .from('apple_signin_tokens')
       .upsert(
-        { user_id: session.user.id, refresh_token: refreshToken, updated_at: new Date().toISOString() },
+        { user_id: session.user.id, refresh_token: refreshToken, client_id: null, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' },
       );
     if (error) console.error('[SignInWithApple] store refresh token failed', { userId: session.user.id, error });
     else console.log('[SignInWithApple] refresh token stored', { userId: session.user.id });
   } catch (err) {
     console.error('[SignInWithApple] store refresh token threw', err);
+  }
+}
+
+/**
+ * Called after native Sign in with Apple (ASAuthorizationController). The
+ * native flow never gives Supabase a provider refresh token, so redeem the
+ * one-time authorization code with Apple ourselves. Native tokens are issued
+ * to the bundle ID, so that's the client_id stored for revocation.
+ * Best-effort; never throws.
+ */
+export async function storeNativeAppleRefreshToken(userId: string, authorizationCode: string): Promise<void> {
+  try {
+    const config = getConfig();
+    if (!config) {
+      console.error('[SignInWithApple] native code exchange skipped — APPLE_SIGNIN_* env vars not set', { userId });
+      return;
+    }
+
+    const res = await fetch('https://appleid.apple.com/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.bundleId,
+        client_secret: buildAppleClientSecret({ ...config, clientId: config.bundleId }, Math.floor(Date.now() / 1000)),
+        code: authorizationCode,
+        grant_type: 'authorization_code',
+      }),
+    });
+    if (!res.ok) {
+      console.error('[SignInWithApple] native code exchange failed', { userId, status: res.status, body: (await res.text()).slice(0, 300) });
+      return;
+    }
+    const { refresh_token: refreshToken } = (await res.json()) as { refresh_token?: string };
+    if (!refreshToken) {
+      console.warn('[SignInWithApple] native code exchange returned no refresh_token', { userId });
+      return;
+    }
+
+    const { error } = await asUntyped(getSupabaseServerAdminClient())
+      .from('apple_signin_tokens')
+      .upsert(
+        { user_id: userId, refresh_token: refreshToken, client_id: config.bundleId, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' },
+      );
+    if (error) console.error('[SignInWithApple] store native refresh token failed', { userId, error });
+    else console.log('[SignInWithApple] native refresh token stored', { userId });
+  } catch (err) {
+    console.error('[SignInWithApple] native code exchange threw', err);
   }
 }
 
@@ -83,7 +138,7 @@ export async function revokeAppleSignIn(userId: string): Promise<boolean> {
     const admin = asUntyped(getSupabaseServerAdminClient());
     const { data: row } = await admin
       .from('apple_signin_tokens')
-      .select('refresh_token')
+      .select('refresh_token, client_id')
       .eq('user_id', userId)
       .maybeSingle();
     if (!row?.refresh_token) return false;
@@ -94,12 +149,14 @@ export async function revokeAppleSignIn(userId: string): Promise<boolean> {
       return false;
     }
 
+    // Revoke with the client that issued the token (bundle ID for native sign-ins).
+    const clientId: string = row.client_id ?? config.clientId;
     const res = await fetch('https://appleid.apple.com/auth/revoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: config.clientId,
-        client_secret: buildAppleClientSecret(config, Math.floor(Date.now() / 1000)),
+        client_id: clientId,
+        client_secret: buildAppleClientSecret({ ...config, clientId }, Math.floor(Date.now() / 1000)),
         token: row.refresh_token,
         token_type_hint: 'refresh_token',
       }),
