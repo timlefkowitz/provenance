@@ -46,7 +46,8 @@ export type NotificationType =
   | 'subscription_payment_failed'
   | 'gallery_team_invite'
   | 'exhibition_artwork_submitted'
-  | 'av_scan_outage';
+  | 'av_scan_outage'
+  | 'invite_email_failed';
 
 export interface CreateNotificationParams {
   userId: string;

@@ -86,8 +86,13 @@ export function InviteCooFromCoaDialog({
               startTransition(async () => {
                 console.log('[Certificates] InviteCooFromCoaDialog submit', { artworkId });
                 const result = await createOwnerInviteFromCoa(artworkId, email, name.trim() || undefined);
-                if (result.error) {
-                  toast.error(result.error);
+                if (!result.success) {
+                  toast.error(result.emailFailed ? 'Email not delivered' : result.error, {
+                    description: result.emailFailed
+                      ? `${result.error}. Check the address and try again.`
+                      : undefined,
+                    duration: result.emailFailed ? 10000 : undefined,
+                  });
                   return;
                 }
                 toast.success('Invitation sent. The collector should check their email to claim.');

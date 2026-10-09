@@ -41,6 +41,13 @@ export function SendToCollectorDialog({ open, onOpenChange, selectedArtworkIds }
     console.log('[Collection] SendToCollectorDialog submit', { count });
     startTransition(async () => {
       const result = await batchSendCollectorInvites([...selectedArtworkIds], email, name.trim() || undefined);
+      if (result.emailFailed) {
+        toast.error('Email not delivered', {
+          description: `${result.errors[result.errors.length - 1]}. Check the address and try again.`,
+          duration: 10000,
+        });
+        return;
+      }
       if (result.sent === 0) {
         toast.error(result.errors[0] ?? 'No invites sent');
         return;

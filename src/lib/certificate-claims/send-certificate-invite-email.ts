@@ -49,6 +49,7 @@ export async function sendOwnerCoownershipInviteEmail(params: {
       ctaUrl: claimUrl,
       ctaLabel: 'Claim certificate',
     },
+    { strict: true },
   );
 }
 
@@ -144,7 +145,7 @@ export async function sendBatchCollectorCooInviteEmail(params: {
     body,
     ctaUrl: claimUrl,
     ctaLabel: isSingle ? 'Claim certificate' : `Accept all ${count} certificates`,
-  });
+  }, { strict: true });
 }
 
 export async function sendBatchGalleryCoSInviteEmail(params: {

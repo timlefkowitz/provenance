@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { createNotification } from '~/lib/notifications';
+import { notifyInviteEmailFailed } from '~/lib/certificate-claims/notify-invite-email-failed';
 import { logger } from '~/lib/logger';
 import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { generateClaimToken, hashClaimToken, normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
@@ -29,6 +30,8 @@ export type CommitInviteBatchEmail =
 export type CommitInviteBatchResult = {
   sent: number;
   errors: string[];
+  /** Set when the invite records exist but the email provider rejected the send. */
+  emailFailed?: boolean;
   batchId: string | null;
   token: string | null;
 };
@@ -153,14 +156,6 @@ export async function commitCertificateInviteBatch(params: {
     };
   }
 
-  await notifyInviteeIfUserExists({
-    adminClient,
-    inviteeEmail: normalizedEmail,
-    batchId,
-    createdByUserId,
-    workCount: rows.length,
-  });
-
   try {
     if (email.variant === 'artist') {
       await sendBatchArtistCoaInviteEmail({
@@ -193,10 +188,33 @@ export async function commitCertificateInviteBatch(params: {
   } catch (emailError) {
     console.error('[Certificates] commitCertificateInviteBatch email failed', emailError);
     logger.error('commit_invite_batch_email_failed', { error: emailError });
-    errors.push(
-      'Email delivery failed — invite records were created but the email was not sent',
-    );
+    const reason = emailError instanceof Error ? emailError.message : 'unknown error';
+    errors.push(`Email to ${normalizedEmail} was not delivered: ${reason}`);
+    if (email.variant === 'owner') {
+      await notifyInviteEmailFailed({
+        senderUserId: createdByUserId,
+        inviteeEmail: normalizedEmail,
+        artworkTitles: email.artworkTitles,
+        artworkId: rows.length === 1 ? rows[0]?.source_artwork_id : undefined,
+        reason,
+      });
+    }
+    return {
+      sent: rows.length,
+      errors,
+      emailFailed: true,
+      batchId,
+      token,
+    };
   }
+
+  await notifyInviteeIfUserExists({
+    adminClient,
+    inviteeEmail: normalizedEmail,
+    batchId,
+    createdByUserId,
+    workCount: rows.length,
+  });
 
   return {
     sent: rows.length,

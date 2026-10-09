@@ -53,6 +53,15 @@ export interface SendEmailOptions {
   text?: string;
   /** Extra headers, e.g. List-Unsubscribe for one-click unsubscribe. */
   headers?: Record<string, string>;
+  /** Throw when Resend rejects the send instead of logging and moving on. */
+  strict?: boolean;
+}
+
+export class EmailSendError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmailSendError';
+  }
 }
 
 /**
@@ -82,11 +91,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
 
     if (error) {
       console.error('[Email] Send failed', error);
+      if (options.strict) {
+        throw new EmailSendError(error.message || 'Email provider rejected the send');
+      }
       return;
     }
     console.log('[Email] Sent successfully', data?.id);
   } catch (error) {
     console.error('[Email] Send error', error);
+    if (options.strict) {
+      throw error instanceof EmailSendError
+        ? error
+        : new EmailSendError(error instanceof Error ? error.message : 'Failed to send email');
+    }
     // Don't throw - email sending is optional and shouldn't break the app
   }
 }
@@ -232,6 +249,7 @@ export async function sendNotificationEmail(
   name: string,
   subject: string,
   params: NotificationEmailParams,
+  options?: { strict?: boolean },
 ): Promise<void> {
   const html = await renderNotificationEmailHtml(
     name,
@@ -240,7 +258,7 @@ export async function sendNotificationEmail(
     params.ctaUrl,
     params.ctaLabel,
   );
-  await sendEmail({ to: email, subject, html });
+  await sendEmail({ to: email, subject, html, strict: options?.strict });
 }
 
 /**

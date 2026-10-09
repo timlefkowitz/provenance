@@ -131,6 +131,7 @@ export function NotificationsList({
         return 'text-wine';
       case 'artist_profile_claim_rejected':
       case 'artist_claim_denied':
+      case 'invite_email_failed':
         return 'text-notify-error';
       case 'artist_claim_other_certificates':
         return 'text-ink';
@@ -312,6 +313,24 @@ export function NotificationsList({
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
                           Go to Portal
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'invite_email_failed' && (
+                      <Link
+                        href={
+                          notification.artwork_id
+                            ? `/artworks/${notification.artwork_id}/certificate`
+                            : '/artworks/edit-provenance'
+                        }
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          Resend invite
                         </Button>
                       </Link>
                     )}

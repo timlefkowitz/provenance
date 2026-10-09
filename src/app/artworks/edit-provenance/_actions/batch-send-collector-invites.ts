@@ -13,6 +13,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 export type BatchSendCollectorInvitesResult = {
   sent: number;
   errors: string[];
+  emailFailed?: boolean;
 };
 
 /**
@@ -68,6 +69,20 @@ export async function batchSendCollectorInvites(
 
   if (result.errors.length > 0) {
     errors.push(...result.errors);
+  }
+
+  if (result.emailFailed) {
+    // Nobody received a link — cancel the rows so the open-invite check doesn't block a retry.
+    if (result.batchId) {
+      const { error: cancelError } = await asUntyped(adminClient)
+        .from('certificate_claim_invites')
+        .update({ status: 'cancelled' })
+        .eq('batch_id', result.batchId);
+      if (cancelError) {
+        console.error('[Collection] batchSendCollectorInvites cancel after email failure failed', cancelError);
+      }
+    }
+    return { sent: 0, errors, emailFailed: true };
   }
 
   console.log('[Collection] batchSendCollectorInvites finished', {
