@@ -35,7 +35,7 @@ function mergeField(formVal: string | undefined, artworkVal: string | null | und
   return formVal?.trim() || artworkVal?.trim() || '';
 }
 
-function openPrintWindow(html: string, width = 960, height = 780): void {
+export function openPrintWindow(html: string, width = 960, height = 780): void {
   const win = window.open('', '_blank', `width=${width},height=${height}`);
   if (!win) {
     alert('Pop-up blocked. Please allow pop-ups for this site and try again.');
@@ -94,7 +94,7 @@ function formatPrice(value: string | null | undefined): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
 }
 
-function buildWallLabelsHtml(
+export function buildWallLabelsHtml(
   artworks: ArtworkForPrintMenu[],
   artworkData: Record<string, ArtworkFormDataForPrintMenu>,
 ): string {

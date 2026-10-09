@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Link as LinkIcon, FileText, Lock } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { PendingCooInviteStatus } from './pending-coo-invite-status';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
+import { buildWallLabelsHtml, openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import {
   ProvenanceValuationBlock,
   type ProvenanceValuation,
@@ -572,6 +573,11 @@ export function CertificateOfAuthenticity({
     window.print();
   };
 
+  const handlePrintWallLabel = () => {
+    console.log('[Certificate] Print wall label', { artworkId: artwork.id });
+    openPrintWindow(buildWallLabelsHtml([artwork], {}), 900, 720);
+  };
+
   const handleDownload = () => {
     // In a real implementation, you might generate a PDF here
     // For now, we'll just trigger print which allows saving as PDF
@@ -743,6 +749,10 @@ export function CertificateOfAuthenticity({
                     Print QR code
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={handlePrintWallLabel}>
+                  <Tag className="mr-2 h-4 w-4" />
+                  Print wall label
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleDownload}>
                   Download PDF
