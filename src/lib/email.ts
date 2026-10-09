@@ -301,6 +301,15 @@ export async function sendUpdateEmail(
   await sendEmail({ to: email, subject, html });
 }
 
+export type CertificateRecipientRole = 'artist' | 'collector' | 'gallery';
+
+const CERTIFICATE_RECIPIENT_LINES: Record<CertificateRecipientRole | 'default', string> = {
+  artist: 'View the verified certificate for your work and keep it with your records.',
+  collector: "View the verified certificate — the record of this work's authenticity and provenance — and keep it with your collection.",
+  gallery: "View the verified certificate, including the work's details and provenance history, for your gallery records.",
+  default: 'View the verified certificate and — if you are the artist or owner — claim it as yours.',
+};
+
 /**
  * Send a certificate claim / share invite email to a non-registered email address.
  * Used by the viral loop: any certificate owner can invite someone to claim the work.
@@ -313,7 +322,11 @@ export async function sendCertificateInviteEmail(
     artistName?: string | null;
     certificateUrl: string;
     personalMessage?: string | null;
+    /** Tailors the closing line to who the certificate is for. */
+    recipientRole?: CertificateRecipientRole | null;
+    recipientName?: string | null;
   },
+  options?: { strict?: boolean },
 ): Promise<void> {
   const subject = `${params.senderName} shared a certificate with you`;
   const theme = getPresetThemeDefaults('gallery');
@@ -337,15 +350,18 @@ export async function sendCertificateInviteEmail(
     : '';
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://provenance.guru';
+  const greeting = params.recipientName?.trim()
+    ? `<p style="margin:0 0 12px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">Dear ${escapeHtml(params.recipientName.trim())},</p>`
+    : '';
 
   const innerHtml = `
-<h1 style="margin:0 0 20px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">A certificate has been shared with you</h1>
+${greeting}<h1 style="margin:0 0 20px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">A certificate has been shared with you</h1>
 <p style="margin:0 0 16px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">
   ${sender} has shared a Provenance certificate for <strong style="font-weight:600;color:${wine};">${artwork}</strong>${byLine} with you.
 </p>
 ${messageBlock}
 <p style="margin:0 0 8px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">
-  View the verified certificate and — if you are the artist or owner — claim it as yours.
+  ${CERTIFICATE_RECIPIENT_LINES[params.recipientRole ?? 'default']}
 </p>
 ${buildBulletproofButtonTable(params.certificateUrl, 'View Certificate', theme)}
 <p style="margin:20px 0 0;font-family:${fontFamily};font-size:13px;line-height:1.6;color:${inkMuted};">
@@ -353,7 +369,7 @@ ${buildBulletproofButtonTable(params.certificateUrl, 'View Certificate', theme)}
 </p>`;
 
   const html = buildEmailHtml(subject, `<div>${innerHtml}</div>`, theme);
-  await sendEmail({ to: toEmail, subject, html });
+  await sendEmail({ to: toEmail, subject, html, strict: options?.strict });
 }
 
 /**

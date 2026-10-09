@@ -42,6 +42,7 @@ import { EditArtworkDialog } from './edit-artwork-dialog';
 import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
+import { SendCertificateDialog } from './send-certificate-dialog';
 import { PendingCooInviteStatus } from './pending-coo-invite-status';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 import { buildWallLabelsHtml, openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
@@ -826,6 +827,14 @@ export function CertificateOfAuthenticity({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          )}
+
+          {/* Send by email to an artist, collector or gallery (owner or gallery team) */}
+          {canEditCertificate && (
+            <SendCertificateDialog
+              artworkId={artwork.id}
+              artworkTitle={artwork.title || 'Untitled'}
+            />
           )}
 
           {/* Share dropdown — visible to everyone */}
