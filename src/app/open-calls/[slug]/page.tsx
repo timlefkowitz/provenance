@@ -10,6 +10,8 @@ import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
 import { cn } from '@kit/ui/utils';
 import { BUTTON_PRIMARY, Eyebrow, TAG } from '~/components/editorial-form';
+import { EditorialMarkdown } from '~/components/editorial-markdown';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 export async function generateMetadata({
   params,
@@ -26,7 +28,7 @@ export async function generateMetadata({
   const title = `${openCall.exhibition.title} — Open Call | Provenance`;
 
   const descParts: string[] = [];
-  if (openCall.exhibition.description) descParts.push(openCall.exhibition.description);
+  if (openCall.exhibition.description) descParts.push(stripMarkdown(openCall.exhibition.description));
   if (openCall.medium) descParts.push(`Medium: ${getMediumLabel(openCall.medium)}`);
   if (openCall.submission_closing_date) {
     const close = new Date(openCall.submission_closing_date).toLocaleDateString('en-US', {
@@ -107,7 +109,9 @@ export default async function OpenCallPage({
     '@type': 'Event',
     name: openCall.exhibition.title,
     url: pageUrl,
-    ...(openCall.exhibition.description ? { description: openCall.exhibition.description } : {}),
+    ...(openCall.exhibition.description
+      ? { description: stripMarkdown(openCall.exhibition.description) }
+      : {}),
     ...(openCall.image_url ? { image: openCall.image_url } : {}),
     startDate: openCall.exhibition.start_date,
     ...(openCall.exhibition.end_date ? { endDate: openCall.exhibition.end_date } : {}),
@@ -208,9 +212,9 @@ export default async function OpenCallPage({
         </dl>
 
         {openCall.exhibition.description && (
-          <p className="mt-6 whitespace-pre-line font-serif text-lg leading-relaxed text-editorial-ink/80">
+          <EditorialMarkdown className="mt-6 text-lg">
             {openCall.exhibition.description}
-          </p>
+          </EditorialMarkdown>
         )}
       </header>
 

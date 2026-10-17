@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
-import { Textarea } from '@kit/ui/textarea';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { toast } from '@kit/ui/sonner';
 import { createExhibition } from '../_actions/create-exhibition';
@@ -23,8 +22,8 @@ import {
   FIELD_HINT,
   FIELD_INPUT,
   FIELD_LABEL,
-  FIELD_TEXTAREA,
 } from '~/components/editorial-form';
+import { MarkdownTextarea } from '~/components/markdown-textarea';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 type Artist = {
@@ -232,15 +231,12 @@ export function ExhibitionForm({
 
         <div className="space-y-2">
           <Label htmlFor="description" className={FIELD_LABEL}>Description</Label>
-          <Textarea
+          <MarkdownTextarea
             id="description"
             value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
+            onChange={(description) => setFormData({ ...formData, description })}
             placeholder="Describe the exhibition..."
-            rows={4}
-            className={FIELD_TEXTAREA}
+            rows={6}
           />
         </div>
 

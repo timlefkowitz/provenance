@@ -20,6 +20,7 @@ import { publishExhibition, unpublishExhibition } from '../_actions/publish-exhi
 import { toast } from '@kit/ui/sonner';
 import { useRouter } from 'next/navigation';
 import type { Exhibition } from '../_actions/get-exhibitions';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 function getStatus(ex: Exhibition): 'upcoming' | 'ongoing' | 'past' {
   const now = new Date();
@@ -202,7 +203,7 @@ export function ExhibitionsList({
                         {/* Description */}
                         {ex.description && (
                           <p className="text-ink/55 font-serif text-sm leading-relaxed mb-3 max-w-xl line-clamp-2">
-                            {ex.description}
+                            {stripMarkdown(ex.description)}
                           </p>
                         )}
 

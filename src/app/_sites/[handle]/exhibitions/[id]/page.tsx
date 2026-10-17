@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSiteData } from '../../_data/get-site-data';
 import { resolveAccent } from '../../../_templates/palette';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,8 +71,8 @@ export default async function SiteExhibitionPage({
 
         {/* Description */}
         {exhibition.description && (
-          <p className="text-base leading-relaxed mb-12 max-w-2xl" style={{ color: '#444' }}>
-            {exhibition.description}
+          <p className="text-base leading-relaxed mb-12 max-w-2xl whitespace-pre-line" style={{ color: '#444' }}>
+            {stripMarkdown(exhibition.description)}
           </p>
         )}
 

@@ -10,6 +10,7 @@ import { getMediumLabel } from '../_actions/open-call-constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { OpenCallsBrowseFilters } from './_components/open-calls-browse-filters';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 export const metadata = {
   title: 'Browse Open Calls | Provenance',
@@ -82,7 +83,7 @@ function OpenCallCard({
         )}
         {openCall.exhibition.description && (
           <p className="text-sm text-ink/80 font-serif line-clamp-2">
-            {openCall.exhibition.description}
+            {stripMarkdown(openCall.exhibition.description)}
           </p>
         )}
         <div className="pt-2">

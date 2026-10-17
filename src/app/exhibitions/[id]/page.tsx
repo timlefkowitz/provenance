@@ -15,6 +15,8 @@ import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
+import { EditorialMarkdown } from '~/components/editorial-markdown';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +49,7 @@ export async function generateMetadata({
   })();
 
   const descriptionParts: string[] = [];
-  if (meta.description) descriptionParts.push(meta.description);
+  if (meta.description) descriptionParts.push(stripMarkdown(meta.description));
   else if (galleryName) descriptionParts.push(`An exhibition by ${galleryName}.`);
   if (dateRange) descriptionParts.push(dateRange);
   if (meta.location) descriptionParts.push(meta.location);
@@ -169,7 +171,7 @@ export default async function ExhibitionPage({
     '@type': 'ExhibitionEvent',
     name: exhibition.title,
     url: pageUrl,
-    ...(exhibition.description ? { description: exhibition.description } : {}),
+    ...(exhibition.description ? { description: stripMarkdown(exhibition.description) } : {}),
     startDate: exhibition.start_date,
     ...(exhibition.end_date ? { endDate: exhibition.end_date } : {}),
     ...(exhibition.location
@@ -241,9 +243,9 @@ export default async function ExhibitionPage({
 
           {/* Description */}
           {exhibition.description && (
-            <p className="text-ink/55 font-serif text-base md:text-lg leading-relaxed max-w-2xl mb-8">
+            <EditorialMarkdown className="mb-8 max-w-2xl text-base text-ink/60 md:text-lg">
               {exhibition.description}
-            </p>
+            </EditorialMarkdown>
           )}
 
           {/* Meta pills row */}

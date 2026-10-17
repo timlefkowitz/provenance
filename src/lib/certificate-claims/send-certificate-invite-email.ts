@@ -3,6 +3,7 @@ import {
   getCertificateClaimUrl,
   getExhibitionSubmitUrl,
 } from '~/lib/certificate-claims/site-url';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 export async function sendGalleryCoSInviteEmail(params: {
   to: string;
@@ -254,7 +255,7 @@ export async function sendExhibitionArtistInviteEmail(params: {
     );
   }
 
-  const description = exhibition.description?.trim();
+  const description = exhibition.description ? stripMarkdown(exhibition.description) : '';
   const descriptionBlock = description
     ? escapeMarkdown(
         description.length > MAX_EMAIL_DESCRIPTION_CHARS
