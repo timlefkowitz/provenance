@@ -1,10 +1,15 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { requireAdmin } from '~/lib/admin';
 import { FeaturedArtworksManager } from './_components/featured-artworks-manager';
 import { AdminAnalytics } from './_components/admin-analytics';
 import { AdminUserAnalytics } from './_components/admin-user-analytics';
 import { AdminFunnelAnalytics } from './_components/admin-funnel-analytics';
 import { AdminSiteAnalytics } from './_components/admin-site-analytics';
+import {
+  AdminAppStoreAnalytics,
+  AdminAppStoreAnalyticsFallback,
+} from './_components/admin-app-store-analytics';
 import { adminLinkTile, adminMonoLabel } from './_components/admin-dash-tokens';
 
 export const metadata = {
@@ -101,6 +106,10 @@ export default async function AdminPage() {
 
       <div className="flex flex-col gap-6">
         <AdminUserAnalytics />
+
+        <Suspense fallback={<AdminAppStoreAnalyticsFallback />}>
+          <AdminAppStoreAnalytics />
+        </Suspense>
 
         <AdminSiteAnalytics />
 
