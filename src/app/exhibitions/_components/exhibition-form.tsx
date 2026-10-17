@@ -17,6 +17,14 @@ import type { ExhibitionChecklist } from '../_helpers/checklist-parsing';
 import type { ExhibitionOwnerRole } from '../_helpers/exhibition-owner-roles';
 import { getRoleLabel } from '~/lib/user-roles';
 import { cn } from '@kit/ui/utils';
+import {
+  BUTTON_PRIMARY,
+  BUTTON_SECONDARY,
+  FIELD_HINT,
+  FIELD_INPUT,
+  FIELD_LABEL,
+  FIELD_TEXTAREA,
+} from '~/components/editorial-form';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 type Artist = {
@@ -167,7 +175,7 @@ export function ExhibitionForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-8">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -176,8 +184,8 @@ export function ExhibitionForm({
 
       {!exhibition && ownerRoleOptions.length > 1 && ownerRole && (
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Create as</legend>
-          <div className="inline-flex rounded-full border border-wine/20 p-1 font-serif text-sm">
+          <legend className={FIELD_LABEL}>Create as</legend>
+          <div className="inline-flex border border-editorial-border/30 p-1 font-jetbrains text-[11px] uppercase tracking-[0.16em]">
             {ownerRoleOptions.map((role) => (
               <button
                 key={role}
@@ -185,8 +193,8 @@ export function ExhibitionForm({
                 aria-pressed={role === ownerRole}
                 onClick={() => setOwnerRole(role)}
                 className={cn(
-                  'rounded-full px-4 py-1.5 transition-colors',
-                  role === ownerRole ? 'bg-wine text-parchment' : 'text-ink/60 hover:text-ink',
+                  'rounded-none px-4 py-1.5 transition-colors',
+                  role === ownerRole ? 'bg-editorial-ink text-bone' : 'text-editorial-ink/60 hover:text-editorial-ink',
                 )}
               >
                 {getRoleLabel(role)}
@@ -194,7 +202,7 @@ export function ExhibitionForm({
             ))}
           </div>
           {OWNER_ROLE_HINTS[ownerRole] && (
-            <p className="text-xs text-ink/60 font-serif">{OWNER_ROLE_HINTS[ownerRole]}</p>
+            <p className={FIELD_HINT}>{OWNER_ROLE_HINTS[ownerRole]}</p>
           )}
         </fieldset>
       )}
@@ -207,9 +215,9 @@ export function ExhibitionForm({
         />
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-7">
         <div className="space-y-2">
-          <Label htmlFor="title">Exhibition Title *</Label>
+          <Label htmlFor="title" className={FIELD_LABEL}>Exhibition Title *</Label>
           <Input
             id="title"
             value={formData.title}
@@ -217,13 +225,13 @@ export function ExhibitionForm({
               setFormData({ ...formData, title: e.target.value })
             }
             placeholder="e.g., Spring Collection 2024"
-            className="font-serif"
+            className={FIELD_INPUT}
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description" className={FIELD_LABEL}>Description</Label>
           <Textarea
             id="description"
             value={formData.description}
@@ -232,13 +240,13 @@ export function ExhibitionForm({
             }
             placeholder="Describe the exhibition..."
             rows={4}
-            className="font-serif"
+            className={FIELD_TEXTAREA}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
           <div className="space-y-2">
-            <Label htmlFor="startDate">Start Date *</Label>
+            <Label htmlFor="startDate" className={FIELD_LABEL}>Start Date *</Label>
             <Input
               id="startDate"
               type="date"
@@ -246,13 +254,13 @@ export function ExhibitionForm({
               onChange={(e) =>
                 setFormData({ ...formData, startDate: e.target.value })
               }
-              className="font-serif"
+              className={FIELD_INPUT}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="endDate">End Date</Label>
+            <Label htmlFor="endDate" className={FIELD_LABEL}>End Date</Label>
             <Input
               id="endDate"
               type="date"
@@ -260,17 +268,17 @@ export function ExhibitionForm({
               onChange={(e) =>
                 setFormData({ ...formData, endDate: e.target.value })
               }
-              className="font-serif"
+              className={FIELD_INPUT}
               min={formData.startDate}
             />
-            <p className="text-xs text-ink/60 font-serif">
+            <p className={FIELD_HINT}>
               Leave empty for ongoing exhibitions
             </p>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="location">Location</Label>
+          <Label htmlFor="location" className={FIELD_LABEL}>Location</Label>
           <Input
             id="location"
             value={formData.location}
@@ -278,7 +286,7 @@ export function ExhibitionForm({
               setFormData({ ...formData, location: e.target.value })
             }
             placeholder="e.g., Gallery Name, City, Country"
-            className="font-serif"
+            className={FIELD_INPUT}
           />
         </div>
 
@@ -290,14 +298,14 @@ export function ExhibitionForm({
         />
 
         <div className="space-y-2">
-          <Label htmlFor="maxArtworksPerArtist">Artworks each artist can upload</Label>
+          <Label htmlFor="maxArtworksPerArtist" className={FIELD_LABEL}>Artworks each artist can upload</Label>
           <select
             id="maxArtworksPerArtist"
             value={formData.maxArtworksPerArtist}
             onChange={(e) =>
               setFormData({ ...formData, maxArtworksPerArtist: e.target.value })
             }
-            className="flex h-10 w-48 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-serif"
+            className={cn(FIELD_INPUT, 'flex w-56 focus-visible:outline-none')}
           >
             <option value="">No limit</option>
             {[
@@ -313,14 +321,14 @@ export function ExhibitionForm({
                 </option>
               ))}
           </select>
-          <p className="text-xs text-ink/60 font-serif">
+          <p className={FIELD_HINT}>
             Applies to new invites and your open call. Artists submit up to this many works
             for you to select from; you can change it per artist once invites are sent.
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="curator">Curator</Label>
+          <Label htmlFor="curator" className={FIELD_LABEL}>Curator</Label>
           <Input
             id="curator"
             value={formData.curator}
@@ -328,12 +336,12 @@ export function ExhibitionForm({
               setFormData({ ...formData, curator: e.target.value })
             }
             placeholder="e.g., Jane Smith"
-            className="font-serif"
+            className={FIELD_INPUT}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="theme">Theme</Label>
+          <Label htmlFor="theme" className={FIELD_LABEL}>Theme</Label>
           <Input
             id="theme"
             value={formData.theme}
@@ -341,7 +349,7 @@ export function ExhibitionForm({
               setFormData({ ...formData, theme: e.target.value })
             }
             placeholder="e.g., Abstract Expressionism, Contemporary Portraits"
-            className="font-serif"
+            className={FIELD_INPUT}
           />
         </div>
       </div>
@@ -350,7 +358,7 @@ export function ExhibitionForm({
         <Button
           type="submit"
           disabled={pending}
-          className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+          className={cn(BUTTON_PRIMARY, 'hover:bg-vermillion')}
         >
           {pending
             ? 'Saving...'
@@ -362,7 +370,7 @@ export function ExhibitionForm({
           type="button"
           variant="outline"
           onClick={() => router.back()}
-          className="font-serif border-wine/30 hover:bg-wine/10"
+          className={BUTTON_SECONDARY}
         >
           Cancel
         </Button>

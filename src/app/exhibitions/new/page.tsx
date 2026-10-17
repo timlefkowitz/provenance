@@ -8,6 +8,7 @@ import {
 } from '../_helpers/exhibition-owner-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { EditorialPageHeader } from '~/components/editorial-form';
 export const metadata = {
   title: 'New Exhibition | Provenance',
 };
@@ -39,14 +40,11 @@ export default async function NewExhibitionPage({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          New Exhibition
-        </h1>
-        <p className="text-ink/70 font-serif">
-          Create an exhibition and invite artists to upload the work they will show
-        </p>
-      </div>
+      <EditorialPageHeader
+        eyebrow="Exhibitions"
+        title="New exhibition"
+        description="Create an exhibition and invite artists to upload the work they will show"
+      />
 
       <ExhibitionForm
         ownerRoleOptions={getExhibitionOwnerRoleOptions(userRole)}

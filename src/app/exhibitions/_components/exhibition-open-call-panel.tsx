@@ -1,16 +1,27 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Copy, Megaphone } from 'lucide-react';
+import { Copy, ImagePlus, Megaphone } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
+import { cn } from '@kit/ui/utils';
+import {
+  BUTTON_PRIMARY,
+  BUTTON_SECONDARY,
+  EditorialSectionHeader,
+  FIELD_HINT,
+  FIELD_INPUT,
+  FIELD_LABEL,
+  TAG,
+} from '~/components/editorial-form';
 import {
   closeExhibitionOpenCall,
   openExhibitionOpenCall,
+  setExhibitionOpenCallImage,
   type ExhibitionOpenCallSummary,
 } from '../_actions/exhibition-open-call';
 
@@ -34,6 +45,8 @@ export function ExhibitionOpenCallPanel({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [imagePending, startImageTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
   const [closingDate, setClosingDate] = useState(
     openCall?.isOpen && openCall.submissionClosingDate
@@ -42,12 +55,13 @@ export function ExhibitionOpenCallPanel({
         ? defaultClosingDate
         : '',
   );
+  const [imageUrl, setImageUrl] = useState<string | null>(openCall?.imageUrl ?? null);
 
   const publicPath = openCall ? `/open-calls/${openCall.slug}` : null;
 
   const handleOpen = () => {
     startTransition(async () => {
-      const result = await openExhibitionOpenCall(exhibitionId, { closingDate });
+      const result = await openExhibitionOpenCall(exhibitionId, { closingDate, imageUrl });
       if (result.success) {
         toast.success(openCall ? 'Open call updated' : 'Open call is live');
         router.refresh();
@@ -69,6 +83,41 @@ export function ExhibitionOpenCallPanel({
     });
   };
 
+  const saveImage = (formData: FormData) => {
+    startImageTransition(async () => {
+      const result = await setExhibitionOpenCallImage(exhibitionId, formData);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setImageUrl(result.imageUrl);
+      if (openCall) {
+        toast.success(result.imageUrl ? 'Main image updated' : 'Main image removed');
+        router.refresh();
+      }
+    });
+  };
+
+  const handleImagePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('image', file);
+    saveImage(formData);
+  };
+
+  const handleImageRemove = () => {
+    // Before publishing, the upload isn't attached to anything yet.
+    if (!openCall) {
+      setImageUrl(null);
+      return;
+    }
+    const formData = new FormData();
+    formData.append('remove', '1');
+    saveImage(formData);
+  };
+
   const handleCopy = async () => {
     if (!publicPath) return;
     try {
@@ -79,113 +128,181 @@ export function ExhibitionOpenCallPanel({
     }
   };
 
-  return (
-    <section className="mt-12 pt-10 border-t border-wine/15">
-      <div className="mb-5">
-        <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
-          Open call
-        </p>
-        <h2 className="text-2xl font-display font-bold text-ink">
-          Accept submissions from any artist
-        </h2>
-        <p className="text-ink/55 font-serif text-sm mt-2 max-w-2xl">
-          Alongside your invites, publish a public open call. Artists sign in, upload new work or
-          pick pieces already on their account, and their submissions land in this exhibition for
-          you to select from. The per-artist limit above applies.
-        </p>
-      </div>
+  const deadlineField = (
+    <div className="space-y-2">
+      <Label htmlFor="openCallDeadline" className={FIELD_LABEL}>
+        Submission deadline
+      </Label>
+      <Input
+        id="openCallDeadline"
+        type="date"
+        min={today}
+        value={closingDate}
+        onChange={(e) => setClosingDate(e.target.value)}
+        className={cn(FIELD_INPUT, 'w-52')}
+      />
+    </div>
+  );
 
-      {openCall?.isOpen ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 font-serif space-y-3">
-          <p className="text-sm text-ink">
-            <span className="font-semibold text-emerald-800">Open</span>
-            {openCall.submissionClosingDate &&
-              ` · accepting submissions until ${formatDate(openCall.submissionClosingDate)}`}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-              <Link href={publicPath!} target="_blank">
-                View open call
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void handleCopy()}
-              className="h-8 text-xs gap-1"
-            >
-              <Copy className="h-3 w-3" />
-              Copy link
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-end gap-2 pt-1">
-            <div className="space-y-1">
-              <Label htmlFor="openCallDeadline" className="text-xs">
-                Deadline
-              </Label>
-              <Input
-                id="openCallDeadline"
-                type="date"
-                min={today}
-                value={closingDate}
-                onChange={(e) => setClosingDate(e.target.value)}
-                className="h-8 w-44 text-xs"
-              />
+  return (
+    <section className="mt-16 border-t border-editorial-border/30 pt-10">
+      <EditorialSectionHeader
+        eyebrow="Open call"
+        title="Accept submissions from any artist"
+        description="Alongside your invites, publish a public open call. Artists sign in, upload new work or pick pieces already on their account, and their submissions land in this exhibition for you to select from. The per-artist limit above applies."
+      />
+
+      <div className="border border-editorial-border/25 bg-bone">
+        {/* Main image — leads the public open call page */}
+        <div className="grid gap-0 sm:grid-cols-[minmax(0,15rem)_1fr]">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={imagePending}
+            aria-label={imageUrl ? 'Replace main image' : 'Choose a main image'}
+            className={cn(
+              'group relative flex aspect-[4/3] items-center justify-center overflow-hidden border-b border-editorial-border/25 bg-cream/50 transition-colors sm:border-b-0 sm:border-r',
+              'hover:bg-vermillion/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-vermillion/30',
+              imagePending && 'cursor-wait',
+            )}
+          >
+            {imageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                <span className="absolute inset-x-0 bottom-0 bg-editorial-ink/80 py-2 text-center font-jetbrains text-[10px] uppercase tracking-[0.18em] text-bone opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                  Replace image
+                </span>
+              </>
+            ) : (
+              <span className="flex flex-col items-center gap-2 px-4 text-center">
+                <span className="flex h-10 w-10 items-center justify-center bg-vermillion/10 text-vermillion transition-all duration-300 group-hover:scale-105 group-hover:bg-vermillion group-hover:text-bone">
+                  <ImagePlus className="h-4 w-4" />
+                </span>
+                <span className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/70">
+                  {imagePending ? 'Uploading…' : 'Choose main image'}
+                </span>
+              </span>
+            )}
+            {imagePending && imageUrl && (
+              <span className="absolute inset-0 flex items-center justify-center bg-bone/70 font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink">
+                Uploading…
+              </span>
+            )}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+            className="hidden"
+            onChange={handleImagePicked}
+          />
+
+          <div className="flex flex-col justify-between gap-4 p-5">
+            <div>
+              <p className={FIELD_LABEL}>Main image</p>
+              <p className={cn(FIELD_HINT, 'mt-2 text-sm')}>
+                Leads your open call page and shows on its card in Open Calls and when the link
+                is shared. A landscape image works best.
+              </p>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending || !closingDate}
-              onClick={handleOpen}
-              className="h-8 text-xs"
-            >
-              Update deadline
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={pending}
-              onClick={handleClose}
-              className="h-8 text-xs text-ink/60 hover:text-wine"
-            >
-              Close open call
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={imagePending}
+                className={cn(BUTTON_SECONDARY, 'h-9 px-4')}
+              >
+                {imageUrl ? 'Replace' : 'Upload image'}
+              </Button>
+              {imageUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleImageRemove}
+                  disabled={imagePending}
+                  className={cn(BUTTON_SECONDARY, 'h-9 border-transparent px-4 text-editorial-ink/60 hover:text-vermillion')}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="rounded-lg border border-wine/15 p-4 font-serif">
-          {openCall && (
-            <p className="text-sm text-ink/60 mb-3">
-              Your open call is closed. Set a new deadline to reopen it.
-            </p>
+
+        <div className="border-t border-editorial-border/25 p-5">
+          {openCall?.isOpen ? (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={cn(TAG, 'border-vermillion/40 bg-vermillion/5 text-vermillion')}>
+                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-vermillion" />
+                  Open
+                </span>
+                {openCall.submissionClosingDate && (
+                  <span className="font-serif text-sm text-editorial-ink/70">
+                    Accepting submissions until {formatDate(openCall.submissionClosingDate)}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className={cn(BUTTON_SECONDARY, 'h-9 px-4')}>
+                  <Link href={publicPath!} target="_blank">
+                    View open call
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleCopy()}
+                  className={cn(BUTTON_SECONDARY, 'h-9 gap-1.5 px-4')}
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy link
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-end gap-3">
+                {deadlineField}
+                <Button
+                  type="button"
+                  disabled={pending || !closingDate}
+                  onClick={handleOpen}
+                  className={cn(BUTTON_SECONDARY, 'h-9 px-4')}
+                >
+                  Update deadline
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={handleClose}
+                  className={cn(BUTTON_SECONDARY, 'h-9 border-transparent px-4 text-editorial-ink/60 hover:text-vermillion')}
+                >
+                  Close open call
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {openCall && (
+                <p className="font-serif text-sm text-editorial-ink/60">
+                  Your open call is closed. Set a new deadline to reopen it.
+                </p>
+              )}
+              <div className="flex flex-wrap items-end gap-4">
+                {deadlineField}
+                <Button
+                  type="button"
+                  disabled={pending || imagePending || !closingDate}
+                  onClick={handleOpen}
+                  className={cn(BUTTON_PRIMARY, 'gap-2 hover:bg-vermillion')}
+                >
+                  <Megaphone className="h-3.5 w-3.5" />
+                  {openCall ? 'Reopen open call' : 'Publish open call'}
+                </Button>
+              </div>
+            </div>
           )}
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="openCallDeadline">Submission deadline</Label>
-              <Input
-                id="openCallDeadline"
-                type="date"
-                min={today}
-                value={closingDate}
-                onChange={(e) => setClosingDate(e.target.value)}
-                className="w-48"
-              />
-            </div>
-            <Button
-              type="button"
-              disabled={pending || !closingDate}
-              onClick={handleOpen}
-              className="gap-1.5 bg-wine text-parchment hover:bg-wine/90"
-            >
-              <Megaphone className="h-4 w-4" />
-              {openCall ? 'Reopen open call' : 'Publish open call'}
-            </Button>
-          </div>
         </div>
-      )}
+      </div>
     </section>
   );
 }

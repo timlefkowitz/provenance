@@ -14,6 +14,7 @@ export type OpenCallListEntry = {
   call_type: string | null;
   medium: string | null;
   eligible_locations: string[] | null;
+  image_url: string | null;
   exhibition: {
     id: string;
     title: string;
@@ -64,7 +65,7 @@ export async function getOpenCallsList(
   let query = asUntyped(getSupabaseServerAdminClient())
     .from('open_calls')
     .select(
-      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, eligible_locations, exhibition:exhibition_id (id, title, start_date, end_date, location, description)',
+      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, eligible_locations, image_url, exhibition:exhibition_id (id, title, start_date, end_date, location, description)',
     )
     .order('created_at', { ascending: false })
     .limit(LIST_PAGE_SIZE);

@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
+import { cn } from '@kit/ui/utils';
 import pathsConfig from '~/config/paths.config';
+import { BUTTON_PRIMARY, BUTTON_SECONDARY, Eyebrow, TAG } from '~/components/editorial-form';
 import {
   startOpenCallSubmission,
   type MyOpenCallStatus,
@@ -16,14 +18,17 @@ import {
   type ExhibitionArtworkStatus,
 } from '~/app/exhibitions/_helpers/exhibition-submission-status';
 
+const PANEL = 'border border-editorial-border/25 bg-cream/40 p-6 font-serif';
+const PRIMARY = cn(BUTTON_PRIMARY, 'hover:bg-vermillion');
+
 function statusClass(status: ExhibitionArtworkStatus): string {
   switch (status) {
     case 'submitted':
-      return 'bg-amber-50 text-amber-900 border-amber-200';
+      return 'border-gilt/60 bg-gilt/10 text-editorial-ink';
     case 'selected':
-      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      return 'border-vermillion/40 bg-vermillion/5 text-vermillion';
     case 'declined':
-      return 'bg-ink/5 text-ink/50 border-ink/15';
+      return 'border-editorial-border/25 text-editorial-ink/45';
   }
 }
 
@@ -57,13 +62,13 @@ export function ExhibitionOpenCallSubmit({
 
   if (status.isOrganiser) {
     return (
-      <div className="rounded-lg border border-wine/30 bg-wine/5 p-6 font-serif">
-        <p className="text-ink/80 mb-1">This is your open call.</p>
-        <p className="text-ink/60 text-sm mb-4">
+      <div className={PANEL}>
+        <p className="mb-1 text-lg text-editorial-ink">This is your open call.</p>
+        <p className="mb-5 text-sm text-editorial-ink/60">
           Share this page with artists. Review what they submit and select works for the
           exhibition from its edit page.
         </p>
-        <Button asChild className="bg-wine text-parchment hover:bg-wine/90">
+        <Button asChild className={PRIMARY}>
           <Link href={`/exhibitions/${exhibitionId}/edit#submissions`}>Review submissions</Link>
         </Button>
       </div>
@@ -92,8 +97,8 @@ export function ExhibitionOpenCallSubmit({
   let action: React.ReactNode;
   if (isExpired) {
     action = status.submissions.length ? null : (
-      <Alert className="border-ink/30 bg-ink/5">
-        <AlertDescription className="font-serif text-ink/80">
+      <Alert className="rounded-none border-editorial-border/30 bg-cream/40">
+        <AlertDescription className="font-serif text-editorial-ink/80">
           Submissions for this open call have closed.
         </AlertDescription>
       </Alert>
@@ -101,17 +106,17 @@ export function ExhibitionOpenCallSubmit({
   } else if (!status.signedIn) {
     const next = encodeURIComponent(returnPath);
     action = (
-      <div className="rounded-lg border border-wine/30 bg-wine/5 p-6 font-serif">
-        <p className="text-ink/80 mb-1">Submit {limitText} for consideration.</p>
-        <p className="text-ink/60 text-sm mb-4">
+      <div className={PANEL}>
+        <p className="mb-1 text-lg text-editorial-ink">Submit {limitText} for consideration.</p>
+        <p className="mb-5 text-sm text-editorial-ink/60">
           You&apos;ll need a free Provenance account. Once you&apos;re in, you&apos;ll come
           right back here to upload new work or choose pieces already on your account.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-wine text-parchment hover:bg-wine/90">
+          <Button asChild className={PRIMARY}>
             <Link href={`${pathsConfig.auth.signUp}?next=${next}`}>Create an account</Link>
           </Button>
-          <Button asChild variant="outline" className="border-wine/30">
+          <Button asChild variant="outline" className={BUTTON_SECONDARY}>
             <Link href={`${pathsConfig.auth.signIn}?next=${next}`}>Sign in</Link>
           </Button>
         </div>
@@ -119,13 +124,13 @@ export function ExhibitionOpenCallSubmit({
     );
   } else if (status.canSubmit) {
     action = (
-      <div className="rounded-lg border border-wine/30 bg-wine/5 p-6 font-serif">
-        <p className="text-ink/80 mb-1">
+      <div className={PANEL}>
+        <p className="mb-1 text-lg text-editorial-ink">
           {status.submissions.length
             ? 'You can add more work to your submission.'
             : `Submit ${limitText} for consideration.`}
         </p>
-        <p className="text-ink/60 text-sm mb-4">
+        <p className="mb-5 text-sm text-editorial-ink/60">
           Upload new work or choose pieces already on your Provenance account. Each new
           upload gets a Certificate of Authenticity.
         </p>
@@ -133,7 +138,7 @@ export function ExhibitionOpenCallSubmit({
           type="button"
           onClick={handleStart}
           disabled={pending}
-          className="bg-wine text-parchment hover:bg-wine/90"
+          className={PRIMARY}
         >
           {pending ? 'Opening…' : status.submissions.length ? 'Add more work' : 'Submit your work'}
         </Button>
@@ -144,8 +149,8 @@ export function ExhibitionOpenCallSubmit({
   return (
     <div className="space-y-6">
       {justSubmitted && status.submissions.length > 0 && (
-        <Alert className="border-emerald-200 bg-emerald-50">
-          <AlertDescription className="font-serif text-emerald-900">
+        <Alert className="rounded-none border-vermillion/30 bg-vermillion/5">
+          <AlertDescription className="font-serif text-editorial-ink">
             Thanks — your submission is in. The organiser will review it, and you&apos;ll get
             a notification if your work is selected.
           </AlertDescription>
@@ -153,11 +158,9 @@ export function ExhibitionOpenCallSubmit({
       )}
 
       {status.submissions.length > 0 && (
-        <section className="rounded-lg border border-wine/15 p-6 font-serif">
-          <p className="text-[11px] uppercase tracking-widest text-wine/50 mb-4">
-            Your submission
-          </p>
-          <ul className="divide-y divide-wine/10">
+        <section className="border border-editorial-border/25 p-6 font-serif">
+          <Eyebrow className="mb-3">Your submission</Eyebrow>
+          <ul className="divide-y divide-editorial-border/15">
             {status.submissions.map((submission) => (
               <li key={submission.artworkId} className="flex items-center gap-4 py-3">
                 {submission.imageUrl ? (
@@ -165,19 +168,19 @@ export function ExhibitionOpenCallSubmit({
                   <img
                     src={submission.imageUrl}
                     alt=""
-                    className="h-14 w-14 shrink-0 rounded object-cover bg-ink/5"
+                    className="h-14 w-14 shrink-0 object-cover bg-cream/50"
                   />
                 ) : (
-                  <div className="h-14 w-14 shrink-0 rounded bg-ink/5" />
+                  <div className="h-14 w-14 shrink-0 bg-cream/50" />
                 )}
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/artworks/${submission.artworkId}/certificate`}
-                    className="block truncate text-ink hover:text-wine"
+                    className="block truncate text-editorial-ink transition-colors hover:text-vermillion"
                   >
                     {submission.title}
                   </Link>
-                  <p className="text-xs text-ink/50">
+                  <p className="text-xs text-editorial-ink/50">
                     Submitted{' '}
                     {new Date(submission.submittedAt).toLocaleDateString('en-US', {
                       month: 'short',
@@ -187,7 +190,7 @@ export function ExhibitionOpenCallSubmit({
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs ${statusClass(submission.status)}`}
+                  className={cn(TAG, 'shrink-0', statusClass(submission.status))}
                 >
                   {artistFacingStatusLabel(submission.status)}
                 </span>

@@ -14,6 +14,7 @@ import {
   type CreditedArtistInviteStatus,
   type ExhibitionArtistInviteRow,
 } from '../_actions/manage-exhibition-invites';
+import { Eyebrow } from '~/components/editorial-form';
 
 const LIMIT_OPTIONS = Array.from({ length: 20 }, (_, i) => i + 1);
 
@@ -42,9 +43,9 @@ function statusClass(status: string): string {
       return 'bg-amber-50 text-amber-900 border-amber-200';
     case 'cancelled':
     case 'expired':
-      return 'bg-ink/5 text-ink/50 border-ink/15';
+      return 'bg-cream/50 text-editorial-ink/50 border-ink/15';
     default:
-      return 'bg-ink/5 text-ink/60 border-ink/15';
+      return 'bg-cream/50 text-editorial-ink/60 border-ink/15';
   }
 }
 
@@ -144,23 +145,21 @@ export function ExhibitionInvitesPanel({
   }
 
   return (
-    <section className="mt-12 pt-10 border-t border-wine/15">
+    <section className="mt-12 pt-10 border-t border-editorial-border/20">
       <div className="mb-6">
-        <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
-          Artist invites
-        </p>
-        <h2 className="text-2xl font-display font-bold text-ink">
+        <Eyebrow className="mb-3">Artist invites</Eyebrow>
+        <h2 className="font-fraunces text-2xl italic tracking-tight text-editorial-ink">
           Upload invitations
         </h2>
-        <p className="text-ink/55 font-serif text-sm mt-2 max-w-2xl">
+        <p className="text-editorial-ink/55 font-serif text-sm mt-2 max-w-2xl">
           Track artists invited to upload work. Their submissions wait for your review
           below; nothing joins the exhibition until you select it.
         </p>
       </div>
 
       {uninvitedArtists.length > 0 && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-4 font-serif">
-          <p className="text-sm text-ink">
+        <div className="mb-6 border border-amber-200 bg-amber-50/60 px-4 py-4 font-serif">
+          <p className="text-sm text-editorial-ink">
             {uninvitedArtists.length === 1 ? 'This artist is' : 'These artists are'} credited but
             {uninvitedArtists.length === 1 ? " hasn't" : " haven't"} been invited to upload:{' '}
             <span className="font-semibold">
@@ -168,7 +167,7 @@ export function ExhibitionInvitesPanel({
             </span>
           </p>
           {missingEmail.length > 0 && (
-            <p className="text-xs text-ink/60 mt-1">
+            <p className="text-xs text-editorial-ink/60 mt-1">
               No email on file for {missingEmail.map((a) => a.name).join(', ')}. Invite them by
               typing their email in the artists field above.
             </p>
@@ -179,7 +178,7 @@ export function ExhibitionInvitesPanel({
               size="sm"
               disabled={pending}
               onClick={handleInviteCredited}
-              className="mt-3 gap-1.5 bg-wine text-parchment hover:bg-wine/90 font-serif text-xs h-8"
+              className="mt-3 gap-1.5 rounded-none bg-editorial-ink text-bone hover:bg-vermillion font-jetbrains text-[10px] uppercase tracking-[0.16em] h-8"
             >
               <Send className="h-3 w-3" />
               Send upload {invitable.length === 1 ? 'invite' : 'invites'}
@@ -189,8 +188,8 @@ export function ExhibitionInvitesPanel({
       )}
 
       {invites.length > 0 && (
-      <div className="rounded-lg border border-wine/15 overflow-hidden">
-        <ul className="divide-y divide-wine/10">
+      <div className="border border-editorial-border/20 overflow-hidden">
+        <ul className="divide-y divide-editorial-border/15">
           {invites.map((invite) => {
             const isOpen =
               invite.status === 'sent' || invite.status === 'pending';
@@ -199,23 +198,23 @@ export function ExhibitionInvitesPanel({
             return (
               <li
                 key={invite.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-parchment/40"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-cream/40"
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <Mail className="h-4 w-4 text-wine/60 mt-0.5 shrink-0" />
+                  <Mail className="h-4 w-4 text-vermillion/80 mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="font-serif text-sm text-ink truncate">
+                    <p className="font-serif text-sm text-editorial-ink truncate">
                       {invite.invitee_name || invite.invitee_email}
                     </p>
-                    <p className="font-serif text-xs text-ink/50 truncate">
+                    <p className="font-serif text-xs text-editorial-ink/50 truncate">
                       {invite.invitee_email}
                       {invite.source === 'open_call' && (
-                        <span className="ml-2 rounded border border-wine/25 px-1.5 py-px text-[10px] uppercase tracking-wide text-wine/70">
+                        <span className="ml-2 border border-editorial-border/30 px-1.5 py-px text-[10px] uppercase tracking-wide text-vermillion/80">
                           Open call
                         </span>
                       )}
                       {invite.submitted_count > 0 && (
-                        <span className="ml-2 text-ink/45">
+                        <span className="ml-2 text-editorial-ink/45">
                           {invite.submitted_count} submitted
                         </span>
                       )}
@@ -225,14 +224,14 @@ export function ExhibitionInvitesPanel({
 
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
                   {isOpen ? (
-                    <label className="flex items-center gap-1.5 font-serif text-xs text-ink/60">
+                    <label className="flex items-center gap-1.5 font-serif text-xs text-editorial-ink/60">
                       Up to
                       <select
                         value={invite.max_artworks ?? ''}
                         disabled={pending}
                         onChange={(e) => handleLimitChange(invite.id, e.target.value)}
                         aria-label={`Upload limit for ${invite.invitee_name || invite.invitee_email}`}
-                        className="h-8 rounded-md border border-ink/20 bg-transparent px-2 text-xs text-ink"
+                        className="h-8 rounded-md border border-ink/20 bg-transparent px-2 text-xs text-editorial-ink"
                       >
                         <option value="">No limit</option>
                         {[...new Set([...LIMIT_OPTIONS, ...(invite.max_artworks ? [invite.max_artworks] : [])])]
@@ -245,13 +244,13 @@ export function ExhibitionInvitesPanel({
                       </select>
                     </label>
                   ) : invite.max_artworks ? (
-                    <span className="font-serif text-xs text-ink/50">
+                    <span className="font-serif text-xs text-editorial-ink/50">
                       Limit {invite.max_artworks}
                     </span>
                   ) : null}
 
                   <span
-                    className={`text-[11px] uppercase tracking-wide font-serif px-2 py-0.5 rounded border ${statusClass(invite.status)}`}
+                    className={`text-[11px] uppercase tracking-wide font-serif px-2 py-0.5 border ${statusClass(invite.status)}`}
                   >
                     {statusLabel(invite.status)}
                   </span>
@@ -288,7 +287,7 @@ export function ExhibitionInvitesPanel({
                         size="sm"
                         disabled={pending}
                         onClick={() => handleCancel(invite.id)}
-                        className="font-serif text-xs h-8 gap-1 text-ink/60 hover:text-wine"
+                        className="font-serif text-xs h-8 gap-1 text-editorial-ink/60 hover:text-vermillion"
                       >
                         <XCircle className="h-3 w-3" />
                         Cancel

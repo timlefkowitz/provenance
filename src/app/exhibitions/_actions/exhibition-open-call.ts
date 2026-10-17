@@ -13,6 +13,7 @@ import {
   normalizeInviteEmail,
 } from '~/lib/certificate-claims/tokens';
 import { INVITE_TTL_MS } from '~/lib/certificate-claims/create-invite-batch';
+import { artworkImageUploader, getArtworkImagePublicUrl } from '~/lib/artwork-storage';
 import { isOpenCallSubmissionExpired } from '~/app/open-calls/_lib/open-call-utils';
 import { parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
 import {
@@ -25,6 +26,7 @@ export type ExhibitionOpenCallSummary = {
   slug: string;
   submissionClosingDate: string | null;
   isOpen: boolean;
+  imageUrl: string | null;
 };
 
 const OPEN_STATUSES = ['pending', 'sent'];
@@ -58,7 +60,7 @@ export async function getExhibitionOpenCall(
   const { adminClient } = await requireManager(exhibitionId);
   const { data } = await adminClient
     .from('open_calls')
-    .select('id, slug, submission_closing_date')
+    .select('id, slug, submission_closing_date, image_url')
     .eq('exhibition_id', exhibitionId)
     .eq('submission_mode', 'exhibition')
     .order('created_at', { ascending: false })
@@ -71,7 +73,73 @@ export async function getExhibitionOpenCall(
     slug: data.slug,
     submissionClosingDate: data.submission_closing_date,
     isOpen: !isOpenCallSubmissionExpired(data),
+    imageUrl: data.image_url ?? null,
   };
+}
+
+/** Only accept image URLs our own uploader produced. */
+function isOwnArtworkImageUrl(url: string): boolean {
+  return url.startsWith(getArtworkImagePublicUrl(''));
+}
+
+/**
+ * Uploads the open call's main image. Saves it straight onto the call when one
+ * exists; before the call is published, returns the URL for
+ * openExhibitionOpenCall to store. Pass `remove=1` instead of `image` to clear.
+ */
+export async function setExhibitionOpenCallImage(
+  exhibitionId: string,
+  formData: FormData,
+): Promise<{ success: true; imageUrl: string | null } | { success: false; error: string }> {
+  try {
+    const { user, adminClient } = await requireManager(exhibitionId);
+
+    let imageUrl: string | null = null;
+    if (formData.get('remove') !== '1') {
+      const file = formData.get('image');
+      if (!(file instanceof File) || file.size === 0) {
+        return { success: false, error: 'Choose an image to upload' };
+      }
+      try {
+        imageUrl = await artworkImageUploader.upload(
+          asUntyped(getSupabaseServerClient()),
+          adminClient,
+          file,
+          user.id,
+        );
+      } catch (err) {
+        console.error('[Exhibitions] open call image upload failed', err);
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : 'Could not upload the image',
+        };
+      }
+    }
+
+    const existing = await getExhibitionOpenCall(exhibitionId);
+    if (existing) {
+      const { error } = await adminClient
+        .from('open_calls')
+        .update({ image_url: imageUrl, updated_by: user.id })
+        .eq('id', existing.id);
+      if (error) {
+        console.error('[Exhibitions] save open call image failed', error);
+        return { success: false, error: 'Could not save the image' };
+      }
+      revalidatePath(`/exhibitions/${exhibitionId}/edit`);
+      revalidatePath(`/open-calls/${existing.slug}`);
+      revalidatePath('/open-calls/browse');
+    }
+
+    console.log('[Exhibitions] setExhibitionOpenCallImage succeeded', {
+      exhibitionId,
+      saved: Boolean(existing),
+      removed: !imageUrl,
+    });
+    return { success: true, imageUrl };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Could not save the image' };
+  }
 }
 
 function todayIso(): string {
@@ -85,7 +153,7 @@ function todayIso(): string {
  */
 export async function openExhibitionOpenCall(
   exhibitionId: string,
-  params: { closingDate: string },
+  params: { closingDate: string; imageUrl?: string | null },
 ): Promise<{ success: true; slug: string } | { success: false; error: string }> {
   try {
     const { user, adminClient, exhibition } = await requireManager(exhibitionId);
@@ -96,6 +164,8 @@ export async function openExhibitionOpenCall(
     if (closingDate < todayIso()) {
       return { success: false, error: 'The deadline must be today or later' };
     }
+    const imageUrl =
+      params.imageUrl && isOwnArtworkImageUrl(params.imageUrl) ? params.imageUrl : null;
 
     const existing = await getExhibitionOpenCall(exhibitionId);
     if (existing) {
@@ -145,6 +215,7 @@ export async function openExhibitionOpenCall(
       slug,
       submission_open_date: todayIso(),
       submission_closing_date: closingDate,
+      image_url: imageUrl,
       call_type: 'exhibition',
       submission_mode: 'exhibition',
       eligible_locations: [],

@@ -40,7 +40,13 @@ function OpenCallCard({
     : null;
 
   return (
-    <Card className="border-wine/20 bg-parchment/60">
+    <Card className="overflow-hidden border-wine/20 bg-parchment/60">
+      {openCall.image_url && (
+        <Link href={`/open-calls/${openCall.slug}`} className="block aspect-[16/9] bg-ink/5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={openCall.image_url} alt="" className="h-full w-full object-cover" />
+        </Link>
+      )}
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2 mb-1">
           {openCall.medium && (

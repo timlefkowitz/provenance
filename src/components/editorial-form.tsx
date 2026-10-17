@@ -51,3 +51,66 @@ export function FieldSection({
     </div>
   );
 }
+
+/** Gilt mono kicker with a trailing hairline, as in the navbar dropdowns. */
+export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('flex items-center gap-2', className)}>
+      <span className="font-jetbrains text-[10px] font-medium uppercase tracking-[0.2em] text-gilt">
+        {children}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-editorial-border/40" />
+    </div>
+  );
+}
+
+/** Page title in the wordmark's voice: Fraunces italic with a vermillion full stop. */
+export function EditorialPageHeader({
+  eyebrow,
+  title,
+  description,
+  className,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <header className={cn('mb-10', className)}>
+      {eyebrow && <Eyebrow className="mb-4">{eyebrow}</Eyebrow>}
+      <h1 className="font-fraunces text-4xl italic leading-[1.05] tracking-tight text-editorial-ink sm:text-5xl">
+        {title}
+        <span className="text-vermillion">.</span>
+      </h1>
+      {description && (
+        <p className="mt-3 max-w-2xl font-serif text-base text-editorial-ink/60">{description}</p>
+      )}
+    </header>
+  );
+}
+
+/** Section opener for long editorial pages: kicker, italic heading, short lede. */
+export function EditorialSectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-6">
+      <Eyebrow className="mb-3">{eyebrow}</Eyebrow>
+      <h2 className="font-fraunces text-2xl italic tracking-tight text-editorial-ink">{title}</h2>
+      {description && (
+        <p className="mt-2 max-w-2xl font-serif text-sm text-editorial-ink/55">{description}</p>
+      )}
+    </div>
+  );
+}
+
+/** Square status tag in mono caps. */
+export const TAG =
+  'inline-flex items-center border px-2 py-0.5 font-jetbrains text-[10px] font-medium uppercase tracking-[0.16em]';

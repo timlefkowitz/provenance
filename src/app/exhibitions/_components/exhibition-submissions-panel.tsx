@@ -15,6 +15,7 @@ import {
   type ExhibitionArtworkStatus,
   type ReviewDecision,
 } from '../_helpers/exhibition-submission-status';
+import { Eyebrow } from '~/components/editorial-form';
 
 function statusLabel(status: ExhibitionArtworkStatus): string {
   switch (status) {
@@ -34,7 +35,7 @@ function statusClass(status: ExhibitionArtworkStatus): string {
     case 'selected':
       return 'bg-emerald-50 text-emerald-800 border-emerald-200';
     case 'declined':
-      return 'bg-ink/5 text-ink/50 border-ink/15';
+      return 'bg-cream/50 text-editorial-ink/50 border-ink/15';
   }
 }
 
@@ -98,19 +99,17 @@ export function ExhibitionSubmissionsPanel({
   };
 
   return (
-    <section id="submissions" className="mt-12 pt-10 border-t border-wine/15 scroll-mt-8">
+    <section id="submissions" className="mt-12 pt-10 border-t border-editorial-border/20 scroll-mt-8">
       <div className="mb-6">
-        <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
-          Submissions
-        </p>
-        <h2 className="text-2xl font-display font-bold text-ink">Review submitted works</h2>
-        <p className="text-ink/55 font-serif text-sm mt-2 max-w-2xl">
+        <Eyebrow className="mb-3">Submissions</Eyebrow>
+        <h2 className="font-fraunces text-2xl italic tracking-tight text-editorial-ink">Review submitted works</h2>
+        <p className="text-editorial-ink/55 font-serif text-sm mt-2 max-w-2xl">
           Works artists submit stay private to you until you select them. Selected works join
           the exhibition
           {issuesCertificateOfShow ? ' and receive your Certificate of Show' : ''}; declined
           works stay with the artist.
         </p>
-        <p className="font-serif text-xs text-ink/60 mt-3">
+        <p className="font-serif text-xs text-editorial-ink/60 mt-3">
           {allCounts.submitted} awaiting review · {allCounts.selected} selected ·{' '}
           {allCounts.declined} declined
         </p>
@@ -120,28 +119,28 @@ export function ExhibitionSubmissionsPanel({
         {groups.map((group) => {
           const counts = countSubmissionsByStatus(group.submissions.map((s) => s.status));
           return (
-            <div key={group.inviteId} className="rounded-lg border border-wine/15 overflow-hidden">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 bg-parchment/60 border-b border-wine/10">
+            <div key={group.inviteId} className="border border-editorial-border/20 overflow-hidden">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 bg-cream/40 border-b border-editorial-border/20">
                 <div className="min-w-0">
-                  <p className="font-serif text-sm text-ink font-semibold truncate">
+                  <p className="font-serif text-sm text-editorial-ink font-semibold truncate">
                     {group.artistName}
                     {group.source === 'open_call' && (
-                      <span className="ml-2 rounded border border-wine/25 px-1.5 py-px text-[10px] uppercase tracking-wide text-wine/70 font-normal">
+                      <span className="ml-2 border border-editorial-border/30 px-1.5 py-px text-[10px] uppercase tracking-wide text-vermillion/80 font-normal">
                         Open call
                       </span>
                     )}
                   </p>
                   {group.artistEmail && group.artistEmail !== group.artistName && (
-                    <p className="font-serif text-xs text-ink/50 truncate">{group.artistEmail}</p>
+                    <p className="font-serif text-xs text-editorial-ink/50 truncate">{group.artistEmail}</p>
                   )}
                 </div>
-                <p className="font-serif text-xs text-ink/60">
+                <p className="font-serif text-xs text-editorial-ink/60">
                   {counts.selected} of {group.submissions.length} selected
                   {group.maxArtworks ? ` · limit ${group.maxArtworks}` : ''}
                 </p>
               </div>
 
-              <ul className="divide-y divide-wine/10">
+              <ul className="divide-y divide-editorial-border/15">
                 {group.submissions.map((submission) => {
                   const busy = busyId === submission.artworkId;
                   const canDecline =
@@ -153,7 +152,7 @@ export function ExhibitionSubmissionsPanel({
                       className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded border border-wine/10 bg-ink/5">
+                        <div className="h-14 w-14 shrink-0 overflow-hidden border border-editorial-border/20 bg-cream/50">
                           {submission.imageUrl && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -166,11 +165,11 @@ export function ExhibitionSubmissionsPanel({
                         <div className="min-w-0">
                           <Link
                             href={`/artworks/${submission.artworkId}/certificate`}
-                            className="font-serif text-sm text-ink hover:text-wine truncate block"
+                            className="font-serif text-sm text-editorial-ink hover:text-vermillion truncate block"
                           >
                             {submission.title}
                           </Link>
-                          <p className="font-serif text-xs text-ink/50 truncate">
+                          <p className="font-serif text-xs text-editorial-ink/50 truncate">
                             {[submission.medium, submission.creationDate?.slice(0, 4)]
                               .filter(Boolean)
                               .join(' · ')}
@@ -180,7 +179,7 @@ export function ExhibitionSubmissionsPanel({
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <span
-                          className={`text-[11px] uppercase tracking-wide font-serif px-2 py-0.5 rounded border ${statusClass(submission.status)}`}
+                          className={`text-[11px] uppercase tracking-wide font-serif px-2 py-0.5 border ${statusClass(submission.status)}`}
                         >
                           {statusLabel(submission.status)}
                         </span>
@@ -191,7 +190,7 @@ export function ExhibitionSubmissionsPanel({
                             size="sm"
                             disabled={busy}
                             onClick={() => handleReview(submission.artworkId, 'select')}
-                            className="gap-1 bg-wine text-parchment hover:bg-wine/90 font-serif text-xs h-8"
+                            className="gap-1 rounded-none bg-editorial-ink text-bone hover:bg-vermillion font-jetbrains text-[10px] uppercase tracking-[0.16em] h-8"
                           >
                             <Check className="h-3 w-3" />
                             Select
@@ -205,7 +204,7 @@ export function ExhibitionSubmissionsPanel({
                             size="sm"
                             disabled={busy}
                             onClick={() => handleReview(submission.artworkId, 'decline')}
-                            className="gap-1 font-serif text-xs h-8 text-ink/60 hover:text-wine"
+                            className="gap-1 font-serif text-xs h-8 text-editorial-ink/60 hover:text-vermillion"
                           >
                             <X className="h-3 w-3" />
                             Decline
@@ -219,7 +218,7 @@ export function ExhibitionSubmissionsPanel({
                             size="sm"
                             disabled={busy}
                             onClick={() => handleReview(submission.artworkId, 'decline')}
-                            className="gap-1 font-serif text-xs h-8 text-ink/60 hover:text-wine"
+                            className="gap-1 font-serif text-xs h-8 text-editorial-ink/60 hover:text-vermillion"
                           >
                             <Undo2 className="h-3 w-3" />
                             Unselect

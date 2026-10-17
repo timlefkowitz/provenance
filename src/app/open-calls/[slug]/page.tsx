@@ -8,6 +8,8 @@ import { getMyOpenCallStatus } from '~/app/exhibitions/_actions/exhibition-open-
 import { parseMaxArtworksPerArtist } from '~/app/exhibitions/_helpers/exhibition-invite-limits';
 import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
+import { cn } from '@kit/ui/utils';
+import { BUTTON_PRIMARY, Eyebrow, TAG } from '~/components/editorial-form';
 
 export async function generateMetadata({
   params,
@@ -38,8 +40,18 @@ export async function generateMetadata({
   return {
     title,
     description,
-    openGraph: { title, description, type: 'website' },
-    twitter: { card: 'summary', title, description },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      ...(openCall.image_url ? { images: [{ url: openCall.image_url }] } : {}),
+    },
+    twitter: {
+      card: openCall.image_url ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(openCall.image_url ? { images: [openCall.image_url] } : {}),
+    },
   };
 }
 
@@ -86,6 +98,7 @@ export default async function OpenCallPage({
     name: openCall.exhibition.title,
     url: pageUrl,
     ...(openCall.exhibition.description ? { description: openCall.exhibition.description } : {}),
+    ...(openCall.image_url ? { image: openCall.image_url } : {}),
     startDate: openCall.exhibition.start_date,
     ...(openCall.exhibition.end_date ? { endDate: openCall.exhibition.end_date } : {}),
     ...(openCall.exhibition.location
@@ -105,50 +118,81 @@ export default async function OpenCallPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(openCallJsonLd) }}
       />
-    <div className="container mx-auto px-4 py-10 max-w-3xl">
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          {openCall.medium && (
-            <p className="text-sm font-serif text-ink/60">
-              {getMediumLabel(openCall.medium)}
-            </p>
-          )}
-          {isExpired && (
-            <span className="text-xs font-serif px-2 py-0.5 rounded bg-ink/20 text-ink/70">
-              Submissions closed
-            </span>
-          )}
-        </div>
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
+    <div className="container mx-auto max-w-3xl px-4 py-10 sm:py-14">
+      <header className="mb-10">
+        <Eyebrow className="mb-5">
+          Open call{openCall.medium ? ` · ${getMediumLabel(openCall.medium)}` : ''}
+        </Eyebrow>
+        {openCall.image_url && (
+          <div className="mb-8 aspect-[16/9] overflow-hidden border border-editorial-border/25 bg-cream/50 shadow-editorial">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={openCall.image_url}
+              alt={openCall.exhibition.title}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
+        <h1 className="font-fraunces text-4xl italic leading-[1.05] tracking-tight text-editorial-ink sm:text-5xl">
           {openCall.exhibition.title}
+          <span className="text-vermillion">.</span>
         </h1>
-        {(subOpen || subClose) && (
-          <p className="text-ink/70 font-serif">
-            Submissions: {subOpen ?? '—'} – {subClose ?? '—'}
-          </p>
-        )}
-        {openCall.exhibition.location && (
-          <p className="text-ink/70 font-serif mt-2">
-            {openCall.exhibition.location}
-          </p>
-        )}
+
+        <dl className="mt-6 grid gap-x-8 gap-y-4 border-y border-editorial-border/25 py-4 sm:grid-cols-2">
+          {(subOpen || subClose) && (
+            <div>
+              <dt className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50">
+                Submissions
+              </dt>
+              <dd className="mt-1 font-serif text-editorial-ink">
+                {subOpen ?? '—'} – {subClose ?? '—'}
+              </dd>
+            </div>
+          )}
+          {openCall.exhibition.location && (
+            <div>
+              <dt className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50">
+                Location
+              </dt>
+              <dd className="mt-1 font-serif text-editorial-ink">{openCall.exhibition.location}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50">
+              Status
+            </dt>
+            <dd className="mt-1.5">
+              {isExpired ? (
+                <span className={cn(TAG, 'border-editorial-border/30 text-editorial-ink/60')}>
+                  Submissions closed
+                </span>
+              ) : (
+                <span className={cn(TAG, 'border-vermillion/40 bg-vermillion/5 text-vermillion')}>
+                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-vermillion" />
+                  Accepting work
+                </span>
+              )}
+            </dd>
+          </div>
+        </dl>
+
         {openCall.exhibition.description && (
-          <p className="text-ink/80 font-serif mt-4">
+          <p className="mt-6 whitespace-pre-line font-serif text-lg leading-relaxed text-editorial-ink/80">
             {openCall.exhibition.description}
           </p>
         )}
-      </div>
+      </header>
 
       {openCall.external_url ? (
-        <div className="rounded-lg border border-wine/30 bg-wine/5 p-6">
-          <p className="text-ink/80 font-serif mb-3">
+        <div className="border border-editorial-border/25 bg-cream/40 p-6">
+          <p className="mb-4 font-serif text-editorial-ink/80">
             This is a curated listing. Apply or learn more at the source.
           </p>
           <a
             href={openCall.external_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md bg-wine px-4 py-2 font-serif text-parchment hover:bg-wine/90"
+            className={cn(BUTTON_PRIMARY, 'inline-flex items-center hover:bg-vermillion')}
           >
             View open call
           </a>

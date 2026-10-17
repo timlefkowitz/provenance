@@ -17,6 +17,7 @@ import { ExhibitionSubmissionsPanel } from '../../_components/exhibition-submiss
 import { ownerReceivesCertificateOfShow } from '../../_helpers/exhibition-owner-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { EditorialPageHeader, Eyebrow } from '~/components/editorial-form';
 export const metadata = {
   title: 'Edit Exhibition | Provenance',
 };
@@ -72,14 +73,7 @@ export default async function EditExhibitionPage({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Edit Exhibition
-        </h1>
-        <p className="text-ink/70 font-serif">
-          Update exhibition details
-        </p>
-      </div>
+      <EditorialPageHeader eyebrow="Exhibitions" title="Edit exhibition" description="Update exhibition details" />
 
       <ExhibitionForm exhibition={exhibition} />
 
@@ -101,15 +95,13 @@ export default async function EditExhibitionPage({
         issuesCertificateOfShow={ownerReceivesCertificateOfShow(exhibition.owner_role)}
       />
 
-      <section id="artworks" className="mt-16 pt-12 border-t border-wine/15 scroll-mt-8">
+      <section id="artworks" className="mt-16 pt-10 border-t border-editorial-border/30 scroll-mt-8">
         <div className="mb-8">
-          <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
-            Draft listings
-          </p>
-          <h2 className="text-2xl font-display font-bold text-ink">
+          <Eyebrow className="mb-3">Draft listings</Eyebrow>
+          <h2 className="font-fraunces text-2xl italic tracking-tight text-editorial-ink">
             Artworks in this exhibition
           </h2>
-          <p className="text-ink/55 font-serif text-sm mt-2 max-w-2xl">
+          <p className="text-editorial-ink/55 font-serif text-sm mt-2 max-w-2xl">
             Search and add quick listings here. Drafts stay visible only to you until you publish each work.
           </p>
         </div>
