@@ -14,6 +14,10 @@ export type OpenCall = {
   external_url: string | null;
   /** Main image the organiser picked for the call. */
   image_url: string | null;
+  /** When selected artists deliver their work. */
+  dropoff_date: string | null;
+  /** Drop-off / venue address. */
+  address: string | null;
   /** 'exhibition' = submit through the exhibition upload flow. */
   submission_mode: string;
   exhibition: {
@@ -36,7 +40,7 @@ export async function getOpenCallBySlug(slug: string): Promise<OpenCall | null> 
   const { data, error } = await asUntyped(client)
     .from('open_calls')
     .select(
-      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, external_url, image_url, submission_mode, exhibition:exhibition_id (id, title, description, start_date, end_date, location, gallery_id, metadata)',
+      'id, slug, gallery_profile_id, submission_open_date, submission_closing_date, call_type, medium, external_url, image_url, dropoff_date, address, submission_mode, exhibition:exhibition_id (id, title, description, start_date, end_date, location, gallery_id, metadata)',
     )
     .eq('slug', slug)
     .single();

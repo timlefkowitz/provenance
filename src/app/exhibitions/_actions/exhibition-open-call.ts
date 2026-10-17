@@ -27,7 +27,11 @@ export type ExhibitionOpenCallSummary = {
   submissionClosingDate: string | null;
   isOpen: boolean;
   imageUrl: string | null;
+  dropoffDate: string | null;
+  address: string | null;
 };
+
+const ADDRESS_MAX_LENGTH = 500;
 
 const OPEN_STATUSES = ['pending', 'sent'];
 
@@ -60,7 +64,7 @@ export async function getExhibitionOpenCall(
   const { adminClient } = await requireManager(exhibitionId);
   const { data } = await adminClient
     .from('open_calls')
-    .select('id, slug, submission_closing_date, image_url')
+    .select('id, slug, submission_closing_date, image_url, dropoff_date, address')
     .eq('exhibition_id', exhibitionId)
     .eq('submission_mode', 'exhibition')
     .order('created_at', { ascending: false })
@@ -74,6 +78,8 @@ export async function getExhibitionOpenCall(
     submissionClosingDate: data.submission_closing_date,
     isOpen: !isOpenCallSubmissionExpired(data),
     imageUrl: data.image_url ?? null,
+    dropoffDate: data.dropoff_date ?? null,
+    address: data.address ?? null,
   };
 }
 
@@ -153,7 +159,12 @@ function todayIso(): string {
  */
 export async function openExhibitionOpenCall(
   exhibitionId: string,
-  params: { closingDate: string; imageUrl?: string | null },
+  params: {
+    closingDate: string;
+    imageUrl?: string | null;
+    dropoffDate?: string | null;
+    address?: string | null;
+  },
 ): Promise<{ success: true; slug: string } | { success: false; error: string }> {
   try {
     const { user, adminClient, exhibition } = await requireManager(exhibitionId);
@@ -166,12 +177,22 @@ export async function openExhibitionOpenCall(
     }
     const imageUrl =
       params.imageUrl && isOwnArtworkImageUrl(params.imageUrl) ? params.imageUrl : null;
+    const dropoffDate = params.dropoffDate?.trim() || null;
+    if (dropoffDate && !/^\d{4}-\d{2}-\d{2}$/.test(dropoffDate)) {
+      return { success: false, error: 'Choose a valid drop-off date' };
+    }
+    const address = params.address?.trim().slice(0, ADDRESS_MAX_LENGTH) || null;
 
     const existing = await getExhibitionOpenCall(exhibitionId);
     if (existing) {
       const { error } = await adminClient
         .from('open_calls')
-        .update({ submission_closing_date: closingDate, updated_by: user.id })
+        .update({
+          submission_closing_date: closingDate,
+          dropoff_date: dropoffDate,
+          address,
+          updated_by: user.id,
+        })
         .eq('id', existing.id);
       if (error) {
         console.error('[Exhibitions] reopen open call failed', error);
@@ -216,6 +237,8 @@ export async function openExhibitionOpenCall(
       submission_open_date: todayIso(),
       submission_closing_date: closingDate,
       image_url: imageUrl,
+      dropoff_date: dropoffDate,
+      address,
       call_type: 'exhibition',
       submission_mode: 'exhibition',
       eligible_locations: [],

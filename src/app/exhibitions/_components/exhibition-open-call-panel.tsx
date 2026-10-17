@@ -7,6 +7,7 @@ import { Copy, ImagePlus, Megaphone } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
+import { Textarea } from '@kit/ui/textarea';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 import {
@@ -16,6 +17,7 @@ import {
   FIELD_HINT,
   FIELD_INPUT,
   FIELD_LABEL,
+  FIELD_TEXTAREA,
   TAG,
 } from '~/components/editorial-form';
 import {
@@ -56,12 +58,19 @@ export function ExhibitionOpenCallPanel({
         : '',
   );
   const [imageUrl, setImageUrl] = useState<string | null>(openCall?.imageUrl ?? null);
+  const [dropoffDate, setDropoffDate] = useState(openCall?.dropoffDate?.slice(0, 10) ?? '');
+  const [address, setAddress] = useState(openCall?.address ?? '');
 
   const publicPath = openCall ? `/open-calls/${openCall.slug}` : null;
 
   const handleOpen = () => {
     startTransition(async () => {
-      const result = await openExhibitionOpenCall(exhibitionId, { closingDate, imageUrl });
+      const result = await openExhibitionOpenCall(exhibitionId, {
+        closingDate,
+        imageUrl,
+        dropoffDate,
+        address,
+      });
       if (result.success) {
         toast.success(openCall ? 'Open call updated' : 'Open call is live');
         router.refresh();
@@ -128,19 +137,49 @@ export function ExhibitionOpenCallPanel({
     }
   };
 
-  const deadlineField = (
-    <div className="space-y-2">
-      <Label htmlFor="openCallDeadline" className={FIELD_LABEL}>
-        Submission deadline
-      </Label>
-      <Input
-        id="openCallDeadline"
-        type="date"
-        min={today}
-        value={closingDate}
-        onChange={(e) => setClosingDate(e.target.value)}
-        className={cn(FIELD_INPUT, 'w-52')}
-      />
+  const detailsFields = (
+    <div className="grid gap-6 sm:grid-cols-2">
+      <div className="space-y-2">
+        <Label htmlFor="openCallDeadline" className={FIELD_LABEL}>
+          Submission deadline
+        </Label>
+        <Input
+          id="openCallDeadline"
+          type="date"
+          min={today}
+          value={closingDate}
+          onChange={(e) => setClosingDate(e.target.value)}
+          className={FIELD_INPUT}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="openCallDropoff" className={FIELD_LABEL}>
+          Artwork drop-off date
+        </Label>
+        <Input
+          id="openCallDropoff"
+          type="date"
+          value={dropoffDate}
+          onChange={(e) => setDropoffDate(e.target.value)}
+          className={FIELD_INPUT}
+        />
+        <p className={FIELD_HINT}>When selected artists deliver their work. Optional.</p>
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="openCallAddress" className={FIELD_LABEL}>
+          Address
+        </Label>
+        <Textarea
+          id="openCallAddress"
+          rows={3}
+          maxLength={500}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder={'Gallery name\nStreet address\nCity, State ZIP'}
+          className={cn(FIELD_TEXTAREA, 'min-h-[84px]')}
+        />
+        <p className={FIELD_HINT}>Where artists drop off work, shown on the open call page.</p>
+      </div>
     </div>
   );
 
@@ -259,15 +298,15 @@ export function ExhibitionOpenCallPanel({
                   Copy link
                 </Button>
               </div>
-              <div className="flex flex-wrap items-end gap-3">
-                {deadlineField}
+              {detailsFields}
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   disabled={pending || !closingDate}
                   onClick={handleOpen}
-                  className={cn(BUTTON_SECONDARY, 'h-9 px-4')}
+                  className={cn(BUTTON_PRIMARY, 'h-9 px-4 hover:bg-vermillion')}
                 >
-                  Update deadline
+                  Save changes
                 </Button>
                 <Button
                   type="button"
@@ -287,8 +326,8 @@ export function ExhibitionOpenCallPanel({
                   Your open call is closed. Set a new deadline to reopen it.
                 </p>
               )}
-              <div className="flex flex-wrap items-end gap-4">
-                {deadlineField}
+              {detailsFields}
+              <div>
                 <Button
                   type="button"
                   disabled={pending || imagePending || !closingDate}

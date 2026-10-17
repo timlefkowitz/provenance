@@ -55,11 +55,16 @@ export async function generateMetadata({
   };
 }
 
+const DT = 'font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50';
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    // Date-only values parse as UTC midnight; format in UTC so they don't
+    // shift to the previous day.
+    timeZone: 'UTC',
   });
 }
 
@@ -90,6 +95,11 @@ export default async function OpenCallPage({
   const subClose = openCall.submission_closing_date
     ? formatDate(openCall.submission_closing_date)
     : null;
+  const exhibitionStart = formatDate(openCall.exhibition.start_date);
+  const exhibitionEnd = openCall.exhibition.end_date
+    ? formatDate(openCall.exhibition.end_date)
+    : null;
+  const dropoff = openCall.dropoff_date ? formatDate(openCall.dropoff_date) : null;
 
   const pageUrl = new URL(`/open-calls/${openCall.slug}`, appConfig.url).href;
   const openCallJsonLd = {
@@ -139,28 +149,49 @@ export default async function OpenCallPage({
         </h1>
 
         <dl className="mt-6 grid gap-x-8 gap-y-4 border-y border-editorial-border/25 py-4 sm:grid-cols-2">
+          <div>
+            <dt className={DT}>Exhibition</dt>
+            <dd className="mt-1 font-serif text-editorial-ink">
+              {exhibitionEnd ? `${exhibitionStart} – ${exhibitionEnd}` : `Opens ${exhibitionStart}`}
+            </dd>
+          </div>
           {(subOpen || subClose) && (
             <div>
-              <dt className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50">
-                Submissions
-              </dt>
+              <dt className={DT}>Submissions</dt>
               <dd className="mt-1 font-serif text-editorial-ink">
                 {subOpen ?? '—'} – {subClose ?? '—'}
               </dd>
             </div>
           )}
+          {dropoff && (
+            <div>
+              <dt className={DT}>Artwork drop-off</dt>
+              <dd className="mt-1 font-serif text-editorial-ink">{dropoff}</dd>
+            </div>
+          )}
           {openCall.exhibition.location && (
             <div>
-              <dt className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50">
-                Location
-              </dt>
+              <dt className={DT}>Location</dt>
               <dd className="mt-1 font-serif text-editorial-ink">{openCall.exhibition.location}</dd>
             </div>
           )}
+          {openCall.address && (
+            <div className="sm:col-span-2">
+              <dt className={DT}>Address</dt>
+              <dd className="mt-1 whitespace-pre-line font-serif not-italic text-editorial-ink">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(openCall.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-editorial-border/40 underline-offset-4 transition-colors hover:text-vermillion hover:decoration-vermillion"
+                >
+                  {openCall.address}
+                </a>
+              </dd>
+            </div>
+          )}
           <div>
-            <dt className="font-jetbrains text-[10px] uppercase tracking-[0.18em] text-editorial-ink/50">
-              Status
-            </dt>
+            <dt className={DT}>Status</dt>
             <dd className="mt-1.5">
               {isExpired ? (
                 <span className={cn(TAG, 'border-editorial-border/30 text-editorial-ink/60')}>
