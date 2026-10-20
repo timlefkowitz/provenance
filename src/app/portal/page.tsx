@@ -11,6 +11,7 @@ import { getUserGalleryProfiles } from '../artworks/add/_actions/get-user-galler
 import { ArtworkCard } from '../artworks/_components/artwork-card';
 import { getProvenanceUpdateRequestsForOwner } from '../artworks/[id]/_actions/get-provenance-update-requests';
 import { getOpenCallSubmissionsForUser } from '../open-calls/_actions/get-open-call-submissions-for-user';
+import { getMyOpenCallsInProgress } from '../exhibitions/_actions/exhibition-open-call';
 import { ProvenanceUpdateRequestsList } from './_components/provenance-update-requests-list';
 import { SendSummaryButton } from './_components/send-summary-button';
 import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
@@ -204,7 +205,10 @@ export default async function PortalPage() {
     artistIdsForFollowCount: artistIdsForFollow.length,
   });
 
-  const openCallSubmissions = await getOpenCallSubmissionsForUser(user.id);
+  const [openCallSubmissions, openCallsInProgress] = await Promise.all([
+    getOpenCallSubmissionsForUser(user.id),
+    getMyOpenCallsInProgress(),
+  ]);
 
   // Get provenance update requests for artworks owned by this user
   const provenanceUpdateRequests = await getProvenanceUpdateRequestsForOwner();
@@ -581,6 +585,35 @@ export default async function PortalPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {openCallsInProgress.length > 0 && (
+              <div className="mb-4 space-y-3">
+                {openCallsInProgress.map((call) => (
+                  <Link
+                    key={call.exhibitionId}
+                    href={`/open-calls/${call.slug}`}
+                    className="block p-4 border border-wine/40 bg-white rounded-md hover:bg-wine/5 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-serif text-sm text-ink">{call.exhibitionTitle}</p>
+                        <p className="text-xs text-ink/60 font-serif mt-1">
+                          {call.closingDate
+                            ? `Not submitted yet · closes ${new Date(`${call.closingDate.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                timeZone: 'UTC',
+                              })}`
+                            : 'Not submitted yet'}
+                        </p>
+                      </div>
+                      <p className="text-xs text-wine font-serif whitespace-nowrap">
+                        Finish submission →
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
             {openCallSubmissions.length > 0 ? (
               <div className="space-y-3">
                 {openCallSubmissions.slice(0, 4).map((submission) => (
@@ -609,7 +642,7 @@ export default async function PortalPage() {
                   </Link>
                 ))}
               </div>
-            ) : (
+            ) : openCallsInProgress.length > 0 ? null : (
               <div className="text-center py-8">
                 <p className="text-ink/60 font-serif mb-4">
                   No open call submissions yet

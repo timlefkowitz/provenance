@@ -15,6 +15,11 @@ import {
 import { INVITE_TTL_MS } from '~/lib/certificate-claims/create-invite-batch';
 import { artworkImageUploader, getArtworkImagePublicUrl } from '~/lib/artwork-storage';
 import { isOpenCallSubmissionExpired } from '~/app/open-calls/_lib/open-call-utils';
+import {
+  getOpenCallArtistsAwaitingSubmission,
+  getRemindedArtists,
+  notifyOpenCallArtists,
+} from '~/lib/open-call-reminders';
 import { parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
 import {
   parseExhibitionArtworkStatus,
@@ -29,9 +34,14 @@ export type ExhibitionOpenCallSummary = {
   imageUrl: string | null;
   dropoffDate: string | null;
   address: string | null;
+  /** Artists who started a submission (or were invited) but haven't submitted yet. */
+  inProgressCount: number;
 };
 
 const ADDRESS_MAX_LENGTH = 500;
+
+/** Don't re-send a reminder to the same artist for the same call within this window. */
+const REMINDER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const OPEN_STATUSES = ['pending', 'sent'];
 
@@ -72,6 +82,12 @@ export async function getExhibitionOpenCall(
     .maybeSingle();
 
   if (!data) return null;
+  const { count: inProgressCount } = await adminClient
+    .from('exhibition_artist_invites')
+    .select('id', { count: 'exact', head: true })
+    .eq('exhibition_id', exhibitionId)
+    .in('status', OPEN_STATUSES)
+    .eq('submitted_count', 0);
   return {
     id: data.id,
     slug: data.slug,
@@ -80,6 +96,7 @@ export async function getExhibitionOpenCall(
     imageUrl: data.image_url ?? null,
     dropoffDate: data.dropoff_date ?? null,
     address: data.address ?? null,
+    inProgressCount: inProgressCount ?? 0,
   };
 }
 
@@ -303,7 +320,7 @@ export async function startOpenCallSubmission(
   const adminClient = asUntyped(getSupabaseServerAdminClient());
   const { data: openCall } = await adminClient
     .from('open_calls')
-    .select('id, exhibition_id, submission_closing_date, submission_mode')
+    .select('id, slug, exhibition_id, submission_closing_date, submission_mode')
     .eq('id', openCallId)
     .maybeSingle();
   if (!openCall || openCall.submission_mode !== 'exhibition') {
@@ -315,7 +332,7 @@ export async function startOpenCallSubmission(
 
   const { data: exhibition } = await adminClient
     .from('exhibitions')
-    .select('id, gallery_id, metadata')
+    .select('id, gallery_id, title, metadata')
     .eq('id', openCall.exhibition_id)
     .single();
   if (!exhibition) return { success: false, error: 'Exhibition not found' };
@@ -377,6 +394,14 @@ export async function startOpenCallSubmission(
       console.error('[Exhibitions] startOpenCallSubmission insert failed', error);
       return { success: false, error: 'Could not start your submission' };
     }
+    // Leaves a way back to the form if they close the upload page unfinished.
+    await notifyOpenCallArtists(adminClient, [user.id], {
+      exhibitionId: exhibition.id,
+      exhibitionTitle: exhibition.title,
+      slug: openCall.slug,
+      closingDate: openCall.submission_closing_date,
+      kind: 'joined',
+    });
   }
 
   console.log('[Exhibitions] startOpenCallSubmission ready', {
@@ -494,4 +519,128 @@ export async function getMyOpenCallStatus(exhibitionId: string): Promise<MyOpenC
       };
     }),
   };
+}
+
+/**
+ * Organiser nudges every artist on the call's list who hasn't submitted yet
+ * (open-call joiners and invited artists with an account). Artists reminded
+ * in the last day are skipped.
+ */
+export async function remindOpenCallArtists(
+  exhibitionId: string,
+): Promise<
+  { success: true; reminded: number; recentlyReminded: number } | { success: false; error: string }
+> {
+  try {
+    const { user, adminClient, exhibition } = await requireManager(exhibitionId);
+    const openCall = await getExhibitionOpenCall(exhibitionId);
+    if (!openCall?.isOpen) return { success: false, error: 'The open call is closed' };
+
+    const recipients = await getOpenCallArtistsAwaitingSubmission(adminClient, {
+      exhibitionId,
+      galleryId: exhibition.gallery_id,
+    });
+    if (!recipients) return { success: false, error: 'Could not load the list' };
+    recipients.delete(user.id);
+
+    const recentlyReminded = await getRemindedArtists(adminClient, {
+      exhibitionId,
+      userIds: [...recipients],
+      kinds: ['reminder', 'deadline'],
+      since: new Date(Date.now() - REMINDER_COOLDOWN_MS).toISOString(),
+    });
+    const toRemind = [...recipients].filter((id) => !recentlyReminded.has(id));
+
+    const reminded = await notifyOpenCallArtists(adminClient, toRemind, {
+      exhibitionId,
+      exhibitionTitle: exhibition.title,
+      slug: openCall.slug,
+      closingDate: openCall.submissionClosingDate,
+      kind: 'reminder',
+    });
+
+    console.log('[Exhibitions] remindOpenCallArtists done', {
+      exhibitionId,
+      reminded,
+      recentlyReminded: recentlyReminded.size,
+    });
+    return { success: true, reminded, recentlyReminded: recentlyReminded.size };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Could not send reminders' };
+  }
+}
+
+export type OpenCallInProgress = {
+  exhibitionId: string;
+  exhibitionTitle: string;
+  slug: string;
+  closingDate: string | null;
+};
+
+/**
+ * Open calls the signed-in artist is on the list for but hasn't submitted to
+ * yet, so the portal can link them back to the form.
+ */
+export async function getMyOpenCallsInProgress(): Promise<OpenCallInProgress[]> {
+  const client = asUntyped(getSupabaseServerClient());
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return [];
+
+  const adminClient = asUntyped(getSupabaseServerAdminClient());
+  // Matched by account or by email (direct invites may predate the account).
+  const [byAccount, byEmail] = await Promise.all([
+    adminClient
+      .from('exhibition_artist_invites')
+      .select('exhibition_id, invitee_email')
+      .in('status', OPEN_STATUSES)
+      .eq('submitted_count', 0)
+      .eq('artist_account_id', user.id),
+    user.email
+      ? adminClient
+          .from('exhibition_artist_invites')
+          .select('exhibition_id, invitee_email')
+          .in('status', OPEN_STATUSES)
+          .eq('submitted_count', 0)
+          .is('artist_account_id', null)
+          .ilike('invitee_email', normalizeInviteEmail(user.email))
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (byAccount.error || byEmail.error) {
+    console.error('[Exhibitions] getMyOpenCallsInProgress invites failed', byAccount.error ?? byEmail.error);
+  }
+  type InviteRow = { exhibition_id: string; invitee_email: string };
+  const invites = [
+    ...((byAccount.data ?? []) as InviteRow[]),
+    ...((byEmail.data ?? []) as InviteRow[]).filter((i) => emailsMatch(i.invitee_email, user.email)),
+  ];
+  const exhibitionIds = [...new Set(invites.map((i) => i.exhibition_id))];
+  if (!exhibitionIds.length) return [];
+
+  const { data: calls } = await adminClient
+    .from('open_calls')
+    .select('slug, exhibition_id, submission_closing_date, created_at, exhibition:exhibition_id (title)')
+    .in('exhibition_id', exhibitionIds)
+    .eq('submission_mode', 'exhibition')
+    .order('created_at', { ascending: false });
+
+  const byExhibition = new Map<string, OpenCallInProgress>();
+  for (const c of (calls ?? []) as unknown as Array<{
+    slug: string;
+    exhibition_id: string;
+    submission_closing_date: string | null;
+    exhibition: { title: string } | null;
+  }>) {
+    if (byExhibition.has(c.exhibition_id) || isOpenCallSubmissionExpired(c)) continue;
+    byExhibition.set(c.exhibition_id, {
+      exhibitionId: c.exhibition_id,
+      exhibitionTitle: c.exhibition?.title ?? 'Open call',
+      slug: c.slug,
+      closingDate: c.submission_closing_date,
+    });
+  }
+  return [...byExhibition.values()].sort((a, b) =>
+    (a.closingDate ?? '9999').localeCompare(b.closingDate ?? '9999'),
+  );
 }

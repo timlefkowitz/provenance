@@ -109,6 +109,7 @@ export function NotificationsList({
       case 'gallery_team_invite':
         return <Users className="h-5 w-5" />;
       case 'exhibition_invite':
+      case 'open_call_submission_reminder':
       case 'exhibition_artwork_submitted':
       case 'exhibition_artwork_selected':
         return <GalleryVerticalEnd className="h-5 w-5" />;
@@ -149,6 +150,7 @@ export function NotificationsList({
         return 'text-notify-info';
       case 'gallery_team_invite':
       case 'exhibition_invite':
+      case 'open_call_submission_reminder':
         return 'text-wine';
       default:
         return 'text-ink';
@@ -390,6 +392,19 @@ export function NotificationsList({
                           className="font-serif bg-wine text-parchment hover:bg-wine/90"
                         >
                           Submit your work
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'open_call_submission_reminder' &&
+                      typeof notification.metadata?.open_call_slug === 'string' && (
+                      <Link href={`/open-calls/${notification.metadata.open_call_slug}`}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          Continue your submission
                         </Button>
                       </Link>
                     )}

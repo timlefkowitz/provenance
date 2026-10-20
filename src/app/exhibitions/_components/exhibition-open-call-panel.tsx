@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Copy, ImagePlus, Megaphone } from 'lucide-react';
+import { Bell, Copy, ImagePlus, Megaphone } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
@@ -23,6 +23,7 @@ import {
 import {
   closeExhibitionOpenCall,
   openExhibitionOpenCall,
+  remindOpenCallArtists,
   setExhibitionOpenCallImage,
   type ExhibitionOpenCallSummary,
 } from '../_actions/exhibition-open-call';
@@ -88,6 +89,25 @@ export function ExhibitionOpenCallPanel({
         router.refresh();
       } else {
         toast.error(result.error || 'Could not close the open call');
+      }
+    });
+  };
+
+  const handleRemind = () => {
+    startTransition(async () => {
+      const result = await remindOpenCallArtists(exhibitionId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.reminded > 0) {
+        toast.success(
+          `Reminded ${result.reminded} ${result.reminded === 1 ? 'artist' : 'artists'} to submit`,
+        );
+      } else if (result.recentlyReminded > 0) {
+        toast.info('Everyone on the list was already reminded in the last day');
+      } else {
+        toast.info('No artists with an account are waiting to submit');
       }
     });
   };
@@ -298,6 +318,24 @@ export function ExhibitionOpenCallPanel({
                   Copy link
                 </Button>
               </div>
+              {openCall.inProgressCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border border-editorial-border/25 bg-cream/40 p-4">
+                  <p className="font-serif text-sm text-editorial-ink/80">
+                    {openCall.inProgressCount}{' '}
+                    {openCall.inProgressCount === 1 ? 'artist is' : 'artists are'} on the list but
+                    {openCall.inProgressCount === 1 ? " hasn't" : " haven't"} submitted yet.
+                  </p>
+                  <Button
+                    type="button"
+                    disabled={pending}
+                    onClick={handleRemind}
+                    className={cn(BUTTON_SECONDARY, 'h-9 gap-1.5 px-4')}
+                  >
+                    <Bell className="h-3 w-3" />
+                    Remind them to submit
+                  </Button>
+                </div>
+              )}
               {detailsFields}
               <div className="flex flex-wrap gap-2">
                 <Button
