@@ -1,7 +1,8 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
+import { scheduleArtistFollowerNotifications } from '~/lib/collectors/notify-artist-followers';
 import { generateCertificateNumber } from './insert-linked-certificate';
 import {
   getAccountDisplayName,
@@ -79,6 +80,12 @@ export async function insertLinkedCoSFromArtistCoa(
   } catch (propErr) {
     logger.error('insert_linked_cos_propagate_failed', { newId, error: propErr });
   }
+
+  scheduleArtistFollowerNotifications({
+    artworkIds: [newId],
+    posterUserId: params.galleryAccountId,
+    posterRole: USER_ROLES.GALLERY,
+  });
 
   return { id: newId };
 }

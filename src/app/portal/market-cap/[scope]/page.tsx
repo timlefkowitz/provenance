@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Download, ImageIcon } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -17,6 +17,11 @@ import { ValueLineChart } from '../../_components/value-line-chart';
 import { SourceSummary } from './_components/source-summary';
 import { BreakdownRowComponent } from './_components/breakdown-row';
 import { formatMoney } from '~/lib/portal-graphs/types';
+import {
+  loadCollectorExhibitionHistory,
+  type CollectorExhibitionEntry,
+} from '~/lib/collectors/load-collector-exhibition-history';
+import { ExhibitionHistory } from './_components/exhibition-history';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -110,6 +115,13 @@ export default async function MarketCapBreakdownPage({ params }: PageProps) {
     ]);
   }
 
+  const exhibitionHistory: CollectorExhibitionEntry[] =
+    scope === 'collection' ? await loadCollectorExhibitionHistory(rows.map((r) => r.artwork_id)) : [];
+  const pricedRows = rows.filter((r) => r.paid_cents);
+  const totalPaid = pricedRows.reduce((acc, r) => acc + (r.paid_cents ?? 0), 0);
+  const pricedValue = pricedRows.reduce((acc, r) => acc + r.current_value.value_cents, 0);
+  const gainPct = totalPaid ? Math.round(((pricedValue - totalPaid) / totalPaid) * 100) : null;
+
   const title = PAGE_TITLES[scope];
   const subtitle = PAGE_SUBTITLES[scope];
   const total = series.total_cents;
@@ -148,12 +160,35 @@ export default async function MarketCapBreakdownPage({ params }: PageProps) {
             <p className="text-xs font-serif text-ink/40 mt-1">
               {rows.length} {rows.length === 1 ? 'work' : 'works'} &middot; last 12 months
             </p>
+            {scope === 'collection' && totalPaid > 0 && (
+              <p className="text-sm font-serif text-ink/60 mt-2 tabular-nums">
+                You paid {formatMoney(totalPaid)} for {pricedRows.length}{' '}
+                {pricedRows.length === 1 ? 'work' : 'works'}, now worth {formatMoney(pricedValue)}
+                {gainPct !== null && gainPct !== 0 && (
+                  <span className={gainPct > 0 ? 'text-emerald-700' : 'text-red-700'}>
+                    {' '}
+                    ({gainPct > 0 ? '+' : ''}
+                    {gainPct}%)
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {series.series.length > 0 && (
             <ValueLineChart series={series.series} height={160} />
           )}
         </div>
+
+        {scope === 'collection' && rows.length > 0 && (
+          <a
+            href="/api/portal/insurance-report"
+            className="inline-flex items-center gap-2 rounded-full border border-wine/30 bg-wine/5 px-4 py-2 text-sm font-serif text-wine hover:bg-wine/10 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Download insurance schedule (PDF)
+          </a>
+        )}
 
         {/* Source summary */}
         {rows.length > 0 && (
@@ -185,6 +220,13 @@ export default async function MarketCapBreakdownPage({ params }: PageProps) {
             </div>
           )}
         </div>
+
+        {scope === 'collection' && rows.length > 0 && (
+          <ExhibitionHistory
+            entries={exhibitionHistory}
+            titleById={new Map(rows.map((r) => [r.artwork_id, r.title]))}
+          />
+        )}
       </div>
     </div>
   );

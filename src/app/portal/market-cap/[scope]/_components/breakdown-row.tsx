@@ -41,6 +41,22 @@ function formatMoneyCents(cents: number): string {
   }
 }
 
+function PaidLine({ paid, now }: { paid: number; now: number }) {
+  const pct = now ? Math.round(((now - paid) / paid) * 100) : null;
+  return (
+    <p className="text-[11px] font-serif text-ink/50 tabular-nums">
+      Paid {formatMoneyCents(paid)}
+      {pct !== null && pct !== 0 && (
+        <span className={pct > 0 ? 'text-emerald-700' : 'text-red-700'}>
+          {' '}
+          &middot; {pct > 0 ? '+' : ''}
+          {pct}%
+        </span>
+      )}
+    </p>
+  );
+}
+
 interface BreakdownRowProps {
   row: BreakdownRow;
   artworkHref?: string;
@@ -99,6 +115,7 @@ export function BreakdownRowComponent({ row, artworkHref }: BreakdownRowProps) {
         <p className="text-lg font-display font-bold text-wine tabular-nums">
           {formatMoneyCents(cv.value_cents)}
         </p>
+        {row.paid_cents ? <PaidLine paid={row.paid_cents} now={cv.value_cents} /> : null}
 
         <div className="relative flex items-center gap-1">
           <span

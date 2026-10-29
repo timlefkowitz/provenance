@@ -50,7 +50,9 @@ export type NotificationType =
   | 'exhibition_invite'
   | 'open_call_submission_reminder'
   | 'av_scan_outage'
-  | 'invite_email_failed';
+  | 'invite_email_failed'
+  | 'owned_artwork_exhibited'
+  | 'new_work_by_followed_artist';
 
 export interface CreateNotificationParams {
   userId: string;

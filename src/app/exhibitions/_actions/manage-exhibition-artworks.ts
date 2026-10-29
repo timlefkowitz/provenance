@@ -4,6 +4,8 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
+import { notifyOwnersOfExhibition } from '~/lib/collectors/notify-owners-of-exhibition';
+
 export async function addArtworkToExhibition(exhibitionId: string, artworkId: string) {
   const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
@@ -38,6 +40,8 @@ export async function addArtworkToExhibition(exhibitionId: string, artworkId: st
       throw new Error('Failed to add artwork to exhibition');
     }
   }
+
+  await notifyOwnersOfExhibition({ exhibitionId, artworkIds: [artworkId], actorUserId: user.id });
 
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);

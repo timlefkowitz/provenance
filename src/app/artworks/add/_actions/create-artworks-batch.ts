@@ -4,6 +4,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { scheduleArtistFollowerNotifications } from '~/lib/collectors/notify-artist-followers';
 import { sendCertificationEmail } from '~/lib/email';
 import {
   getUserRole,
@@ -671,6 +672,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     });
 
     revalidatePath('/artworks');
+    scheduleArtistFollowerNotifications({ artworkIds, posterUserId: userId, posterRole: effectiveRole });
 
     return { 
       artworkIds,

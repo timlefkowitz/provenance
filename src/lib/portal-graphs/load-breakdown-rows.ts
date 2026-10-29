@@ -6,7 +6,7 @@ import { valueAt, type ArtworkValueRow, type ValuationRow, type ValueResult } fr
 const COLLECTION_CERT_TYPES = ['ownership'];
 
 const SELECT_COLS =
-  'id, title, artist_name, image_url, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, account_id, artist_account_id, certificate_type, value';
+  'id, title, artist_name, image_url, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, account_id, artist_account_id, certificate_type, value, source_artwork_id';
 
 export interface BreakdownRow {
   artwork_id: string;
@@ -15,6 +15,8 @@ export interface BreakdownRow {
   image_url: string | null;
   certificate_type: string | null;
   current_value: ValueResult;
+  /** What the collector paid (collection scope only); null when unknown. */
+  paid_cents?: number | null;
 }
 
 type RawArtworkRow = ArtworkValueRow & {
@@ -27,6 +29,7 @@ type RawArtworkRow = ArtworkValueRow & {
   account_id: string | null;
   artist_account_id: string | null;
   certificate_type: string | null;
+  source_artwork_id: string | null;
 };
 
 function isCurrentlyOwned(artwork: RawArtworkRow, userId: string): boolean {
@@ -82,6 +85,43 @@ async function fetchValuationMap(
   return map;
 }
 
+/**
+ * Price paid per owned artwork: the user's ledger purchase of this certificate
+ * or the one it was issued from (a COO issued from the gallery's CoS), else the
+ * sale price on the row when the user is its recorded buyer.
+ */
+async function fetchPaidMap(
+  admin: any,
+  userId: string,
+  artworks: RawArtworkRow[],
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!artworks.length) return map;
+
+  const { data, error } = await admin
+    .from('sales_ledger')
+    .select('artwork_id, price_cents, sold_at')
+    .eq('sold_to_account_id', userId)
+    .order('sold_at', { ascending: false });
+  if (error) console.error('[PortalGraphs] fetchPaidMap failed', error);
+
+  const latestByArtwork = new Map<string, number>();
+  for (const row of (data ?? []) as Array<{ artwork_id: string; price_cents: number | null }>) {
+    if (!latestByArtwork.has(row.artwork_id) && row.price_cents) {
+      latestByArtwork.set(row.artwork_id, row.price_cents);
+    }
+  }
+
+  for (const a of artworks) {
+    const paid =
+      latestByArtwork.get(a.id) ??
+      (a.source_artwork_id ? latestByArtwork.get(a.source_artwork_id) : undefined) ??
+      (a.sold_to_account_id === userId ? a.sold_price_cents : null);
+    if (paid) map.set(a.id, paid);
+  }
+  return map;
+}
+
 function toBreakdownRow(artwork: RawArtworkRow, valuations: ValuationRow[]): BreakdownRow {
   return {
     artwork_id: artwork.id,
@@ -119,10 +159,13 @@ export async function loadCollectionBreakdown(userId: string): Promise<Breakdown
     }
 
     const ownedNow = Array.from(artworkMap.values()).filter((a) => isCurrentlyOwned(a, userId));
-    const valuationMap = await fetchValuationMap(admin, ownedNow.map((a) => a.id));
+    const [valuationMap, paidMap] = await Promise.all([
+      fetchValuationMap(admin, ownedNow.map((a) => a.id)),
+      fetchPaidMap(admin, userId, ownedNow),
+    ]);
 
     const rows = ownedNow
-      .map((a) => toBreakdownRow(a, valuationMap.get(a.id) ?? []))
+      .map((a) => ({ ...toBreakdownRow(a, valuationMap.get(a.id) ?? []), paid_cents: paidMap.get(a.id) ?? null }))
       .sort((a, b) => b.current_value.value_cents - a.current_value.value_cents);
 
     console.log('[PortalGraphs] loadCollectionBreakdown complete', { userId, count: rows.length });

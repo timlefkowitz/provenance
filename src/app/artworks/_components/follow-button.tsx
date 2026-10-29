@@ -60,6 +60,9 @@ export function FollowButton({
         const result = await toggleFollow(artistId, currentUserId);
         if (!result.error) {
           setIsFollowing(result.isFollowing || false);
+          if (result.isFollowing) {
+            toast.success("Following. You'll get first look when new work by them is added.");
+          }
         }
       } catch (error) {
         if (isStaleServerActionError(error)) {
@@ -87,6 +90,7 @@ export function FollowButton({
       }`}
       onClick={handleToggle}
       disabled={isPending}
+      title={isFollowing ? undefined : 'Follow to get first look at new work'}
     >
       {isFollowing ? (
         <>

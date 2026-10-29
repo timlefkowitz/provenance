@@ -13,6 +13,7 @@ import {
   ScrollText,
   Users,
   GalleryVerticalEnd,
+  Heart,
 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { markNotificationAsRead } from '~/lib/notifications';
@@ -112,7 +113,10 @@ export function NotificationsList({
       case 'open_call_submission_reminder':
       case 'exhibition_artwork_submitted':
       case 'exhibition_artwork_selected':
+      case 'owned_artwork_exhibited':
         return <GalleryVerticalEnd className="h-5 w-5" />;
+      case 'new_work_by_followed_artist':
+        return <Heart className="h-5 w-5" />;
       case 'message':
         return <MessageSquare className="h-5 w-5" />;
       case 'provenance_service_request':
@@ -129,7 +133,10 @@ export function NotificationsList({
       case 'artist_profile_claim_approved':
       case 'artist_claim_approved':
       case 'exhibition_artwork_selected':
+      case 'owned_artwork_exhibited':
         return 'text-notify-success';
+      case 'new_work_by_followed_artist':
+        return 'text-wine';
       case 'certificate_claimed':
         return 'text-notify-info';
       case 'certificate_claim_request':
@@ -431,6 +438,19 @@ export function NotificationsList({
                             : typeof notification.metadata.open_call_slug === 'string'
                               ? 'View your submission'
                               : 'View exhibition'}
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'owned_artwork_exhibited' &&
+                      typeof notification.metadata?.exhibition_id === 'string' && (
+                      <Link href={`/exhibitions/${notification.metadata.exhibition_id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View exhibition
                         </Button>
                       </Link>
                     )}

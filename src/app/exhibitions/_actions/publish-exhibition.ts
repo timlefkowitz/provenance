@@ -6,6 +6,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
+import { notifyOwnersOfExhibition } from '~/lib/collectors/notify-owners-of-exhibition';
 
 export type PublishExhibitionResult =
   | { success: true; publishedAt: string }
@@ -67,6 +68,8 @@ export async function publishExhibition(
   }
 
   console.log('[Exhibitions] publishExhibition success', { exhibitionId, publishedAt });
+
+  await notifyOwnersOfExhibition({ exhibitionId, actorUserId: user.id });
 
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);

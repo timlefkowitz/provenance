@@ -13,6 +13,7 @@ import { Button } from '@kit/ui/button';
 import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
+import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 import { EditorialMarkdown } from '~/components/editorial-markdown';
@@ -312,6 +313,9 @@ export default async function ExhibitionPage({
             exhibitionId={id}
             publishedAt={exhibition.published_at ?? null}
           />
+        )}
+        {isOwner && (
+          <ExhibitionSellThroughLine exhibitionId={id} galleryOwnerId={exhibition.gallery_id} />
         )}
         <ExhibitionTabs
           exhibition={exhibition}

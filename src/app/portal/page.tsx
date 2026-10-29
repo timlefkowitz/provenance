@@ -387,6 +387,32 @@ export default async function PortalPage() {
             </CardContent>
           </Card>
         )}
+
+        {galleryProfileIds.length > 0 && (
+          <Card className="border-wine/20 bg-parchment/60">
+            <CardContent className="p-6">
+              <Link href="/portal/collectors" className="block">
+                <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
+                  <div>
+                    <p className="text-sm text-ink/60 font-serif mb-1">Collectors</p>
+                    <p className="text-sm font-serif text-ink/70">
+                      Buyers, repeat collectors and sell-through by show
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-wine/50" />
+                </div>
+              </Link>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="mt-4 font-serif text-wine hover:text-wine/80"
+              >
+                <Link href="/portal/collectors">View collectors →</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Market cap cards — each hides itself when no qualifying works exist */}

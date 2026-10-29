@@ -54,12 +54,22 @@ export default async function PortalSalesPage() {
             Who you sold to, aggregated stats, and exhibition reach.
           </p>
         </div>
-        <Link
-          href="/portal"
-          className="font-serif text-sm underline underline-offset-4 text-wine"
-        >
-          Back to portal
-        </Link>
+        <div className="flex gap-4">
+          {effectiveRole === USER_ROLES.GALLERY && (
+            <Link
+              href="/portal/collectors"
+              className="font-serif text-sm underline underline-offset-4 text-wine"
+            >
+              Collectors
+            </Link>
+          )}
+          <Link
+            href="/portal"
+            className="font-serif text-sm underline underline-offset-4 text-wine"
+          >
+            Back to portal
+          </Link>
+        </div>
       </header>
 
       <EntityStatsDashboard

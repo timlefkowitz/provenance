@@ -5,6 +5,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { scheduleArtistFollowerNotifications } from '~/lib/collectors/notify-artist-followers';
 import { sendCertificationEmail } from '~/lib/email';
 import {
   getUserRole,
@@ -144,6 +145,7 @@ export async function createArtwork(formData: FormData, userId: string) {
 
     revalidatePath('/artworks');
     revalidatePath(`/artworks/${artwork.id}`);
+    scheduleArtistFollowerNotifications({ artworkIds: [artwork.id], posterUserId: userId, posterRole: userRole });
     try {
       console.log('[Streak] Tracking artwork upload activity for streak');
       await trackUserStreakActivity(client, {

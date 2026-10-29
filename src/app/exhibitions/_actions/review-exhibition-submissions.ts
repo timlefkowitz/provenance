@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
+import { notifyOwnersOfExhibition } from '~/lib/collectors/notify-owners-of-exhibition';
 import { createNotification } from '~/lib/notifications';
 import { USER_ROLES } from '~/lib/user-roles';
 import { insertLinkedCoSFromArtistCoa } from '~/lib/certificate-claims/insert-linked-cos-from-artist-coa';
@@ -247,6 +248,14 @@ export async function reviewExhibitionSubmission(
     if (updateError) {
       console.error('[Exhibitions] reviewExhibitionSubmission update failed', updateError);
       return { success: false, error: 'Could not save your decision' };
+    }
+
+    if (plan.next === 'selected') {
+      await notifyOwnersOfExhibition({
+        exhibitionId,
+        artworkIds: [artworkId, ...(cosArtworkId ? [cosArtworkId] : [])],
+        actorUserId: userId,
+      });
     }
 
     if (plan.creditArtist && artistAccountId) {
