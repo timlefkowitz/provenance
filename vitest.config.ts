@@ -19,6 +19,7 @@ export default defineConfig({
       'src/lib/feed/**/*.test.ts',
       'src/app/exhibitions/_helpers/**/*.test.ts',
       'src/lib/auth/safe-next-path.test.ts',
+      'src/lib/portal-graphs/**/*.test.ts',
     ],
   },
   resolve: {

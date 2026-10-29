@@ -1,5 +1,6 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { loadGalleryRosterIds } from './load-gallery-roster-ids';
 import { valueAt, type ArtworkValueRow, type ValuationRow, type ValueResult } from './value-waterfall';
 
 const COLLECTION_CERT_TYPES = ['ownership'];
@@ -133,8 +134,8 @@ export async function loadCollectionBreakdown(userId: string): Promise<Breakdown
 }
 
 /**
- * Return the current per-artwork breakdown for a gallery's roster,
- * sorted by value descending. No certificate_type filter.
+ * Return the current per-artwork breakdown for a gallery's roster
+ * (see loadGalleryRosterIds), sorted by value descending.
  */
 export async function loadGalleryBreakdown(galleryProfileIds: string[]): Promise<BreakdownRow[]> {
   console.log('[PortalGraphs] loadGalleryBreakdown started', { galleryProfileIds });
@@ -144,10 +145,13 @@ export async function loadGalleryBreakdown(galleryProfileIds: string[]): Promise
   const admin = getSupabaseServerAdminClient() as any;
 
   try {
+    const rosterIds = await loadGalleryRosterIds(admin, galleryProfileIds);
+    if (!rosterIds.length) return [];
+
     const { data, error } = await admin
       .from('artworks')
       .select(SELECT_COLS)
-      .in('gallery_profile_id', galleryProfileIds);
+      .in('id', rosterIds);
 
     if (error) console.error('[PortalGraphs] loadGalleryBreakdown fetch failed', error);
 

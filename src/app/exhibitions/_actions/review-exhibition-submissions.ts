@@ -207,6 +207,10 @@ export async function reviewExhibitionSubmission(
         .eq('user_id', exhibition.gallery_id)
         .eq('role', galleryRole)
         .eq('is_active', true)
+        // Galleries can have several active profiles; maybeSingle() alone errors
+        // on that and left the CoS untagged (and off the gallery's market cap).
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       try {

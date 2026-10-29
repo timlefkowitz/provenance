@@ -1,6 +1,7 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import type { PortfolioSeries, PortfolioPoint } from './types';
+import { loadGalleryRosterIds } from './load-gallery-roster-ids';
 import { valueAt, type ArtworkValueRow, type ValuationRow } from './value-waterfall';
 
 const EMPTY_SERIES: PortfolioSeries = {
@@ -15,7 +16,8 @@ const EMPTY_SERIES: PortfolioSeries = {
 /**
  * Return a 12-month "market cap" time series for a gallery.
  *
- * "Roster" = all artworks where gallery_profile_id is in the given list.
+ * "Roster" = artworks tagged with one of the gallery's profiles plus works
+ * selected into the gallery's exhibitions (see loadGalleryRosterIds).
  * No certificate_type filter — covers COA, COO, show, and any future types.
  */
 export async function computeGalleryMarketCapSeries(
@@ -32,10 +34,13 @@ export async function computeGalleryMarketCapSeries(
   const admin = getSupabaseServerAdminClient() as any;
 
   try {
+    const rosterIds = await loadGalleryRosterIds(admin, galleryProfileIds);
+    if (!rosterIds.length) return EMPTY_SERIES;
+
     const { data: artworkRows, error: artworkErr } = await admin
       .from('artworks')
       .select('id, created_at, is_sold, sold_at, sold_price_cents, sold_to_account_id, value')
-      .in('gallery_profile_id', galleryProfileIds);
+      .in('id', rosterIds);
 
     if (artworkErr) {
       console.error('[PortalGraphs] computeGalleryMarketCapSeries artwork fetch failed', artworkErr);
