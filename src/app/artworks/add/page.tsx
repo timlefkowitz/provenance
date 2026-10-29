@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, TEAM_PROFILE_ROLES, USER_ROLES } from '~/lib/user-roles';
 import { AddArtworkPageContent } from './_components/add-artwork-page-content';
 import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
@@ -8,6 +8,7 @@ import { ensureArtistsInRegistry } from './_actions/ensure-artists-in-registry';
 import { getUserGalleryProfiles } from './_actions/get-user-gallery-profiles';
 import { getActiveSubscription } from '~/lib/subscription';
 import { isSellingEnabled } from '~/lib/stripe-connect';
+import { isInstitutionAccount } from '~/lib/institution-account';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
@@ -41,7 +42,7 @@ export default async function AddArtworkPage() {
 
   // Get gallery profiles for all users (they might switch to gallery mode even if their primary role isn't gallery)
   // This allows users to post as a gallery profile even if their account role is artist/collector
-  const galleryProfiles = await getUserGalleryProfiles(user.id);
+  const galleryProfiles = await getUserGalleryProfiles(user.id, TEAM_PROFILE_ROLES);
 
   // Subscription & selling status for the Sales & Inquiries section
   const [activeSub, sellingEnabled] = await Promise.all([
@@ -87,6 +88,7 @@ export default async function AddArtworkPage() {
         hasExistingArtworks={hasExistingArtworks}
         hasPaidPlan={hasPaidPlan}
         sellingEnabled={sellingEnabled}
+        institutionLocked={isInstitutionAccount(account?.public_data as Record<string, unknown>)}
       />
     </div>
   );

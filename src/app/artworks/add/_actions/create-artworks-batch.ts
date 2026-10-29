@@ -21,6 +21,7 @@ import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 import { createArtworkStripeListing } from './create-artwork-stripe-listing';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
@@ -158,6 +159,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
     const effectiveRole: UserRole | null = posterRole ?? accountRole;
 
+    const lockError = await getInstitutionLockError(userId, effectiveRole);
+    if (lockError) {
+      return { error: lockError };
+    }
     let sourceCoaRow: Record<string, unknown> | null = null;
     if (sourceCoaCertificateNumber) {
       if (effectiveRole !== USER_ROLES.GALLERY) {

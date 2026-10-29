@@ -4,6 +4,7 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { TEAM_PROFILE_ROLES } from '~/lib/user-roles';
 
 export type UserExhibition = {
   id: string;
@@ -76,12 +77,12 @@ export async function getUserExhibitions(
     galleryAccountIds.add(userId);
   }
 
-  // Gallery team members: exhibitions belong to the gallery account.
-  // Include them in the collection picker when the user is in gallery mode
-  // (ownerRole === 'gallery') so they can link artworks to team shows.
+  // Gallery / institution team members: exhibitions belong to the team's account.
+  // Include them in the collection picker when the user is in gallery or
+  // institution mode (ownerRole set) so they can link artworks to team shows.
   // Still exclude them in artist/collector mode (forCollectionManagement but
   // no ownerRole) so personal collections are not flooded with unrelated shows.
-  if (!forCollectionManagement || ownerRole === 'gallery') {
+  if (!forCollectionManagement || ownerRole) {
     const { data: memberships } = await asUntyped(client)
       .from('gallery_members')
       .select('gallery_profile_id')
@@ -93,7 +94,7 @@ export async function getUserExhibitions(
         .from('user_profiles')
         .select('user_id')
         .in('id', profileIds)
-        .eq('role', 'gallery');
+        .in('role', ownerRole ? [ownerRole] : [...TEAM_PROFILE_ROLES]);
 
       profiles?.forEach((p: { user_id: string | null }) => {
         if (p.user_id) {

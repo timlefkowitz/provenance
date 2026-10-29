@@ -13,6 +13,7 @@ export default defineConfig({
       'src/lib/weekly-digest.test.ts',
       'src/lib/email-preferences.test.ts',
       'src/lib/user-roles.test.ts',
+      'src/lib/institution-account.test.ts',
       'src/app/mailing-list/**/*.test.ts',
       'src/lib/crm/**/*.test.ts',
       'src/lib/moderation/**/*.test.ts',

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { ProfileForm } from '../_components/profile-form';
 import { isValidRole, getRoleLabel } from '~/lib/user-roles';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 
 export const metadata = {
   title: 'Create Profile | Provenance',
@@ -24,6 +25,11 @@ export default async function CreateProfilePage({
 
   if (!role || !isValidRole(role)) {
     redirect('/profiles');
+  }
+
+  // Locked institution accounts can only create institution profiles
+  if (await getInstitutionLockError(user.id, role)) {
+    redirect('/profiles/new?role=institution');
   }
 
   return (

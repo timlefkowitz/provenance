@@ -6,6 +6,7 @@ import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
 import { sendNotificationEmail } from '~/lib/email';
 import { asUntyped } from '~/lib/supabase-untyped';
+import { TEAM_PROFILE_ROLES, USER_ROLES } from '~/lib/user-roles';
 
 export interface GalleryMember {
   id: string;
@@ -61,12 +62,12 @@ export async function canManageGallery(
 ): Promise<boolean> {
   const client = asUntyped(getSupabaseServerClient());
   
-  // Check if user is the gallery profile owner
+  // Check if user is the gallery / institution profile owner
   const { data: profile } = await client
     .from('user_profiles')
     .select('user_id')
     .eq('id', galleryProfileId)
-    .eq('role', 'gallery')
+    .in('role', [...TEAM_PROFILE_ROLES])
     .single();
 
   if (profile?.user_id === userId) {
@@ -126,7 +127,7 @@ export async function canManageExhibition(
     .from('user_profiles')
     .select('id')
     .eq('user_id', exhibitionGalleryId)
-    .eq('role', 'gallery');
+    .in('role', [...TEAM_PROFILE_ROLES]);
 
   if (!profiles?.length) {
     return false;
@@ -280,17 +281,21 @@ export async function inviteGalleryMember(
       return { success: false, error: 'You do not have permission to invite members' };
     }
 
-    // Verify gallery profile exists
+    // Verify gallery / institution profile exists
     const { data: profile, error: profileError } = await client
       .from('user_profiles')
-      .select('id, name, user_id')
+      .select('id, name, user_id, role')
       .eq('id', galleryProfileId)
-      .eq('role', 'gallery')
+      .in('role', [...TEAM_PROFILE_ROLES])
       .single();
 
     if (profileError || !profile) {
       return { success: false, error: 'Gallery profile not found' };
     }
+
+    const isInstitution = profile.role === USER_ROLES.INSTITUTION;
+    const entity = isInstitution ? 'institution' : 'gallery';
+    const modeLabel = isInstitution ? 'Institution' : 'Gallery';
 
     // Find user by email
     const { data: invitedUser, error: userError } = await client
@@ -312,7 +317,7 @@ export async function inviteGalleryMember(
       .single();
 
     if (existingMember) {
-      return { success: false, error: 'User is already a member of this gallery' };
+      return { success: false, error: `User is already a member of this ${entity}` };
     }
 
     // Create membership
@@ -343,8 +348,8 @@ export async function inviteGalleryMember(
         userId: invitedUser.id,
         type: 'gallery_team_invite',
         title: `You were added to ${profile.name}`,
-        message: `You have been added as a ${role} to the gallery "${profile.name}". Switch to Gallery mode to manage exhibitions and certificates.`,
-        metadata: { galleryProfileId, role, galleryName: profile.name },
+        message: `You have been added as a ${role} to the ${entity} "${profile.name}". Switch to ${modeLabel} mode to manage exhibitions and certificates.`,
+        metadata: { galleryProfileId, role, galleryName: profile.name, profileRole: profile.role },
       });
       console.log('[Notifications] gallery_team_invite created', { userId: invitedUser.id, galleryProfileId });
     } catch (notifError) {
@@ -358,12 +363,12 @@ export async function inviteGalleryMember(
       sendNotificationEmail(
         invitedUser.email,
         invitedUser.name || invitedUser.email.split('@')[0] || 'there',
-        'You\'ve been added to a gallery on Provenance',
+        `You've been added to ${isInstitution ? 'an institution' : 'a gallery'} on Provenance`,
         {
-          title: 'You\'ve been added to a gallery',
-          body: `You have been added as a ${role} to the gallery "${profile.name}". You can now manage collections, post Certificates of Show, and manage exhibitions for this gallery.`,
+          title: `You've been added to ${isInstitution ? 'an institution' : 'a gallery'}`,
+          body: `You have been added as a ${role} to the ${entity} "${profile.name}". You can now manage collections, post Certificates of Show, and manage exhibitions for this ${entity}.`,
           ctaUrl: `${siteUrl}/profiles`,
-          ctaLabel: 'View galleries',
+          ctaLabel: isInstitution ? 'View institutions' : 'View galleries',
         }
       ).catch((emailError) => {
         console.error('Error sending gallery invite email:', emailError);
@@ -371,7 +376,7 @@ export async function inviteGalleryMember(
     }
 
     revalidatePath(`/profiles`);
-    revalidatePath(`/artists/${profile.user_id}?role=gallery&profileId=${galleryProfileId}`);
+    revalidatePath(`/artists/${profile.user_id}?role=${profile.role}&profileId=${galleryProfileId}`);
 
     return { success: true, error: null };
   } catch (error) {
@@ -415,8 +420,8 @@ export async function removeGalleryMember(
       return { success: false, error: 'Member not found' };
     }
 
-    // Prevent removing the last owner
-    if (member.role === 'owner' && !isRemovingSelf) {
+    // Prevent removing the last owner, including the last owner leaving
+    if (member.role === 'owner') {
       const { data: owners } = await client
         .from('gallery_members')
         .select('id')
@@ -424,6 +429,7 @@ export async function removeGalleryMember(
         .eq('role', 'owner');
 
       if (owners && owners.length <= 1) {
+        console.log('[Team] blocked removing last owner', { galleryProfileId, memberUserId, isRemovingSelf });
         return { success: false, error: 'Cannot remove the last owner. Transfer ownership first.' };
       }
     }
@@ -443,13 +449,13 @@ export async function removeGalleryMember(
     // Get gallery profile info for revalidation
     const { data: profile } = await client
       .from('user_profiles')
-      .select('user_id')
+      .select('user_id, role')
       .eq('id', galleryProfileId)
       .single();
 
     revalidatePath(`/profiles`);
     if (profile) {
-      revalidatePath(`/artists/${profile.user_id}?role=gallery&profileId=${galleryProfileId}`);
+      revalidatePath(`/artists/${profile.user_id}?role=${profile.role}&profileId=${galleryProfileId}`);
     }
 
     return { success: true, error: null };
@@ -475,29 +481,12 @@ export async function updateGalleryMemberRole(
       return { success: false, error: 'Unauthorized' };
     }
 
-    // Only owners can update roles
+    // Owners and admins can change roles between member and admin
     const canUpdate = await canManageGallery(user.id, galleryProfileId);
     if (!canUpdate) {
-      // Check if user is owner specifically
-      const { data: member } = await client
-        .from('gallery_members')
-        .select('role')
-        .eq('gallery_profile_id', galleryProfileId)
-        .eq('user_id', user.id)
-        .single();
-
-      const { data: profile } = await client
-        .from('user_profiles')
-        .select('user_id')
-        .eq('id', galleryProfileId)
-        .single();
-
-      if (member?.role !== 'owner' && profile?.user_id !== user.id) {
-        return { success: false, error: 'Only owners can update member roles' };
-      }
+      return { success: false, error: 'You do not have permission to update member roles' };
     }
 
-    // If demoting an owner, ensure there's at least one other owner
     const { data: currentMember } = await client
       .from('gallery_members')
       .select('role')
@@ -505,7 +494,34 @@ export async function updateGalleryMemberRole(
       .eq('user_id', memberUserId)
       .single();
 
-    if (currentMember?.role === 'owner' && newRole !== 'owner') {
+    if (!currentMember) {
+      return { success: false, error: 'Member not found' };
+    }
+
+    // Only owners (or the profile creator) can grant or remove owner
+    if (newRole === 'owner' || currentMember.role === 'owner') {
+      const { data: callerMember } = await client
+        .from('gallery_members')
+        .select('role')
+        .eq('gallery_profile_id', galleryProfileId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const { data: profile } = await client
+        .from('user_profiles')
+        .select('user_id')
+        .eq('id', galleryProfileId)
+        .single();
+
+      if (callerMember?.role !== 'owner' && profile?.user_id !== user.id) {
+        console.log('[Team] blocked owner change by non-owner', { galleryProfileId, memberUserId, newRole });
+        return { success: false, error: 'Only owners can add or remove owners' };
+      }
+    }
+
+    // If demoting an owner, ensure there's at least one other owner
+
+    if (currentMember.role === 'owner' && newRole !== 'owner') {
       const { data: owners } = await client
         .from('gallery_members')
         .select('id')

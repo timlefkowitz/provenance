@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { USER_ROLES, isValidRole, type UserRole } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
@@ -43,6 +44,11 @@ export async function createProfile(input: CreateProfileInput) {
     }
     if (containsObjectionableText(input.name, input.bio, input.medium, input.location)) {
       return { error: OBJECTIONABLE_TEXT_MESSAGE };
+    }
+
+    const lockError = await getInstitutionLockError(user.id, input.role);
+    if (lockError) {
+      return { error: lockError };
     }
 
     // Check if profile already exists for this role (only for artist and collector)

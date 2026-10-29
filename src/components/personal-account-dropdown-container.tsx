@@ -34,6 +34,7 @@ import type { AppDatabase } from '~/lib/supabase-app-database';
 import { AdminMenuItem } from './admin-menu-item';
 import { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES, getRoleLabel } from '~/lib/user-roles';
+import { isInstitutionAccount } from '~/lib/institution-account';
 import { languages, I18N_COOKIE_NAME } from '~/lib/i18n/i18n.settings';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
@@ -119,13 +120,14 @@ export function ProfileAccountDropdownContainer(props: {
     name: string | null;
     picture_url: string | null;
   } | null>(null);
+  const [institutionLocked, setInstitutionLocked] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
     console.log('[ProfileDropdown] Fetching account data');
     client
       .from('accounts')
-      .select('name, picture_url')
+      .select('name, picture_url, public_data')
       .eq('id', userId)
       .single()
       .then(({ data, error }) => {
@@ -133,9 +135,23 @@ export function ProfileAccountDropdownContainer(props: {
           console.error('[ProfileDropdown] Error fetching account data', error);
           return;
         }
-        if (data) setAccountData(data);
+        if (!data) return;
+        setAccountData({ name: data.name, picture_url: data.picture_url });
+        const locked = isInstitutionAccount(data.public_data as Record<string, unknown>);
+        setInstitutionLocked(locked);
+        // A locked institution account is always in institution mode, even if
+        // this browser remembers a different one from before the lock.
+        if (locked && localStorage.getItem(PERSPECTIVE_KEY) !== USER_ROLES.INSTITUTION) {
+          console.log('[ProfileDropdown] Institution account: forcing institution mode');
+          localStorage.setItem(PERSPECTIVE_KEY, USER_ROLES.INSTITUTION);
+          writePerspectiveCookie(USER_ROLES.INSTITUTION);
+          window.dispatchEvent(
+            new CustomEvent('user_perspective_changed', { detail: USER_ROLES.INSTITUTION }),
+          );
+          router.refresh();
+        }
       });
-  }, [userId, client]);
+  }, [userId, client, router]);
 
   // Extended type to track which profiles come from gallery team membership
   type ProfileWithSource = UserProfile & {
@@ -246,6 +262,15 @@ export function ProfileAccountDropdownContainer(props: {
       router.refresh();
     },
     [router],
+  );
+
+  // Locked institution accounts only switch between institution profiles
+  const visibleProfiles = useMemo(
+    () =>
+      institutionLocked
+        ? profiles.filter((p) => p.role === USER_ROLES.INSTITUTION)
+        : profiles,
+    [profiles, institutionLocked],
   );
 
   const signedInAsLabel = useMemo(() => {
@@ -387,8 +412,8 @@ export function ProfileAccountDropdownContainer(props: {
                 <User className="h-4" />
                 <span>My Profile</span>
               </Link>
-              {profiles.length > 0
-                ? profiles.map((profile) => (
+              {visibleProfiles.length > 0
+                ? visibleProfiles.map((profile) => (
                     <div key={profile.id} className="space-y-0.5">
                       <Link
                         href={

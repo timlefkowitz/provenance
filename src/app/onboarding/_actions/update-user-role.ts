@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { isValidRole, type UserRole } from '~/lib/user-roles';
+import { canAccountActAs, INSTITUTION_LOCK_MESSAGE } from '~/lib/institution-account';
 
 export async function updateUserRole(role: string) {
   const client = asUntyped(getSupabaseServerClient());
@@ -27,6 +28,10 @@ export async function updateUserRole(role: string) {
     .single();
 
   const currentPublicData = (account?.public_data as Record<string, unknown>) || {};
+
+  if (!canAccountActAs(currentPublicData, role)) {
+    throw new Error(INSTITUTION_LOCK_MESSAGE);
+  }
 
   // Update public_data with new role
   const { error } = await client

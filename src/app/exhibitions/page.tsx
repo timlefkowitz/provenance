@@ -10,6 +10,7 @@ import {
   getExhibitionOwnerRoleOptions,
   type ExhibitionOwnerRole,
 } from './_helpers/exhibition-owner-roles';
+import { isInstitutionAccount } from '~/lib/institution-account';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
 
 import { asUntyped } from '~/lib/supabase-untyped';
@@ -41,8 +42,9 @@ export default async function ExhibitionsPage({
   }
 
   const userRole = getUserRole(account.public_data as Record<string, unknown>);
-  const ownerRoleOptions = getExhibitionOwnerRoleOptions(userRole);
-  const ownerRole = defaultExhibitionOwnerRole(userRole, requestedOwnerRole);
+  const institutionLocked = isInstitutionAccount(account.public_data as Record<string, unknown>);
+  const ownerRoleOptions = getExhibitionOwnerRoleOptions(userRole, institutionLocked);
+  const ownerRole = defaultExhibitionOwnerRole(userRole, requestedOwnerRole, institutionLocked);
 
   const exhibitions = await getExhibitionsForGallery(user.id, {
     ownerRoles: [ownerRole],

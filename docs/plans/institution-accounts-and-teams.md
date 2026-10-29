@@ -1,6 +1,6 @@
 # Institution accounts and institution teams
 
-Status: DRAFT (2026-10-29). Items marked **[PENDING]** need Tim's call before building.
+Status: Phases 1–3 built (2026-10-29). Phase 4 (staging test pass) and the migration push are still to do.
 
 ## Problem (from Tim)
 
@@ -35,35 +35,34 @@ Status: DRAFT (2026-10-29). Items marked **[PENDING]** need Tim's call before bu
 
 ## Plan
 
-### Phase 1: fix the certificate bug (DONE 2026-10-29, uncommitted)
+### Phase 1: fix the certificate bug (DONE, committed fc2c008)
 
 - `posterRequiresArtistClaim(role)` and `getInitialCertificateStatus(role)` in `user-roles.ts`, tested in `user-roles.test.ts`.
 - `createArtworksBatch`, `createArtwork` (no callers, fixed anyway), and `publishExhibitionListing` all use the helper. Institution batch posts now get `pending_artist_claim`, artist profile resolution, an unclaimed registry profile, the claim notification, and the poster's own institution `gallery_profile_id`.
 - Backfill: not needed. The live DB has 1 institution profile and 0 Certificates of Show posted by institution accounts (checked 2026-10-29).
 
-### Phase 2: locked institution accounts
+### Phase 2: locked institution accounts (BUILT 2026-10-29, uncommitted, migration not pushed)
 
-- Add an account type that is separate from the current mode, for example `accounts.public_data.account_type = 'institution'`. Unset means "individual", which keeps today's switching behavior.
-- `updateUserRole` refuses any role other than `institution` when the account type is institution. This is the authoritative check.
-- Defense in depth in the posting code: `createArtwork`, `createArtworksBatch`, `createExhibition`, and the open-call submission action read the account type and refuse artist or collector posting.
-- `PerspectiveSwitcher` is hidden for institution accounts. The account dropdown shows only institution profiles.
-- `getExhibitionOwnerRoleOptions` returns `['institution']` only.
-- Onboarding: how an account becomes an institution account. **[PENDING]** Options:
-  - **A (recommended):** admin-only. Add an "Institution account" toggle to `admin/users/_components/user-access-manager.tsx`, set while onboarding a museum. No individual can lock themselves in by mistake.
-  - B: the onboarding "Institution" choice sets the lock, after an "this account can't post as an artist or collector" confirm step.
-- Existing accounts currently in institution mode stay individual until flagged. Run a read-only count first.
+Decided: admin-only lock; institution staff are not locked.
 
-### Phase 3: institution teams (reuse `gallery_members`)
+- Lock flag: `accounts.public_data.account_type = 'institution'`. Helpers in `src/lib/institution-account.ts` (pure, tested) and `src/lib/institution-account-guard.ts` (server check, `getInstitutionLockError`).
+- Database (`20261029000000_institution_accounts_and_teams.sql`), same pattern as `protect_admin_flag`:
+  - `kit.protect_institution_account_lock` on `accounts`: authenticated users cannot set or clear `account_type`, and a locked account's `role` must stay `institution`. Only the service role changes it.
+  - `kit.protect_institution_account_profiles` on `user_profiles`: a locked account can only own institution profiles. Unclaimed artist profiles (`user_id` null) are unaffected.
+  - Because the role can't leave `institution`, the existing artist-only checks (claiming certificates, claiming artist profiles) already refuse locked accounts.
+- Server checks: `updateUserRole`, `createProfile`, `createArtworksBatch` (checks the submitted `posterRole`, not just the DB role), `createArtwork`, `createExhibition` (owner options), `submitOpenCall`, and exhibition invite submissions.
+- Admin: "Lock as institution account" / "Remove institution lock" on `/admin/users` (`setInstitutionAccount`). Locking also switches the account into institution mode.
+- UI for locked accounts: add-artwork page and collection page have no mode switcher and stay in institution mode; the account dropdown lists only institution profiles and resets a stale browser mode to institution; `/profiles/new` redirects to institution; exhibitions offer only the Institution owner.
 
-Keep the `gallery_members` table and its owner/admin/member roles. Widen the gallery checks so they accept institution profiles as well, rather than building a second team system.
+### Phase 3: institution teams (BUILT 2026-10-29, uncommitted, migration not pushed)
 
-- New migration (data-safe: `create or replace function`, and drop and recreate policies only):
-  - `role = 'gallery'` becomes `role in ('gallery', 'institution')` in `is_gallery_owner_or_admin`, `is_gallery_member_for_artwork`, `is_gallery_member_for_exhibition`, `user_profiles_update_own`, and `auto_add_gallery_owner` (the function and the trigger's `when` clause).
-  - Backfill an owner row for existing institution profiles.
-- App code: make the same change in `gallery-members.ts`, `get-user-gallery-profiles.ts`, `get-open-calls-for-gallery.ts`, and `canAttachGalleryProfile`. Remove the institution early return there.
-- Notification and email copy uses the profile's role ("institution", "Switch to Institution mode").
-- The team management UI on the profile edit page renders for institution profiles too.
-- Staff accounts: is a member of an institution team locked too? **[PENDING]** Recommended: no. Staff keep their personal accounts, which can be artist or collector. Anything they post *in institution mode* under that profile is attributed to the institution. Only the institution's own account is locked.
+- Same migration: `role in ('gallery', 'institution')` in `is_gallery_owner_or_admin`, `is_gallery_member_for_artwork`, `is_gallery_member_for_exhibition`, `user_profiles_update_own`, and `auto_add_gallery_owner` (+ trigger `when`). Owner rows backfilled for existing institution profiles.
+- App code: `TEAM_PROFILE_ROLES` / `isTeamProfileRole` in `user-roles.ts`, used by `gallery-members.ts`, `get-user-gallery-profiles.ts` (now takes `roles`), `get-open-calls-for-gallery.ts`, `get-user-exhibitions.ts`, `update-exhibition.ts`, `canAttachGalleryProfile`, and the profile edit page.
+- The add-artwork "Post as" picker lists gallery profiles in gallery mode and institution profiles in institution mode. The collection page loads only the active mode's team profiles.
+- Invite notification, email, and the team panel say "institution" for institution profiles.
+- Team bugs fixed along the way (apply to galleries too):
+  - The last owner could remove themselves, leaving no owner. Now refused.
+  - Admins could promote anyone to owner. Now only owners (or the profile creator) can add or remove owners; admins still switch people between member and admin.
 
 ### Phase 4: test the ins and outs
 
@@ -71,6 +70,8 @@ Automated (vitest, next to the helpers):
 - `certificateStatusForPoster` for all four roles.
 - `getExhibitionOwnerRoleOptions` for locked and unlocked accounts.
 - The `updateUserRole` lock check.
+
+Migration checked 2026-10-29 against a throwaway local Postgres with a minimal schema: cases 1, 4, 7, 10, 11, 12 (DB side) and the lock triggers behave as expected. Still needs the full app pass below.
 
 Manual QA on staging. Accounts: **I** (institution account, locked), **S1** and **S2** (staff with personal accounts), **X** (unrelated user).
 

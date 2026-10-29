@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { USER_ROLES } from '~/lib/user-roles';
 import { getActiveSubscription } from '~/lib/subscription';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 import { assertAllowedFile, assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const OPEN_CALL_BUCKET = 'open-call-submissions';
@@ -24,6 +25,11 @@ export async function submitOpenCall(openCallId: string, formData: FormData) {
   const { data: { user } } = await client.auth.getUser();
 
   if (user) {
+    const lockError = await getInstitutionLockError(user.id, USER_ROLES.ARTIST);
+    if (lockError) {
+      return { error: lockError };
+    }
+
     const artistProfile = await getUserProfileByRole(user.id, USER_ROLES.ARTIST);
     if (artistProfile) {
       const artistSubscription = await getActiveSubscription(user.id);

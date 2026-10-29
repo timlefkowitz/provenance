@@ -3,6 +3,7 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { requireAdminUserId } from '~/lib/admin';
+import { isInstitutionAccount } from '~/lib/institution-account';
 
 export type AdminSubscriptionRow = {
   id: string;
@@ -19,6 +20,8 @@ export type AdminUserSearchHit = {
   id: string;
   email: string | null;
   name: string | null;
+  /** Locked institution account (public_data.account_type) */
+  isInstitutionAccount: boolean;
   subscriptions: AdminSubscriptionRow[];
 };
 
@@ -52,7 +55,7 @@ export async function searchUserByEmailForAdmin(
 
   const { data: accounts, error: accErr } = await admin
     .from('accounts')
-    .select('id, email, name')
+    .select('id, email, name, public_data')
     .ilike('email', pattern)
     .limit(20);
 
@@ -85,6 +88,7 @@ export async function searchUserByEmailForAdmin(
       id: acc.id,
       email: acc.email,
       name: acc.name,
+      isInstitutionAccount: isInstitutionAccount(acc.public_data as Record<string, unknown>),
       subscriptions: (subs ?? []) as AdminSubscriptionRow[],
     });
   }

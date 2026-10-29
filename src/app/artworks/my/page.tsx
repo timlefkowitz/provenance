@@ -6,7 +6,14 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { getUserGalleryProfiles } from '~/app/artworks/add/_actions/get-user-gallery-profiles';
-import { getUserRole, getCertificateTypeForRole, type UserRole } from '~/lib/user-roles';
+import {
+  getUserRole,
+  getCertificateTypeForRole,
+  isTeamProfileRole,
+  USER_ROLES,
+  type UserRole,
+} from '~/lib/user-roles';
+import { isInstitutionAccount } from '~/lib/institution-account';
 import { readPerspective, perspectiveToOwnerRole } from '~/lib/read-perspective';
 import { buildModeEntityDisplayNames } from '~/lib/mode-entity-display-names';
 import { SpreadsheetEditForm } from '../edit-provenance/_components/spreadsheet-edit-form';
@@ -47,7 +54,12 @@ export default async function MyArtworksPage({
   const accountRole: UserRole | null = getUserRole(
     (accountRow?.public_data ?? {}) as Record<string, unknown>,
   );
-  const activeRole: UserRole | null = perspective ?? accountRole;
+  const institutionLocked = isInstitutionAccount(
+    (accountRow?.public_data ?? {}) as Record<string, unknown>,
+  );
+  const activeRole: UserRole | null = institutionLocked
+    ? USER_ROLES.INSTITUTION
+    : (perspective ?? accountRole);
   const ownerRole = perspectiveToOwnerRole(activeRole);
   console.log('[Collection] my page loaded', {
     accountRole,
@@ -74,8 +86,8 @@ export default async function MyArtworksPage({
   // In gallery/institution mode we show the gallery team's COS artworks
   // (filtered by gallery_profile_id). Load all gallery profiles the user
   // is part of (owned + team memberships via getUserGalleryProfiles).
-  const galleryProfiles = isGalleryMode
-    ? await getUserGalleryProfiles(user.id)
+  const galleryProfiles = isTeamProfileRole(activeRole)
+    ? await getUserGalleryProfiles(user.id, [activeRole])
     : [];
 
   const galleryProfileIds = galleryProfiles.map((p) => p.id);
@@ -239,7 +251,7 @@ export default async function MyArtworksPage({
                 </p>
               </div>
               <div className="shrink-0">
-                <CollectionHeaderActions accountRole={accountRole} modeEntityNames={modeEntityNames} />
+                <CollectionHeaderActions accountRole={accountRole} modeEntityNames={modeEntityNames} institutionLocked={institutionLocked} />
               </div>
             </div>
           </div>
@@ -404,7 +416,7 @@ export default async function MyArtworksPage({
               </p>
             </div>
             <div className="shrink-0">
-              <CollectionHeaderActions accountRole={accountRole} modeEntityNames={modeEntityNames} />
+              <CollectionHeaderActions accountRole={accountRole} modeEntityNames={modeEntityNames} institutionLocked={institutionLocked} />
             </div>
           </div>
         </div>

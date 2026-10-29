@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { TacoProfileChatbot } from '../../_components/taco-profile-chatbot';
 import { isValidRole, getRoleLabel } from '~/lib/user-roles';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 
 export const metadata = {
   title: 'Create Profile with Taco | Provenance',
@@ -46,6 +47,11 @@ export default async function CreateProfileWithTacoPage({
 
   if (!role || !isValidRole(role)) {
     redirect('/profiles');
+  }
+
+  // Locked institution accounts can only create institution profiles
+  if (await getInstitutionLockError(user.id, role)) {
+    redirect('/profiles/new/chat?role=institution');
   }
 
   const prefillName = pickDisplayName(user.user_metadata);

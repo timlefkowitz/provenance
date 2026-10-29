@@ -2,15 +2,19 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { USER_ROLES } from '~/lib/user-roles';
+import { USER_ROLES, type TeamProfileRole } from '~/lib/user-roles';
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { logger } from '~/lib/logger';
 
 /**
- * Get all gallery profiles for a user
- * Used when posting artworks to select which gallery profile to post as
+ * Get all gallery profiles for a user (owned + team memberships)
+ * Used when posting artworks to select which gallery profile to post as.
+ * Pass `roles` to include institution profiles (institution teams share gallery_members).
  */
-export async function getUserGalleryProfiles(userId: string): Promise<UserProfile[]> {
+export async function getUserGalleryProfiles(
+  userId: string,
+  roles: readonly TeamProfileRole[] = [USER_ROLES.GALLERY],
+): Promise<UserProfile[]> {
   try {
     const client = getSupabaseServerClient();
 
@@ -19,7 +23,7 @@ export async function getUserGalleryProfiles(userId: string): Promise<UserProfil
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .eq('role', USER_ROLES.GALLERY)
+      .in('role', [...roles])
       .eq('is_active', true)
       .order('created_at', { ascending: true });
 
@@ -62,7 +66,7 @@ export async function getUserGalleryProfiles(userId: string): Promise<UserProfil
         .from('user_profiles')
         .select('*')
         .in('id', memberProfileIds)
-        .eq('role', USER_ROLES.GALLERY)
+        .in('role', [...roles])
         .eq('is_active', true)
         .order('created_at', { ascending: true });
 

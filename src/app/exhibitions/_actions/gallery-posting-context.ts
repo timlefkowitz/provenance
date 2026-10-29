@@ -8,6 +8,7 @@ import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles'
 import {
   getCertificateTypeForRole,
   getUserRole,
+  isTeamProfileRole,
   USER_ROLES,
 } from '~/lib/user-roles';
 import type { ExhibitionPosterContext } from '../_helpers/gallery-posting-helpers';
@@ -57,14 +58,11 @@ export async function canAttachGalleryProfile(
       .maybeSingle();
 
     if (!profile) return false;
-    if (profile.role !== USER_ROLES.GALLERY && profile.role !== USER_ROLES.INSTITUTION) {
+    if (!isTeamProfileRole(profile.role)) {
       return false;
     }
 
     if (profile.user_id === posterUserId) return true;
-
-    // Institution profiles are not shared via gallery_members in the typical model.
-    if (profile.role === USER_ROLES.INSTITUTION) return false;
 
     const { data: member } = await asUntyped(client)
       .from('gallery_members')

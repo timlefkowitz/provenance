@@ -21,6 +21,7 @@ import {
 import { searchUserByEmailForAdmin } from '../_actions/search-user-for-admin';
 import { grantFreeAccess } from '../_actions/grant-free-access';
 import { revokeFreeAccess } from '../_actions/revoke-free-access';
+import { setInstitutionAccount } from '../_actions/set-institution-account';
 import type { AdminUserSearchHit } from '../_actions/search-user-for-admin';
 
 const ROLES = ['artist', 'collector', 'gallery', 'institution'] as const;
@@ -109,6 +110,23 @@ export function UserAccessManager() {
     }
   }
 
+  async function handleInstitutionLock(userId: string, locked: boolean) {
+    setActionMessage(null);
+    setActionError(null);
+    const res = await setInstitutionAccount({ userId, locked });
+    if (!res.ok) {
+      setActionError(res.error);
+      return;
+    }
+    setActionMessage(
+      locked ? 'Account locked as an institution account.' : 'Institution lock removed.',
+    );
+    const search = await searchUserByEmailForAdmin(email);
+    if (search.ok) {
+      setUsers(search.users);
+    }
+  }
+
   async function handleRevoke(subscriptionId: string) {
     setActionMessage(null);
     setActionError(null);
@@ -189,6 +207,33 @@ export function UserAccessManager() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="rounded-lg border border-wine/20 p-4 space-y-3">
+              <div>
+                <h3 className="font-display text-sm font-semibold text-wine">
+                  Institution account
+                </h3>
+                <p className="mt-1 text-sm font-serif text-ink/70 leading-relaxed">
+                  {hit.isInstitutionAccount
+                    ? 'Locked. This account stays in institution mode and can only post as its institution. Its team members keep their own accounts.'
+                    : 'Not locked. Lock it for a museum or other institution so it can never post as an artist, collector, or gallery.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={hit.isInstitutionAccount ? 'outline' : 'default'}
+                className={
+                  hit.isInstitutionAccount
+                    ? 'font-serif'
+                    : 'bg-wine text-parchment hover:bg-wine/90 font-serif'
+                }
+                disabled={isPending}
+                onClick={() => handleInstitutionLock(hit.id, !hit.isInstitutionAccount)}
+              >
+                {hit.isInstitutionAccount ? 'Remove institution lock' : 'Lock as institution account'}
+              </Button>
+            </div>
+
             <div>
               <h3 className="font-display text-sm font-semibold text-wine mb-2">
                 Subscription rows

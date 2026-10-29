@@ -2,7 +2,7 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { USER_ROLES } from '~/lib/user-roles';
+import { TEAM_PROFILE_ROLES } from '~/lib/user-roles';
 
 export type OpenCallListItem = {
   id: string;
@@ -24,7 +24,7 @@ export async function getOpenCallsForGallery(userId: string): Promise<OpenCallLi
     .from('user_profiles')
     .select('id')
     .eq('user_id', userId)
-    .eq('role', USER_ROLES.GALLERY);
+    .in('role', [...TEAM_PROFILE_ROLES]);
 
   const { data: memberProfiles } = await client
     .from('gallery_members')

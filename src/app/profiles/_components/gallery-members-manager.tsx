@@ -44,6 +44,8 @@ import {
 interface GalleryMembersManagerProps {
   galleryProfileId: string;
   userId: string;
+  /** Wording for the team's profile: a gallery or an institution */
+  entityLabel?: 'gallery' | 'institution';
 }
 
 function staleServerActionToast() {
@@ -53,7 +55,11 @@ function staleServerActionToast() {
   );
 }
 
-export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembersManagerProps) {
+export function GalleryMembersManager({
+  galleryProfileId,
+  userId,
+  entityLabel = 'gallery',
+}: GalleryMembersManagerProps) {
   const [members, setMembers] = useState<GalleryMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [canManage, setCanManage] = useState(false);
@@ -140,7 +146,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
       );
 
       if (success) {
-        toast.success(`Invited ${inviteEmail} to join the gallery`);
+        toast.success(`Invited ${inviteEmail} to join the ${entityLabel}`);
         setInviteEmail('');
         setInviteRole('member');
         setInviteDialogOpen(false);
@@ -163,7 +169,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
       const { success, error } = await removeGalleryMember(galleryProfileId, memberUserId);
 
       if (success) {
-        toast.success(`Removed ${memberName} from the gallery`);
+        toast.success(`Removed ${memberName} from the ${entityLabel}`);
         loadMembers();
       } else {
         console.error('[GalleryMembersManager] removeGalleryMember error:', error);
@@ -241,7 +247,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
               Team members
             </CardTitle>
             <CardDescription className="font-serif">
-              Add people who can manage this gallery&apos;s collection, post Certificates of Show, and manage exhibitions. They must already have a Provenance account.
+              Add people who can manage this {entityLabel}&apos;s collection, post Certificates of Show, and manage exhibitions. They must already have a Provenance account.
             </CardDescription>
           </div>
           {canManage && (
@@ -259,7 +265,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
                 <DialogHeader>
                   <DialogTitle className="font-display text-wine">Add team member</DialogTitle>
                   <DialogDescription className="font-serif">
-                    Enter the email of someone who already has a Provenance account. They will be able to manage collections, post Certificates of Show, and manage exhibitions for this gallery.
+                    Enter the email of someone who already has a Provenance account. They will be able to manage collections, post Certificates of Show, and manage exhibitions for this {entityLabel}.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -408,7 +414,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
                               Remove Team Member
                             </AlertDialogTitle>
                             <AlertDialogDescription className="font-serif">
-                              Are you sure you want to remove {member.user?.name || member.user?.email} from this gallery? 
+                              Are you sure you want to remove {member.user?.name || member.user?.email} from this {entityLabel}? 
                               They will no longer be able to post or manage content.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
@@ -436,7 +442,7 @@ export function GalleryMembersManager({ galleryProfileId, userId }: GalleryMembe
         {!canManage && members.length > 0 && (
           <Alert className="mt-4 border-ink/20 bg-parchment/40">
             <AlertDescription className="font-serif text-sm text-ink/70">
-              You can manage this gallery&apos;s collections and certificates. Only owners and admins can add or remove team members.
+              You can manage this {entityLabel}&apos;s collections and certificates. Only owners and admins can add or remove team members.
             </AlertDescription>
           </Alert>
         )}

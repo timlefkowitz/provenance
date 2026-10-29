@@ -24,6 +24,7 @@ export function AddArtworkPageContent({
   hasExistingArtworks,
   hasPaidPlan = false,
   sellingEnabled = false,
+  institutionLocked = false,
 }: {
   userId: string;
   defaultArtistName: string;
@@ -35,18 +36,23 @@ export function AddArtworkPageContent({
   hasExistingArtworks: boolean;
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
+  /** Locked institution account: always posts as the institution, no mode switcher */
+  institutionLocked?: boolean;
 }) {
   const _router = useRouter();
-  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(USER_ROLES.ARTIST);
+  const [currentPerspective, setCurrentPerspective] = useState<UserRole>(
+    institutionLocked ? USER_ROLES.INSTITUTION : USER_ROLES.ARTIST,
+  );
   const [exhibitions, setExhibitions] = useState<UserExhibition[]>(initialExhibitions);
 
   // Load perspective from localStorage on mount
   useEffect(() => {
+    if (institutionLocked) return;
     if (typeof window !== 'undefined') {
       const saved = getPerspective();
       setCurrentPerspective(saved);
     }
-  }, []);
+  }, [institutionLocked]);
 
   // Role-specific messaging
   const getRoleMessage = (perspective: UserRole) => {
@@ -90,9 +96,11 @@ export function AddArtworkPageContent({
     <>
       <FirstRunBanner />
       <div className="mb-8">
-        <RoleModeSwitcher
-          onModeChange={(mode) => setCurrentPerspective(mode)}
-        />
+        {!institutionLocked && (
+          <RoleModeSwitcher
+            onModeChange={(mode) => setCurrentPerspective(mode)}
+          />
+        )}
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
           {roleMessage.title}
         </h1>

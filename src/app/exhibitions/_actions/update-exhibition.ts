@@ -3,7 +3,7 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { USER_ROLES } from '~/lib/user-roles';
+import { TEAM_PROFILE_ROLES } from '~/lib/user-roles';
 import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 import {
@@ -35,13 +35,13 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   const isOwner = exhibition.gallery_id === user.id;
   let isGalleryMember = false;
 
-  // Check if user is a member of any gallery profile owned by the gallery account
+  // Check if user is a member of any gallery/institution profile owned by the exhibition's account
   if (!isOwner) {
     const { data: galleryProfiles } = await client
       .from('user_profiles')
       .select('id')
       .eq('user_id', exhibition.gallery_id)
-      .eq('role', USER_ROLES.GALLERY);
+      .in('role', [...TEAM_PROFILE_ROLES]);
 
     if (galleryProfiles && galleryProfiles.length > 0) {
       const profileIds = galleryProfiles.map(p => p.id);

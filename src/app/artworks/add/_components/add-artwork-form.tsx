@@ -39,7 +39,7 @@ import { takeNativePhoto } from '~/lib/capacitor/native-camera';
 import { gtmService } from '~/lib/gtm';
 import { asUntyped } from '~/lib/supabase-untyped';
 import type { UserRole } from '~/lib/user-roles';
-import { USER_ROLES, getCreateCertificateButtonLabel } from '~/lib/user-roles';
+import { USER_ROLES, getCreateCertificateButtonLabel, isTeamProfileRole } from '~/lib/user-roles';
 
 import { GallerySelector } from '../../[id]/edit/_components/gallery-selector';
 import { createArtworksBatch } from '../_actions/create-artworks-batch';
@@ -412,24 +412,35 @@ export function AddArtworkForm({
     }));
   }, [defaultArtistName, defaultMedium]);
 
-  // Auto-select gallery profile if there's only one
+  // Gallery or institution profiles (owned + team) the current mode can post as
+  const postingProfiles = isTeamProfileRole(userRole)
+    ? galleryProfiles.filter((profile) => profile.role === userRole)
+    : [];
+  const postingEntityLabel = userRole === USER_ROLES.INSTITUTION ? 'institution' : 'gallery';
+
+  // Auto-select the gallery/institution profile if there's only one
   useEffect(() => {
     if (
-      userRole === USER_ROLES.GALLERY &&
-      galleryProfiles.length === 1 &&
-      !formData.galleryProfileId
+      isTeamProfileRole(userRole) &&
+      postingProfiles.length === 1 &&
+      formData.galleryProfileId !== postingProfiles[0].id
     ) {
       setFormData((prev) => ({
         ...prev,
-        galleryProfileId: galleryProfiles[0].id,
+        galleryProfileId: postingProfiles[0].id,
+        ...(userRole !== USER_ROLES.GALLERY ? { sourceCoaCertificateNumber: '' } : {}),
       }));
-    } else if (userRole !== USER_ROLES.GALLERY) {
+    } else if (
+      !postingProfiles.some((profile) => profile.id === formData.galleryProfileId) &&
+      (formData.galleryProfileId || userRole !== USER_ROLES.GALLERY)
+    ) {
       setFormData((prev) => ({
         ...prev,
         galleryProfileId: '',
-        sourceCoaCertificateNumber: '',
+        ...(userRole !== USER_ROLES.GALLERY ? { sourceCoaCertificateNumber: '' } : {}),
       }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- postingProfiles is derived from userRole + galleryProfiles
   }, [userRole, galleryProfiles, formData.galleryProfileId]);
 
   // Initialize primaryTitle when first image is added (one-time)
@@ -588,13 +599,13 @@ export function AddArtworkForm({
       return;
     }
 
-    // Validate gallery profile selection if user is a gallery with multiple profiles
+    // Validate profile selection if the gallery/institution mode has multiple profiles
     if (
-      userRole === USER_ROLES.GALLERY &&
-      galleryProfiles.length > 1 &&
+      isTeamProfileRole(userRole) &&
+      postingProfiles.length > 1 &&
       !formData.galleryProfileId
     ) {
-      setError('Please select which gallery you are posting as');
+      setError(`Please select which ${postingEntityLabel} you are posting as`);
       return;
     }
 
@@ -1486,10 +1497,12 @@ export function AddArtworkForm({
         </div>
       )}
 
-      {/* Gallery Profile Selection (for galleries with multiple profiles) */}
-      {userRole === USER_ROLES.GALLERY && galleryProfiles.length > 1 && (
+      {/* Gallery / Institution Profile Selection (when the mode has multiple profiles) */}
+      {isTeamProfileRole(userRole) && postingProfiles.length > 1 && (
         <div className="space-y-2">
-          <Label htmlFor="galleryProfileId">Post as Gallery *</Label>
+          <Label htmlFor="galleryProfileId">
+            Post as {userRole === USER_ROLES.INSTITUTION ? 'Institution' : 'Gallery'} *
+          </Label>
           <Select
             value={formData.galleryProfileId || '__none__'}
             onValueChange={(value) => {
@@ -1501,10 +1514,10 @@ export function AddArtworkForm({
             }}
           >
             <SelectTrigger id="galleryProfileId" className="font-serif">
-              <SelectValue placeholder="Select which gallery to post as" />
+              <SelectValue placeholder={`Select which ${postingEntityLabel} to post as`} />
             </SelectTrigger>
             <SelectContent>
-              {galleryProfiles.map((profile) => (
+              {postingProfiles.map((profile) => (
                 <SelectItem
                   key={profile.id}
                   value={profile.id}
@@ -1521,7 +1534,7 @@ export function AddArtworkForm({
             </SelectContent>
           </Select>
           <p className="text-ink/60 font-serif text-xs">
-            Select which gallery profile you are posting this artwork as
+            Select which {postingEntityLabel} profile you are posting this artwork as
           </p>
         </div>
       )}

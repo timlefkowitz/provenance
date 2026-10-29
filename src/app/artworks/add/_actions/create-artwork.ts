@@ -15,6 +15,7 @@ import {
   posterRequiresArtistClaim,
 } from '~/lib/user-roles';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
@@ -84,6 +85,10 @@ export async function createArtwork(formData: FormData, userId: string) {
 
     // Certificate type by poster: gallery/institution → show, collector → ownership, artist → authenticity
     const userRole = getUserRole(account?.public_data as Record<string, unknown>);
+    const lockError = await getInstitutionLockError(userId, userRole);
+    if (lockError) {
+      return { error: lockError };
+    }
     const certificateType = getCertificateTypeForRole(userRole);
     const looksUpArtistAccount =
       userRole === USER_ROLES.COLLECTOR || posterRequiresArtistClaim(userRole);

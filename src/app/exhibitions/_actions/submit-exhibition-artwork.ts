@@ -5,7 +5,8 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
-import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
+import { getInstitutionLockError } from '~/lib/institution-account-guard';
 import {
   emailsMatch,
   hashClaimToken,
@@ -299,6 +300,11 @@ async function loadSubmissionContext(
   }
   if (!user.email) {
     return { error: 'Your account has no email; add one to complete this submission' };
+  }
+
+  const lockError = await getInstitutionLockError(user.id, USER_ROLES.ARTIST);
+  if (lockError) {
+    return { error: lockError };
   }
 
   const adminClient = asUntyped(getSupabaseServerAdminClient());

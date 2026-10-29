@@ -4,7 +4,7 @@ import { ProfileForm } from '../../_components/profile-form';
 import { getUserProfileById } from '../../_actions/get-user-profiles';
 import { GalleryMembersManager } from '../../_components/gallery-members-manager';
 import { DeleteProfileButton } from '../../_components/delete-profile-button';
-import { USER_ROLES } from '~/lib/user-roles';
+import { isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
@@ -34,7 +34,7 @@ export default async function EditProfilePage({
   const isOwner = profile.user_id === user.id;
   let isGalleryMember = false;
 
-  if (!isOwner && profile.role === USER_ROLES.GALLERY) {
+  if (!isOwner && isTeamProfileRole(profile.role)) {
     const { data: member } = await client
       .from('gallery_members')
       .select('id')
@@ -63,11 +63,12 @@ export default async function EditProfilePage({
       <div className="space-y-6">
         <ProfileForm profile={profile} />
 
-        {/* Gallery Team Members Section */}
-        {profile.role === USER_ROLES.GALLERY && (
+        {/* Gallery / Institution Team Members Section */}
+        {isTeamProfileRole(profile.role) && (
           <GalleryMembersManager 
             galleryProfileId={id} 
             userId={user.id}
+            entityLabel={profile.role === USER_ROLES.INSTITUTION ? 'institution' : 'gallery'}
           />
         )}
 

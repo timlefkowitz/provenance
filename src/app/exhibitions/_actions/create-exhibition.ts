@@ -8,6 +8,7 @@ import {
   canOwnExhibitionAs,
   type ExhibitionOwnerRole,
 } from '../_helpers/exhibition-owner-roles';
+import { isInstitutionAccount } from '~/lib/institution-account';
 import { captureExhibitionContacts } from '~/lib/crm/capture-exhibition-contacts';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 import {
@@ -63,7 +64,8 @@ export async function createExhibition(formData: FormData) {
   // An account can own exhibitions as an artist or as a gallery/institution
   // independently of its current mode (e.g. an artist who also runs a gallery
   // curating a show outside it). Collector-owned shows require collector mode.
-  if (!canOwnExhibitionAs(ownerRoleInput, userRole)) {
+  const institutionLocked = isInstitutionAccount(account.public_data as Record<string, unknown>);
+  if (!canOwnExhibitionAs(ownerRoleInput, userRole, institutionLocked)) {
     console.error('[Exhibitions] createExhibition owner role rejected', {
       userRole,
       ownerRoleInput,

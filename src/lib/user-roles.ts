@@ -42,6 +42,15 @@ export function getRoleLabel(role: UserRole): string {
   return labels[role] || role;
 }
 
+/** Profile roles that have a team (gallery_members: owner / admin / member). */
+export const TEAM_PROFILE_ROLES = [USER_ROLES.GALLERY, USER_ROLES.INSTITUTION] as const;
+
+export type TeamProfileRole = (typeof TEAM_PROFILE_ROLES)[number];
+
+export function isTeamProfileRole(role: string | null | undefined): role is TeamProfileRole {
+  return (TEAM_PROFILE_ROLES as readonly string[]).includes(role ?? '');
+}
+
 /**
  * Get role from account public_data
  */

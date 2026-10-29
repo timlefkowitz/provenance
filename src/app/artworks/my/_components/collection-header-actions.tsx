@@ -49,9 +49,12 @@ function writePerspectiveCookie(value: UserRole) {
 export function CollectionHeaderActions({
   accountRole,
   modeEntityNames,
+  institutionLocked = false,
 }: {
   accountRole: UserRole | null;
   modeEntityNames: Record<string, string | null>;
+  /** Locked institution account: always institution mode, no mode switcher */
+  institutionLocked?: boolean;
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -85,14 +88,19 @@ export function CollectionHeaderActions({
   };
 
   // Server renders using account role; once mounted we trust localStorage.
-  const activeRole: UserRole | null = mounted ? perspective : accountRole;
+  const activeRole: UserRole | null = institutionLocked
+    ? USER_ROLES.INSTITUTION
+    : mounted
+      ? perspective
+      : accountRole;
 
   // Entity name for the active mode (e.g. "Fl!ght" for gallery, "Timothy Lefkowitz" for artist).
   const activeEntityName = activeRole ? (modeEntityNames[activeRole] ?? null) : null;
 
   return (
     <div className="flex flex-col items-end gap-3">
-      {/* Mode switcher — always visible */}
+      {/* Mode switcher — hidden for locked institution accounts */}
+      {!institutionLocked && (
       <div className="flex flex-col items-end gap-1.5">
         <p className="text-[10px] font-serif font-medium tracking-wider text-ink/40 uppercase">
           Active mode
@@ -121,6 +129,7 @@ export function CollectionHeaderActions({
           })}
         </div>
       </div>
+      )}
 
       {/* New Exhibition + view public catalog */}
       <div className="flex flex-wrap items-center justify-end gap-2">
