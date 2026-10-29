@@ -323,6 +323,8 @@ export function AddArtworkForm({
   exhibitions = [],
   pastArtists = [],
   galleryProfiles = [],
+  managedCollections = [],
+  initialCollectionId,
   hasExistingArtworks = false,
   hasPaidPlan = false,
   sellingEnabled = false,
@@ -335,6 +337,9 @@ export function AddArtworkForm({
   exhibitions?: UserExhibition[];
   pastArtists?: PastArtist[];
   galleryProfiles?: UserProfile[];
+  /** Collector profiles the user manages for someone else */
+  managedCollections?: UserProfile[];
+  initialCollectionId?: string;
   hasExistingArtworks?: boolean;
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
@@ -412,10 +417,13 @@ export function AddArtworkForm({
     }));
   }, [defaultArtistName, defaultMedium]);
 
-  // Gallery or institution profiles (owned + team) the current mode can post as
+  // Gallery or institution profiles (owned + team) the current mode can post as.
+  // In collector mode: collections managed for someone else ('' = the user's own collection).
   const postingProfiles = isTeamProfileRole(userRole)
     ? galleryProfiles.filter((profile) => profile.role === userRole)
-    : [];
+    : userRole === USER_ROLES.COLLECTOR
+      ? managedCollections
+      : [];
   const postingEntityLabel = userRole === USER_ROLES.INSTITUTION ? 'institution' : 'gallery';
 
   // Auto-select the gallery/institution profile if there's only one
@@ -442,6 +450,20 @@ export function AddArtworkForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- postingProfiles is derived from userRole + galleryProfiles
   }, [userRole, galleryProfiles, formData.galleryProfileId]);
+
+  // Preselect the collection from ?collection= once the form is in collector mode
+  const appliedInitialCollectionRef = useRef(false);
+  useEffect(() => {
+    if (
+      appliedInitialCollectionRef.current ||
+      !initialCollectionId ||
+      userRole !== USER_ROLES.COLLECTOR
+    ) {
+      return;
+    }
+    appliedInitialCollectionRef.current = true;
+    setFormData((prev) => ({ ...prev, galleryProfileId: initialCollectionId }));
+  }, [initialCollectionId, userRole]);
 
   // Initialize primaryTitle when first image is added (one-time)
   useEffect(() => {
@@ -1535,6 +1557,39 @@ export function AddArtworkForm({
           </Select>
           <p className="text-ink/60 font-serif text-xs">
             Select which {postingEntityLabel} profile you are posting this artwork as
+          </p>
+        </div>
+      )}
+
+      {/* Collection selection (collector mode, when managing collections for others) */}
+      {userRole === USER_ROLES.COLLECTOR && managedCollections.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="managedCollectionId">Add to collection</Label>
+          <Select
+            value={formData.galleryProfileId || '__own__'}
+            onValueChange={(value) => {
+              setFormData({ ...formData, galleryProfileId: value === '__own__' ? '' : value });
+            }}
+          >
+            <SelectTrigger id="managedCollectionId" className="font-serif">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__own__" className="font-serif">
+                My collection
+              </SelectItem>
+              {managedCollections.map((collection) => (
+                <SelectItem key={collection.id} value={collection.id} className="font-serif">
+                  {collection.name}
+                  <span className="text-ink/60 ml-2 text-xs">(managed for them)</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-ink/60 font-serif text-xs">
+            {formData.galleryProfileId
+              ? 'The certificate will name this collection\'s owner, not you.'
+              : 'Choose a collection you manage to add this work on the owner\'s behalf.'}
           </p>
         </div>
       )}

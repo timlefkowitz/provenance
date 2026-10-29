@@ -577,6 +577,7 @@ export async function handleUpdateArtistBio(
     .eq('user_id', userId)
     .eq('role', role)
     .eq('is_active', true)
+    .eq('is_claimed', true)
     .maybeSingle();
 
   if (fetchErr || !profile) {

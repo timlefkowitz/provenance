@@ -7,6 +7,7 @@ import { CertificateViralCta } from '~/components/certificate-viral-cta';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { collectionOwnerName } from '~/lib/managed-collections';
 
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
@@ -315,7 +316,20 @@ export default async function CertificatePage({
           slug = galleryProfile.slug || null;
         }
       }
-      
+
+      // Posted into a collector profile (e.g. a collection managed for someone else): the owner
+      // named on the certificate is that profile, not the account that posted it.
+      if (artwork.gallery_profile_id && creatorRole !== USER_ROLES.GALLERY) {
+        const { data: postedProfile } = await client
+          .from('user_profiles')
+          .select('name, role, managed_for_name')
+          .eq('id', artwork.gallery_profile_id)
+          .maybeSingle();
+        if (postedProfile?.role === USER_ROLES.COLLECTOR) {
+          creatorName = collectionOwnerName(postedProfile) || creatorName;
+        }
+      }
+
       creatorInfo = {
         name: creatorName,
         role: creatorRole,

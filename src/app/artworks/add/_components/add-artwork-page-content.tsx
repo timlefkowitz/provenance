@@ -21,6 +21,8 @@ export function AddArtworkPageContent({
   exhibitions: initialExhibitions,
   pastArtists,
   galleryProfiles,
+  managedCollections = [],
+  initialCollectionId,
   hasExistingArtworks,
   hasPaidPlan = false,
   sellingEnabled = false,
@@ -33,6 +35,10 @@ export function AddArtworkPageContent({
   exhibitions: UserExhibition[];
   pastArtists: PastArtist[];
   galleryProfiles: UserProfile[];
+  /** Collector profiles the user manages for someone else */
+  managedCollections?: UserProfile[];
+  /** From ?collection=, preselected when posting as a collector */
+  initialCollectionId?: string;
   hasExistingArtworks: boolean;
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
@@ -109,6 +115,20 @@ export function AddArtworkPageContent({
         </p>
       </div>
 
+      {initialCollectionId && currentPerspective !== USER_ROLES.COLLECTOR && (
+        <Card className="mb-6 border-wine/20 bg-wine/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-wine flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-ink/80 font-serif">
+                Switch to Collector mode to add works to{' '}
+                {managedCollections.find((c) => c.id === initialCollectionId)?.name ?? 'this collection'}.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {roleMessage.info && (
         <Card className="mb-6 border-wine/20 bg-wine/5">
           <CardContent className="p-4">
@@ -130,6 +150,8 @@ export function AddArtworkPageContent({
         exhibitions={exhibitions}
         pastArtists={pastArtists}
         galleryProfiles={galleryProfiles}
+        managedCollections={managedCollections}
+        initialCollectionId={initialCollectionId}
         hasExistingArtworks={hasExistingArtworks}
         hasPaidPlan={hasPaidPlan}
         sellingEnabled={sellingEnabled}

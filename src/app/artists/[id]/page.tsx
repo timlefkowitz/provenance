@@ -93,6 +93,7 @@ export async function generateMetadata({
         .eq('user_id', id)
         .eq('role', role ?? primaryRole ?? 'artist')
         .eq('is_active', true)
+        .eq('is_claimed', true)
         .maybeSingle();
 
       if (roleProfile) {
