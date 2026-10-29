@@ -31,6 +31,8 @@ import { AppLinkInterceptor } from "~/components/app-link-interceptor";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
 import { cn } from "@kit/ui/utils";
+import { COOKIE_CONSENT_COOKIE, parseCookieConsent } from "~/lib/cookie-consent";
+import { NATIVE_PLATFORM_COOKIE, isNativeAppRequest } from "~/lib/capacitor/native-platform-cookie";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -126,6 +128,8 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get('theme')?.value;
   const currentTheme = themeCookie && VALID_THEMES.has(themeCookie) ? themeCookie : 'light';
+  const initialCookieConsent = parseCookieConsent(cookieStore.get(COOKIE_CONSENT_COOKIE)?.value);
+  const isNativeApp = isNativeAppRequest(cookieStore.get(NATIVE_PLATFORM_COOKIE)?.value);
 
   // Read the per-request nonce forwarded by middleware so it can be passed to
   // GoogleTagManager (and Next.js will propagate it to its own inline scripts).
@@ -191,7 +195,7 @@ export default async function RootLayout({
                 <NativeTabBar />
                 <TacoBubble isSignedIn={!!initialUser} />
               </OnboardingGuard>
-              <CookieConsentBanner />
+              <CookieConsentBanner initialConsent={initialCookieConsent} isNativeApp={isNativeApp} />
             </AiConsentProvider>
           </LegalModalProvider>
         </RootProviders>
