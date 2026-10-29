@@ -6,7 +6,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { sendCertificationEmail } from '~/lib/email';
-import { getUserRole, USER_ROLES, getCertificateTypeForRole } from '~/lib/user-roles';
+import {
+  getUserRole,
+  USER_ROLES,
+  getCertificateTypeForRole,
+  getInitialCertificateStatus,
+  posterRequiresArtistClaim,
+} from '~/lib/user-roles';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
@@ -75,16 +81,12 @@ export async function createArtwork(formData: FormData, userId: string) {
     // Generate certificate number
     const certificateNumber = await generateCertificateNumber(client);
 
-    // Certificate type by poster: gallery → show, collector → ownership, artist → authenticity
+    // Certificate type by poster: gallery/institution → show, collector → ownership, artist → authenticity
     const userRole = getUserRole(account?.public_data as Record<string, unknown>);
     const certificateType = getCertificateTypeForRole(userRole);
-    const isCollectorOrGallery = userRole === USER_ROLES.COLLECTOR || userRole === USER_ROLES.GALLERY;
-    const certificateStatus =
-      userRole === USER_ROLES.COLLECTOR
-        ? 'verified'
-        : isCollectorOrGallery
-          ? 'pending_artist_claim'
-          : 'verified';
+    const looksUpArtistAccount =
+      userRole === USER_ROLES.COLLECTOR || posterRequiresArtistClaim(userRole);
+    const certificateStatus = getInitialCertificateStatus(userRole);
     if (userRole === USER_ROLES.COLLECTOR) {
       console.log('[Certificates] createArtwork issuing verified COO for collector', {
         userId,
@@ -92,7 +94,7 @@ export async function createArtwork(formData: FormData, userId: string) {
       });
     }
     let artistAccountId: string | null = null;
-    if (isCollectorOrGallery && artistName) {
+    if (looksUpArtistAccount && artistName) {
       try {
         const { data: artistAccount } = await client
           .from('accounts')

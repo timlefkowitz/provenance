@@ -6,7 +6,12 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { generateCertificateNumber } from '~/lib/certificate-claims/insert-linked-certificate';
-import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
+import {
+  CERTIFICATE_TYPES,
+  USER_ROLES,
+  getInitialCertificateStatus,
+  posterRequiresArtistClaim,
+} from '~/lib/user-roles';
 import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
 import {
   canAttachGalleryProfile,
@@ -131,12 +136,8 @@ export async function publishExhibitionListing(params: {
   let artistProfileId = (artwork.artist_profile_id as string | null) ?? null;
   const artistNameRaw = ((artwork.artist_name as string) || '').trim();
 
-  let certificateStatus = 'verified';
-  if (
-    posterContext.userRole === USER_ROLES.GALLERY ||
-    posterContext.userRole === USER_ROLES.INSTITUTION
-  ) {
-    certificateStatus = 'pending_artist_claim';
+  const certificateStatus = getInitialCertificateStatus(posterContext.userRole);
+  if (posterRequiresArtistClaim(posterContext.userRole)) {
     if (artistNameRaw) {
       const ensured = await ensureArtistProfileForCertificate({
         artistName: artistNameRaw,

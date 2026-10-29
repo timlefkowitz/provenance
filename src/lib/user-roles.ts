@@ -101,6 +101,23 @@ export function getCertificateTypeForRole(role: UserRole | null): CertificateTyp
   return CERTIFICATE_TYPES.AUTHENTICITY;
 }
 
+/**
+ * Whether a certificate posted in this role must be claimed by the artist before it is verified.
+ * Galleries and institutions post Certificates of Show on the artist's behalf, so the artist confirms them.
+ */
+export function posterRequiresArtistClaim(
+  role: UserRole | null,
+): role is typeof USER_ROLES.GALLERY | typeof USER_ROLES.INSTITUTION {
+  return role === USER_ROLES.GALLERY || role === USER_ROLES.INSTITUTION;
+}
+
+/** Initial `artworks.certificate_status` for a new certificate posted in this role. */
+export function getInitialCertificateStatus(
+  role: UserRole | null,
+): 'pending_artist_claim' | 'verified' {
+  return posterRequiresArtistClaim(role) ? 'pending_artist_claim' : 'verified';
+}
+
 export function getCertificateTypeLabel(type: CertificateType | string): string {
   const labels: Record<string, string> = {
     [CERTIFICATE_TYPES.AUTHENTICITY]: 'Certificate of Authenticity',

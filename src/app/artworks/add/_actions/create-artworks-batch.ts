@@ -9,6 +9,8 @@ import {
   getUserRole,
   USER_ROLES,
   getCertificateTypeForRole,
+  getInitialCertificateStatus,
+  posterRequiresArtistClaim,
   isValidRole,
   type UserRole,
   CERTIFICATE_TYPES,
@@ -223,15 +225,14 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           }
         }
 
-        // Certificate type by poster: gallery → Certificate of Show, collector → Certificate of Ownership, artist → Certificate of Authenticity
+        // Certificate type by poster: gallery/institution → Certificate of Show, collector → Certificate of Ownership, artist → Certificate of Authenticity
         const certificateType = getCertificateTypeForRole(effectiveRole);
-        let certificateStatus = 'verified';
+        const certificateStatus = getInitialCertificateStatus(effectiveRole);
         let artistAccountId: string | null = null;
         let artistProfileId: string | null = null;
 
         if (effectiveRole === USER_ROLES.COLLECTOR) {
           // Collectors receive a verified COO immediately; artist claim is optional later
-          certificateStatus = 'verified';
           console.log('[Certificates] createArtworksBatch issuing verified COO for collector', {
             userId,
             title: title.trim(),
@@ -252,8 +253,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               });
             }
           }
-        } else if (effectiveRole === USER_ROLES.GALLERY) {
-          certificateStatus = 'pending_artist_claim';
+        } else if (posterRequiresArtistClaim(effectiveRole)) {
           if (artistName?.trim()) {
             const ensured = await ensureArtistProfileForCertificate({
               artistName: artistName.trim(),
@@ -333,14 +333,14 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         }
 
         // Add gallery_profile_id if provided (for galleries with multiple profiles)
-        if (galleryProfileId && effectiveRole === USER_ROLES.GALLERY) {
-          // Verify the gallery profile belongs to this user OR user is a gallery member
+        if (galleryProfileId && posterRequiresArtistClaim(effectiveRole)) {
+          // Verify the gallery/institution profile belongs to this user OR user is a gallery member
           try {
             const { data: profile } = await asUntyped(client)
               .from('user_profiles')
               .select('id, user_id, role')
               .eq('id', galleryProfileId)
-              .eq('role', USER_ROLES.GALLERY)
+              .eq('role', effectiveRole)
               .single();
             
             if (profile) {
@@ -469,9 +469,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             });
           }
           
-          // Create unclaimed artist profile in registry if gallery/collector added artwork with artist name
+          // Create unclaimed artist profile in registry if gallery/institution/collector added artwork with artist name
           // and artist doesn't have an account yet
-          if ((effectiveRole === USER_ROLES.GALLERY || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
+          if ((posterRequiresArtistClaim(effectiveRole) || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
             try {
               // Check if unclaimed profile already exists for this artist name
               const { data: existingProfile } = await asUntyped(client)
@@ -493,7 +493,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
                     name: artistName.trim(),
                     medium: medium?.trim() || null,
                     is_claimed: false,
-                    created_by_gallery_id: effectiveRole === USER_ROLES.GALLERY ? userId : null,
+                    created_by_gallery_id: posterRequiresArtistClaim(effectiveRole) ? userId : null,
                     is_active: true,
                   });
                 if (profileError && profileError.code !== '23505') {
@@ -523,7 +523,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               const notificationMessage =
                 effectiveRole === USER_ROLES.COLLECTOR
                   ? `${accountName || 'A collector'} has added "${title.trim()}" to their collection and listed you as the artist. You can optionally claim this certificate.`
-                  : `${accountName || 'A gallery'} has posted an artwork "${title.trim()}" and is requesting you to claim the certificate.`;
+                  : `${accountName || (effectiveRole === USER_ROLES.INSTITUTION ? 'An institution' : 'A gallery')} has posted an artwork "${title.trim()}" and is requesting you to claim the certificate.`;
               await createNotification({
                 userId: artistAccountId,
                 type: 'certificate_claim_request',
