@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef, useCallback } from 'react';
+import { useState, useTransition, useRef, useCallback, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -14,9 +14,14 @@ import {
   Users,
   GalleryVerticalEnd,
   Heart,
+  X,
 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
-import { markNotificationAsRead } from '../_actions/mark-notifications-read';
+import {
+  dismissNotification,
+  markNotificationAsRead,
+  setNotificationRead,
+} from '../_actions/manage-notifications';
 import { claimCertificate } from '~/app/artworks/[id]/_actions/claim-certificate';
 
 type Notification = {
@@ -43,19 +48,51 @@ export function NotificationsList({
   // Use ref to track in-flight requests to prevent duplicates even during re-renders
   const inFlightRequests = useRef<Set<string>>(new Set());
 
-  const handleMarkAsRead = useCallback((notificationId: string) => {
-    startTransition(async () => {
-      try {
-        await markNotificationAsRead(notificationId);
-        // Only refresh if we're not in the middle of another operation
-        if (inFlightRequests.current.size === 0) {
-          router.refresh();
-        }
-      } catch (error) {
-        console.error('Error marking notification as read:', error);
-      }
-    });
+  // Optimistic state so the icons respond on tap; rolled back if the save fails.
+  const [readOverrides, setReadOverrides] = useState<Record<string, boolean>>({});
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
+
+  const refreshIfIdle = useCallback(() => {
+    // Only refresh if we're not in the middle of another operation
+    if (inFlightRequests.current.size === 0) {
+      router.refresh();
+    }
   }, [router]);
+
+  const handleToggleRead = useCallback(async (notificationId: string, read: boolean) => {
+    setReadOverrides((prev) => ({ ...prev, [notificationId]: read }));
+    try {
+      await setNotificationRead(notificationId, read);
+      refreshIfIdle();
+    } catch (error) {
+      console.error('Error updating notification read state:', error);
+      setReadOverrides((prev) => ({ ...prev, [notificationId]: !read }));
+    }
+  }, [refreshIfIdle]);
+
+  // Following one of a notification's links counts as reading it.
+  const handleActionClick = useCallback((notificationId: string, isRead: boolean, event: MouseEvent) => {
+    if (isRead || !(event.target as HTMLElement).closest('a')) return;
+    setReadOverrides((prev) => ({ ...prev, [notificationId]: true }));
+    void markNotificationAsRead(notificationId).catch((error) => {
+      console.error('Error marking notification as read:', error);
+    });
+  }, []);
+
+  const handleDismiss = useCallback(async (notificationId: string) => {
+    setDismissedIds((prev) => new Set(prev).add(notificationId));
+    try {
+      await dismissNotification(notificationId);
+      refreshIfIdle();
+    } catch (error) {
+      console.error('Error dismissing notification:', error);
+      setDismissedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notificationId);
+        return next;
+      });
+    }
+  }, [refreshIfIdle]);
 
   const handleClaimCertificate = useCallback((notificationId: string, artworkId: string) => {
     const requestKey = `claim-${artworkId}`;
@@ -162,7 +199,11 @@ export function NotificationsList({
     }
   };
 
-  if (notifications.length === 0) {
+  const visible = notifications
+    .filter((n) => !dismissedIds.has(n.id))
+    .map((n) => ({ ...n, read: readOverrides[n.id] ?? n.read }));
+
+  if (visible.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-ink/60 font-serif">No notifications yet</p>
@@ -172,7 +213,7 @@ export function NotificationsList({
 
   return (
     <div className="space-y-4">
-      {notifications.map((notification) => (
+      {visible.map((notification) => (
         <div
           key={notification.id}
           className={`border rounded-lg p-4 ${
@@ -226,7 +267,10 @@ export function NotificationsList({
                   )}
                   
                   {/* Action buttons based on notification type */}
-                  <div className="flex gap-2 mt-3">
+                  <div
+                    className="flex flex-wrap gap-2 mt-3"
+                    onClickCapture={(e) => handleActionClick(notification.id, notification.read, e)}
+                  >
                     {notification.artwork_id && (
                       <Link href={`/artworks/${notification.artwork_id}`}>
                         <Button
@@ -401,6 +445,20 @@ export function NotificationsList({
                       </Link>
                     )}
 
+                    {(notification.type === 'exhibition_invite' ||
+                      notification.type === 'exhibition_artwork_submitted') &&
+                      typeof notification.metadata?.open_call_slug === 'string' && (
+                      <Link href={`/open-calls/${notification.metadata.open_call_slug}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View open call
+                        </Button>
+                      </Link>
+                    )}
+
                     {notification.type === 'open_call_submission_reminder' &&
                       typeof notification.metadata?.open_call_slug === 'string' && (
                       <Link href={`/open-calls/${notification.metadata.open_call_slug}`}>
@@ -467,11 +525,16 @@ export function NotificationsList({
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs text-ink/50 font-serif mr-1">
+                    {new Date(notification.created_at).toLocaleDateString()}
+                  </span>
                   <button
-                    onClick={() => handleMarkAsRead(notification.id)}
-                    className="p-1 hover:bg-wine/10 rounded"
+                    type="button"
+                    onClick={() => handleToggleRead(notification.id, !notification.read)}
+                    className="p-2 hover:bg-wine/10 rounded"
                     title={notification.read ? 'Mark as unread' : 'Mark as read'}
+                    aria-label={notification.read ? 'Mark as unread' : 'Mark as read'}
                   >
                     {notification.read ? (
                       <CheckCircle2 className="h-4 w-4 text-ink/40" />
@@ -479,9 +542,15 @@ export function NotificationsList({
                       <Circle className="h-4 w-4 text-wine" />
                     )}
                   </button>
-                  <span className="text-xs text-ink/50 font-serif">
-                    {new Date(notification.created_at).toLocaleDateString()}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDismiss(notification.id)}
+                    className="p-2 hover:bg-wine/10 rounded text-ink/50 hover:text-ink"
+                    title="Dismiss"
+                    aria-label="Dismiss notification"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>
