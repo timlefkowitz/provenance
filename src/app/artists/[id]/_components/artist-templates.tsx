@@ -9,6 +9,8 @@ import { StreakStar } from '~/components/streak-star';
 import type { StarTier } from '~/lib/streak-service';
 import { SocialLinkItem } from './social-link-item';
 import { TacoAvatar } from '~/components/taco-avatar';
+import { ProfileQuestionnaire } from '~/components/profile-questionnaire';
+import type { QuestionnaireEntry } from '~/lib/profile-questionnaire';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -40,6 +42,8 @@ export interface ArtistTemplateProps {
     publication_name?: string;
     date?: string;
   }>;
+  /** Public Q&A from the profile questionnaire */
+  questionnaire?: QuestionnaireEntry[];
   links: string[];
   website: string | null;
   isOwner: boolean;
@@ -474,6 +478,18 @@ export function ManifestoTemplate(props: ArtistTemplateProps) {
             <style>{`@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
           </section>
         )}
+
+        {(props.questionnaire?.length ?? 0) > 0 && (
+          <section className="py-12 border-b border-wine/10 max-w-3xl">
+            <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-6">Q&amp;A</p>
+            <ProfileQuestionnaire
+              entries={props.questionnaire!}
+              className="space-y-8"
+              questionClassName="font-display text-xl text-wine"
+              answerClassName="font-serif text-sm text-ink/80"
+            />
+          </section>
+        )}
       </div>
     </div>
   );
@@ -624,6 +640,18 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
           </ul>
         </section>
       )}
+
+      {(props.questionnaire?.length ?? 0) > 0 && (
+        <section className="px-6 py-16 border-t border-[#8B1A1A]/15 max-w-3xl mx-auto">
+          <p className="text-[10px] uppercase tracking-widest text-[#8B1A1A] font-serif mb-6">Q&amp;A</p>
+          <ProfileQuestionnaire
+            entries={props.questionnaire!}
+            className="space-y-8"
+            questionClassName="font-serif text-[#8B1A1A]"
+            answerClassName="font-serif text-sm opacity-75"
+          />
+        </section>
+      )}
     </div>
   );
 }
@@ -759,6 +787,18 @@ export function ArchiveTemplate(props: ArtistTemplateProps) {
                 </p>
               ))}
             </div>
+          </section>
+        )}
+
+        {(props.questionnaire?.length ?? 0) > 0 && (
+          <section className="mt-16 border-t border-ink/15 pt-12">
+            <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-6">Q&amp;A</p>
+            <ProfileQuestionnaire
+              entries={props.questionnaire!}
+              className="font-serif text-sm space-y-8 md:columns-2 md:gap-8 md:space-y-0 [&>div]:mb-8"
+              questionClassName="text-wine font-medium"
+              answerClassName="text-ink/70"
+            />
           </section>
         )}
       </div>
@@ -923,6 +963,17 @@ export function KineticTemplate(props: ArtistTemplateProps) {
         </section>
       )}
 
+      {(props.questionnaire?.length ?? 0) > 0 && (
+        <section className="px-6 py-16 max-w-2xl mx-auto border-t border-wine/10">
+          <ProfileQuestionnaire
+            entries={props.questionnaire!}
+            className="space-y-10"
+            questionClassName="font-display text-2xl text-wine"
+            answerClassName="font-serif text-base text-ink/75"
+          />
+        </section>
+      )}
+
       <div className="h-32" />
     </div>
   );
@@ -1054,6 +1105,18 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
                 {pub.publication_name && ` — ${pub.publication_name}`}
               </p>
             ))}
+          </div>
+        )}
+
+        {(props.questionnaire?.length ?? 0) > 0 && (
+          <div className="break-inside-avoid">
+            <p className="font-display font-bold text-xs uppercase tracking-wider mb-2">Q&amp;A</p>
+            <ProfileQuestionnaire
+              entries={props.questionnaire!}
+              className="space-y-4"
+              questionClassName="font-display font-bold"
+              answerClassName=""
+            />
           </div>
         )}
 
@@ -1195,6 +1258,17 @@ export function VoidTemplate(props: ArtistTemplateProps) {
                 ))}
               </ul>
             )}
+          </FadeSection>
+        )}
+
+        {(props.questionnaire?.length ?? 0) > 0 && (
+          <FadeSection className="my-24 max-w-xl mx-auto text-center">
+            <ProfileQuestionnaire
+              entries={props.questionnaire!}
+              className="space-y-12"
+              questionClassName="font-serif text-xs uppercase tracking-widest text-ink/40"
+              answerClassName="font-serif text-base text-ink/80 mt-3"
+            />
           </FadeSection>
         )}
 

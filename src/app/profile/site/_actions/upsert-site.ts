@@ -144,12 +144,12 @@ export async function upsertSiteAction(input: UpsertSiteInput): Promise<UpsertSi
     ? Array.from(new Set(input.featuredExhibitionIds.filter((id) => UUID_RE.test(id)))).slice(0, 24)
     : undefined;
 
-  // Sanitize section_order: only valid keys, at most 5 entries
+  // Sanitize section_order: only valid keys, one entry per orderable section
   const sectionOrder =
     input.sectionOrder !== undefined
       ? input.sectionOrder === null
         ? null
-        : Array.from(new Set(input.sectionOrder.filter((k) => ORDERABLE_SECTION_KEYS.includes(k)))).slice(0, 5)
+        : Array.from(new Set(input.sectionOrder.filter((k) => ORDERABLE_SECTION_KEYS.includes(k)))).slice(0, ORDERABLE_SECTION_KEYS.length)
       : undefined;
 
   // Sanitize artwork_click_behavior

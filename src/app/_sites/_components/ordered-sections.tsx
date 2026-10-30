@@ -18,7 +18,8 @@ import { motion, LayoutGroup } from 'framer-motion';
 import { useSiteEdit } from './site-edit-context';
 import { SectionShell } from './section-shell';
 import type { SiteSectionKey, SiteSections } from '../types';
-import { DEFAULT_SECTION_ORDER } from '../types';
+import { withAllSectionKeys } from '../types';
+import { SiteQuestionnaireSection, useSiteQuestionnaire } from './site-questionnaire';
 
 export type SectionSlots = {
   [K in SiteSectionKey]?: React.ReactNode;
@@ -34,17 +35,12 @@ type Props = {
 
 export function OrderedSections({ slots, order, sections, accentColor }: Props) {
   const { isEditMode, overrides, postUp } = useSiteEdit();
+  const questionnaire = useSiteQuestionnaire();
 
   // Resolve the active order: respect overrides in edit mode
   const activeOrder = useMemo<SiteSectionKey[]>(() => {
-    const base = (isEditMode ? (overrides.section_order ?? order) : order) ?? DEFAULT_SECTION_ORDER;
-    // Ensure all keys are present (append any missing ones at the end)
-    const seen = new Set(base);
-    const full = [...base];
-    for (const k of DEFAULT_SECTION_ORDER) {
-      if (!seen.has(k)) full.push(k);
-    }
-    return full;
+    // Ensure all keys are present (missing ones slot in at their default position)
+    return withAllSectionKeys(isEditMode ? (overrides.section_order ?? order) : order);
   }, [isEditMode, overrides.section_order, order]);
 
   // Resolve live visibility (overrides take precedence in edit mode)
@@ -74,12 +70,20 @@ export function OrderedSections({ slots, order, sections, accentColor }: Props) 
     [activeSections, postUp],
   );
 
+  // Templates may style their own Q&A slot; otherwise use the shared section.
+  const resolvedSlots: SectionSlots = {
+    ...slots,
+    questionnaire:
+      slots.questionnaire ??
+      (questionnaire.length > 0 ? <SiteQuestionnaireSection accentColor={accentColor} /> : undefined),
+  };
+
   if (!isEditMode) {
     // Plain static render for public sites
     return (
       <>
         {activeOrder.map((key) => {
-          const node = slots[key];
+          const node = resolvedSlots[key];
           if (!node) return null;
           if (!activeSections[key]) return null;
           return <div key={key}>{node}</div>;
@@ -91,7 +95,7 @@ export function OrderedSections({ slots, order, sections, accentColor }: Props) 
   return (
     <LayoutGroup>
       {activeOrder.map((key, idx) => {
-        const node = slots[key];
+        const node = resolvedSlots[key];
         if (!node) return null;
         const visible = activeSections[key] ?? false;
 

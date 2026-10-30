@@ -24,6 +24,7 @@ import {
   getFeaturedSiteExhibitions,
 } from '~/app/_sites/_data/get-eligible-site-exhibitions';
 import { isSellingEnabled } from '~/lib/stripe-connect';
+import { sanitizeQuestionnaire } from '~/lib/profile-questionnaire';
 
 /**
  * Resolve a site handle → full SiteData for rendering.
@@ -56,7 +57,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
   const { data: profile, error: profileErr } = await sb
     .from('user_profiles')
     .select(
-      'id, user_id, name, role, bio, medium, location, website, picture_url, links, news_publications',
+      'id, user_id, name, role, bio, medium, location, website, picture_url, links, news_publications, questionnaire',
     )
     .eq('id', siteRow.profile_id)
     .eq('is_active', true)
@@ -201,6 +202,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     artworks,
     exhibitions,
     press,
+    questionnaire: sanitizeQuestionnaire(profile.questionnaire),
     surface_color: siteRow.surface_color ?? null,
     custom_domain: siteRow.custom_domain_verified_at ? (siteRow.custom_domain ?? null) : null,
     is_white_label: isWhiteLabel,

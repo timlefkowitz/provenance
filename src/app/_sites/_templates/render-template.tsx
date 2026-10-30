@@ -26,6 +26,7 @@ import { SiteArtworkRuntimeProvider } from '../_components/site-artwork-runtime'
 import { ArtworkQuickViewModal } from '../_components/artwork-quick-view-modal';
 import { ArtworkLightbox } from '../_components/artwork-lightbox';
 import { resolveAccent } from './palette';
+import { SiteQuestionnaireProvider } from '../_components/site-questionnaire';
 
 type TemplateComponent = ComponentType<{ site: SiteData }>;
 
@@ -65,7 +66,9 @@ export function renderSiteTemplate(site: SiteData) {
       accentColor={accentColor}
       sellingEnabled={site.selling_enabled ?? false}
     >
-      <Component site={site} />
+      <SiteQuestionnaireProvider entries={site.questionnaire ?? []}>
+        <Component site={site} />
+      </SiteQuestionnaireProvider>
       {site.artwork_click_behavior === 'modal' && <ArtworkQuickViewModal />}
       {site.artwork_click_behavior === 'lightbox' && <ArtworkLightbox />}
     </SiteArtworkRuntimeProvider>

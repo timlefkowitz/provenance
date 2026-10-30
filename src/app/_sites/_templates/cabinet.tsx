@@ -13,6 +13,7 @@ import { resolveAccent, resolveSurface, isDarkSurface } from './palette';
 import { EditableText } from '../_components/editable-text';
 import { EditableImage } from '../_components/editable-image';
 import { EditableCta } from '../_components/editable-cta';
+import { ProfileQuestionnaire } from '~/components/profile-questionnaire';
 
 /* ── local helpers (alpha tints not covered by palette.ts) ── */
 
@@ -102,6 +103,7 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
   const showArtworks = site.sections.artworks && site.artworks.length > 0;
   const showExhibitions = site.sections.exhibitions && site.exhibitions.length > 0;
   const showPress = site.sections.press && site.press.length > 0;
+  const showQuestionnaire = site.sections.questionnaire && site.questionnaire.length > 0;
   const showContact =
     site.sections.contact && (!!site.website || !!site.cta || !!site.location);
 
@@ -111,6 +113,7 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
   if (showArtworks) toc.push({ id: 'plates', label: 'Plates', count: String(site.artworks.length).padStart(2, '0') });
   if (showExhibitions) toc.push({ id: 'exhibitions', label: 'Exhibitions', count: String(site.exhibitions.length).padStart(2, '0') });
   if (showPress) toc.push({ id: 'press', label: 'Press', count: String(site.press.length).padStart(2, '0') });
+  if (showQuestionnaire) toc.push({ id: 'questionnaire', label: 'Q&A', count: String(site.questionnaire.length).padStart(2, '0') });
   if (showContact) toc.push({ id: 'correspondence', label: 'Correspondence' });
 
   const roleLabel =
@@ -551,6 +554,21 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
                     </li>
                   ))}
                 </ul>
+              </section>
+            )}
+
+            {/* ── Q&A (profile questionnaire) ── */}
+            {showQuestionnaire && (
+              <SectionHeader id="questionnaire" index="IV·b" label="Q&A" accent={accentHex} muted={muted} hairline={hairline} />
+            )}
+            {showQuestionnaire && (
+              <section className="mb-24 max-w-3xl">
+                <ProfileQuestionnaire
+                  entries={site.questionnaire}
+                  className="space-y-10"
+                  questionClassName="italic leading-snug text-[clamp(1.05rem,1.3vw,1.25rem)]"
+                  answerClassName="opacity-80"
+                />
               </section>
             )}
 

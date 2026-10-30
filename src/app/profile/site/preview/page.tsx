@@ -26,6 +26,7 @@ import {
   getFeaturedSiteArtworks,
 } from '~/app/_sites/_data/get-eligible-site-artworks';
 import { asUntyped } from '~/lib/supabase-untyped';
+import { sanitizeQuestionnaire } from '~/lib/profile-questionnaire';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,7 +77,7 @@ export default async function SitePreviewPage({
   const sb = client as any;
   const { data: profile } = await sb
     .from('user_profiles')
-    .select('id, user_id, name, role, bio, medium, location, website, picture_url, links, news_publications')
+    .select('id, user_id, name, role, bio, medium, location, website, picture_url, links, news_publications, questionnaire')
     .eq('id', profileId)
     .eq('is_active', true)
     .maybeSingle();
@@ -197,6 +198,7 @@ export default async function SitePreviewPage({
     press: config.sections.press
       ? ((profile.news_publications as SiteData['press']) ?? [])
       : [],
+    questionnaire: sanitizeQuestionnaire(profile.questionnaire),
     surface_color: effectiveSurface,
     custom_domain: config.customDomainVerifiedAt ? config.customDomain : null,
     is_white_label: isWhiteLabel,

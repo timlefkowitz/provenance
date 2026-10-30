@@ -46,6 +46,7 @@ import {
   ORDERABLE_SECTION_KEYS,
   DEFAULT_SECTION_ORDER,
   SECTION_LABELS,
+  withAllSectionKeys,
 } from '~/app/_sites/types';
 import { TemplatePicker } from './template-picker';
 import { CustomDomainCard } from './custom-domain-card';
@@ -158,7 +159,7 @@ export function SiteEditor({
   const sellingFullyEnabled = hasActiveSubscription && sellingConnected && sellingChargesEnabled;
 
   const [sectionOrder, setSectionOrder] = useState<SiteSectionKey[]>(
-    initialConfig?.sectionOrder ?? DEFAULT_SECTION_ORDER,
+    withAllSectionKeys(initialConfig?.sectionOrder),
   );
 
   const [publishedAt, setPublishedAt] = useState(initialConfig?.publishedAt ?? null);

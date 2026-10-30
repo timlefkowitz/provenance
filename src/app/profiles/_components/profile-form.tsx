@@ -16,6 +16,8 @@ import { uploadProfilePicture } from '../_actions/upload-profile-picture';
 import { UserProfile, type NewsPublication } from '../_actions/get-user-profiles';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
 import { PressArticleDiscovery } from './press-article-discovery';
+import { QuestionnaireEditor } from './questionnaire-editor';
+import { sanitizeQuestionnaire, supportsQuestionnaire, type QuestionnaireEntry } from '~/lib/profile-questionnaire';
 import appConfig from '~/config/app.config';
 
 export function ProfileForm({
@@ -50,6 +52,10 @@ export function ProfileForm({
       : []) as NewsPublication[]
   );
   const [publicSlug, setPublicSlug] = useState(profile?.slug ?? '');
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireEntry[]>(
+    sanitizeQuestionnaire(profile?.questionnaire),
+  );
+  const showQuestionnaire = !!profile && supportsQuestionnaire(profile.role);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,6 +148,7 @@ export function ProfileForm({
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
             ...(profile.role === USER_ROLES.GALLERY ? { slug: publicSlug } : {}),
             news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
+            ...(showQuestionnaire ? { questionnaire } : {}),
           });
 
           if (result.error) {
@@ -589,6 +596,15 @@ export function ProfileForm({
               </Button>
             </div>
           </div>
+
+          {/* Questionnaire (artist / gallery / institution) */}
+          {showQuestionnaire && profile && (
+            <QuestionnaireEditor
+              role={profile.role}
+              entries={questionnaire}
+              onChange={setQuestionnaire}
+            />
+          )}
 
           {/* Contact Email */}
           <div>

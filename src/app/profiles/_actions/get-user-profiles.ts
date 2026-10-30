@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { USER_ROLES, type UserRole } from '~/lib/user-roles';
+import type { QuestionnaireEntry } from '~/lib/profile-questionnaire';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export type UserProfile = {
@@ -21,10 +22,16 @@ export type UserProfile = {
   phone: string | null;
   established_year: number | null;
   is_active: boolean;
+  /** false for a managed collection built on someone else's behalf (not yet handed off) */
+  is_claimed?: boolean;
+  managed_for_name?: string | null;
+  managed_for_email?: string | null;
   created_at: string;
   updated_at: string;
   /** News/press: [{ title, url, publication_name?, date? }] */
   news_publications?: NewsPublication[];
+  /** Public Q&A: [{ question, answer }] (artist / gallery / institution) */
+  questionnaire?: QuestionnaireEntry[];
   // Artist CV (grants feature)
   artist_cv_json?: unknown;
   artist_cv_file_url?: string | null;
@@ -44,7 +51,8 @@ export type NewsPublication = {
 };
 
 /**
- * Get all profiles for the current user
+ * Get all profiles for the current user.
+ * Excludes managed collections the user is building for someone else (see getManagedCollections).
  */
 export async function getUserProfiles(userId: string): Promise<UserProfile[]> {
   const client = asUntyped(getSupabaseServerClient());
@@ -53,6 +61,7 @@ export async function getUserProfiles(userId: string): Promise<UserProfile[]> {
     .from('user_profiles')
     .select('*')
     .eq('user_id', userId)
+    .eq('is_claimed', true)
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -82,6 +91,7 @@ export async function getUserProfileByRole(
     .eq('user_id', userId)
     .eq('role', role)
     .eq('is_active', true)
+    .eq('is_claimed', true)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -92,6 +102,29 @@ export async function getUserProfileByRole(
   }
 
   return (data || null) as UserProfile | null;
+}
+
+/**
+ * Collector profiles this user is building on someone else's behalf (is_claimed = false).
+ */
+export async function getManagedCollections(userId: string): Promise<UserProfile[]> {
+  const client = asUntyped(getSupabaseServerClient());
+
+  const { data, error } = await client
+    .from('user_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('role', USER_ROLES.COLLECTOR)
+    .eq('is_claimed', false)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[Profiles] getManagedCollections failed', error);
+    return [];
+  }
+
+  return (data || []) as UserProfile[];
 }
 
 /**

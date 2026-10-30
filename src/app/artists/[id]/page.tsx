@@ -38,6 +38,8 @@ import {
   type FeedPanelEligibleArtwork,
 } from './_components/feed-panel-thumbnail-picker';
 import { SocialLinkItem } from './_components/social-link-item';
+import { ProfileQuestionnaire } from '~/components/profile-questionnaire';
+import { sanitizeQuestionnaire } from '~/lib/profile-questionnaire';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { getCommitHistory } from '~/app/profile/_actions/get-commit-history';
 import { StreakStar } from '~/components/streak-star';
@@ -93,6 +95,7 @@ export async function generateMetadata({
         .eq('user_id', id)
         .eq('role', role ?? primaryRole ?? 'artist')
         .eq('is_active', true)
+        .eq('is_claimed', true)
         .maybeSingle();
 
       if (roleProfile) {
@@ -393,6 +396,7 @@ export default async function ArtistProfilePage({
   const establishedYear = roleProfile?.established_year;
   const pictureUrl = roleProfile?.picture_url || account.picture_url;
   const newsPublications = (roleProfile?.news_publications as { title: string; url: string; publication_name?: string; date?: string }[] | undefined) || [];
+  const questionnaire = sanitizeQuestionnaire(roleProfile?.questionnaire);
 
   const streak = !isGallery ? await getUserStreak(account.id) : null;
   const commits = !isGallery ? await getCommitHistory(account.id, 182) : [];
@@ -766,6 +770,7 @@ export default async function ArtistProfilePage({
           location: ex.location ?? null,
         })),
         press: newsPublications,
+        questionnaire,
         links,
         website: website || null,
         isOwner,
@@ -1307,6 +1312,21 @@ export default async function ArtistProfilePage({
                 </div>
               )}
             </section>
+
+            {/* Questionnaire */}
+            {questionnaire.length > 0 && (
+              <section className="mt-12 border-t border-wine/10 pt-8">
+                <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-6">
+                  Q&amp;A
+                </p>
+                <ProfileQuestionnaire
+                  entries={questionnaire}
+                  className="space-y-8 max-w-3xl"
+                  questionClassName="font-display text-lg text-wine"
+                  answerClassName="font-serif text-sm text-ink/80"
+                />
+              </section>
+            )}
           </main>
         </div>
       </div>

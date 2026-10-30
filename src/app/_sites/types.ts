@@ -2,6 +2,8 @@
  * Shared types for the creator-site feature (_sites segment).
  */
 
+import type { QuestionnaireEntry } from '~/lib/profile-questionnaire';
+
 export type TemplateId =
   | 'editorial'
   | 'studio'
@@ -187,18 +189,21 @@ export type SiteSections = {
   artworks: boolean;
   exhibitions: boolean;
   press: boolean;
+  /** Profile questionnaire (Q&A) */
+  questionnaire: boolean;
   cv: boolean;
   contact: boolean;
 };
 
 /** Keys for the orderable content sections (cv excluded — no template renders it yet). */
-export type SiteSectionKey = 'bio' | 'artworks' | 'exhibitions' | 'press' | 'contact';
+export type SiteSectionKey = 'bio' | 'artworks' | 'exhibitions' | 'press' | 'questionnaire' | 'contact';
 
 export const ORDERABLE_SECTION_KEYS: SiteSectionKey[] = [
   'bio',
   'artworks',
   'exhibitions',
   'press',
+  'questionnaire',
   'contact',
 ];
 
@@ -207,6 +212,7 @@ export const DEFAULT_SECTION_ORDER: SiteSectionKey[] = [
   'artworks',
   'exhibitions',
   'press',
+  'questionnaire',
   'contact',
 ];
 
@@ -215,8 +221,24 @@ export const SECTION_LABELS: Record<SiteSectionKey, string> = {
   artworks: 'Works',
   exhibitions: 'Exhibitions',
   press: 'Press',
+  questionnaire: 'Q&A',
   contact: 'Contact',
 };
+
+/**
+ * Complete a saved section order with any keys it is missing (e.g. sections
+ * added after the order was saved), each inserted after its default predecessor.
+ */
+export function withAllSectionKeys(order: SiteSectionKey[] | null | undefined): SiteSectionKey[] {
+  if (!order || order.length === 0) return [...DEFAULT_SECTION_ORDER];
+  const full = [...new Set(order)];
+  DEFAULT_SECTION_ORDER.forEach((key, i) => {
+    if (full.includes(key)) return;
+    const prev = DEFAULT_SECTION_ORDER.slice(0, i).reverse().find((k) => full.includes(k));
+    full.splice(prev ? full.indexOf(prev) + 1 : 0, 0, key);
+  });
+  return full;
+}
 
 export type SiteCta = {
   label: string;
@@ -292,6 +314,8 @@ export type SiteData = {
   artworks: SiteArtwork[];
   exhibitions: SiteExhibition[];
   press: SitePress[];
+  /** Profile questionnaire answers (already sanitized) */
+  questionnaire: QuestionnaireEntry[];
   /** Constrained surface color key */
   surface_color: string | null;
   /** custom domain if verified */
@@ -391,6 +415,7 @@ export const DEFAULT_SECTIONS: SiteSections = {
   artworks: true,
   exhibitions: true,
   press: true,
+  questionnaire: true,
   cv: false,
   contact: true,
 };

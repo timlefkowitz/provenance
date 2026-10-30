@@ -7,6 +7,7 @@ import { dedupeNewsPublications } from '~/lib/news-publications';
 import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
+import { sanitizeQuestionnaire, supportsQuestionnaire, type QuestionnaireEntry } from '~/lib/profile-questionnaire';
 
 export interface UpdateProfileInput {
   profileId: string;
@@ -25,6 +26,8 @@ export interface UpdateProfileInput {
   /** Gallery only: public URL segment for /g/{slug} and /gallery/{slug} */
   slug?: string;
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
+  /** Artist / gallery / institution only: public Q&A shown on the profile and website */
+  questionnaire?: QuestionnaireEntry[];
 }
 
 /**
@@ -60,7 +63,19 @@ export async function updateProfile(input: UpdateProfileInput) {
     if (!isOwner && !isGalleryTeamMember) {
       return { error: 'You do not have permission to update this profile' };
     }
-    if (containsObjectionableText(input.name, input.bio, input.medium, input.location)) {
+    const questionnaire =
+      input.questionnaire !== undefined && supportsQuestionnaire(profile.role)
+        ? sanitizeQuestionnaire(input.questionnaire)
+        : undefined;
+    if (
+      containsObjectionableText(
+        input.name,
+        input.bio,
+        input.medium,
+        input.location,
+        ...(questionnaire ?? []).flatMap((e) => [e.question, e.answer]),
+      )
+    ) {
       return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
@@ -84,6 +99,8 @@ export async function updateProfile(input: UpdateProfileInput) {
         raw.filter((p) => p.title?.trim() && p.url?.trim()),
       );
     }
+
+    if (questionnaire !== undefined) updateData.questionnaire = questionnaire;
 
     if (input.slug !== undefined && profile.role === USER_ROLES.GALLERY) {
       const validated = validateGalleryPublicSlug(input.slug);
