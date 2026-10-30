@@ -6,7 +6,11 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 /**
  * Get all artworks that are linked to any of a gallery's exhibitions
  */
-export async function getArtworksFromGalleryExhibitions(galleryId: string, limit: number = 12) {
+export async function getArtworksFromGalleryExhibitions(
+  galleryId: string,
+  limit: number = 12,
+  certificateType?: 'authenticity' | 'ownership' | 'show',
+) {
   const client = getSupabaseServerClient();
 
   try {
@@ -53,7 +57,7 @@ export async function getArtworksFromGalleryExhibitions(galleryId: string, limit
     }
 
     // Fetch the actual artworks
-    const { data: artworks, error: artworksFetchError } = await asUntyped(client)
+    let artworksQuery = asUntyped(client)
       .from('artworks')
       .select(
         'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status'
@@ -62,6 +66,11 @@ export async function getArtworksFromGalleryExhibitions(galleryId: string, limit
       .eq('status', 'verified')
       .order('created_at', { ascending: false })
       .limit(limit);
+    if (certificateType) {
+      artworksQuery = artworksQuery.eq('certificate_type', certificateType);
+    }
+
+    const { data: artworks, error: artworksFetchError } = await artworksQuery;
 
     if (artworksFetchError) {
       console.error('Error fetching artworks:', artworksFetchError);

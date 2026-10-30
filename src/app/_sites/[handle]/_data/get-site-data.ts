@@ -102,7 +102,7 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
 
     if (featuredIds.length > 0) {
       console.log('[Sites] artworks: curated mode', { count: featuredIds.length });
-      rawRows = await getFeaturedSiteArtworks(sb, featuredIds);
+      rawRows = await getFeaturedSiteArtworks(sb, featuredIds, profile);
     } else {
       console.log('[Sites] artworks: auto mode', { role: profile.role });
       rawRows = await getEligibleSiteArtworks(

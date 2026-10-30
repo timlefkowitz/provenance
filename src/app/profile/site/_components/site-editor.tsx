@@ -1048,7 +1048,8 @@ export function SiteEditor({
           </section>
         )}
 
-        {/* ── CERTIFICATE TYPE FILTER ── */}
+        {/* ── CERTIFICATE TYPE FILTER ── (galleries/institutions are COS-only) */}
+        {!isTeamProfileRole(profile.role) && (
         <section>
           <h2 className="text-sm font-semibold text-ink font-serif mb-1">
             Which artworks to show
@@ -1087,6 +1088,7 @@ export function SiteEditor({
             })}
           </div>
         </section>
+        )}
 
         {/* ── TAG FILTER ── */}
         {myTags.length > 0 && (

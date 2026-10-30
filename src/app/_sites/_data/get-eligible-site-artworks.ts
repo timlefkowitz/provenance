@@ -2,12 +2,13 @@
  * Shared helper: fetch artworks eligible to appear on a creator site.
  *
  * Role-based ownership mirrors the site loader logic:
- *   - gallery  → gallery_profile_id = profile.id (catches all team COS)
+ *   - gallery  → gallery_profile_id = profile.id, COS only (catches all team COS)
  *   - artist   → artist_account_id / artist_profile_id / legacy account_id
  *   - other    → artist_account_id / legacy account_id
  *
  * Always filters status='verified', is_public=true.
  * Certificate-type filter is applied when 1 or 2 types are selected (all 3 = no filter).
+ * Gallery/institution sites ignore the filter and always show COS only.
  */
 
 import type { SiteArtworkFilters } from '~/app/_sites/types';
@@ -54,8 +55,9 @@ export async function getEligibleSiteArtworks(
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (isTeamProfileRole(profile.role)) {
-    q = q.eq('gallery_profile_id', profile.id);
+  const isTeamProfile = isTeamProfileRole(profile.role);
+  if (isTeamProfile) {
+    q = q.eq('gallery_profile_id', profile.id).eq('certificate_type', 'show');
   } else if (profile.role === 'artist') {
     q = q.or(
       [
@@ -74,7 +76,7 @@ export async function getEligibleSiteArtworks(
   }
 
   const allowedTypes = filters.certificate_types ?? [];
-  if (allowedTypes.length > 0 && allowedTypes.length < 3) {
+  if (!isTeamProfile && allowedTypes.length > 0 && allowedTypes.length < 3) {
     q = q.in('certificate_type', allowedTypes);
   }
 
@@ -107,16 +109,18 @@ export async function getEligibleSiteArtworks(
 
 /**
  * Fetch specific artworks by id (for curated/featured mode).
- * Still enforces status=verified and is_public=true.
+ * Still enforces status=verified and is_public=true, and COS-only for
+ * gallery/institution sites (drops any previously pinned COA/COO).
  * Returns rows in the order of the provided ids array.
  */
 export async function getFeaturedSiteArtworks(
   sb: any,
   ids: string[],
+  profile?: ProfileRef,
 ): Promise<EligibleArtworkRow[]> {
   if (!ids.length) return [];
 
-  const { data, error } = await sb
+  let q = sb
     .from('artworks')
     .select(
       'id, title, artist_name, image_url, created_at, certificate_number, certificate_type, for_sale, sale_price, sale_currency, sold_at, description, dimensions, inquire_enabled, stripe_price_id, account_id',
@@ -124,6 +128,12 @@ export async function getFeaturedSiteArtworks(
     .in('id', ids)
     .eq('status', 'verified')
     .eq('is_public', true);
+
+  if (profile && isTeamProfileRole(profile.role)) {
+    q = q.eq('gallery_profile_id', profile.id).eq('certificate_type', 'show');
+  }
+
+  const { data, error } = await q;
 
   if (error) {
     console.error('[Sites] getFeaturedSiteArtworks failed', error);

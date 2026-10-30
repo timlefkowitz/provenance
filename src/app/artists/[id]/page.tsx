@@ -611,16 +611,37 @@ export default async function ArtistProfilePage({
   // For galleries, fetch artworks from their exhibitions
   // For artists/collectors, fetch their own artworks
   let artworks = null;
-  if (isGallery) {
-    // Get artworks from gallery's exhibitions
-    const exhibitionArtworks = await getArtworksFromGalleryExhibitions(account.id, 12);
-    
-    // Filter for public artworks if not owner
+  if (isGallery && roleProfile?.id) {
+    // Gallery/institution profiles only show Certificates of Show issued under
+    // this profile. Exhibition links also include the artists' own COA/COO
+    // originals, so we query by gallery_profile_id + certificate_type instead.
+    let cosGridQuery = asUntyped(client)
+      .from('artworks')
+      .select(
+        'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status',
+      )
+      .eq('certificate_type', 'show')
+      .eq('gallery_profile_id', roleProfile.id)
+      .eq('status', 'verified')
+      .order('created_at', { ascending: false })
+      .limit(12);
     if (!isOwner) {
-      artworks = exhibitionArtworks.filter((artwork: any) => artwork.is_public === true);
-    } else {
-      artworks = exhibitionArtworks;
+      cosGridQuery = cosGridQuery.eq('is_public', true);
     }
+    const { data: cosGridRows, error: cosGridErr } = await cosGridQuery;
+    if (cosGridErr) console.error('[ArtistProfile] gallery COS grid fetch failed', cosGridErr);
+    console.log('[ArtistProfile] gallery COS grid fetched', {
+      galleryProfileId: roleProfile.id,
+      isOwner,
+      count: cosGridRows?.length ?? 0,
+    });
+    artworks = cosGridRows;
+  } else if (isGallery) {
+    // No resolvable gallery profile — fall back to exhibition-linked COS only
+    const exhibitionArtworks = await getArtworksFromGalleryExhibitions(account.id, 12, 'show');
+    artworks = isOwner
+      ? exhibitionArtworks
+      : exhibitionArtworks.filter((artwork: any) => artwork.is_public === true);
   } else {
     // Artists: uploads, works credited via artist_account_id, or legacy profile link; collectors: own uploads only
     let artworksQuery = asUntyped(client)

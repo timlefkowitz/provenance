@@ -137,7 +137,7 @@ export default async function SitePreviewPage({
   let artworkRows: unknown[];
   if (featuredIds.length > 0) {
     console.log('[SitePreview] artworks: curated mode', { count: featuredIds.length });
-    artworkRows = await getFeaturedSiteArtworks(sb, featuredIds);
+    artworkRows = await getFeaturedSiteArtworks(sb, featuredIds, profile);
   } else {
     console.log('[SitePreview] artworks: auto mode', { role: profile.role });
     artworkRows = await getEligibleSiteArtworks(
