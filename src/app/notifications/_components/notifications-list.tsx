@@ -16,7 +16,7 @@ import {
   Heart,
 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
-import { markNotificationAsRead } from '~/lib/notifications';
+import { markNotificationAsRead } from '../_actions/mark-notifications-read';
 import { claimCertificate } from '~/app/artworks/[id]/_actions/claim-certificate';
 
 type Notification = {
@@ -31,12 +31,10 @@ type Notification = {
   metadata: Record<string, unknown> | null;
 };
 
-export function NotificationsList({ 
-  notifications, 
-  userId 
-}: { 
+export function NotificationsList({
+  notifications,
+}: {
   notifications: Notification[];
-  userId: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -48,7 +46,7 @@ export function NotificationsList({
   const handleMarkAsRead = useCallback((notificationId: string) => {
     startTransition(async () => {
       try {
-        await markNotificationAsRead(notificationId, userId);
+        await markNotificationAsRead(notificationId);
         // Only refresh if we're not in the middle of another operation
         if (inFlightRequests.current.size === 0) {
           router.refresh();
@@ -57,7 +55,7 @@ export function NotificationsList({
         console.error('Error marking notification as read:', error);
       }
     });
-  }, [userId, router]);
+  }, [router]);
 
   const handleClaimCertificate = useCallback((notificationId: string, artworkId: string) => {
     const requestKey = `claim-${artworkId}`;

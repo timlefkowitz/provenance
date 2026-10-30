@@ -6,6 +6,12 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
+import {
+  allowScanRecord,
+  MAX_STORED_SCANS,
+  sanitizeScanGps,
+  scanNotificationDue,
+} from '~/lib/scan-guard';
 
 export interface CollectibleScanLocation {
   latitude?: number;
@@ -36,7 +42,7 @@ export interface CollectibleScanLocation {
  */
 export async function recordCollectibleScanLocation(
   collectibleId: string,
-  gpsLocation: {
+  rawGpsLocation: {
     latitude: number;
     longitude: number;
     city?: string;
@@ -45,12 +51,17 @@ export async function recordCollectibleScanLocation(
     formatted?: string;
   } | null,
 ) {
+  const gpsLocation = sanitizeScanGps(rawGpsLocation);
   console.log('[Collectibles] recordCollectibleScanLocation started', {
     collectibleId,
     hasGps: !!gpsLocation,
   });
 
   const requestHeaders = await headers();
+  if (!(await allowScanRecord(requestHeaders, `collectible-${collectibleId}`))) {
+    console.log('[Collectibles] repeat scan throttled', { collectibleId });
+    return { success: true, scan: null, throttled: true };
+  }
   // Guideline 5.1.5 / 5.1.1(iv): IP-based location is only recorded alongside
   // a scan whose viewer granted location permission. If they declined, the
   // scan event is still logged (so the owner sees it happened) but with no
@@ -117,7 +128,7 @@ export async function recordCollectibleScanLocation(
     scanned_at: new Date().toISOString(),
   };
 
-  const scanLocations = [...existingScans, newScan];
+  const scanLocations = [...existingScans, newScan].slice(-MAX_STORED_SCANS);
 
   const { data: updatedRow, error: updateError } = await asUntyped(adminClient)
     .from('collectibles')
@@ -141,11 +152,18 @@ export async function recordCollectibleScanLocation(
 
   // Notify owner. Note: notifications.artwork_id has an FK to artworks, so we
   // must NOT set it for collectibles — the collectible id lives in metadata.
-  if (collectible.account_id) {
+  // Skip the owner's own scans and repeats inside the cooldown.
+  if (
+    collectible.account_id &&
+    collectible.account_id !== user?.id &&
+    (await scanNotificationDue(collectible.account_id as string, { collectibleId }))
+  ) {
     try {
+      // Prefer the server-side IP location; the GPS label comes from the
+      // scanner's browser.
       const locationLabel =
-        gpsLocation?.formatted ??
         (ipCity && ipCountry ? `${ipCity}, ${ipCountry}` : ipCountry) ??
+        gpsLocation?.formatted ??
         null;
       await createNotification({
         userId: collectible.account_id as string,

@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { redirect } from 'next/navigation';
 import { NotificationsList } from './_components/notifications-list';
-import { markAllNotificationsAsRead } from '~/lib/notifications';
+import { markAllNotificationsAsRead } from './_actions/mark-notifications-read';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
@@ -52,7 +52,7 @@ export default async function NotificationsPage() {
           {notifications && notifications.length > 0 && (
             <form action={async () => {
               'use server';
-              await markAllNotificationsAsRead(user.id);
+              await markAllNotificationsAsRead();
             }}>
               <button
                 type="submit"
@@ -66,8 +66,7 @@ export default async function NotificationsPage() {
       </div>
 
       <NotificationsList 
-        notifications={notifications || []} 
-        userId={user.id}
+        notifications={notifications || []}
       />
     </div>
   );

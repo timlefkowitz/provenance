@@ -1,8 +1,15 @@
-'use server';
+import 'server-only';
 
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+
+// Server-only on purpose: this must never become a server action. Users can't
+// insert notifications themselves (RLS has no insert policy), so every write
+// goes through the service role here, after the caller has done its own
+// authorization. Read/mark-read actions live in app/notifications/_actions.
+
 export type NotificationType = 
   | 'certificate_claim_request'
   | 'certificate_claim_pending'
@@ -65,10 +72,11 @@ export interface CreateNotificationParams {
 }
 
 /**
- * Create a notification for a user
+ * Create a notification for a user. Uses the service role, so callers must
+ * already have checked that the current user is allowed to trigger it.
  */
 export async function createNotification(params: CreateNotificationParams) {
-  const client = asUntyped(getSupabaseServerClient());
+  const client = asUntyped(getSupabaseServerAdminClient());
 
   const { error } = await client
     .from('notifications')
@@ -107,40 +115,3 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
 
   return count || 0;
 }
-
-/**
- * Mark notification as read
- */
-export async function markNotificationAsRead(notificationId: string, userId: string) {
-  const client = asUntyped(getSupabaseServerClient());
-
-  const { error } = await client
-    .from('notifications')
-    .update({ read: true })
-    .eq('id', notificationId)
-    .eq('user_id', userId); // Ensure user can only mark their own notifications as read
-
-  if (error) {
-    console.error('Error marking notification as read:', error);
-    throw new Error(`Failed to mark notification as read: ${error.message}`);
-  }
-}
-
-/**
- * Mark all notifications as read for a user
- */
-export async function markAllNotificationsAsRead(userId: string) {
-  const client = asUntyped(getSupabaseServerClient());
-
-  const { error } = await client
-    .from('notifications')
-    .update({ read: true })
-    .eq('user_id', userId)
-    .eq('read', false);
-
-  if (error) {
-    console.error('Error marking all notifications as read:', error);
-    throw new Error(`Failed to mark all notifications as read: ${error.message}`);
-  }
-}
-

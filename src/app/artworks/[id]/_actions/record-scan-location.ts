@@ -6,6 +6,12 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
+import {
+  allowScanRecord,
+  MAX_STORED_SCANS,
+  sanitizeScanGps,
+  scanNotificationDue,
+} from '~/lib/scan-guard';
 
 export interface ScanLocation {
   /** GPS coordinates — only present when user grants browser location permission */
@@ -42,7 +48,7 @@ export interface ScanLocation {
  */
 export async function recordScanLocation(
   artworkId: string,
-  gpsLocation: {
+  rawGpsLocation: {
     latitude: number;
     longitude: number;
     city?: string;
@@ -51,12 +57,17 @@ export async function recordScanLocation(
     formatted?: string;
   } | null,
 ) {
+  const gpsLocation = sanitizeScanGps(rawGpsLocation);
   console.log('[CertificateScan] recordScanLocation started', {
     artworkId,
     hasGps: !!gpsLocation,
   });
 
   const requestHeaders = await headers();
+  if (!(await allowScanRecord(requestHeaders, `artwork-${artworkId}`))) {
+    console.log('[CertificateScan] repeat scan throttled', { artworkId });
+    return { success: true, scan: null, throttled: true };
+  }
 
   // Vercel sets these headers at the edge with IP-based geolocation.
   // In local development they will be absent — that is fine.
@@ -134,7 +145,7 @@ export async function recordScanLocation(
     scanned_at: new Date().toISOString(),
   };
 
-  const scanLocations = [...existingScanLocations, newScan];
+  const scanLocations = [...existingScanLocations, newScan].slice(-MAX_STORED_SCANS);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updatedRow, error: updateError } = await asUntyped(adminClient)
@@ -170,11 +181,19 @@ export async function recordScanLocation(
     title: artwork.title as string | null,
   };
 
-  if (artworkData?.account_id) {
+  // Owners checking their own certificate don't need to hear about it, and
+  // repeat scans inside the cooldown are recorded without another push.
+  if (
+    artworkData?.account_id &&
+    artworkData.account_id !== user?.id &&
+    (await scanNotificationDue(artworkData.account_id, { artworkId }))
+  ) {
     try {
+      // Prefer the server-side IP location; the GPS label comes from the
+      // scanner's browser.
       const locationLabel =
-        gpsLocation?.formatted ??
         (ipCity && ipCountry ? `${ipCity}, ${ipCountry}` : ipCountry) ??
+        gpsLocation?.formatted ??
         null;
 
       console.log('[CertificateScan] Creating owner notification', { artworkId });

@@ -29,8 +29,8 @@ async function checkAndNotifyMilestone(client: UntypedSupabaseClient, userId: st
     const label = FAVORITE_MILESTONES.includes(total as any) ? milestoneLabel(total) : null;
     if (!label) return;
 
-    await asUntyped(client).from('notifications').insert({
-      user_id: userId,
+    await createNotification({
+      userId,
       type: 'artwork_favorited',
       title: `You reached ${label}!`,
       message: `You've favorited ${total} artworks — keep exploring.`,
