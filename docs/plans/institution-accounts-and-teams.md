@@ -64,6 +64,24 @@ Decided: admin-only lock; institution staff are not locked.
   - The last owner could remove themselves, leaving no owner. Now refused.
   - Admins could promote anyone to owner. Now only owners (or the profile creator) can add or remove owners; admins still switch people between member and admin.
 
+### Phase 3b: feature parity with galleries (BUILT 2026-10-30, uncommitted)
+
+Audit of every gallery-only check in the app; institutions now get the same:
+
+- Public profile page: `?role=institution` is honored (it fell back to the account's main role), with the organization layout, exhibitions, latest COS, and institution wording.
+- Certificates: credit the gallery / institution profile the work was posted under (not the poster's current mode), "Uploaded by Institution", link to the profile owner's page (right for team posts). Institutions can verify certificates; the certificate's exhibition names the institution.
+- Add artwork: exhibition picker, past-artist list, registry backfill, and linking to an existing COA.
+- Artist profile claims: institutions see and approve claims on artist profiles they created. Exhibitions: add an artist by name; back links and share cards name the institution.
+- Open calls: institutions can create and manage them; the open call's exhibition is an institution show.
+- Profile sites: team members can edit, publish, preview, and transfer handles; the site lists the institution's exhibitions; the Cabinet template says "Institution".
+- Portal: institution profiles count toward the organization market cap; the "create profile" prompt targets institutions.
+
+Not changed, on purpose or for later:
+- /registry: the Galleries section is a hand-picked list (only FL!ght today), and institutions aren't added automatically. Institutions don't show as artists, because that section counts COAs only.
+- Public slug URLs (`/g/<slug>`) stay gallery-only.
+- "Send to gallery" search, the "Using gallery" label, landing stats, and the sitemap still mean galleries only.
+- The sales page's Collectors link belongs to the collectors work in progress.
+
 ### Phase 4: test the ins and outs
 
 Automated (vitest, next to the helpers):

@@ -3,7 +3,7 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole } from '~/lib/user-roles';
 
 export type ArtworkExhibition = {
   id: string;
@@ -36,7 +36,8 @@ export async function getArtworkExhibition(artworkId: string): Promise<ArtworkEx
         start_date,
         end_date,
         location,
-        gallery_id
+        gallery_id,
+        owner_role
       )
     `)
     .eq('artwork_id', artworkId)
@@ -72,12 +73,18 @@ export async function getArtworkExhibition(artworkId: string): Promise<ArtworkEx
         .single();
 
       if (galleryAccount) {
-        // Check if it's a gallery role
-        const galleryRole = getUserRole(galleryAccount.public_data as Record<string, unknown>);
-        
-        if (galleryRole === USER_ROLES.GALLERY) {
-          // Try to get gallery profile name (preferred)
-          const galleryProfile = await getUserProfileByRole(galleryAccount.id, USER_ROLES.GALLERY);
+        // The show's owner mode (gallery / institution) decides which profile to name;
+        // fall back to the account's current role for older rows without owner_role.
+        const accountRole = getUserRole(galleryAccount.public_data as Record<string, unknown>);
+        const ownerRole = isTeamProfileRole(exhibition.owner_role)
+          ? exhibition.owner_role
+          : isTeamProfileRole(accountRole)
+            ? accountRole
+            : null;
+
+        if (ownerRole) {
+          // Try to get gallery / institution profile name (preferred)
+          const galleryProfile = await getUserProfileByRole(galleryAccount.id, ownerRole);
           
           // If getUserProfileByRole doesn't return slug, fetch it directly
           let slug: string | undefined = undefined;

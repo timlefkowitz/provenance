@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import { getPendingClaims, getUnclaimedProfiles } from '../_actions/get-pending-claims';
 import { UnclaimedProfilesList } from '../_components/unclaimed-profiles-list';
 import { PendingClaimsList } from '../_components/pending-claims-list';
@@ -33,9 +33,9 @@ export default async function ProfileClaimsPage() {
   const userRole = getUserRole(account.public_data as Record<string, unknown>);
 
   // For artists: show unclaimed profiles
-  // For galleries: show pending claims
+  // For galleries and institutions: show pending claims
   const isArtist = userRole === USER_ROLES.ARTIST;
-  const isGallery = userRole === USER_ROLES.GALLERY;
+  const isGallery = isTeamProfileRole(userRole);
 
   if (!isArtist && !isGallery) {
     redirect('/profile');

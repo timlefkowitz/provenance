@@ -115,6 +115,7 @@ export function CabinetTemplate({ site }: { site: SiteData }) {
 
   const roleLabel =
     site.role === 'gallery' ? 'Gallery' :
+    site.role === 'institution' ? 'Institution' :
     site.role === 'collector' ? 'Collection' :
     'Studio';
 

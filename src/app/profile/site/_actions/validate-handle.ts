@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { validateSiteHandle } from '~/lib/gallery-public-slug';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
@@ -62,7 +63,7 @@ export async function validateHandleAction(
     .maybeSingle();
 
   let userManagesConflict = conflictProfile?.user_id === user.id;
-  if (!userManagesConflict && conflictProfile?.role === 'gallery') {
+  if (!userManagesConflict && isTeamProfileRole(conflictProfile?.role)) {
     userManagesConflict = await canManageGallery(user.id, conflictingProfileId);
   }
 

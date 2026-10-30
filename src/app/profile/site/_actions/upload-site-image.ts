@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
@@ -51,7 +52,7 @@ export async function uploadSiteImage(
     }
 
     let hasAccess = profile.user_id === user.id;
-    if (!hasAccess && profile.role === 'gallery') {
+    if (!hasAccess && isTeamProfileRole(profile.role)) {
       hasAccess = await canManageGallery(user.id, profileId);
     }
     if (!hasAccess) {

@@ -1,6 +1,7 @@
 'use server';
 
 import OpenAI from 'openai';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { NewsPublicationInput } from '~/lib/news-publications';
 
@@ -96,7 +97,7 @@ export async function findPressArticles(profileId: string): Promise<{
   // or manages — never compile information about someone else.
   const ownsProfile =
     profile.user_id === user.id ||
-    (profile.role === 'gallery' && (await canManageGallery(user.id, profileId)));
+    (isTeamProfileRole(profile.role) && (await canManageGallery(user.id, profileId)));
   if (!ownsProfile) {
     console.warn('[Press] findPressArticles denied: not the profile owner', { profileId, userId: user.id });
     return { articles: [], error: 'You can only search for press about your own profile.' };

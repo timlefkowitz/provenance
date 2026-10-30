@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
 import { asUntyped } from '~/lib/supabase-untyped';
@@ -43,7 +44,7 @@ export async function transferHandleAction(
       .maybeSingle();
     if (!p) return false;
     if (p.user_id === userId) return true;
-    if (p.role === 'gallery') return canManageGallery(userId, profileId);
+    if (isTeamProfileRole(p.role)) return canManageGallery(userId, profileId);
     return false;
   }
 

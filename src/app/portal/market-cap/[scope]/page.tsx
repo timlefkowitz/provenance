@@ -22,6 +22,7 @@ import {
   type CollectorExhibitionEntry,
 } from '~/lib/collectors/load-collector-exhibition-history';
 import { ExhibitionHistory } from './_components/exhibition-history';
+import { TEAM_PROFILE_ROLES } from '~/lib/user-roles';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -99,7 +100,7 @@ export default async function MarketCapBreakdownPage({ params }: PageProps) {
 
   if (scope === 'gallery') {
     console.log('[MarketCapPage] loading gallery scope', { userId: user.id });
-    const galleryProfiles = await getUserGalleryProfiles(user.id);
+    const galleryProfiles = await getUserGalleryProfiles(user.id, TEAM_PROFILE_ROLES);
     const galleryProfileIds = galleryProfiles
       .map((p: Record<string, unknown>) => p.id)
       .filter((id: unknown): id is string => typeof id === 'string');

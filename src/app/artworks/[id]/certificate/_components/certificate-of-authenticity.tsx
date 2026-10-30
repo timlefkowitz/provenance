@@ -238,7 +238,7 @@ export function CertificateOfAuthenticity({
   canEditCertificate?: boolean;
   canRequestProvenance?: boolean;
   isAdmin?: boolean;
-  creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
+  creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string; accountId?: string } | null;
   exhibition?: { 
     id: string; 
     title: string; 
@@ -1133,15 +1133,19 @@ export function CertificateOfAuthenticity({
               {creatorInfo && creatorInfo.name && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
-                    {creatorInfo.role === 'gallery' ? 'Uploaded by Gallery' : 'Created by'}
+                    {creatorInfo.role === 'gallery'
+                      ? 'Uploaded by Gallery'
+                      : creatorInfo.role === 'institution'
+                        ? 'Uploaded by Institution'
+                        : 'Created by'}
                   </p>
                   <Link
                     href={creatorInfo.role === 'gallery' && creatorInfo.slug
                       ? `/g/${creatorInfo.slug}`
-                      : creatorInfo.role === 'gallery' && creatorInfo.profileId
-                      ? `/artists/${artwork.account_id}?role=gallery&profileId=${creatorInfo.profileId}`
-                      : creatorInfo.role === 'gallery'
-                      ? `/artists/${artwork.account_id}?role=gallery`
+                      : (creatorInfo.role === 'gallery' || creatorInfo.role === 'institution') && creatorInfo.profileId
+                      ? `/artists/${creatorInfo.accountId ?? artwork.account_id}?role=${creatorInfo.role}&profileId=${creatorInfo.profileId}`
+                      : creatorInfo.role === 'gallery' || creatorInfo.role === 'institution'
+                      ? `/artists/${creatorInfo.accountId ?? artwork.account_id}?role=${creatorInfo.role}`
                       : `/artists/${artwork.account_id}`}
                     className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
                   >

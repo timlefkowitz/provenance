@@ -2,7 +2,7 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole } from '~/lib/user-roles';
 
 export type PastArtist = {
   artist_name: string;
@@ -29,8 +29,8 @@ export async function getPastArtists(galleryId: string): Promise<PastArtist[]> {
 
   const userRole = getUserRole(account.public_data as Record<string, unknown>);
   
-  // Only galleries have past artists
-  if (userRole !== USER_ROLES.GALLERY) {
+  // Only galleries and institutions have past artists
+  if (!isTeamProfileRole(userRole)) {
     return [];
   }
 

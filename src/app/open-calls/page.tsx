@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole } from '~/lib/user-roles';
 import { getOpenCallsForGallery } from './_actions/get-open-calls-for-gallery';
 import { getUserProfiles } from '../profiles/_actions/get-user-profiles';
 import { OpenCallsManager } from './_components/open-calls-manager';
@@ -29,7 +29,7 @@ export default async function OpenCallsPage() {
   }
 
   const userRole = getUserRole(account.public_data as Record<string, unknown>);
-  if (userRole !== USER_ROLES.GALLERY) {
+  if (!isTeamProfileRole(userRole)) {
     redirect('/registry');
   }
 
@@ -38,7 +38,8 @@ export default async function OpenCallsPage() {
     getUserProfiles(user.id),
   ]);
 
-  const galleryProfiles = profiles.filter((profile) => profile.role === USER_ROLES.GALLERY);
+  // Profiles of the current mode: gallery profiles for galleries, institution profiles for institutions
+  const galleryProfiles = profiles.filter((profile) => profile.role === userRole);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">

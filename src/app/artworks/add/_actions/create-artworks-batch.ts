@@ -165,8 +165,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     }
     let sourceCoaRow: Record<string, unknown> | null = null;
     if (sourceCoaCertificateNumber) {
-      if (effectiveRole !== USER_ROLES.GALLERY) {
-        return { error: 'Linking to an existing Certificate of Authenticity is only available when posting as a gallery.' };
+      if (!posterRequiresArtistClaim(effectiveRole)) {
+        return { error: 'Linking to an existing Certificate of Authenticity is only available when posting as a gallery or institution.' };
       }
       const { data: src, error: srcErr } = await asUntyped(client)
         .from('artworks')

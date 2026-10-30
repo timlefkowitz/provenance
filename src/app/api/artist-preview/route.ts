@@ -2,7 +2,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 import { checkRateLimit } from '~/lib/rate-limit';
 
@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     // profile (e.g. "FL!GHT") so the panel shows the gallery, not the personal account.
     let galleryProfileSlug: string | null = null;
     let galleryProfileId: string | null = null;
+    let galleryProfileRole: string = USER_ROLES.GALLERY;
 
     // Tracks pinned artwork IDs for the feed panel (set when a profile has overridden the default).
     let pinnedArtworkIds: string[] | null = null;
@@ -147,12 +148,13 @@ export async function GET(request: NextRequest) {
         // Prefer the gallery profile (e.g. "FL!GHT") so the artist panel shows the
         // gallery that posted it, mirroring the certificate page's "Uploaded by Gallery".
         const posterRole = getUserRole(publicData as Record<string, unknown> | null);
-        if (posterRole === USER_ROLES.GALLERY) {
+        if (isTeamProfileRole(posterRole)) {
+          galleryProfileRole = posterRole;
           const { data: galleryProfiles } = await sb
             .from('user_profiles')
             .select('id, name, picture_url, bio, medium, location, slug, feed_panel_artwork_ids')
             .eq('user_id', posterAccountId)
-            .eq('role', USER_ROLES.GALLERY)
+            .eq('role', posterRole)
             .eq('is_active', true)
             .order('name', { ascending: true });
 
@@ -188,9 +190,9 @@ export async function GET(request: NextRequest) {
 
     let profileHref: string | null;
     if (galleryProfileId) {
-      profileHref = galleryProfileSlug
+      profileHref = galleryProfileSlug && galleryProfileRole === USER_ROLES.GALLERY
         ? `/g/${galleryProfileSlug}`
-        : `/artists/${posterAccountId}?role=gallery&profileId=${galleryProfileId}`;
+        : `/artists/${posterAccountId}?role=${galleryProfileRole}&profileId=${galleryProfileId}`;
     } else {
       profileHref =
         getArtistPublicProfileHref({

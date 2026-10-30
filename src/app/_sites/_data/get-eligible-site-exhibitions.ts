@@ -1,7 +1,9 @@
+import { isTeamProfileRole } from '~/lib/user-roles';
+
 /**
  * Shared helper: fetch exhibitions eligible to appear on a creator site.
  *
- * Only gallery profiles own exhibitions (gallery_id = profile.user_id).
+ * Only gallery and institution profiles own exhibitions (gallery_id = profile.user_id).
  * Always filters published_at not null.
  */
 
@@ -28,13 +30,19 @@ export async function getEligibleSiteExhibitions(
   profile: ProfileRef,
   limit = 24,
 ): Promise<EligibleExhibitionRow[]> {
-  if (profile.role !== 'gallery') return [];
+  if (!isTeamProfileRole(profile.role)) return [];
 
-  const { data, error } = await sb
+  let query = sb
     .from('exhibitions')
     .select('id, title, start_date, end_date, location, image_url')
     .eq('gallery_id', profile.user_id)
-    .not('published_at', 'is', null)
+    .not('published_at', 'is', null);
+  // An institution site shows only the institution's shows
+  if (profile.role === 'institution') {
+    query = query.eq('owner_role', 'institution');
+  }
+
+  const { data, error } = await query
     .order('start_date', { ascending: false })
     .limit(limit);
 

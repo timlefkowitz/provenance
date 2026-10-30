@@ -1,7 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export type PendingClaim = {
@@ -27,13 +27,13 @@ export type PendingClaim = {
 };
 
 /**
- * Get pending artist profile claims for a gallery
+ * Get pending artist profile claims for a gallery or institution
  */
 export async function getPendingClaims(galleryId: string): Promise<PendingClaim[]> {
   try {
     const client = asUntyped(getSupabaseServerClient());
     
-    // Verify user is a gallery
+    // Verify user is a gallery or institution
     const { data: account } = await client
       .from('accounts')
       .select('id, public_data')
@@ -45,7 +45,7 @@ export async function getPendingClaims(galleryId: string): Promise<PendingClaim[
     }
 
     const userRole = getUserRole(account.public_data as Record<string, unknown>);
-    if (userRole !== USER_ROLES.GALLERY) {
+    if (!isTeamProfileRole(userRole)) {
       return [];
     }
 

@@ -11,6 +11,7 @@
  */
 
 import type { SiteArtworkFilters } from '~/app/_sites/types';
+import { isTeamProfileRole } from '~/lib/user-roles';
 
 type EligibleArtworkRow = {
   id: string;
@@ -53,7 +54,7 @@ export async function getEligibleSiteArtworks(
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (profile.role === 'gallery') {
+  if (isTeamProfileRole(profile.role)) {
     q = q.eq('gallery_profile_id', profile.id);
   } else if (profile.role === 'artist') {
     q = q.or(

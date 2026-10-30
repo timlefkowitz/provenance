@@ -1,6 +1,7 @@
 'use server';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getEligibleSiteExhibitions } from '~/app/_sites/_data/get-eligible-site-exhibitions';
@@ -37,8 +38,8 @@ export async function getEligibleSiteExhibitionsAction(
 
   if (!profile) return [];
 
-  // Only gallery profiles have exhibitions
-  if (profile.role !== 'gallery') return [];
+  // Only gallery and institution profiles have exhibitions
+  if (!isTeamProfileRole(profile.role)) return [];
 
   const isOwner = profile.user_id === user.id;
   const isTeamMember = !isOwner

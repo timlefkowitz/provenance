@@ -1,7 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 /**
@@ -28,8 +28,8 @@ export async function ensureArtistsInRegistry(
     }
 
     const userRole = getUserRole(account.public_data as Record<string, unknown>);
-    if (userRole !== USER_ROLES.GALLERY) {
-      return { error: 'Only galleries can ensure artists in registry' };
+    if (!isTeamProfileRole(userRole)) {
+      return { error: 'Only galleries and institutions can ensure artists in registry' };
     }
 
     const results = {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef, useMemo, useCallback, useEffect } from 'react';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -1032,8 +1033,8 @@ export function SiteEditor({
           />
         </section>
 
-        {/* ── FEATURED EXHIBITIONS (gallery only) ── */}
-        {profile.role === 'gallery' && (
+        {/* ── FEATURED EXHIBITIONS (gallery and institution) ── */}
+        {isTeamProfileRole(profile.role) && (
           <section>
             <h2 className="text-sm font-semibold text-ink font-serif mb-1">Featured exhibitions</h2>
             <p className="text-xs text-ink/50 font-serif mb-3">

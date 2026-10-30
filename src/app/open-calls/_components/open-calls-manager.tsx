@@ -143,7 +143,7 @@ export function OpenCallsManager({
 
             {galleryProfiles.length > 1 && (
               <div className="space-y-2">
-                <Label>Gallery Profile *</Label>
+                <Label>Profile *</Label>
                 <Select
                   value={formData.galleryProfileId}
                   onValueChange={(value) =>
@@ -151,7 +151,7 @@ export function OpenCallsManager({
                   }
                 >
                   <SelectTrigger className="font-serif">
-                    <SelectValue placeholder="Select a gallery profile" />
+                    <SelectValue placeholder="Select a profile" />
                   </SelectTrigger>
                   <SelectContent>
                     {galleryProfiles.map((profile) => (

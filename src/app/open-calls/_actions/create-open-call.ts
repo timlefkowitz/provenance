@@ -3,7 +3,7 @@
 import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole } from '~/lib/user-roles';
 import { slugify } from '~/lib/slug';
 
 export async function createOpenCall(formData: FormData) {
@@ -21,8 +21,8 @@ export async function createOpenCall(formData: FormData) {
     .single();
 
   const userRole = getUserRole(account?.public_data as Record<string, unknown>);
-  if (userRole !== USER_ROLES.GALLERY) {
-    throw new Error('Only galleries can create open calls');
+  if (!isTeamProfileRole(userRole)) {
+    throw new Error('Only galleries and institutions can create open calls');
   }
 
   const galleryProfileId = (formData.get('galleryProfileId') as string || '').trim();
@@ -57,8 +57,8 @@ export async function createOpenCall(formData: FormData) {
     .eq('id', galleryProfileId)
     .single();
 
-  if (!profile || profile.role !== USER_ROLES.GALLERY) {
-    throw new Error('Gallery profile not found');
+  if (!profile || !isTeamProfileRole(profile.role)) {
+    throw new Error('Gallery or institution profile not found');
   }
 
   const { data: canManage } = await client.rpc('is_gallery_owner_or_admin', {
@@ -80,6 +80,8 @@ export async function createOpenCall(formData: FormData) {
     .from('exhibitions')
     .insert({
       gallery_id: profile.user_id,
+      // An institution's open call is an institution show
+      owner_role: profile.role,
       title: exhibitionTitle,
       description: description || null,
       start_date: startDate,

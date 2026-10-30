@@ -1,5 +1,5 @@
 import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
-import { USER_ROLES, type UserRole } from '~/lib/user-roles';
+import { USER_ROLES, isTeamProfileRole, type UserRole } from '~/lib/user-roles';
 
 /**
  * Display names per UI mode (artist, gallery, etc.) for badges like "Creating as".
@@ -35,9 +35,9 @@ export function buildModeEntityDisplayNames(
         : null;
     if (trimmedProfile) return trimmedProfile;
 
-    // For gallery mode: fall back to the first team gallery profile name
-    if (role === USER_ROLES.GALLERY) {
-      const teamName = teamGalleryProfiles.find((p) => p.role === USER_ROLES.GALLERY)?.name;
+    // For gallery / institution mode: fall back to the first team profile name of that role
+    if (isTeamProfileRole(role)) {
+      const teamName = teamGalleryProfiles.find((p) => p.role === role)?.name;
       const trimmedTeam =
         typeof teamName === 'string' && teamName.trim().length > 0
           ? teamName.trim()

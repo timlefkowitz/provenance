@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 
 export type DeleteSiteResult =
@@ -32,7 +33,7 @@ export async function deleteSiteAction(profileId: string): Promise<DeleteSiteRes
   }
 
   let hasAccess = profile.user_id === user.id;
-  if (!hasAccess && profile.role === 'gallery') {
+  if (!hasAccess && isTeamProfileRole(profile.role)) {
     hasAccess = await canManageGallery(user.id, profileId);
   }
   if (!hasAccess) {

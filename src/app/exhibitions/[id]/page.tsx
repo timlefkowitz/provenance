@@ -146,16 +146,20 @@ export default async function ExhibitionPage({
   } else if (exhibition.owner_role === USER_ROLES.ARTIST) {
     backLink = `/artists/${exhibition.gallery_id}?role=artist`;
     backLabel = 'Artist';
-  } else if (resolvedSearchParams?.from === 'gallery' || exhibition.gallery_id) {
+  } else if (resolvedSearchParams?.from === 'gallery' || resolvedSearchParams?.from === 'institution' || exhibition.gallery_id) {
+    // Institution-owned shows link back to the institution profile, everything else to the gallery
+    const ownerRole =
+      exhibition.owner_role === USER_ROLES.INSTITUTION ? USER_ROLES.INSTITUTION : USER_ROLES.GALLERY;
+    const ownerLabel = ownerRole === USER_ROLES.INSTITUTION ? 'Institution' : 'Gallery';
     try {
-      const galleryProfile = await getUserProfileByRole(exhibition.gallery_id, USER_ROLES.GALLERY);
+      const galleryProfile = await getUserProfileByRole(exhibition.gallery_id, ownerRole);
       if (galleryProfile) {
         const profileId = resolvedSearchParams?.profileId || galleryProfile.id;
-        backLink = `/artists/${exhibition.gallery_id}?role=gallery&profileId=${profileId}`;
-        backLabel = 'Gallery';
+        backLink = `/artists/${exhibition.gallery_id}?role=${ownerRole}&profileId=${profileId}`;
+        backLabel = ownerLabel;
       } else {
-        backLink = `/artists/${exhibition.gallery_id}?role=gallery`;
-        backLabel = 'Gallery';
+        backLink = `/artists/${exhibition.gallery_id}?role=${ownerRole}`;
+        backLabel = ownerLabel;
       }
     } catch {
       // fallback silently

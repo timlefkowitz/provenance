@@ -3,7 +3,7 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
@@ -35,8 +35,8 @@ export async function verifyCertificate(artworkId: string): Promise<VerifyCertif
     }
 
     const userRole = getUserRole(account.public_data as Record<string, unknown>);
-    if (userRole !== USER_ROLES.COLLECTOR && userRole !== USER_ROLES.GALLERY) {
-      return { success: false, error: 'Only collectors and galleries can verify certificates' };
+    if (userRole !== USER_ROLES.COLLECTOR && !isTeamProfileRole(userRole)) {
+      return { success: false, error: 'Only collectors, galleries, and institutions can verify certificates' };
     }
 
     // Get artwork

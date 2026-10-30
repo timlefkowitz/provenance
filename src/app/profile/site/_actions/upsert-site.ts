@@ -1,6 +1,7 @@
 'use server';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type {
   TemplateId,
@@ -80,8 +81,8 @@ async function userCanManageProfile(
     return { ok: true };
   }
 
-  // Team-member access for gallery profiles only
-  if (profile.role === 'gallery') {
+  // Team-member access for gallery and institution profiles only
+  if (isTeamProfileRole(profile.role)) {
     const canManage = await canManageGallery(userId, profileId);
     if (canManage) return { ok: true };
   }

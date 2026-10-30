@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, TEAM_PROFILE_ROLES, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, TEAM_PROFILE_ROLES } from '~/lib/user-roles';
 import { AddArtworkPageContent } from './_components/add-artwork-page-content';
 import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
@@ -37,8 +37,8 @@ export default async function AddArtworkPage() {
   // Get exhibitions for galleries
   const exhibitions = await getUserExhibitions(user.id);
   
-  // Get past artists for galleries
-  const pastArtists = userRole === USER_ROLES.GALLERY ? await getPastArtists(user.id) : [];
+  // Get past artists for galleries and institutions
+  const pastArtists = isTeamProfileRole(userRole) ? await getPastArtists(user.id) : [];
 
   // Get gallery profiles for all users (they might switch to gallery mode even if their primary role isn't gallery)
   // This allows users to post as a gallery profile even if their account role is artist/collector
@@ -60,7 +60,7 @@ export default async function AddArtworkPage() {
 
   // Ensure past artists are in the registry as unclaimed profiles
   // This makes sure all past artists are available for claiming
-  if (userRole === USER_ROLES.GALLERY && pastArtists.length > 0) {
+  if (isTeamProfileRole(userRole) && pastArtists.length > 0) {
     const artistNames = pastArtists
       .filter(artist => !artist.artist_account_id) // Only ensure artists without accounts
       .map(artist => artist.artist_name);

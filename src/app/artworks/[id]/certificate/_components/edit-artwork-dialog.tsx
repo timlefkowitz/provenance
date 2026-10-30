@@ -65,7 +65,7 @@ export function EditArtworkDialog({
     location: string | null;
     gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   } | null;
-  creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string } | null;
+  creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string; accountId?: string } | null;
   certificateType?: CertificateType | string;
 }) {
   const [open, setOpen] = useState(false);
@@ -635,7 +635,11 @@ export function EditArtworkDialog({
             {creatorInfo && (
               <div className="flex items-baseline justify-between gap-4 border-t border-editorial-border/15 pt-4">
                 <span className={FIELD_LABEL}>
-                  {creatorInfo.role === 'gallery' ? 'Uploaded by gallery' : 'Created by'}
+                  {creatorInfo.role === 'gallery'
+                    ? 'Uploaded by gallery'
+                    : creatorInfo.role === 'institution'
+                      ? 'Uploaded by institution'
+                      : 'Created by'}
                 </span>
                 <span className="text-right text-sm font-serif text-editorial-ink">
                   {creatorInfo.name}

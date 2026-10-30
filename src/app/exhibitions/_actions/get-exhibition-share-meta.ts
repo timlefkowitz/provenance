@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 
 export type ExhibitionShareMeta = {
   title: string;
@@ -61,9 +61,11 @@ export async function getExhibitionShareMeta(
       const accountRole = getUserRole(
         (account?.public_data as Record<string, unknown>) ?? {},
       );
+      // Institution-owned shows are named after the institution profile, gallery shows after the gallery
+      const brandRole =
+        exhibition.owner_role === USER_ROLES.INSTITUTION ? USER_ROLES.INSTITUTION : USER_ROLES.GALLERY;
       const isGallery =
-        accountRole === USER_ROLES.GALLERY ||
-        exhibition.owner_role === USER_ROLES.GALLERY;
+        isTeamProfileRole(accountRole) || isTeamProfileRole(exhibition.owner_role);
 
       // For galleries, prefer the gallery brand profile (e.g. "FL!GHT") over
       // the personal account name (e.g. "Timothy Lefkowitz").
@@ -72,7 +74,7 @@ export async function getExhibitionShareMeta(
           .from('user_profiles')
           .select('name')
           .eq('user_id', exhibition.gallery_id)
-          .eq('role', USER_ROLES.GALLERY)
+          .eq('role', brandRole)
           .eq('is_active', true)
           .order('created_at', { ascending: true });
 

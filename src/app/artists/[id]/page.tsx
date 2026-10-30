@@ -10,7 +10,7 @@ import { Button } from '@kit/ui/button';
 import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
 import { ArtworkCard } from '../../artworks/_components/artwork-card';
-import { getUserRole, isValidRole, getRoleLabel, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
+import { getUserRole, isValidRole, getRoleLabel, isTeamProfileRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
 import {
   getExhibitionsForGallery,
   getExhibitionsForArtistAccount,
@@ -326,20 +326,22 @@ export default async function ArtistProfilePage({
     </div>
   );
   
-  // Resolve role: never honor ?role=gallery unless this account is actually a gallery (account role or gallery profile).
+  // Resolve role: never honor ?role=gallery / ?role=institution unless this account actually is one
+  // (account role or an active profile of that role).
   const primaryRole = getUserRole(account.public_data as Record<string, unknown>);
   let userRole: string | null = null;
-  if (requestedRole && ['artist', 'collector', 'gallery'].includes(requestedRole)) {
-    if (requestedRole === USER_ROLES.GALLERY) {
-      const canPresentAsGallery =
-        primaryRole === USER_ROLES.GALLERY ||
-        (await accountHasActiveGalleryProfile(account.id));
-      if (!canPresentAsGallery) {
-        console.warn('[ArtistProfile] Ignoring role=gallery — account has no gallery capability', {
+  if (requestedRole && ['artist', 'collector', 'gallery', 'institution'].includes(requestedRole)) {
+    if (isTeamProfileRole(requestedRole)) {
+      const canPresentAsRole =
+        primaryRole === requestedRole ||
+        (await accountHasActiveGalleryProfile(account.id, requestedRole));
+      if (!canPresentAsRole) {
+        console.warn('[ArtistProfile] Ignoring requested role — account has no profile for it', {
           accountId: account.id,
+          requestedRole,
         });
       }
-      userRole = canPresentAsGallery ? USER_ROLES.GALLERY : primaryRole;
+      userRole = canPresentAsRole ? requestedRole : primaryRole;
     } else {
       userRole = requestedRole;
     }
@@ -347,7 +349,10 @@ export default async function ArtistProfilePage({
     userRole = primaryRole;
   }
   
-  const isGallery = userRole === USER_ROLES.GALLERY;
+  // Gallery and institution profiles share the organization layout (exhibitions, COS, team)
+  const isGallery = isTeamProfileRole(userRole);
+  const isInstitutionProfile = userRole === USER_ROLES.INSTITUTION;
+  const orgRoleLabel = isInstitutionProfile ? 'Institution' : 'Gallery';
   const isArtistProfile = userRole === USER_ROLES.ARTIST;
 
   // Try to get role-specific profile, fallback to account data
@@ -357,12 +362,12 @@ export default async function ArtistProfilePage({
     if (isGallery && requestedProfileId) {
       // For galleries with a specific profileId, fetch that profile
       const specificProfile = await getUserProfileById(requestedProfileId);
-      // Verify it belongs to this user and is a gallery profile
-      if (specificProfile && specificProfile.user_id === account.id && specificProfile.role === USER_ROLES.GALLERY) {
+      // Verify it belongs to this user and is a profile of the requested gallery/institution role
+      if (specificProfile && specificProfile.user_id === account.id && specificProfile.role === userRole) {
         roleProfile = specificProfile;
       } else {
-        // If profileId is invalid, fall back to first gallery profile
-        roleProfile = await getUserProfileByRole(account.id, USER_ROLES.GALLERY);
+        // If profileId is invalid, fall back to the first profile of that role
+        roleProfile = await getUserProfileByRole(account.id, userRole as typeof USER_ROLES.GALLERY);
       }
     } else if (isArtistProfile && requestedProfileId) {
       const specificProfile = await getUserProfileById(requestedProfileId);
@@ -398,7 +403,7 @@ export default async function ArtistProfilePage({
   let allExhibitions: Awaited<ReturnType<typeof getExhibitionsForGallery>> = [];
   if (isGallery) {
     allExhibitions = await getExhibitionsForGallery(account.id, {
-      ownerRoles: ['gallery', 'institution'],
+      ownerRoles: isInstitutionProfile ? ['institution'] : ['gallery', 'institution'],
       publishedOnly: true,
     });
   } else if (isArtistProfile) {
@@ -681,7 +686,7 @@ export default async function ArtistProfilePage({
 
   const exhibitionDetailHref = (exhibitionId: string) => {
     if (isGallery) {
-      return `/exhibitions/${exhibitionId}?from=gallery${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`;
+      return `/exhibitions/${exhibitionId}?from=${userRole}${requestedProfileId ? `&profileId=${requestedProfileId}` : ''}`;
     }
     if (isArtistProfile) {
       const q = new URLSearchParams({ from: 'artist', artistId: account.id });
@@ -825,7 +830,7 @@ export default async function ArtistProfilePage({
                 <div className="min-w-0">
                   {/* Type label */}
                   <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
-                    {isGallery ? 'Gallery' : medium || 'Artist'}
+                    {isGallery ? orgRoleLabel : medium || 'Artist'}
                   </p>
 
                   {/* Name */}
@@ -1170,7 +1175,7 @@ export default async function ArtistProfilePage({
                       size="sm"
                       className="font-serif text-xs text-wine/70 hover:text-wine h-auto py-0"
                     >
-                      <Link href={`/exhibitions?as=${isGallery ? 'gallery' : 'artist'}`}>Manage all</Link>
+                      <Link href={`/exhibitions?as=${isGallery ? userRole : 'artist'}`}>Manage all</Link>
                     </Button>
                   )}
                 </div>
@@ -1216,7 +1221,7 @@ export default async function ArtistProfilePage({
                 {allExhibitions.length > 6 && (
                   <div className="mt-4 text-center">
                     <Button asChild variant="ghost" size="sm" className="font-serif text-wine/70 hover:text-wine">
-                      <Link href={`/exhibitions?as=${isGallery ? 'gallery' : 'artist'}`}>
+                      <Link href={`/exhibitions?as=${isGallery ? userRole : 'artist'}`}>
                         View all {allExhibitions.length} exhibitions
                       </Link>
                     </Button>
@@ -1258,7 +1263,7 @@ export default async function ArtistProfilePage({
                     {isGallery
                       ? isOwner
                         ? 'No artworks have been added to your exhibitions yet.'
-                        : 'This gallery has no artworks in their exhibitions yet.'
+                        : `This ${orgRoleLabel.toLowerCase()} has no artworks in their exhibitions yet.`
                       : isOwner
                         ? 'You have not added any artworks yet.'
                         : 'This artist has not added any artworks yet.'}

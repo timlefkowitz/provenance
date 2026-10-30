@@ -16,7 +16,7 @@ import { ProvenanceUpdateRequestsList } from './_components/provenance-update-re
 import { SendSummaryButton } from './_components/send-summary-button';
 import { getFavoriteArtworks, getFavoriteCount } from '../artworks/_actions/favorites';
 import { User, Image as ImageIcon, Bell, ExternalLink, Building2, Heart, Users } from 'lucide-react';
-import { USER_ROLES } from '~/lib/user-roles';
+import { isTeamProfileRole, TEAM_PROFILE_ROLES, USER_ROLES } from '~/lib/user-roles';
 import { getLeadsForArtist } from './or/_actions/leads';
 import { NewUserConversionTracker } from './_components/new-user-conversion-tracker';
 import { PortfolioValueCard } from './_components/portfolio-value-card';
@@ -49,10 +49,12 @@ export default async function PortalPage() {
   // Derive role early — needed for both the graph visibility block and later UI decisions
   const userRole = (account?.public_data as any)?.role;
   const isArtist = userRole === USER_ROLES.ARTIST;
-  const isGallery = userRole === USER_ROLES.GALLERY;
+  // Galleries and institutions share the organization view (team profiles, market cap)
+  const isGallery = isTeamProfileRole(userRole);
+  const orgRole = userRole === USER_ROLES.INSTITUTION ? 'institution' : 'gallery';
 
-  // Gallery profiles this user can act as (owned or as a team member)
-  const galleryProfiles = await getUserGalleryProfiles(user.id);
+  // Gallery / institution profiles this user can act as (owned or as a team member)
+  const galleryProfiles = await getUserGalleryProfiles(user.id, TEAM_PROFILE_ROLES);
   const galleryOwnerIds = Array.from(
     new Set(
       (galleryProfiles || [])
@@ -244,10 +246,10 @@ export default async function PortalPage() {
                 <Building2 className="h-8 w-8 text-wine" />
                 <div>
                   <h3 className="font-display font-bold text-wine text-lg mb-1">
-                    Create Your Gallery Profile
+                    Create Your {orgRole === 'institution' ? 'Institution' : 'Gallery'} Profile
                   </h3>
                   <p className="text-ink/70 font-serif text-sm">
-                    Set up your gallery profile to showcase exhibitions and connect with artists.
+                    Set up your {orgRole} profile to showcase exhibitions and connect with artists.
                   </p>
                 </div>
               </div>
@@ -255,7 +257,7 @@ export default async function PortalPage() {
                 asChild
                 className="bg-wine text-parchment hover:bg-wine/90 font-serif"
               >
-                <Link href="/profiles/new?role=gallery">
+                <Link href={`/profiles/new?role=${orgRole}`}>
                   Create Profile
                 </Link>
               </Button>

@@ -125,14 +125,17 @@ export async function getUserProfileById(
  * True if this account may be shown in gallery mode (primary account role or an active gallery user_profile).
  * Used to ignore forged ?role=gallery on public profile URLs.
  */
-export async function accountHasActiveGalleryProfile(userId: string): Promise<boolean> {
+export async function accountHasActiveGalleryProfile(
+  userId: string,
+  role: typeof USER_ROLES.GALLERY | typeof USER_ROLES.INSTITUTION = USER_ROLES.GALLERY,
+): Promise<boolean> {
   const client = asUntyped(getSupabaseServerClient());
 
   const { data, error } = await client
     .from('user_profiles')
     .select('id')
     .eq('user_id', userId)
-    .eq('role', USER_ROLES.GALLERY)
+    .eq('role', role)
     .eq('is_active', true)
     .limit(1);
 

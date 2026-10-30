@@ -428,7 +428,7 @@ export function AddArtworkForm({
       setFormData((prev) => ({
         ...prev,
         galleryProfileId: postingProfiles[0].id,
-        ...(userRole !== USER_ROLES.GALLERY ? { sourceCoaCertificateNumber: '' } : {}),
+        ...(!isTeamProfileRole(userRole) ? { sourceCoaCertificateNumber: '' } : {}),
       }));
     } else if (
       !postingProfiles.some((profile) => profile.id === formData.galleryProfileId) &&
@@ -437,7 +437,7 @@ export function AddArtworkForm({
       setFormData((prev) => ({
         ...prev,
         galleryProfileId: '',
-        ...(userRole !== USER_ROLES.GALLERY ? { sourceCoaCertificateNumber: '' } : {}),
+        ...(!isTeamProfileRole(userRole) ? { sourceCoaCertificateNumber: '' } : {}),
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- postingProfiles is derived from userRole + galleryProfiles
@@ -1033,7 +1033,7 @@ export function AddArtworkForm({
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="artistName">Artist Name</Label>
-          {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 ? (
+          {isTeamProfileRole(userRole) && pastArtists.length > 0 ? (
             <div className="space-y-2">
               <Select
                 value={
@@ -1096,7 +1096,7 @@ export function AddArtworkForm({
           )}
           <p className="text-ink/60 font-serif text-xs">
             This will be applied to all artworks
-            {userRole === USER_ROLES.GALLERY && pastArtists.length > 0 && (
+            {isTeamProfileRole(userRole) && pastArtists.length > 0 && (
               <span className="mt-1 block">
                 Select from past artists or enter a new name
               </span>
@@ -1473,7 +1473,7 @@ export function AddArtworkForm({
         </AccordionItem>
       </Accordion>
 
-      {userRole === USER_ROLES.GALLERY && (
+      {isTeamProfileRole(userRole) && (
         <div className="space-y-2">
           <Label htmlFor="sourceCoaCertificateNumber">
             Link to Certificate of Authenticity (optional)
@@ -1539,8 +1539,8 @@ export function AddArtworkForm({
         </div>
       )}
 
-      {/* Exhibition Selection (for galleries) */}
-      {userRole === USER_ROLES.GALLERY && (
+      {/* Exhibition Selection (for galleries and institutions) */}
+      {isTeamProfileRole(userRole) && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="exhibitionId">Exhibition (Optional)</Label>

@@ -1,6 +1,7 @@
 'use server';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { getEligibleSiteArtworks } from '~/app/_sites/_data/get-eligible-site-artworks';
@@ -39,7 +40,7 @@ export async function getEligibleSiteArtworksAction(
 
   const isOwner = profile.user_id === user.id;
   const isTeamMember =
-    !isOwner && profile.role === 'gallery'
+    !isOwner && isTeamProfileRole(profile.role)
       ? await canManageGallery(user.id, profileId)
       : false;
 

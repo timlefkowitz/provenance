@@ -2,7 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 
 import { asUntyped } from '~/lib/supabase-untyped';
@@ -31,8 +31,8 @@ export async function createArtistByName(artistName: string) {
     }
 
     const userRole = getUserRole(account.public_data as Record<string, unknown>);
-    if (userRole !== USER_ROLES.GALLERY) {
-      return { error: 'Only galleries can create artists', success: false };
+    if (!isTeamProfileRole(userRole)) {
+      return { error: 'Only galleries and institutions can create artists', success: false };
     }
 
     // Check if artist with this name already exists

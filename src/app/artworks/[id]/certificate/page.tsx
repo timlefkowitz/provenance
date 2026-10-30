@@ -6,7 +6,7 @@ import { CertificateOfAuthenticity } from './_components/certificate-of-authenti
 import { CertificateViralCta } from '~/components/certificate-viral-cta';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
-import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, USER_ROLES } from '~/lib/user-roles';
+import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 
 import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
@@ -245,7 +245,7 @@ export default async function CertificatePage({
   const canRequestProvenance = isOwner || canRequestProvenanceAsGallery;
   
   // Get creator account info and check admin status in parallel
-  let creatorInfo: { name: string; role: string | null; profileId?: string; slug?: string } | null = null;
+  let creatorInfo: { name: string; role: string | null; profileId?: string; slug?: string; accountId?: string } | null = null;
   let userIsAdmin = false;
   
   try {
@@ -279,14 +279,36 @@ export default async function CertificatePage({
       let creatorName = creatorAccountResult.data.name;
       let profileId: string | null = null;
       let slug: string | null = null;
-      if (creatorRole === USER_ROLES.GALLERY) {
+      let presentedRole: string | null = creatorRole;
+      let profileAccountId: string = artwork.account_id;
+
+      // Posted under a gallery / institution profile (possibly by a team member): credit that
+      // profile, whatever mode the posting account is in now.
+      let postedUnderTeamProfile = false;
+      if (artwork.gallery_profile_id) {
+        const { data: teamProfile } = await client
+          .from('user_profiles')
+          .select('id, user_id, name, role, slug')
+          .eq('id', artwork.gallery_profile_id)
+          .maybeSingle();
+        if (teamProfile && isTeamProfileRole(teamProfile.role)) {
+          postedUnderTeamProfile = true;
+          creatorName = teamProfile.name || creatorName;
+          profileId = teamProfile.id;
+          slug = teamProfile.slug || null;
+          presentedRole = teamProfile.role;
+          profileAccountId = teamProfile.user_id || artwork.account_id;
+        }
+      }
+
+      if (!postedUnderTeamProfile && isTeamProfileRole(creatorRole)) {
         // First, try to find a profile with a specific name (like "FL!GHT")
         // Search for profiles that might be the primary gallery profile
         const { data: profilesByName } = await client
           .from('user_profiles')
           .select('*')
           .eq('user_id', artwork.account_id)
-          .eq('role', USER_ROLES.GALLERY)
+          .eq('role', creatorRole)
           .eq('is_active', true)
           .order('name', { ascending: true }); // Order by name to get consistent results
         
@@ -305,7 +327,7 @@ export default async function CertificatePage({
           }
         } else {
           // Fallback to getUserProfileByRole if direct query doesn't work
-          galleryProfile = await getUserProfileByRole(artwork.account_id, USER_ROLES.GALLERY);
+          galleryProfile = await getUserProfileByRole(artwork.account_id, creatorRole);
         }
         
         if (galleryProfile) {
@@ -318,9 +340,10 @@ export default async function CertificatePage({
       
       creatorInfo = {
         name: creatorName,
-        role: creatorRole,
+        role: presentedRole,
         profileId: profileId || undefined,
         slug: slug || undefined,
+        accountId: profileAccountId,
       };
     }
     

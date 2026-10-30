@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { isTeamProfileRole } from '~/lib/user-roles';
 import { isSellingEnabled } from '~/lib/stripe-connect';
 import Link from 'next/link';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -82,7 +83,7 @@ export default async function SitePreviewPage({
 
   if (!profile) redirect('/profile/site');
   let hasAccess = profile.user_id === user.id;
-  if (!hasAccess && profile.role === 'gallery') {
+  if (!hasAccess && isTeamProfileRole(profile.role)) {
     hasAccess = await canManageGallery(user.id, profileId);
   }
   if (!hasAccess) redirect('/profile/site');
