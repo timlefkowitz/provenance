@@ -18,10 +18,12 @@ import {
 } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
 import { getInstitutionLockError } from '~/lib/institution-account-guard';
+import { isManagedCollectionOf } from '~/lib/managed-collections';
 import { createArtworkStripeListing } from './create-artwork-stripe-listing';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
@@ -163,6 +165,23 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     if (lockError) {
       return { error: lockError };
     }
+
+    // Collector posting into a collection they manage for someone else. Refuse rather than
+    // fall back, so a client's works never land in the poster's own collection by mistake.
+    let managedCollectionId: string | null = null;
+    if (galleryProfileId && effectiveRole === USER_ROLES.COLLECTOR) {
+      const { data: managedProfile } = await asUntyped(client)
+        .from('user_profiles')
+        .select('id, user_id, role, is_claimed, is_active')
+        .eq('id', galleryProfileId)
+        .maybeSingle();
+      if (!isManagedCollectionOf(managedProfile, userId)) {
+        return { error: 'You can only add works to collections you manage.' };
+      }
+      managedCollectionId = galleryProfileId;
+      console.log('[Collections] createArtworksBatch posting into managed collection', { managedCollectionId });
+    }
+
     let sourceCoaRow: Record<string, unknown> | null = null;
     if (sourceCoaCertificateNumber) {
       if (!posterRequiresArtistClaim(effectiveRole)) {
@@ -372,6 +391,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           } catch (error) {
             console.warn('Invalid gallery profile ID provided, continuing without it:', error);
           }
+        } else if (managedCollectionId) {
+          insertData.gallery_profile_id = managedCollectionId;
         }
 
         if (sourceCoaRow) {
@@ -677,6 +698,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     });
 
     revalidatePath('/artworks');
+    scheduleArtworkFingerprints(artworkIds);
     scheduleArtistFollowerNotifications({ artworkIds, posterUserId: userId, posterRole: effectiveRole });
 
     return { 

@@ -59,7 +59,8 @@ export async function createProfile(input: CreateProfileInput) {
         .select('id')
         .eq('user_id', user.id)
         .eq('role', input.role)
-        .single();
+        .eq('is_claimed', true)
+        .maybeSingle();
 
       if (existing) {
         return { error: `You already have a ${input.role} profile. Please edit it instead.` };

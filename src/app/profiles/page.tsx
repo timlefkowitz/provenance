@@ -1,10 +1,13 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
-import { getUserProfiles } from './_actions/get-user-profiles';
+import { getManagedCollections, getUserProfiles } from './_actions/get-user-profiles';
 import { ProfilesList } from './_components/profiles-list';
 import { CreateProfileButton } from './_components/create-profile-button';
+import { ManagedCollectionsSection } from './_components/managed-collections-section';
+import { isInstitutionAccount } from '~/lib/institution-account';
 import { USER_ROLES } from '~/lib/user-roles';
+import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
   title: 'Manage Profiles | Provenance',
 };
@@ -17,7 +20,12 @@ export default async function ProfilesPage() {
     redirect('/auth/sign-in');
   }
 
-  const profiles = await getUserProfiles(user.id);
+  const [profiles, managedCollections, { data: account }] = await Promise.all([
+    getUserProfiles(user.id),
+    getManagedCollections(user.id),
+    asUntyped(client).from('accounts').select('public_data').eq('id', user.id).single(),
+  ]);
+  const institutionLocked = isInstitutionAccount(account?.public_data as Record<string, unknown>);
 
   // Determine which roles don't have profiles yet
   // Gallery can always be created (multiple galleries allowed)
@@ -67,6 +75,11 @@ export default async function ProfilesPage() {
           </CardContent>
         </Card>
       )}
+
+      <ManagedCollectionsSection
+        collections={managedCollections}
+        canCreate={!institutionLocked}
+      />
 
       {/* Existing Profiles */}
       <Card className="border-wine/20 bg-parchment/60">

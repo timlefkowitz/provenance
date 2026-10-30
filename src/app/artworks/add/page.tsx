@@ -6,6 +6,7 @@ import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
 import { ensureArtistsInRegistry } from './_actions/ensure-artists-in-registry';
 import { getUserGalleryProfiles } from './_actions/get-user-gallery-profiles';
+import { getManagedCollections } from '~/app/profiles/_actions/get-user-profiles';
 import { getActiveSubscription } from '~/lib/subscription';
 import { isSellingEnabled } from '~/lib/stripe-connect';
 import { isInstitutionAccount } from '~/lib/institution-account';
@@ -15,7 +16,12 @@ export const metadata = {
   title: 'Add Artwork | Provenance',
 };
 
-export default async function AddArtworkPage() {
+export default async function AddArtworkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ collection?: string }>;
+}) {
+  const { collection: requestedCollectionId } = await searchParams;
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
@@ -42,7 +48,13 @@ export default async function AddArtworkPage() {
 
   // Get gallery profiles for all users (they might switch to gallery mode even if their primary role isn't gallery)
   // This allows users to post as a gallery profile even if their account role is artist/collector
-  const galleryProfiles = await getUserGalleryProfiles(user.id, TEAM_PROFILE_ROLES);
+  const [galleryProfiles, managedCollections] = await Promise.all([
+    getUserGalleryProfiles(user.id, TEAM_PROFILE_ROLES),
+    getManagedCollections(user.id),
+  ]);
+  const initialCollectionId = managedCollections.some((c) => c.id === requestedCollectionId)
+    ? requestedCollectionId
+    : undefined;
 
   // Subscription & selling status for the Sales & Inquiries section
   const [activeSub, sellingEnabled] = await Promise.all([
@@ -85,6 +97,8 @@ export default async function AddArtworkPage() {
         exhibitions={exhibitions}
         pastArtists={pastArtists}
         galleryProfiles={galleryProfiles}
+        managedCollections={managedCollections}
+        initialCollectionId={initialCollectionId}
         hasExistingArtworks={hasExistingArtworks}
         hasPaidPlan={hasPaidPlan}
         sellingEnabled={sellingEnabled}
