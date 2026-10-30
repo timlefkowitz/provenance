@@ -26,6 +26,7 @@ import { createQuickExhibitionListings } from '../_actions/create-exhibition-lis
 import { publishExhibitionListing } from '../_actions/publish-exhibition-listing';
 import { updateExhibitionListing } from '../_actions/update-exhibition-listing';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
+import { FindByPhotoDialog } from '~/app/artworks/_components/find-by-photo-dialog';
 
 export function ExhibitionDetails({
   exhibition,
@@ -133,6 +134,21 @@ export function ExhibitionDetails({
                   </span>
                 )}
               </button>
+              {exhibition.artworks.length > 0 && (
+                <FindByPhotoDialog
+                  exhibitionId={exhibition.id}
+                  trigger={
+                    <button
+                      type="button"
+                      title="Identify a piece in this exhibition from a photo"
+                      className="shrink-0 flex items-center gap-1.5 rounded-md border border-wine/20 bg-transparent px-2.5 py-1.5 text-xs font-serif text-ink/50 transition-colors hover:border-wine/40 hover:text-ink"
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      Find by photo
+                    </button>
+                  }
+                />
+              )}
             </div>
             {exhibition.artworks.length === 0 ? (
               <p className="text-[11px] font-serif text-ink/45">
@@ -165,6 +181,11 @@ export function ExhibitionDetails({
 
       {exhibition.artworks.length > 0 && (
         <>
+          {!isOwner && (
+            <div className="flex justify-end mb-4">
+              <FindByPhotoDialog exhibitionId={exhibition.id} />
+            </div>
+          )}
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 md:gap-5 space-y-0">
           {visibleArtworks.map((artwork) => (
             <div

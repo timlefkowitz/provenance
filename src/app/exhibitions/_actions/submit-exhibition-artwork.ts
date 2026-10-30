@@ -4,6 +4,7 @@ import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { createNotification } from '~/lib/notifications';
 import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
 import { getInstitutionLockError } from '~/lib/institution-account-guard';
@@ -792,6 +793,7 @@ export async function submitExhibitionArtwork(
     for (const coaId of createdCoaIds) {
       revalidatePath(`/artworks/${coaId}/certificate`);
     }
+    scheduleArtworkFingerprints(createdCoaIds);
 
     console.log('[Exhibitions] submitExhibitionArtwork batch succeeded', {
       batchIndex: batch.batchIndex + 1,

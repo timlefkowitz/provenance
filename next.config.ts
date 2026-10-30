@@ -30,13 +30,25 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   /** Bundled server routes must resolve the ffmpeg-static native binary at runtime */
-  serverExternalPackages: ['ffmpeg-static'],
+  serverExternalPackages: ['ffmpeg-static', 'onnxruntime-node'],
   /**
    * Bundle the vendored FFmpeg copy (see scripts/ensure-ffmpeg-static.cjs). Tracing
    * pnpm's symlinked node_modules path breaks Vercel packaging ("invalid deployment package").
    */
   outputFileTracingIncludes: {
     '/api/admin/audio/denoise': ['./vendor/**/*'],
+  },
+  /**
+   * onnxruntime-node (reverse image lookup, src/lib/image-fingerprint) ships native binaries for
+   * every platform (~200 MB). Vercel runs linux/x64, so drop the rest to stay under the
+   * function size limit.
+   */
+  outputFileTracingExcludes: {
+    '*': [
+      '**/onnxruntime-node/bin/napi-v3/darwin/**',
+      '**/onnxruntime-node/bin/napi-v3/win32/**',
+      '**/onnxruntime-node/bin/napi-v3/linux/arm64/**',
+    ],
   },
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,

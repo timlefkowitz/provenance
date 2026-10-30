@@ -16,6 +16,7 @@ import {
 } from '~/lib/user-roles';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { getInstitutionLockError } from '~/lib/institution-account-guard';
+import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
@@ -151,6 +152,7 @@ export async function createArtwork(formData: FormData, userId: string) {
     revalidatePath('/artworks');
     revalidatePath(`/artworks/${artwork.id}`);
     scheduleArtistFollowerNotifications({ artworkIds: [artwork.id], posterUserId: userId, posterRole: userRole });
+    scheduleArtworkFingerprints([artwork.id]);
     try {
       console.log('[Streak] Tracking artwork upload activity for streak');
       await trackUserStreakActivity(client, {

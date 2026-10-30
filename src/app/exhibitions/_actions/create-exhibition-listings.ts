@@ -15,6 +15,7 @@ import {
 } from './gallery-posting-context';
 import { isEligibleForShowCertificate } from '../_helpers/gallery-posting-helpers';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
+import { scheduleExhibitionArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 
 /** Client sends `items` JSON; optional `image_<key>` files in the same FormData. */
 export type QuickExhibitionListingInput = {
@@ -201,6 +202,7 @@ export async function createQuickExhibitionListings(
   console.log('[Exhibitions] createQuickExhibitionListings success', { created });
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);
+  scheduleExhibitionArtworkFingerprints(exhibitionId);
 
   await captureCrmContacts(
     user.id,

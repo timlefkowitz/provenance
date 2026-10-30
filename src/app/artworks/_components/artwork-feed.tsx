@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Clock, Heart, Plus, Search, Shuffle, SlidersHorizontal, Users, X } from 'lucide-react';
+import { Building2, Clock, Heart, Plus, ScanSearch, Search, Shuffle, SlidersHorizontal, Users, X } from 'lucide-react';
+import { FindByPhotoDialog } from './find-by-photo-dialog';
 import { FeedSlide } from './feed-slide';
 import type { FeedArtwork } from './artist-panel';
 import { flushSeen, markSeen, readLocalSeen } from '~/lib/feed/seen-artworks';
@@ -298,6 +299,20 @@ export function ArtworkFeed({
             </div>
           )}
         </div>
+
+        {/* Reverse image lookup */}
+        <FindByPhotoDialog
+          trigger={
+            <button
+              type="button"
+              className="p-2 rounded-full bg-parchment/60 backdrop-blur-sm text-ink/50 hover:text-wine transition-colors"
+              aria-label="Find an artwork by photo"
+              title="Find by photo"
+            >
+              <ScanSearch className="h-4 w-4" />
+            </button>
+          }
+        />
 
         {/* Search button / expanded search bar */}
         {searchOpen ? (

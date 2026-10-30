@@ -4,6 +4,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { createNotification } from '~/lib/notifications';
 import { updateProvenance } from '../edit/_actions/update-provenance';
 import { logger } from '~/lib/logger';
@@ -169,6 +170,7 @@ export async function respondToProvenanceUpdateRequest(
             });
             return { success: false, error: 'Failed to update image' };
           }
+          scheduleArtworkFingerprints([request.artworks.id]);
         }
 
         if (request.update_fields.created_at !== undefined) {

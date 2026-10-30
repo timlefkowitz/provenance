@@ -2,6 +2,7 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
+import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
@@ -76,6 +77,7 @@ export async function updateArtworkImage(
 
     revalidatePath('/artworks/my');
     revalidatePath(`/artworks/${artworkId}/certificate`);
+    scheduleArtworkFingerprints([artworkId]);
 
     console.log('[Collection] updateArtworkImage succeeded', { artworkId });
     return { success: true, imageUrl };

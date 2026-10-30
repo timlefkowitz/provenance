@@ -4,6 +4,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
 import { artworkImageUploader } from '~/lib/artwork-storage';
@@ -136,6 +137,7 @@ export async function editArtwork(
           });
           return { success: false, error: 'Failed to update image' };
         }
+        scheduleArtworkFingerprints([artworkId]);
       }
 
       // Update created_at directly if provided
