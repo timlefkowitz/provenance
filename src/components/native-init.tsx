@@ -1,9 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { isStandalonePWA } from '~/lib/app-mode';
+import {
+  canResumeLaunchRoute,
+  claimLaunchNavigation,
+  saveResumeRoute,
+  takeLaunchResumeRoute,
+} from '~/lib/capacitor/resume-route';
 import { NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
 import { handleNativeAuthCallbackUrl, nativeOAuthHandler } from '~/lib/capacitor/native-oauth';
 import { setNativeOAuthHandler } from '@kit/supabase/native-oauth';
@@ -21,6 +27,7 @@ type Props = {
  */
 export function NativeInit({ userId: _userId }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
 
   // ── Universal Links ───────────────────────────────────────────────────────
   // iOS opens the app (instead of Safari) for any tapped https://www.provenance.guru
@@ -44,6 +51,7 @@ export function NativeInit({ userId: _userId }: Props) {
       const handle = await App.addListener('appUrlOpen', async ({ url }) => {
         try {
           const target = new URL(url);
+          claimLaunchNavigation();
           if (await handleNativeAuthCallbackUrl(target)) return;
 
           const path = `${target.pathname}${target.search}`;
@@ -74,6 +82,58 @@ export function NativeInit({ userId: _userId }: Props) {
       setNativeOAuthHandler(null);
     };
   }, [router]);
+
+  // ── Resume where the user left off ────────────────────────────────────────
+  // iOS often reclaims the WebView while the user is in another app, so the
+  // next open is a cold launch onto the landing page. Remember the current
+  // route (on every navigation and when backgrounding, which also catches
+  // query-only changes) and reopen it on launch. The AppSplash overlay covers
+  // the brief landing page underneath.
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+
+    let cancelled = false;
+    let removeListener: (() => void) | null = null;
+    const launchPath = `${window.location.pathname}${window.location.search}`;
+    const resumePath = takeLaunchResumeRoute(launchPath);
+
+    async function setup() {
+      const { App } = await import('@capacitor/app');
+
+      if (resumePath) {
+        // A universal link launch wins over the remembered route.
+        const launch = await App.getLaunchUrl().catch(() => undefined);
+        const stillOnLaunchPage =
+          `${window.location.pathname}${window.location.search}` === launchPath;
+        // Not gated on `cancelled`: the restore is claimed once per launch,
+        // and this lives in the root layout, so only a dev double-mount
+        // cleans up before it resolves.
+        if (!launch?.url && canResumeLaunchRoute() && stillOnLaunchPage) {
+          router.replace(resumePath);
+        }
+      }
+
+      const handle = await App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive) saveResumeRoute(`${window.location.pathname}${window.location.search}`);
+      });
+      if (cancelled) handle.remove();
+      else removeListener = () => handle.remove();
+    }
+
+    void setup();
+
+    return () => {
+      cancelled = true;
+      removeListener?.();
+    };
+  }, [router]);
+
+  // Declared after the launch restore so its first run can't overwrite the
+  // remembered route before it is read.
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    saveResumeRoute(`${window.location.pathname}${window.location.search}`);
+  }, [pathname]);
 
   // ── Shell / PWA setup ─────────────────────────────────────────────────────
   useEffect(() => {

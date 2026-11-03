@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { claimLaunchNavigation } from '~/lib/capacitor/resume-route';
 import { registerPushDevice, unregisterPushDevice } from '~/app/_actions/push-devices';
 
 const TOKEN_KEY = 'pv_push_token';
@@ -63,6 +64,7 @@ export function PushNotificationsManager({ userId }: { userId: string | null }) 
         }),
         await PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
           const path = (notification.data as { path?: unknown } | undefined)?.path;
+          claimLaunchNavigation();
           router.push(typeof path === 'string' && path.startsWith('/') ? path : '/notifications');
         }),
       );

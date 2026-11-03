@@ -1,5 +1,6 @@
 import Capacitor
 import UIKit
+import WebKit
 
 /// Registers app-local plugins that `cap sync` doesn't know about.
 ///
@@ -8,10 +9,37 @@ import UIKit
 /// (which live in this package) are never listed there. Without explicit registration every `StoreKit.*` call
 /// from JS rejects with "plugin is not implemented on ios".
 public class ProvenanceBridgeViewController: CAPBridgeViewController {
+    /// The page showing when the app was last backgrounded.
+    private var backgroundedURL: URL?
+
     override public func capacitorDidLoad() {
         bridge?.registerPluginInstance(StoreKitPlugin())
         bridge?.registerPluginInstance(ScannerPlugin())
         bridge?.registerPluginInstance(BiometricPlugin())
         bridge?.registerPluginInstance(NativeAuthPlugin())
+
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(didEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(willEnterForeground),
+            name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+
+    @objc private func didEnterBackground() {
+        backgroundedURL = webView?.url
+    }
+
+    /// iOS can kill the WebView's content process while the app sits in the
+    /// background. Capacitor answers with `webView.reload()`, which does nothing
+    /// once the WebView has lost its URL, leaving a blank screen on return.
+    /// Reload the page the user left instead.
+    @objc private func willEnterForeground() {
+        guard let webView = webView, webView.url == nil else { return }
+        if let url = backgroundedURL {
+            webView.load(URLRequest(url: url))
+        } else {
+            loadWebView()
+        }
     }
 }
