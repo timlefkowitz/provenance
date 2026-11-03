@@ -87,6 +87,7 @@ export default async function EditExhibitionPage({
         exhibitionId={id}
         initialInvites={invites}
         uninvitedArtists={uninvitedArtists}
+        canUploadForArtists={ownerReceivesCertificateOfShow(exhibition.owner_role)}
       />
 
       <ExhibitionSubmissionsPanel

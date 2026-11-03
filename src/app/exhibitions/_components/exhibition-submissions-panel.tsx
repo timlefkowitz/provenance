@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Undo2, X } from 'lucide-react';
+import { Check, Undo2, Upload, X } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import {
@@ -16,6 +16,7 @@ import {
   type ReviewDecision,
 } from '../_helpers/exhibition-submission-status';
 import { Eyebrow } from '~/components/editorial-form';
+import { UploadForArtistDialog } from './upload-for-artist-dialog';
 
 function statusLabel(status: ExhibitionArtworkStatus): string {
   switch (status) {
@@ -134,10 +135,30 @@ export function ExhibitionSubmissionsPanel({
                     <p className="font-serif text-xs text-editorial-ink/50 truncate">{group.artistEmail}</p>
                   )}
                 </div>
-                <p className="font-serif text-xs text-editorial-ink/60">
-                  {counts.selected} of {group.submissions.length} selected
-                  {group.maxArtworks ? ` · limit ${group.maxArtworks}` : ''}
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="font-serif text-xs text-editorial-ink/60">
+                    {counts.selected} of {group.submissions.length} selected
+                    {group.maxArtworks ? ` · limit ${group.maxArtworks}` : ''}
+                  </p>
+                  {issuesCertificateOfShow && (
+                    <UploadForArtistDialog
+                      exhibitionId={exhibitionId}
+                      inviteId={group.inviteId}
+                      artistLabel={group.artistName}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="font-serif text-xs h-7 gap-1"
+                        >
+                          <Upload className="h-3 w-3" />
+                          Upload more
+                        </Button>
+                      }
+                    />
+                  )}
+                </div>
               </div>
 
               <ul className="divide-y divide-editorial-border/15">

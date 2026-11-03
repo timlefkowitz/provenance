@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, RefreshCw, Send, XCircle } from 'lucide-react';
+import { Mail, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import {
@@ -15,6 +15,7 @@ import {
   type ExhibitionArtistInviteRow,
 } from '../_actions/manage-exhibition-invites';
 import { Eyebrow } from '~/components/editorial-form';
+import { UploadForArtistDialog } from './upload-for-artist-dialog';
 
 const LIMIT_OPTIONS = Array.from({ length: 20 }, (_, i) => i + 1);
 
@@ -53,12 +54,15 @@ type ExhibitionInvitesPanelProps = {
   exhibitionId: string;
   initialInvites: ExhibitionArtistInviteRow[];
   uninvitedArtists: CreditedArtistInviteStatus[];
+  /** Gallery/institution shows: the team can upload works with a Certificate of Show. */
+  canUploadForArtists: boolean;
 };
 
 export function ExhibitionInvitesPanel({
   exhibitionId,
   initialInvites,
   uninvitedArtists,
+  canUploadForArtists,
 }: ExhibitionInvitesPanelProps) {
   const router = useRouter();
   const [invites, setInvites] = useState(initialInvites);
@@ -140,7 +144,7 @@ export function ExhibitionInvitesPanel({
     });
   };
 
-  if (invites.length === 0 && uninvitedArtists.length === 0) {
+  if (invites.length === 0 && uninvitedArtists.length === 0 && !canUploadForArtists) {
     return null;
   }
 
@@ -154,7 +158,25 @@ export function ExhibitionInvitesPanel({
         <p className="text-editorial-ink/55 font-serif text-sm mt-2 max-w-2xl">
           Track artists invited to upload work. Their submissions wait for your review
           below; nothing joins the exhibition until you select it.
+          {canUploadForArtists &&
+            ' Preparing the show yourself? Upload works for an artist and they get a Certificate of Show right away.'}
         </p>
+        {canUploadForArtists && (
+          <UploadForArtistDialog
+            exhibitionId={exhibitionId}
+            trigger={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 gap-1.5 font-serif text-xs h-8"
+              >
+                <Upload className="h-3 w-3" />
+                Upload works for an artist
+              </Button>
+            }
+          />
+        )}
       </div>
 
       {uninvitedArtists.length > 0 && (
@@ -266,6 +288,26 @@ export function ExhibitionInvitesPanel({
                         View COS
                       </Link>
                     </Button>
+                  )}
+
+                  {canUploadForArtists && invite.status !== 'cancelled' && (
+                    <UploadForArtistDialog
+                      exhibitionId={exhibitionId}
+                      inviteId={invite.id}
+                      artistLabel={invite.invitee_name || invite.invitee_email}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          className="font-serif text-xs h-8 gap-1"
+                        >
+                          <Upload className="h-3 w-3" />
+                          Upload works
+                        </Button>
+                      }
+                    />
                   )}
 
                   {isOpen && (

@@ -4,6 +4,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 
+import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { notifyOwnersOfExhibition } from '~/lib/collectors/notify-owners-of-exhibition';
 
 export async function addArtworkToExhibition(exhibitionId: string, artworkId: string) {
@@ -14,14 +15,14 @@ export async function addArtworkToExhibition(exhibitionId: string, artworkId: st
     throw new Error('Unauthorized');
   }
 
-  // Verify user owns this exhibition
+  // Owner or gallery team member (e.g. the registrar)
   const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
     .single();
 
-  if (!exhibition || exhibition.gallery_id !== user.id) {
+  if (!exhibition || !(await canManageExhibition(user.id, exhibition.gallery_id))) {
     throw new Error('Exhibition not found or access denied');
   }
 
@@ -45,7 +46,7 @@ export async function addArtworkToExhibition(exhibitionId: string, artworkId: st
 
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);
-  revalidatePath(`/artists/${user.id}`);
+  revalidatePath(`/artists/${exhibition.gallery_id}`);
 
   return { success: true };
 }
@@ -58,14 +59,14 @@ export async function removeArtworkFromExhibition(exhibitionId: string, artworkI
     throw new Error('Unauthorized');
   }
 
-  // Verify user owns this exhibition
+  // Owner or gallery team member (e.g. the registrar)
   const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
     .single();
 
-  if (!exhibition || exhibition.gallery_id !== user.id) {
+  if (!exhibition || !(await canManageExhibition(user.id, exhibition.gallery_id))) {
     throw new Error('Exhibition not found or access denied');
   }
 
@@ -83,7 +84,7 @@ export async function removeArtworkFromExhibition(exhibitionId: string, artworkI
 
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);
-  revalidatePath(`/artists/${user.id}`);
+  revalidatePath(`/artists/${exhibition.gallery_id}`);
 
   return { success: true };
 }
