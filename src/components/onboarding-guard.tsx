@@ -60,6 +60,18 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
       const role = (account?.public_data as any)?.role;
 
       if (!role) {
+        // Someone added to a gallery/institution team works under that team, so
+        // don't trap them in role selection before they can reach its shows.
+        const { data: membership } = await client
+          .from('gallery_members')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+        if (membership) {
+          return <>{children}</>;
+        }
+
         // Keep where they were headed (e.g. an open call) so onboarding can
         // send them back once they've picked a role.
         const next = sanitizeNextPath(pathname);

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { getExhibitionWithDetails } from '../../_actions/get-exhibitions';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { ExhibitionForm } from '../../_components/exhibition-form';
@@ -35,10 +34,9 @@ export default async function EditExhibitionPage({
     redirect('/auth/sign-in');
   }
 
-  // Verify user is a gallery
   const { data: account } = await client
     .from('accounts')
-    .select('public_data')
+    .select('id')
     .eq('id', user.id)
     .single();
 
@@ -46,18 +44,8 @@ export default async function EditExhibitionPage({
     redirect('/registry');
   }
 
-  const userRole = getUserRole(account.public_data as Record<string, unknown>);
-  const allowedRoles = new Set([
-    USER_ROLES.GALLERY,
-    USER_ROLES.INSTITUTION,
-    USER_ROLES.ARTIST,
-    USER_ROLES.COLLECTOR,
-  ]);
-  if (!userRole || !allowedRoles.has(userRole)) {
-    redirect('/registry');
-  }
-
-  // Get exhibition with details
+  // Access comes from owning the exhibition or being on its gallery's team,
+  // not from the viewer's own mode (team members may not have picked one).
   const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user.id });
 
   if (!exhibition || !(await canManageExhibition(user.id, exhibition.gallery_id))) {
