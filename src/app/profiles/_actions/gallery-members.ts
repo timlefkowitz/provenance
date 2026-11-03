@@ -141,6 +141,97 @@ export async function canManageExhibition(
 }
 
 /**
+ * Check if a user can delete an exhibition (gallery account owner, or an owner/admin
+ * team member of that account). Plain members can view, edit and publish but not delete.
+ */
+export async function canAdminExhibition(
+  userId: string,
+  exhibitionGalleryId: string
+): Promise<boolean> {
+  if (exhibitionGalleryId === userId) {
+    return true;
+  }
+  const client = asUntyped(getSupabaseServerClient());
+  const { data: profiles } = await client
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', exhibitionGalleryId)
+    .in('role', [...TEAM_PROFILE_ROLES]);
+
+  if (!profiles?.length) {
+    return false;
+  }
+
+  const { data: members } = await client
+    .from('gallery_members')
+    .select('id')
+    .eq('user_id', userId)
+    .in('gallery_profile_id', profiles.map((p: { id: string }) => p.id))
+    .in('role', ['owner', 'admin'])
+    .limit(1);
+
+  return !!members?.length;
+}
+
+/**
+ * Gallery / institution accounts this user belongs to as a team member
+ * (excluding their own account). accountId matches exhibitions.gallery_id;
+ * isAdmin is true when the user is an owner/admin on any of that account's profiles.
+ */
+export async function getTeamGalleriesForUser(
+  userId: string
+): Promise<Array<{ accountId: string; name: string; isAdmin: boolean }>> {
+  const client = asUntyped(getSupabaseServerClient());
+
+  const { data: memberships, error: memberErr } = await client
+    .from('gallery_members')
+    .select('gallery_profile_id, role')
+    .eq('user_id', userId);
+
+  if (memberErr) {
+    logger.error('get_team_galleries_memberships_failed', { userId, message: memberErr.message });
+    return [];
+  }
+
+  const adminProfileIds = new Set<string>();
+  const profileIds: string[] = [];
+  for (const m of (memberships || []) as Array<{ gallery_profile_id: string | null; role: string }>) {
+    if (!m.gallery_profile_id) continue;
+    profileIds.push(m.gallery_profile_id);
+    if (m.role === 'owner' || m.role === 'admin') adminProfileIds.add(m.gallery_profile_id);
+  }
+
+  if (profileIds.length === 0) {
+    return [];
+  }
+
+  const { data: profiles, error: profileErr } = await client
+    .from('user_profiles')
+    .select('id, user_id, name')
+    .in('id', profileIds)
+    .in('role', [...TEAM_PROFILE_ROLES]);
+
+  if (profileErr) {
+    logger.error('get_team_galleries_profiles_failed', { userId, message: profileErr.message });
+    return [];
+  }
+
+  const byAccount = new Map<string, { accountId: string; name: string; isAdmin: boolean }>();
+  for (const p of (profiles || []) as Array<{ id: string; user_id: string; name: string | null }>) {
+    if (!p.user_id || p.user_id === userId) continue;
+    const isAdmin = adminProfileIds.has(p.id);
+    const existing = byAccount.get(p.user_id);
+    if (existing) {
+      existing.isAdmin ||= isAdmin;
+    } else {
+      byAccount.set(p.user_id, { accountId: p.user_id, name: p.name || 'Gallery', isAdmin });
+    }
+  }
+
+  return Array.from(byAccount.values());
+}
+
+/**
  * Get all members of a gallery profile
  */
 export async function getGalleryMembers(

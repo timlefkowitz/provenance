@@ -55,10 +55,16 @@ function formatRange(start: string, end: string | null) {
 export function ExhibitionsList({
   exhibitions,
   newExhibitionHref = '/exhibitions/new',
+  showCreate = true,
+  canDelete = true,
 }: {
   exhibitions: Exhibition[];
   galleryId: string;
   newExhibitionHref?: string;
+  /** Hide "New Exhibition" / empty-state CTA (e.g. team exhibitions of another gallery). */
+  showCreate?: boolean;
+  /** Gallery owner and team owners/admins can delete; plain members get view/edit/publish. */
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -123,16 +129,18 @@ export function ExhibitionsList({
         <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif">
           {exhibitions.length} Exhibition{exhibitions.length !== 1 ? 's' : ''}
         </p>
-        <Button
-          asChild
-          size="sm"
-          className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-        >
-          <Link href={newExhibitionHref}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Exhibition
-          </Link>
-        </Button>
+        {showCreate && (
+          <Button
+            asChild
+            size="sm"
+            className="bg-wine text-parchment hover:bg-wine/90 font-serif"
+          >
+            <Link href={newExhibitionHref}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              New Exhibition
+            </Link>
+          </Button>
+        )}
       </div>
 
       {exhibitions.length === 0 ? (
@@ -276,6 +284,7 @@ export function ExhibitionsList({
                             <Edit className="h-4 w-4" />
                           </Link>
                         </Button>
+                        {canDelete && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -306,6 +315,7 @@ export function ExhibitionsList({
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                        )}
                       </div>
                     </div>
                   </div>

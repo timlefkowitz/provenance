@@ -12,6 +12,7 @@ import {
 } from './_helpers/exhibition-owner-roles';
 import { isInstitutionAccount } from '~/lib/institution-account';
 import { SiteLegalFooter } from '~/components/legal/site-legal-footer';
+import { getTeamGalleriesForUser } from '~/app/profiles/_actions/gallery-members';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
@@ -46,9 +47,22 @@ export default async function ExhibitionsPage({
   const ownerRoleOptions = getExhibitionOwnerRoleOptions(userRole, institutionLocked);
   const ownerRole = defaultExhibitionOwnerRole(userRole, requestedOwnerRole, institutionLocked);
 
-  const exhibitions = await getExhibitionsForGallery(user.id, {
-    ownerRoles: [ownerRole],
-  });
+  const [exhibitions, teamGalleries] = await Promise.all([
+    getExhibitionsForGallery(user.id, { ownerRoles: [ownerRole] }),
+    getTeamGalleriesForUser(user.id),
+  ]);
+
+  // Team members see every exhibition (drafts included) of the galleries they belong to.
+  const teamExhibitions = (
+    await Promise.all(
+      teamGalleries.map(async (gallery) => ({
+        gallery,
+        exhibitions: await getExhibitionsForGallery(gallery.accountId, {
+          ownerRoles: ['gallery', 'institution'],
+        }),
+      })),
+    )
+  ).filter((group) => group.exhibitions.length > 0);
 
   return (
     <div className="min-h-screen">
@@ -71,6 +85,22 @@ export default async function ExhibitionsPage({
           galleryId={user.id}
           newExhibitionHref={`/exhibitions/new?as=${ownerRole}`}
         />
+        {teamExhibitions.map(({ gallery, exhibitions: galleryExhibitions }) => (
+          <section key={gallery.accountId} className="mt-20">
+            <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
+              Team exhibitions
+            </p>
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-ink tracking-tight mb-8">
+              {gallery.name}
+            </h2>
+            <ExhibitionsList
+              exhibitions={galleryExhibitions}
+              galleryId={gallery.accountId}
+              showCreate={false}
+              canDelete={gallery.isAdmin}
+            />
+          </section>
+        ))}
       </div>
       <SiteLegalFooter />
     </div>

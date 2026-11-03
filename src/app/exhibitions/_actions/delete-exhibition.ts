@@ -3,6 +3,7 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
+import { canAdminExhibition } from '~/app/profiles/_actions/gallery-members';
 
 export async function deleteExhibition(exhibitionId: string) {
   const client = getSupabaseServerClient();
@@ -12,14 +13,14 @@ export async function deleteExhibition(exhibitionId: string) {
     throw new Error('Unauthorized');
   }
 
-  // Verify user owns this exhibition
+  // Gallery owner, or an owner/admin on the gallery's team
   const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
     .select('gallery_id')
     .eq('id', exhibitionId)
     .single();
 
-  if (!exhibition || exhibition.gallery_id !== user.id) {
+  if (!exhibition || !(await canAdminExhibition(user.id, exhibition.gallery_id))) {
     throw new Error('Exhibition not found or access denied');
   }
 
@@ -35,7 +36,7 @@ export async function deleteExhibition(exhibitionId: string) {
   }
 
   revalidatePath('/exhibitions');
-  revalidatePath(`/artists/${user.id}`);
+  revalidatePath(`/artists/${exhibition.gallery_id}`);
 
   return { success: true };
 }
