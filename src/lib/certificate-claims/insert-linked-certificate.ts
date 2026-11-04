@@ -111,6 +111,47 @@ export async function insertLinkedCertificateOfOwnership(
 }
 
 /**
+ * Credits the claiming artist on every show the source certificate is selected
+ * in. The new COA isn't in exhibition_artworks (the gallery's CoS is), and a
+ * work uploaded before the artist joined was credited to a placeholder
+ * account, so without this the show never reaches the artist's profile.
+ */
+async function creditArtistOnSourceExhibitions(
+  adminClient: SupabaseClient,
+  source: SourceArtworkRow,
+  artistId: string,
+): Promise<void> {
+  const sourceId = source.id as string;
+  const exhibitionIds = new Set<string>();
+
+  const { data: links, error: linksError } = await asUntyped(adminClient)
+    .from('exhibition_artworks')
+    .select('exhibition_id')
+    .eq('artwork_id', sourceId)
+    .eq('status', 'selected');
+  if (linksError) {
+    logger.error('insert_artist_coa_exhibition_links_failed', { sourceId, error: linksError });
+  }
+  for (const row of links ?? []) {
+    if (row.exhibition_id) exhibitionIds.add(row.exhibition_id as string);
+  }
+
+  const metadataExhibitionId = (source.metadata as Record<string, unknown> | null)?.exhibition_id;
+  if (typeof metadataExhibitionId === 'string' && metadataExhibitionId) {
+    exhibitionIds.add(metadataExhibitionId);
+  }
+
+  for (const exhibitionId of exhibitionIds) {
+    const { error } = await asUntyped(adminClient)
+      .from('exhibition_artists')
+      .insert({ exhibition_id: exhibitionId, artist_account_id: artistId });
+    if (error && error.code !== '23505') {
+      logger.error('insert_artist_coa_exhibition_credit_failed', { exhibitionId, error });
+    }
+  }
+}
+
+/**
  * Artist's Certificate of Authenticity linked to show or ownership source (after owner approved claim).
  */
 export async function insertArtistCoaFromSourceCertificate(
@@ -181,6 +222,7 @@ export async function insertArtistCoaFromSourceCertificate(
   }
 
   const outId = newArtwork.id as string;
+  await creditArtistOnSourceExhibitions(adminClient, source, artistId);
   try {
     const actorName = await getAccountDisplayName(adminClient, artistId);
     await propagateProvenanceAfterLinkedCertificate(adminClient, {

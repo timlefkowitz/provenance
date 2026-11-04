@@ -4,7 +4,9 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
+import { createNotification } from '~/lib/notifications';
 import { generateCertificateNumber } from '~/lib/certificate-claims/insert-linked-certificate';
 import {
   CERTIFICATE_TYPES,
@@ -18,6 +20,58 @@ import {
   getExhibitionPosterContext,
 } from './gallery-posting-context';
 import { isEligibleForShowCertificate } from '../_helpers/gallery-posting-helpers';
+
+/**
+ * Credits the artist on the show and, while the certificate still needs their
+ * claim, sends the claim request (the notification's Claim button issues
+ * their linked Certificate of Authenticity).
+ */
+async function notifyCreditedArtist(params: {
+  exhibitionId: string;
+  artworkId: string;
+  title: string;
+  artistAccountId: string;
+  galleryAccountId: string;
+  certificateNumber: string | null;
+  artistName: string;
+  requestClaim: boolean;
+}): Promise<void> {
+  const adminClient = asUntyped(getSupabaseServerAdminClient());
+
+  const { error: creditError } = await adminClient.from('exhibition_artists').insert({
+    exhibition_id: params.exhibitionId,
+    artist_account_id: params.artistAccountId,
+  });
+  if (creditError && creditError.code !== '23505') {
+    console.error('[Exhibitions] publishExhibitionListing artist credit failed', creditError);
+  }
+
+  if (!params.requestClaim) return;
+
+  const { data: gallery } = await adminClient
+    .from('accounts')
+    .select('name')
+    .eq('id', params.galleryAccountId)
+    .maybeSingle();
+
+  try {
+    await createNotification({
+      userId: params.artistAccountId,
+      type: 'certificate_claim_request',
+      title: `Certificate Claim Request: ${params.title}`,
+      message: `${(gallery?.name as string | null) || 'A gallery'} has posted an artwork "${params.title}" and is requesting you to claim the certificate.`,
+      artworkId: params.artworkId,
+      relatedUserId: params.galleryAccountId,
+      metadata: {
+        certificateNumber: params.certificateNumber,
+        artistName: params.artistName,
+        exhibition_id: params.exhibitionId,
+      },
+    });
+  } catch (notifError) {
+    console.error('[Exhibitions] publishExhibitionListing artist notification failed', notifError);
+  }
+}
 
 export type PublishExhibitionListingResult =
   | { success: true }
@@ -69,7 +123,7 @@ export async function publishExhibitionListing(params: {
   const { data: artwork, error: artErr } = await asUntyped(client)
     .from('artworks')
     .select(
-      'id, account_id, title, image_url, status, certificate_number, gallery_profile_id, artist_name, artist_account_id, artist_profile_id',
+      'id, account_id, title, image_url, status, certificate_number, certificate_status, claimed_by_artist_at, gallery_profile_id, artist_name, artist_account_id, artist_profile_id',
     )
     .eq('id', artworkId)
     .maybeSingle();
@@ -136,8 +190,13 @@ export async function publishExhibitionListing(params: {
   let artistProfileId = (artwork.artist_profile_id as string | null) ?? null;
   const artistNameRaw = ((artwork.artist_name as string) || '').trim();
 
-  const certificateStatus = getInitialCertificateStatus(posterContext.userRole);
-  if (posterRequiresArtistClaim(posterContext.userRole)) {
+  // An artist who already claimed this work keeps it verified.
+  const alreadyClaimed =
+    Boolean(artwork.claimed_by_artist_at) && artwork.certificate_status === 'verified';
+  const certificateStatus = alreadyClaimed
+    ? 'verified'
+    : getInitialCertificateStatus(posterContext.userRole);
+  if (!alreadyClaimed && posterRequiresArtistClaim(posterContext.userRole)) {
     if (artistNameRaw) {
       const ensured = await ensureArtistProfileForCertificate({
         artistName: artistNameRaw,
@@ -179,6 +238,20 @@ export async function publishExhibitionListing(params: {
   }
 
   console.log('[Exhibitions] publishExhibitionListing success', { artworkId });
+
+  if (artistAccountId && artistAccountId !== user.id) {
+    await notifyCreditedArtist({
+      exhibitionId,
+      artworkId,
+      title,
+      artistAccountId,
+      galleryAccountId: user.id,
+      certificateNumber,
+      artistName: artistNameRaw,
+      requestClaim: certificateStatus === 'pending_artist_claim',
+    });
+    revalidatePath(`/artists/${artistAccountId}`);
+  }
 
   revalidatePath('/exhibitions');
   revalidatePath(`/exhibitions/${exhibitionId}`);
