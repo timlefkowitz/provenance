@@ -33,6 +33,12 @@ export type ExhibitionWithDetails = Exhibition & {
     description: string | null;
     image_url: string | null;
     dimensions: string | null;
+    medium: string | null;
+    creation_date: string | null;
+    edition: string | null;
+    certificate_number: string | null;
+    /** Credit line — only populated when the owner marked it public. */
+    credit_line: string | null;
     listPriceDisplay: string | null;
     status: string;
   }>;
@@ -295,6 +301,12 @@ export async function getExhibitionWithDetails(
         status,
         is_public,
         dimensions,
+        medium,
+        creation_date,
+        edition,
+        certificate_number,
+        owned_by,
+        owned_by_is_public,
         metadata
       `)
       .in('id', linkedArtworkIds);
@@ -388,6 +400,14 @@ export async function getExhibitionWithDetails(
         description: (a.description as string | null) ?? null,
         image_url: a.image_url as string | null,
         dimensions: (a.dimensions as string | null) ?? null,
+        medium: (a.medium as string | null) ?? null,
+        creation_date: (a.creation_date as string | null) ?? null,
+        edition: (a.edition as string | null) ?? null,
+        certificate_number: (a.certificate_number as string | null) ?? null,
+        credit_line:
+          a.owned_by_is_public === true && typeof a.owned_by === 'string' && a.owned_by.trim()
+            ? a.owned_by.trim()
+            : null,
         listPriceDisplay: listPrice,
         status: a.status as string,
       };

@@ -14,10 +14,12 @@ import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
+import { ExhibitionPrintMenu } from '../_components/exhibition-print-menu';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 import { EditorialMarkdown } from '~/components/editorial-markdown';
 import { stripMarkdown } from '~/lib/strip-markdown';
+import { endOfDateOnly, parseDateOnly } from '~/lib/parse-date-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,9 +45,9 @@ export async function generateMetadata({
   const dateRange = (() => {
     if (!meta.startDate) return null;
     const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
-    const start = new Date(meta.startDate).toLocaleDateString('en-US', opts);
+    const start = parseDateOnly(meta.startDate).toLocaleDateString('en-US', opts);
     if (!meta.endDate) return start;
-    const end = new Date(meta.endDate).toLocaleDateString('en-US', opts);
+    const end = parseDateOnly(meta.endDate).toLocaleDateString('en-US', opts);
     return `${start} – ${end}`;
   })();
 
@@ -83,8 +85,8 @@ export async function generateMetadata({
 
 function getStatus(startDate: string, endDate: string | null): 'upcoming' | 'ongoing' | 'past' {
   const now = new Date();
-  const start = new Date(startDate);
-  const end = endDate ? new Date(endDate) : null;
+  const start = parseDateOnly(startDate);
+  const end = endDate ? endOfDateOnly(endDate) : null;
   if (start > now) return 'upcoming';
   if (!end || end >= now) return 'ongoing';
   return 'past';
@@ -98,8 +100,8 @@ const STATUS_STYLES = {
 
 function formatRange(start: string, end: string | null) {
   const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
-  const s = new Date(start);
-  const e = end ? new Date(end) : null;
+  const s = parseDateOnly(start);
+  const e = end ? parseDateOnly(end) : null;
   if (!e) return s.toLocaleDateString('en-US', opts);
   const sameYear = s.getFullYear() === e.getFullYear();
   const startStr = sameYear
@@ -132,6 +134,7 @@ export default async function ExhibitionPage({
   }
 
   const memories = await getExhibitionMemories(id);
+  const printOwnerName = isOwner ? ((await getExhibitionShareMeta(id))?.ownerName ?? null) : null;
 
   // Resolve back link
   let backLink = '/exhibitions';
@@ -219,6 +222,8 @@ export default async function ExhibitionPage({
               </span>
             </div>
             {isOwner && (
+              <div className="flex items-center gap-1">
+              <ExhibitionPrintMenu exhibition={exhibition} ownerName={printOwnerName} />
               <Button
                 asChild
                 variant="ghost"
@@ -230,6 +235,7 @@ export default async function ExhibitionPage({
                   Edit
                 </Link>
               </Button>
+              </div>
             )}
             {!isOwner && (
               <ContentSafetyMenu
