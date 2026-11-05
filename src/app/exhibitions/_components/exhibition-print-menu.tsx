@@ -21,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { toast } from '@kit/ui/sonner';
 import { EditorialDialogContent } from '~/components/editorial-dialog';
 import { openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
@@ -36,6 +37,8 @@ import {
   DEFAULT_LABEL_OPTIONS,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
+import { updateExhibitionQrStyle } from '../_actions/update-exhibition-qr-style';
+import { composeStyledQr, readQrStyle, type QrStyleSettings } from '../_helpers/qr-style';
 import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
 
 const LABEL_OPTIONS_KEY = 'provenance.exhibition.wallLabelOptions';
@@ -109,6 +112,21 @@ export function ExhibitionPrintMenu({
   );
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  // The show's QR style (exhibitions.metadata.qr), used by the poster,
+  // downloads, artwork QR sheet and checklist. Wall labels stay plain.
+  const [qrStyle, setQrStyle] = useState<QrStyleSettings>(() =>
+    readQrStyle((exhibition as { metadata?: unknown }).metadata),
+  );
+
+  const saveQrStyle = async (next: QrStyleSettings) => {
+    const previous = qrStyle;
+    setQrStyle(next);
+    const result = await updateExhibitionQrStyle(exhibition.id, next);
+    if (!result.success) {
+      setQrStyle(previous);
+      toast.error(result.error);
+    }
+  };
   const [options, setOptions] = useState<WallLabelOptions>(DEFAULT_LABEL_OPTIONS);
   const [artistBios, setArtistBios] = useState<ExhibitionArtistBio[] | null>(null);
   const [biosLoading, setBiosLoading] = useState(false);
@@ -148,10 +166,16 @@ export function ExhibitionPrintMenu({
   const readQr = (key: string): string =>
     qrRef.current?.querySelector(`[data-qr="${key}"]`)?.innerHTML ?? '';
 
+  /** A hidden level-H code with the show's QR style applied. */
+  const readStyled = (key: string): string => {
+    const base = readQr(key);
+    return base ? composeStyledQr(base, qrStyle) : '';
+  };
+
   const handleExhibitionQr = () => {
     console.log('[Exhibitions] Print exhibition QR', { exhibitionId: exhibition.id });
     openPrintWindow(
-      buildExhibitionQrHtml(exhibition, ownerName, readQr('exhibition'), exhibitionUrl),
+      buildExhibitionQrHtml(exhibition, ownerName, readStyled('exhibition'), exhibitionUrl),
       820,
       900,
     );
@@ -159,7 +183,7 @@ export function ExhibitionPrintMenu({
 
   const handleChecklist = () => {
     console.log('[Exhibitions] Print checklist', { exhibitionId: exhibition.id });
-    openPrintWindow(buildChecklistHtml(exhibition, ownerName, readQr('exhibition')));
+    openPrintWindow(buildChecklistHtml(exhibition, ownerName, readStyled('exhibition')));
   };
 
   const handleArtworkQrSheet = () => {
@@ -167,7 +191,7 @@ export function ExhibitionPrintMenu({
       exhibitionId: exhibition.id,
       count: exhibition.artworks.length,
     });
-    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readQr(a.id)]));
+    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readStyled(`sheet-${a.id}`)]));
     openPrintWindow(buildArtworkQrSheetHtml(exhibition, qrSvgs), 860, 760);
   };
 
@@ -202,8 +226,23 @@ export function ExhibitionPrintMenu({
           style={{ position: 'fixed', left: -9999, top: -9999, pointerEvents: 'none', visibility: 'hidden' }}
         >
           <div data-qr="exhibition">
-            <QRCodeSVG value={exhibitionUrl} size={512} level="M" marginSize={1} />
+            {/* Level H, no margin, black on white: what composeStyledQr expects. */}
+            <QRCodeSVG value={exhibitionUrl} size={512} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
           </div>
+          {/* Artwork QR sheet: styled like the exhibition code. */}
+          {exhibition.artworks.map((a) => (
+            <div key={`sheet-${a.id}`} data-qr={`sheet-${a.id}`}>
+              <QRCodeSVG
+                value={`${origin}/artworks/${a.id}/certificate`}
+                size={256}
+                level="H"
+                marginSize={0}
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+              />
+            </div>
+          ))}
+          {/* Wall labels: plain level M, readable at small sizes. */}
           {exhibition.artworks.map((a) => (
             <div key={a.id} data-qr={a.id}>
               <QRCodeSVG
@@ -275,6 +314,8 @@ export function ExhibitionPrintMenu({
             exhibitionId={exhibition.id}
             exhibitionTitle={exhibition.title}
             exhibitionUrl={exhibitionUrl}
+            qrStyle={qrStyle}
+            onQrStyleChange={(next) => void saveQrStyle(next)}
             onPrint={handleExhibitionQr}
           />
         )}
