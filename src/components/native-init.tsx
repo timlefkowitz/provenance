@@ -12,7 +12,13 @@ import {
 } from '~/lib/capacitor/resume-route';
 import { NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
 import { handleNativeAuthCallbackUrl, nativeOAuthHandler } from '~/lib/capacitor/native-oauth';
-import { claimIncomingLink, incomingLinkPath } from '~/lib/capacitor/incoming-link';
+import {
+  announceLaunchNavigation,
+  claimIncomingLink,
+  incomingLinkPath,
+  markLaunchLinkFollowed,
+  takeRecentLaunchFollow,
+} from '~/lib/capacitor/incoming-link';
 import { setNativeOAuthHandler } from '@kit/supabase/native-oauth';
 import { StoreKit } from '~/lib/capacitor/storekit';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
@@ -52,10 +58,6 @@ export function NativeInit({ userId: _userId }: Props) {
     setNativeOAuthHandler(nativeOAuthHandler);
 
     const currentPath = () => `${window.location.pathname}${window.location.search}`;
-    // Links the launch-URL check below just followed, so the same link's
-    // appUrlOpen (newer native builds deliver both) doesn't navigate twice —
-    // which would replay a one-time /auth/* token.
-    const followedAtLaunch = new Map<string, number>();
 
     const goTo = (path: string) => {
       claimLaunchNavigation();
@@ -78,12 +80,12 @@ export function NativeInit({ userId: _userId }: Props) {
 
           const path = `${target.pathname}${target.search}`;
           // An explicit open always navigates (the same QR can be scanned
-          // twice), unless the launch-URL check below just took us there.
-          const followedAt = followedAtLaunch.get(url);
-          followedAtLaunch.delete(url);
-          if (followedAt !== undefined && Date.now() - followedAt < 10_000) return;
+          // twice), unless the launch check (head script or below) just took
+          // us there — the same link's appUrlOpen must not replay it.
+          if (takeRecentLaunchFollow(url)) return;
           claimIncomingLink(url);
           console.log('[NativeInit] appUrlOpen', { path });
+          announceLaunchNavigation(path);
           goTo(path);
         } catch (err) {
           console.error('[NativeInit] appUrlOpen handling failed', { url, err });
@@ -106,7 +108,8 @@ export function NativeInit({ userId: _userId }: Props) {
         if (!claimIncomingLink(launch.url)) return;
         if (currentPath() === path) return;
         console.log('[NativeInit] following launch URL', { path });
-        followedAtLaunch.set(launch.url, Date.now());
+        markLaunchLinkFollowed(launch.url);
+        announceLaunchNavigation(path);
         goTo(path);
       } catch (err) {
         console.error('[NativeInit] launch URL check failed', err);

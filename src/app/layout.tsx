@@ -27,6 +27,7 @@ import { PushNotificationsManager } from "~/components/push-notifications-manage
 import { AppLock } from "~/components/app-lock";
 import { NativeTabBar } from "~/components/native-tab-bar";
 import { AppSplash } from "~/components/app-splash";
+import { LAUNCH_LINK_SCRIPT } from '~/lib/capacitor/incoming-link';
 import { AppLinkInterceptor } from "~/components/app-link-interceptor";
 import { createI18nServerInstance } from "~/lib/i18n/i18n.server";
 import { getPublicSiteOrigin } from "~/lib/seo/public-site-origin";
@@ -180,6 +181,12 @@ export default async function RootLayout({
       className={cn(currentTheme)}
       suppressHydrationWarning
     >
+      {isNativeApp && (
+        <head>
+          {/* Opens a scanned / tapped link before the landing page starts up. */}
+          <script nonce={nonce} dangerouslySetInnerHTML={{ __html: LAUNCH_LINK_SCRIPT }} />
+        </head>
+      )}
       <GoogleTagManager nonce={nonce} />
       <body
         className={`${cinzel.variable} ${cormorant.variable} ${caslon.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${interTight.variable} antialiased overflow-x-hidden`}

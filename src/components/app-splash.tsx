@@ -1,8 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { isAppMode } from '~/lib/app-mode';
+import { LAUNCH_NAVIGATION_EVENT, LAUNCH_TARGET_KEY } from '~/lib/capacitor/incoming-link';
+
+/** Never hold the splash longer than this waiting for a launch link. */
+const MAX_LINK_HOLD_MS = 10_000;
+
+/** Whether the head script just replaced the landing page with this launch link. */
+function arrivedViaLaunchLink(): boolean {
+  try {
+    const target = sessionStorage.getItem(LAUNCH_TARGET_KEY);
+    if (!target) return false;
+    sessionStorage.removeItem(LAUNCH_TARGET_KEY);
+    return target === `${window.location.pathname}${window.location.search}`;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Full-screen branded opening animation shown on every cold launch in app mode
@@ -17,20 +34,47 @@ import { isAppMode } from '~/lib/app-mode';
  */
 export function AppSplash() {
   const [visible, setVisible] = useState(false);
-  const [done, setDone] = useState(false);
+  const [minElapsed, setMinElapsed] = useState(false);
+  /** Path a scanned / tapped launch link is navigating to; hold until it renders. */
+  const [linkTarget, setLinkTarget] = useState<string | null>(null);
+  const [linkTimedOut, setLinkTimedOut] = useState(false);
+  const pathname = usePathname();
   const prefersReduced = useReducedMotion();
 
   useEffect(() => {
     if (!isAppMode()) return;
+    // The head script already opened the scanned page and it is on screen —
+    // don't cover it with the opening animation.
+    if (arrivedViaLaunchLink()) return;
 
     // Show the splash immediately on mount.
     setVisible(true);
 
     // How long to hold the branded screen before dismissing.
     const holdMs = prefersReduced ? 500 : 2100;
-    const timer = setTimeout(() => setDone(true), holdMs);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(() => setMinElapsed(true), holdMs);
+
+    // A launch link (QR scan, tapped link) is being opened: stay up until that
+    // page has rendered so the landing feed never flashes in between.
+    let capTimer: ReturnType<typeof setTimeout> | undefined;
+    const onLaunchNavigation = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail !== 'string') return;
+      setLinkTarget(detail.split('?')[0] ?? detail);
+      clearTimeout(capTimer);
+      capTimer = setTimeout(() => setLinkTimedOut(true), MAX_LINK_HOLD_MS);
+    };
+    window.addEventListener(LAUNCH_NAVIGATION_EVENT, onLaunchNavigation);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(capTimer);
+      window.removeEventListener(LAUNCH_NAVIGATION_EVENT, onLaunchNavigation);
+    };
   }, [prefersReduced]);
+
+  const waitingForLink = linkTarget !== null && pathname !== linkTarget && !linkTimedOut;
+  const done = minElapsed && !waitingForLink;
 
   // Not in app mode — render nothing at all.
   if (!visible) return null;
