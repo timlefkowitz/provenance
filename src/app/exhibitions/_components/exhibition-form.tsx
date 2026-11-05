@@ -13,8 +13,10 @@ import { createQuickExhibitionListings } from '../_actions/create-exhibition-lis
 import { ParticipantSelector, type ExhibitionArtistInvite } from './participant-selector';
 import { ChecklistImport, type ChecklistRow } from './checklist-import';
 import type { ExhibitionChecklist } from '../_helpers/checklist-parsing';
-import type { ExhibitionOwnerRole } from '../_helpers/exhibition-owner-roles';
-import { getRoleLabel } from '~/lib/user-roles';
+import {
+  getExhibitionOwnerLabel,
+  type ExhibitionOwnerRole,
+} from '../_helpers/exhibition-owner-roles';
 import { cn } from '@kit/ui/utils';
 import {
   BUTTON_PRIMARY,
@@ -35,7 +37,7 @@ type Artist = {
 const OWNER_ROLE_HINTS: Partial<Record<ExhibitionOwnerRole, string>> = {
   gallery: 'Listed under your gallery. Invited artists get a Certificate of Authenticity and your gallery gets a linked Certificate of Show.',
   institution: 'Listed under your institution. Invited artists get a Certificate of Authenticity and your institution gets a linked Certificate of Show.',
-  artist: 'Listed on your artist profile, separate from any gallery you run. Invited artists keep their own Certificates of Authenticity.',
+  artist: 'A show you curate, listed on your artist profile and separate from any gallery you run. Invited artists keep their own Certificates of Authenticity.',
 };
 
 export function ExhibitionForm({
@@ -196,7 +198,7 @@ export function ExhibitionForm({
                   role === ownerRole ? 'bg-editorial-ink text-bone' : 'text-editorial-ink/60 hover:text-editorial-ink',
                 )}
               >
-                {getRoleLabel(role)}
+                {getExhibitionOwnerLabel(role)}
               </button>
             ))}
           </div>

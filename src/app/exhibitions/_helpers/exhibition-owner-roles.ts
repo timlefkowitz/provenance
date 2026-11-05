@@ -1,4 +1,4 @@
-import { USER_ROLES, type UserRole } from '~/lib/user-roles';
+import { getRoleLabel, USER_ROLES, type UserRole } from '~/lib/user-roles';
 
 export type ExhibitionOwnerRole = 'artist' | 'collector' | 'gallery' | 'institution';
 
@@ -51,4 +51,13 @@ export function defaultExhibitionOwnerRole(
 /** Whether invited artists' submissions should also produce a linked Certificate of Show. */
 export function ownerReceivesCertificateOfShow(ownerRole: string | null | undefined): boolean {
   return ownerRole !== USER_ROLES.ARTIST && ownerRole !== USER_ROLES.COLLECTOR;
+}
+
+/**
+ * Display label for an exhibition owner mode. Artist-owned shows are shown as
+ * "Curator": the account is curating its own show, separate from its gallery.
+ * The stored role stays `artist`.
+ */
+export function getExhibitionOwnerLabel(role: ExhibitionOwnerRole): string {
+  return role === USER_ROLES.ARTIST ? 'Curator' : getRoleLabel(role);
 }

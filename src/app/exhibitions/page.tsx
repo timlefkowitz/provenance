@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { cn } from '@kit/ui/utils';
-import { getRoleLabel, getUserRole } from '~/lib/user-roles';
+import { getUserRole } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from './_actions/get-exhibitions';
 import { ExhibitionsList } from './_components/exhibitions-list';
 import { getExhibitionCounts } from './_helpers/get-exhibition-counts';
 import {
   defaultExhibitionOwnerRole,
+  getExhibitionOwnerLabel,
   getExhibitionOwnerRoleOptions,
   type ExhibitionOwnerRole,
 } from './_helpers/exhibition-owner-roles';
@@ -75,7 +76,7 @@ export default async function ExhibitionsPage({
       <div className="border-b border-wine/15">
         <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14">
           <p className="text-[11px] uppercase tracking-widest text-wine/50 font-serif mb-2">
-            {getRoleLabel(ownerRole)}
+            {getExhibitionOwnerLabel(ownerRole)}
           </p>
           <h1 className="text-4xl md:text-5xl font-display font-bold text-ink tracking-tight">
             Exhibitions
@@ -139,7 +140,7 @@ function OwnerRoleTabs({
               : 'text-ink/60 hover:text-ink',
           )}
         >
-          As {getRoleLabel(role).toLowerCase()}
+          As {getExhibitionOwnerLabel(role).toLowerCase()}
         </Link>
       ))}
     </nav>
