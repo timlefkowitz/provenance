@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Check, Copy, Download, ImagePlus, Printer } from 'lucide-react';
 import { Button } from '@kit/ui/button';
@@ -8,10 +8,16 @@ import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 import { EditorialDialogContent } from '~/components/editorial-dialog';
+import { artFromImage, artFromWords } from '../_helpers/qr-art-client';
+import { QR_LOGO_DATA_URI } from '../_helpers/qr-logo';
 import {
   centreImagePlacement,
+  cleanQrWords,
   composeStyledQr,
+  DEFAULT_QR_WORDS,
+  MAX_QR_WORDS,
   QR_STYLES,
+  QR_WORD_COLOURS,
   type QrStyleId,
   type QrStyleSettings,
 } from '../_helpers/qr-style';
@@ -161,11 +167,83 @@ export function ExhibitionQrDialogContent({
   const fileRef = useRef<HTMLInputElement>(null);
   const baseName = `${slugify(exhibitionTitle)}-qr`;
 
-  const styled = (style: QrStyleId) => composeStyledQr(baseSvg, { ...qrStyle, style });
+  // Art for "Picture in code" / "Words in code" before one is saved, so the
+  // picker can preview them: the uploaded image (or Photon Labs) and the words.
+  const wordsColour = qrStyle.wordsColour ?? QR_WORD_COLOURS[0].id;
+  const [wordsDraft, setWordsDraft] = useState(qrStyle.words ?? DEFAULT_QR_WORDS);
+  const [previewPicture, setPreviewPicture] = useState<string | null>(null);
+  const [previewWords, setPreviewWords] = useState<string | null>(null);
+  const pictureArt = qrStyle.pictureArt ?? previewPicture;
+  const wordsArt = qrStyle.wordsArt ?? previewWords;
+
+  useEffect(() => {
+    if (qrStyle.pictureArt) return;
+    let cancelled = false;
+    artFromImage(qrStyle.customImage ?? QR_LOGO_DATA_URI)
+      .then((art) => !cancelled && setPreviewPicture(art))
+      .catch((err) => console.error('[Exhibitions] QR picture art failed', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [qrStyle.pictureArt, qrStyle.customImage]);
+
+  useEffect(() => {
+    if (qrStyle.wordsArt) return;
+    let cancelled = false;
+    artFromWords(qrStyle.words ?? DEFAULT_QR_WORDS, wordsColour)
+      .then((art) => !cancelled && setPreviewWords(art))
+      .catch((err) => console.error('[Exhibitions] QR words art failed', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [qrStyle.wordsArt, qrStyle.words, wordsColour]);
+
+  // Typing redraws the words after a short pause, then saves.
+  const wordsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (wordsTimer.current) clearTimeout(wordsTimer.current);
+  }, []);
+
+  const saveWords = async (text: string, colour: string) => {
+    const words = cleanQrWords(text);
+    if (!words) return;
+    try {
+      const art = await artFromWords(words, colour);
+      onQrStyleChange({ ...qrStyle, style: 'words', words, wordsColour: colour, wordsArt: art });
+    } catch (err) {
+      console.error('[Exhibitions] QR words art failed', err);
+      toast.error('Could not draw those words.');
+    }
+  };
+
+  const handleWordsInput = (text: string) => {
+    setWordsDraft(text);
+    if (wordsTimer.current) clearTimeout(wordsTimer.current);
+    wordsTimer.current = setTimeout(() => void saveWords(text, wordsColour), 600);
+  };
+
+  const styled = (style: QrStyleId) =>
+    composeStyledQr(baseSvg, { ...qrStyle, style, pictureArt, wordsArt });
 
   const selectStyle = (style: QrStyleId) => {
     if (style === 'custom' && !qrStyle.customImage) {
       fileRef.current?.click();
+      return;
+    }
+    if (style === 'picture') {
+      if (!pictureArt) return; // still drawing
+      onQrStyleChange({ ...qrStyle, style, pictureArt });
+      return;
+    }
+    if (style === 'words') {
+      if (!wordsArt) return;
+      onQrStyleChange({
+        ...qrStyle,
+        style,
+        words: qrStyle.words ?? DEFAULT_QR_WORDS,
+        wordsColour,
+        wordsArt,
+      });
       return;
     }
     onQrStyleChange({ ...qrStyle, style });
@@ -180,8 +258,15 @@ export function ExhibitionQrDialogContent({
     setUploading(true);
     try {
       const customImage = await prepareUpload(file);
+      const art = await artFromImage(customImage);
       console.log('[Exhibitions] QR image prepared', { exhibitionId, chars: customImage.length });
-      onQrStyleChange({ style: 'custom', customImage });
+      // Uploading while "Picture in code" is chosen keeps that style with the new picture.
+      onQrStyleChange({
+        ...qrStyle,
+        style: qrStyle.style === 'picture' ? 'picture' : 'custom',
+        customImage,
+        pictureArt: art,
+      });
     } catch (err) {
       console.error('[Exhibitions] QR image upload failed', err);
       toast.error('Could not use that image. Try a PNG or JPEG.');
@@ -261,10 +346,11 @@ export function ExhibitionQrDialogContent({
 
       <fieldset>
         <legend className="mb-2 text-[10px] uppercase tracking-widest text-ink/40 font-serif">Style</legend>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-4 gap-2">
           {QR_STYLES.map((s) => {
             const active = qrStyle.style === s.id;
             const needsUpload = s.id === 'custom' && !qrStyle.customImage;
+            const drawing = (s.id === 'picture' && !pictureArt) || (s.id === 'words' && !wordsArt);
             return (
               <button
                 key={s.id}
@@ -277,12 +363,12 @@ export function ExhibitionQrDialogContent({
                   active ? 'border-wine bg-wine/10 text-wine' : 'border-wine/20 text-ink/60 hover:border-wine/40',
                 )}
               >
-                {needsUpload ? (
+                {needsUpload || drawing ? (
                   <span
                     aria-hidden="true"
                     className="flex aspect-square w-full items-center justify-center rounded-sm bg-parchment text-ink/40"
                   >
-                    <ImagePlus className="h-5 w-5" />
+                    {needsUpload ? <ImagePlus className="h-5 w-5" /> : null}
                   </span>
                 ) : (
                   <span
@@ -308,7 +394,48 @@ export function ExhibitionQrDialogContent({
           {qrStyle.style === 'neon' && (
             <span>Light on dark: phone cameras read it; some older scanner apps may not.</span>
           )}
+          {qrStyle.style === 'picture' && (
+            <span>
+              {qrStyle.customImage ? 'Drawn from your image.' : 'Drawn from the Photon Labs image. Upload to use your own.'}
+            </span>
+          )}
         </div>
+        {qrStyle.style === 'words' && (
+          <div className="mt-3 space-y-2">
+            <label className="block text-[11px] font-serif text-ink/60">
+              Words
+              <input
+                type="text"
+                value={wordsDraft}
+                maxLength={MAX_QR_WORDS}
+                onChange={(e) => handleWordsInput(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-wine/20 bg-white px-2 py-1.5 font-serif text-sm text-ink focus:outline-none focus:ring-2 focus:ring-wine/30"
+                placeholder="Gallery or show name"
+              />
+            </label>
+            <div className="flex items-center gap-2" role="radiogroup" aria-label="Letter colour">
+              {QR_WORD_COLOURS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={wordsColour === c.id}
+                  aria-label={c.label}
+                  title={c.label}
+                  onClick={() => void saveWords(wordsDraft, c.id)}
+                  className={cn(
+                    'h-6 w-6 rounded-full border-2 transition-transform',
+                    wordsColour === c.id ? 'scale-110 border-ink' : 'border-white shadow-[0_0_0_1px_rgba(0,0,0,0.15)]',
+                  )}
+                  style={{ backgroundColor: c.id }}
+                />
+              ))}
+            </div>
+            <p className="text-[11px] font-serif text-ink/45">
+              Short words show best. The code stays readable whatever you type.
+            </p>
+          </div>
+        )}
         <input
           ref={fileRef}
           type="file"

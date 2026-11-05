@@ -5,7 +5,14 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
-import { isQrImageDataUri, isQrStyleId, type QrStyleSettings } from '../_helpers/qr-style';
+import { isArtGrid } from '../_helpers/qr-halftone';
+import {
+  cleanQrWords,
+  isQrColour,
+  isQrImageDataUri,
+  isQrStyleId,
+  type QrStyleSettings,
+} from '../_helpers/qr-style';
 
 /**
  * Saves an exhibition's QR code style to `exhibitions.metadata.qr`, so the
@@ -32,6 +39,16 @@ export async function updateExhibitionQrStyle(
   if (settings.style === 'custom' && !customImage) {
     return { success: false, error: 'Upload an image first.' };
   }
+  const pictureArt = isArtGrid(settings.pictureArt) ? settings.pictureArt : null;
+  const wordsArt = isArtGrid(settings.wordsArt) ? settings.wordsArt : null;
+  const words = cleanQrWords(settings.words);
+  const wordsColour = isQrColour(settings.wordsColour) ? settings.wordsColour : null;
+  if (settings.style === 'picture' && !pictureArt) {
+    return { success: false, error: 'That picture could not be used. Try another image.' };
+  }
+  if (settings.style === 'words' && (!wordsArt || !words)) {
+    return { success: false, error: 'Type some words first.' };
+  }
 
   const admin = asUntyped(getSupabaseServerAdminClient());
   const { data: exhibition, error: readError } = await admin
@@ -46,7 +63,7 @@ export async function updateExhibitionQrStyle(
 
   const metadata = {
     ...((exhibition.metadata as Record<string, unknown> | null) ?? {}),
-    qr: { style: settings.style, customImage },
+    qr: { style: settings.style, customImage, pictureArt, words, wordsColour, wordsArt },
   };
   const { error: writeError } = await admin
     .from('exhibitions')

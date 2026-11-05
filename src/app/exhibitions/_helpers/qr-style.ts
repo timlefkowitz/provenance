@@ -1,4 +1,6 @@
+import { decodeArt, halftoneBitmap, halftoneSvg, isArtGrid, parseModules } from './qr-halftone';
 import { QR_LOGO_DATA_URI, QR_LOGO_SCALE } from './qr-logo';
+import { sunsetArt } from './qr-presets';
 
 /**
  * Exhibition QR code styles. A style is applied by composing an SVG around the
@@ -14,6 +16,9 @@ export const QR_STYLES = [
   { id: 'wordmark', label: 'Provenance', hint: '“provenance” lettered across the centre' },
   { id: 'neon', label: 'Neon', hint: 'Cyan glow on dark, framed' },
   { id: 'custom', label: 'Your image', hint: 'Upload a logo or photo' },
+  { id: 'picture', label: 'Picture in code', hint: 'Your image (or Photon Labs) drawn by the dots themselves' },
+  { id: 'words', label: 'Words in code', hint: 'Your words drawn by the dots themselves' },
+  { id: 'sunset', label: 'Sun & grass', hint: 'A sun over a green field, drawn by the dots' },
 ] as const;
 
 export type QrStyleId = (typeof QR_STYLES)[number]['id'];
@@ -22,7 +27,36 @@ export type QrStyleSettings = {
   style: QrStyleId;
   /** Small PNG/JPEG data URI, only used by the "custom" style. */
   customImage: string | null;
+  /** Halftone art grid (see qr-halftone.ts) for "picture": the uploaded image, or Photon Labs. */
+  pictureArt?: string | null;
+  /** The words for "words", their letter colour and their halftone art grid. */
+  words?: string | null;
+  wordsColour?: string | null;
+  wordsArt?: string | null;
 };
+
+/** Letter colours offered for "Words in code". */
+export const QR_WORD_COLOURS = [
+  { id: '#b3262e', label: 'Crimson' },
+  { id: '#1f5fae', label: 'Blue' },
+  { id: '#0f8a7e', label: 'Teal' },
+  { id: '#7a4a2a', label: 'Walnut' },
+  { id: '#7b3fb0', label: 'Violet' },
+] as const;
+
+export const DEFAULT_QR_WORDS = 'provenance';
+
+export function isQrColour(value: unknown): value is string {
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/.test(value);
+}
+
+export const MAX_QR_WORDS = 40;
+
+export function cleanQrWords(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const words = value.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_QR_WORDS);
+  return words || null;
+}
 
 export const DEFAULT_QR_STYLE: QrStyleSettings = { style: 'plain', customImage: null };
 
@@ -50,12 +84,33 @@ export function readQrStyle(metadata: unknown): QrStyleSettings {
       ? (metadata as Record<string, unknown>).qr
       : undefined;
   if (!qr || typeof qr !== 'object') return DEFAULT_QR_STYLE;
-  const { style, customImage } = qr as Record<string, unknown>;
-  const image = isQrImageDataUri(customImage) ? customImage : null;
-  if (!isQrStyleId(style)) return { ...DEFAULT_QR_STYLE, customImage: image };
-  // A custom style without an image falls back to plain.
-  if (style === 'custom' && !image) return { style: 'plain', customImage: null };
-  return { style, customImage: image };
+  const raw = qr as Record<string, unknown>;
+  const image = isQrImageDataUri(raw.customImage) ? raw.customImage : null;
+  const extras: Partial<QrStyleSettings> = {};
+  if (isArtGrid(raw.pictureArt)) extras.pictureArt = raw.pictureArt;
+  const words = cleanQrWords(raw.words);
+  if (words) extras.words = words;
+  if (isQrColour(raw.wordsColour)) extras.wordsColour = raw.wordsColour;
+  if (isArtGrid(raw.wordsArt)) extras.wordsArt = raw.wordsArt;
+  const style = raw.style;
+  if (!isQrStyleId(style)) return { ...DEFAULT_QR_STYLE, customImage: image, ...extras };
+  // A style missing what it draws falls back to plain.
+  if (
+    (style === 'custom' && !image) ||
+    (style === 'picture' && !extras.pictureArt) ||
+    (style === 'words' && !extras.wordsArt)
+  ) {
+    return { style: 'plain', customImage: image, ...extras };
+  }
+  return { style, customImage: image, ...extras };
+}
+
+/** The halftone art grid this style draws with, if any. */
+export function qrArtGrid(settings: QrStyleSettings): string | null {
+  if (settings.style === 'picture') return isArtGrid(settings.pictureArt) ? settings.pictureArt : null;
+  if (settings.style === 'words') return isArtGrid(settings.wordsArt) ? settings.wordsArt : null;
+  if (settings.style === 'sunset') return sunsetArt();
+  return null;
 }
 
 /** The image placed in the centre for this style, if any. */
@@ -107,7 +162,10 @@ export function centreImagePlacement(
 
 function paddingFor(style: QrStyleId): number {
   // Neon is light-on-dark: 4 modules of dark quiet zone, then the frames.
-  return style === 'neon' ? 7.5 : 2;
+  if (style === 'neon') return 7.5;
+  // Halftone codes are busier, so give scanners a wider quiet zone.
+  if (style === 'picture' || style === 'words' || style === 'sunset') return 3;
+  return 2;
 }
 
 /**
@@ -129,6 +187,12 @@ export function composeStyledQr(
   const c = total / 2;
 
   let inner = parsed.inner;
+  const art = qrArtGrid(settings);
+  if (art) {
+    const decoded = decodeArt(art);
+    const bitmap = halftoneBitmap(parseModules(parsed.inner, n), decoded);
+    inner = `<g transform="scale(${1 / 3})" shape-rendering="crispEdges">${halftoneSvg(bitmap, decoded, n * 3)}</g>`;
+  }
   let background = '#FFFFFF';
   const defs: string[] = [];
   const before: string[] = [];
