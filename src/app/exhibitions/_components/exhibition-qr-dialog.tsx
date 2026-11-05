@@ -8,6 +8,8 @@ import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 import { EditorialDialogContent } from '~/components/editorial-dialog';
+import { PosterTextEditor } from './poster-text-editor';
+import type { PosterOverrides, PosterText } from '../_helpers/poster-text';
 import { artFromImage, artFromWords } from '../_helpers/qr-art-client';
 import { QR_LOGO_DATA_URI } from '../_helpers/qr-logo';
 import {
@@ -152,6 +154,9 @@ export function ExhibitionQrDialogContent({
   exhibitionUrl,
   qrStyle,
   onQrStyleChange,
+  posterDefaults,
+  posterOverrides,
+  onPosterOverridesChange,
   onPrint,
 }: {
   exhibitionId: string;
@@ -159,6 +164,10 @@ export function ExhibitionQrDialogContent({
   exhibitionUrl: string;
   qrStyle: QrStyleSettings;
   onQrStyleChange: (next: QrStyleSettings) => void;
+  /** Poster lines before edits, the saved edits, and where edits go. */
+  posterDefaults: PosterText;
+  posterOverrides: PosterOverrides;
+  onPosterOverridesChange: (next: PosterOverrides) => void;
   onPrint: () => void;
 }) {
   const [baseSvg, setBaseSvg] = useState('');
@@ -455,6 +464,12 @@ export function ExhibitionQrDialogContent({
           SVG
         </Button>
       </div>
+
+      <PosterTextEditor
+        defaults={posterDefaults}
+        overrides={posterOverrides}
+        onChange={onPosterOverridesChange}
+      />
 
       <DialogFooter className="gap-2 sm:gap-2">
         <Button variant="outline" onClick={handleCopy}>

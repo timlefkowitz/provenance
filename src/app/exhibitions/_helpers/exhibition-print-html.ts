@@ -1,5 +1,6 @@
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { parseDateOnly } from '~/lib/parse-date-only';
+import type { PosterText } from './poster-text';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,44 +67,62 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
 
 // ── HTML builders ─────────────────────────────────────────────────────────────
 
-export function buildExhibitionQrHtml(
+/** The flyer's lines before any edits (see poster-text.ts). */
+export function posterDefaults(
   exhibition: ExhibitionWithDetails,
   ownerName: string | null,
-  qrSvg: string,
   url: string,
-): string {
-  const dates = formatRange(exhibition.start_date, exhibition.end_date ?? null);
+): PosterText {
   const count = exhibition.artworks.length;
+  return {
+    owner: ownerName ?? '',
+    title: exhibition.title,
+    dates: formatRange(exhibition.start_date, exhibition.end_date ?? null),
+    location: exhibition.location ?? '',
+    cta: 'Scan for the list of works',
+    sub: `${count > 0 ? `${count} ${count === 1 ? 'work' : 'works'} · ` : ''}titles, details and certificates`,
+    url,
+    brand: 'Provenance',
+  };
+}
+
+/** Escapes a line and keeps the line breaks typed into it. */
+function lines(str: string): string {
+  return esc(str).replace(/\n/g, '<br />');
+}
+
+export function buildExhibitionQrHtml(text: PosterText, qrSvg: string): string {
+  const line = (cls: string, value: string) => (value ? `<div class="${cls}">${lines(value)}</div>` : '');
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
-<title>Exhibition QR Code — ${esc(exhibition.title)}</title>
+<title>Exhibition QR Code — ${esc(text.title.replace(/\n/g, ' ') || 'Exhibition')}</title>
 <style>
   @page { size: letter; margin: 0.75in; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Georgia, 'Times New Roman', serif; color: #0e0b07; background: #fff; }
   .sheet { min-height: 9.4in; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-  .owner { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9pt; letter-spacing: 0.24em; text-transform: uppercase; color: #777; }
-  .title { font-size: 34pt; font-weight: bold; line-height: 1.05; letter-spacing: -0.01em; margin-top: 0.15in; max-width: 6.5in; }
+  .owner { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9pt; letter-spacing: 0.24em; text-transform: uppercase; color: #777; margin-bottom: 0.15in; }
+  .title { font-size: 34pt; font-weight: bold; line-height: 1.05; letter-spacing: -0.01em; max-width: 6.5in; }
   .dates { font-size: 12pt; font-style: italic; color: #555; margin-top: 0.14in; }
   .location { font-size: 10pt; color: #777; margin-top: 0.04in; }
   .qr { width: 4.25in; height: 4.25in; margin: 0.45in auto 0.3in; }
   .qr svg { width: 100%; height: 100%; display: block; }
   .cta { font-size: 14pt; font-weight: bold; }
-  .sub { font-size: 10pt; color: #666; margin-top: 0.06in; }
+  .sub { font-size: 10pt; color: #666; margin-top: 0.06in; max-width: 6in; }
   .url { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7.5pt; color: #999; margin-top: 0.3in; letter-spacing: 0.03em; word-break: break-all; }
   .brand { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7pt; letter-spacing: 0.2em; text-transform: uppercase; color: #bbb; margin-top: 0.12in; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head>
 <body><div class="sheet">
-  ${ownerName ? `<div class="owner">${esc(ownerName)}</div>` : ''}
-  <div class="title">${esc(exhibition.title)}</div>
-  <div class="dates">${esc(dates)}</div>
-  ${exhibition.location ? `<div class="location">${esc(exhibition.location)}</div>` : ''}
+  ${line('owner', text.owner)}
+  ${line('title', text.title)}
+  ${line('dates', text.dates)}
+  ${line('location', text.location)}
   <div class="qr">${qrSvg}</div>
-  <div class="cta">Scan for the list of works</div>
-  <div class="sub">${count > 0 ? `${count} ${count === 1 ? 'work' : 'works'} · ` : ''}titles, details and certificates</div>
-  <div class="url">${esc(url)}</div>
-  <div class="brand">Provenance</div>
+  ${line('cta', text.cta)}
+  ${line('sub', text.sub)}
+  ${line('url', text.url)}
+  ${line('brand', text.brand)}
 </div>${AUTO_PRINT}</body></html>`;
 }
 

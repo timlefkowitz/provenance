@@ -33,12 +33,19 @@ import {
   buildArtworkQrSheetHtml,
   buildChecklistHtml,
   buildExhibitionQrHtml,
+  posterDefaults,
   buildWallLabelsHtml,
   DEFAULT_LABEL_OPTIONS,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
 import { updateExhibitionQrStyle } from '../_actions/update-exhibition-qr-style';
 import { composeStyledQr, readQrStyle, type QrStyleSettings } from '../_helpers/qr-style';
+import {
+  readPosterOverrides,
+  resolvePosterText,
+  type PosterOverrides,
+} from '../_helpers/poster-text';
+import { updateExhibitionPosterText } from '../_actions/update-exhibition-poster-text';
 import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
 
 const LABEL_OPTIONS_KEY = 'provenance.exhibition.wallLabelOptions';
@@ -118,6 +125,22 @@ export function ExhibitionPrintMenu({
     readQrStyle((exhibition as { metadata?: unknown }).metadata),
   );
 
+  // Edits to the poster's text (exhibitions.metadata.posterText), saved
+  // shortly after typing stops so everyone who manages the show prints the same.
+  const [posterOverrides, setPosterOverrides] = useState<PosterOverrides>(() =>
+    readPosterOverrides((exhibition as { metadata?: { posterText?: unknown } }).metadata?.posterText),
+  );
+  const posterSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const changePosterText = (next: PosterOverrides) => {
+    setPosterOverrides(next);
+    if (posterSaveTimer.current) clearTimeout(posterSaveTimer.current);
+    posterSaveTimer.current = setTimeout(() => {
+      void updateExhibitionPosterText(exhibition.id, next).then((result) => {
+        if (!result.success) toast.error(result.error);
+      });
+    }, 800);
+  };
+
   const saveQrStyle = async (next: QrStyleSettings) => {
     const previous = qrStyle;
     setQrStyle(next);
@@ -175,7 +198,10 @@ export function ExhibitionPrintMenu({
   const handleExhibitionQr = () => {
     console.log('[Exhibitions] Print exhibition QR', { exhibitionId: exhibition.id });
     openPrintWindow(
-      buildExhibitionQrHtml(exhibition, ownerName, readStyled('exhibition'), exhibitionUrl),
+      buildExhibitionQrHtml(
+        resolvePosterText(posterDefaults(exhibition, ownerName, exhibitionUrl), posterOverrides),
+        readStyled('exhibition'),
+      ),
       820,
       900,
     );
@@ -316,6 +342,9 @@ export function ExhibitionPrintMenu({
             exhibitionUrl={exhibitionUrl}
             qrStyle={qrStyle}
             onQrStyleChange={(next) => void saveQrStyle(next)}
+            posterDefaults={posterDefaults(exhibition, ownerName, exhibitionUrl)}
+            posterOverrides={posterOverrides}
+            onPosterOverridesChange={changePosterText}
             onPrint={handleExhibitionQr}
           />
         )}
