@@ -20,7 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { editArtwork } from '../_actions/edit-artwork';
 import type { Artwork } from './certificate-of-authenticity';
 import Image from 'next/image';
-import { X, Upload, ArrowRight } from 'lucide-react';
+import { X, Upload, ArrowRight, Crop } from 'lucide-react';
+import { ImageCropDialog, type CropSource } from '~/components/image-crop-dialog';
 import { cn } from '@kit/ui/utils';
 import { sendArtistClaimInvite } from '../_actions/send-artist-claim-invite';
 import { CERTIFICATE_TYPES, type CertificateType } from '~/lib/user-roles';
@@ -74,6 +75,7 @@ export function EditArtworkDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(artwork.image_url || null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [cropSource, setCropSource] = useState<CropSource | null>(null);
   const [formData, setFormData] = useState({
     title: artwork.title || '',
     artist_name: artwork.artist_name || '',
@@ -175,12 +177,26 @@ export function EditArtworkDialog({
       return;
     }
 
+    setNewImage(file);
+  };
+
+  const setNewImage = (file: File) => {
     setImageFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleCropped = async (cropped: File) => {
+    const file = await prepareImageForUpload(cropped);
+    if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
+      toast.error('Cropped photo is too large to upload. Try a smaller crop.');
+      return;
+    }
+    setNewImage(file);
+    setCropSource(null);
   };
 
   const removeImage = () => {
@@ -377,19 +393,34 @@ export function EditArtworkDialog({
                     />
                     <figcaption className="mt-3 flex items-center justify-between border-t border-editorial-border/15 pt-2.5 font-jetbrains text-[9px] uppercase tracking-[0.18em] text-editorial-ink/50">
                       <span>{imageFile ? 'New image' : 'Current image'}</span>
-                      {imageFile && (
+                      <span className="flex items-center gap-4">
                         <button
                           type="button"
-                          onClick={removeImage}
-                          className="inline-flex items-center gap-1 text-vermillion hover:text-oxblood transition-colors"
+                          onClick={() => setCropSource(imageFile ?? artwork.image_url ?? null)}
+                          className="inline-flex items-center gap-1 text-editorial-ink/70 hover:text-editorial-ink transition-colors"
                         >
-                          <X className="h-3 w-3" />
-                          Revert
+                          <Crop className="h-3 w-3" />
+                          Crop
                         </button>
-                      )}
+                        {imageFile && (
+                          <button
+                            type="button"
+                            onClick={removeImage}
+                            className="inline-flex items-center gap-1 text-vermillion hover:text-oxblood transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                            Revert
+                          </button>
+                        )}
+                      </span>
                     </figcaption>
                   </figure>
                 )}
+                <ImageCropDialog
+                  source={cropSource}
+                  onCancel={() => setCropSource(null)}
+                  onCropped={handleCropped}
+                />
                 <input
                   ref={fileInputRef}
                   type="file"

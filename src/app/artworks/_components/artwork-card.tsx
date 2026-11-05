@@ -55,6 +55,7 @@ export function ArtworkCard({
   initialFollowingArtist,
   favoritesCount,
   favoritesLabel,
+  imageFit = 'cover',
 }: {
   artwork: Artwork;
   currentUserId?: string;
@@ -62,6 +63,8 @@ export function ArtworkCard({
   initialFollowingArtist?: boolean;
   favoritesCount?: number;
   favoritesLabel?: string;
+  /** 'contain' shows the whole image inside the square tile instead of cropping it */
+  imageFit?: 'cover' | 'contain';
 }) {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
@@ -217,7 +220,7 @@ export function ArtworkCard({
               src={artwork.image_url}
               alt={artwork.title}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              className={`${imageFit === 'contain' ? 'object-contain' : 'object-cover'} group-hover:scale-105 transition-transform duration-300`}
               unoptimized
               loading="lazy"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { track } from '@vercel/analytics';
 import exifr from 'exifr';
-import { Camera, MapPin, Upload, X } from 'lucide-react';
+import { Camera, Crop, MapPin, Upload, X } from 'lucide-react';
 
 import {
   Accordion,
@@ -33,6 +33,7 @@ import type { UserProfile } from '~/app/profiles/_actions/get-user-profiles';
 import { ArtworkTagPicker } from '~/app/artworks/_components/artwork-tag-picker';
 import type { Tag } from '~/app/artworks/_actions/tags';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
+import { ImageCropDialog } from '~/components/image-crop-dialog';
 import { UpgradePrompt } from '~/components/upgrade-prompt';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { takeNativePhoto } from '~/lib/capacitor/native-camera';
@@ -351,6 +352,7 @@ export function AddArtworkForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
+  const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{
     batch: number;
     totalBatches: number;
@@ -603,6 +605,17 @@ export function AddArtworkForm({
 
   const removeImage = (index: number) => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // GPS was already read from the original's EXIF, so the cropped file
+  // (which has no EXIF) keeps the detected location.
+  const handleCropped = async (cropped: File) => {
+    if (croppingIndex === null) return;
+    const file = await maybeCompressImage(cropped);
+    setImagePreviews((prev) =>
+      prev.map((img, i) => (i === croppingIndex ? { ...img, file } : img)),
+    );
+    setCroppingIndex(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -998,8 +1011,17 @@ export function AddArtworkForm({
                         <PreviewFromFile
                           file={img.file}
                           alt={`Preview ${index + 1}`}
-                          className="mb-2 h-48 w-full rounded-lg object-cover"
+                          className="bg-ink/5 mb-2 h-48 w-full rounded-lg object-contain"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setCroppingIndex(index)}
+                          className="bg-ink/80 text-parchment hover:bg-ink absolute right-2 bottom-4 inline-flex items-center gap-1 rounded px-2 py-1 font-serif text-xs"
+                          aria-label={`Crop image ${index + 1}`}
+                        >
+                          <Crop className="h-3 w-3" />
+                          Crop
+                        </button>
                         {img.location && (
                           <div className="bg-wine/90 text-parchment absolute top-2 left-2 flex items-center gap-1 rounded px-2 py-1 font-serif text-xs">
                             <MapPin className="h-3 w-3" />
@@ -1035,6 +1057,16 @@ export function AddArtworkForm({
               </div>
             </div>
           )}
+
+          <ImageCropDialog
+            source={
+              croppingIndex !== null
+                ? (imagePreviews[croppingIndex]?.file ?? null)
+                : null
+            }
+            onCancel={() => setCroppingIndex(null)}
+            onCropped={handleCropped}
+          />
 
           {/* Empty State */}
           {imagePreviews.length === 0 && (

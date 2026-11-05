@@ -241,8 +241,7 @@ export default async function ArtistProfilePage({
       )
       .eq('artist_profile_id', id)
       .eq('status', 'verified')
-      .order('created_at', { ascending: false })
-      .limit(48);
+      .order('created_at', { ascending: false });
 
     if (!user) {
       profileArtworksQuery = profileArtworksQuery.eq('is_public', true);
@@ -654,8 +653,7 @@ export default async function ArtistProfilePage({
         'id, title, artist_name, image_url, created_at, certificate_number, account_id, artist_account_id, artist_profile_id, is_public, status',
       )
       .eq('status', 'verified')
-      .order('created_at', { ascending: false })
-      .limit(96);
+      .order('created_at', { ascending: false });
 
     if (userRole === USER_ROLES.ARTIST) {
       // Artist profiles: only show Certificates of Authenticity (COA).
@@ -1280,6 +1278,7 @@ export default async function ArtistProfilePage({
                       key={artwork.id}
                       artwork={artwork as any}
                       currentUserId={user?.id}
+                      imageFit="contain"
                     />
                   ))}
                 </div>

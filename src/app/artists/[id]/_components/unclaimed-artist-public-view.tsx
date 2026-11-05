@@ -234,7 +234,7 @@ export function UnclaimedArtistPublicView({
               {artworks.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
                   {artworks.map((artwork) => (
-                    <ArtworkCard key={artwork.id} artwork={artwork} currentUserId={currentUserId} />
+                    <ArtworkCard key={artwork.id} artwork={artwork} currentUserId={currentUserId} imageFit="contain" />
                   ))}
                 </div>
               ) : (

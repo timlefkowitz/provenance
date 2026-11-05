@@ -201,7 +201,7 @@ function ArtworkLink({
             src={artwork.image_url}
             alt={artwork.title}
             fill
-            className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+            className="object-contain transition-transform duration-700 group-hover:scale-[1.03]"
             unoptimized
           />
         ) : (
@@ -552,20 +552,19 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
                 <Link
                   href={`/artworks/${artwork.id}/certificate`}
                   className="block relative overflow-hidden rounded-sm border border-[#8B1A1A]/20 hover:shadow-[0_0_40px_rgba(139,26,26,0.25)] transition-shadow duration-500"
-                  style={{
-                    aspectRatio: i % 3 === 0 ? '3/4' : i % 3 === 1 ? '1/1' : '4/5',
-                  }}
                 >
                   {artwork.image_url ? (
                     <Image
                       src={artwork.image_url}
                       alt={artwork.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
+                      width={0}
+                      height={0}
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="w-full h-auto group-hover:scale-105 transition-transform duration-700"
                       unoptimized
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-[#1a1a22] flex items-center justify-center text-[#F0EBE0]/30 font-display">
+                    <div className="aspect-[4/5] bg-[#1a1a22] flex items-center justify-center text-[#F0EBE0]/30 font-display">
                       {artwork.title}
                     </div>
                   )}
@@ -1053,7 +1052,7 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
           <figure className="float-right ml-4 mb-4 w-full max-w-[200px] break-inside-avoid">
             <Link href={`/artworks/${lead.id}/certificate`} className="block relative aspect-[3/4] border border-ink/20">
               {lead.image_url && (
-                <Image src={lead.image_url} alt={lead.title} fill className="object-cover" unoptimized />
+                <Image src={lead.image_url} alt={lead.title} fill className="object-contain" unoptimized />
               )}
             </Link>
             <figcaption className="text-[10px] mt-1 text-ink/50">
@@ -1085,7 +1084,7 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
               className="block relative aspect-video border border-ink/15 mb-2"
             >
               {artwork.image_url && (
-                <Image src={artwork.image_url} alt={artwork.title} fill className="object-cover" unoptimized />
+                <Image src={artwork.image_url} alt={artwork.title} fill className="object-contain" unoptimized />
               )}
             </Link>
             <figcaption className="text-[10px] text-ink/50">
