@@ -100,16 +100,25 @@ export const metadata: Metadata = {
 // Island, iPhone 16/16 Plus/16 Pro Max, Pixel 8/9 Pro, Galaxy S24/S25, foldables).
 // `viewportFit: "cover"` allows safe-area-inset-* env() values to take effect so
 // the sticky nav and bottom toolbar respect the notch and home indicator.
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
-  viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAFAFA" },
-    { media: "(prefers-color-scheme: dark)", color: "#111111" },
-  ],
-};
+// The iOS app locks scale at 1: WKWebView honours it (unlike Safari), so a pinch
+// or focusing a small-font input can't zoom the whole shell. The web keeps
+// pinch-zoom for accessibility.
+export async function generateViewport(): Promise<Viewport> {
+  const cookieStore = await cookies();
+  const isNativeApp = isNativeAppRequest(cookieStore.get(NATIVE_PLATFORM_COOKIE)?.value);
+
+  return {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: isNativeApp ? 1 : 5,
+    ...(isNativeApp ? { userScalable: false } : {}),
+    viewportFit: "cover",
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: "#FAFAFA" },
+      { media: "(prefers-color-scheme: dark)", color: "#111111" },
+    ],
+  };
+}
 
 // Ensure this layout is always rendered dynamically since we access headers/cookies
 export const dynamic = 'force-dynamic';

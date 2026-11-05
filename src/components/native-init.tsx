@@ -142,20 +142,35 @@ export function NativeInit({ userId: _userId }: Props) {
 
     if (!native && !standalone) return;
 
-    // Prevent pinch-to-zoom — feels like a native app, not a browser.
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (meta) {
+    // Prevent pinch-to-zoom and input-focus zoom — feels like a native app, not
+    // a browser. The server already sends this once the platform cookie is set;
+    // this covers the very first launch. maximum-scale=5 must go too, or iOS
+    // still zooms on focus. React can re-render the tag, so re-apply on change.
+    const lockScale = () => {
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) return;
       const current = meta.getAttribute('content') ?? '';
-      if (!current.includes('user-scalable')) {
-        meta.setAttribute('content', current + ', user-scalable=no');
-      }
-    }
+      if (current.includes('maximum-scale=1') && current.includes('user-scalable=no')) return;
+      const kept = current
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => part && !/^(maximum-scale|user-scalable)\s*=/i.test(part));
+      meta.setAttribute('content', [...kept, 'maximum-scale=1', 'user-scalable=no'].join(', '));
+    };
+    lockScale();
+    const viewportObserver = new MutationObserver(lockScale);
+    viewportObserver.observe(document.head, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['content'],
+    });
 
     if (standalone && !native) {
       // Mark <html> for CSS so standalone-PWA shell rules apply.
       document.documentElement.classList.add('pwa-standalone');
       console.log('[NativeInit] Running as standalone PWA');
-      return;
+      return () => viewportObserver.disconnect();
     }
 
     // Mark <html> so CSS can target native-only rules.
@@ -186,6 +201,8 @@ export function NativeInit({ userId: _userId }: Props) {
     }
 
     void initNative();
+
+    return () => viewportObserver.disconnect();
   }, []);
 
   // ── Apple IAP reconciliation ───────────────────────────────────────────────
