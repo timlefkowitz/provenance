@@ -221,3 +221,48 @@ export function buildChecklistHtml(
 ${AUTO_PRINT}</body></html>`;
 }
 
+
+/**
+ * One QR code per work, linking to its certificate — 4 across on US Letter,
+ * with title, artist and certificate number under each.
+ */
+export function buildArtworkQrSheetHtml(
+  exhibition: ExhibitionWithDetails,
+  qrSvgs: Map<string, string>,
+): string {
+  const cells = exhibition.artworks
+    .map((a) => {
+      const qr = qrSvgs.get(a.id) ?? '';
+      return `
+      <div class="cell">
+        <div class="qr">${qr}</div>
+        <div class="title">${esc(a.title || 'Untitled')}</div>
+        ${a.artist_name ? `<div class="artist">${esc(a.artist_name)}</div>` : ''}
+        ${a.certificate_number ? `<div class="cert">${esc(a.certificate_number)}</div>` : ''}
+      </div>`;
+    })
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" />
+<title>Artwork QR Codes — ${esc(exhibition.title)}</title>
+<style>
+  @page { size: letter; margin: 0.45in; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #1a1209; }
+  .head { font-size: 9pt; color: #777; margin-bottom: 0.15in; }
+  .head strong { color: #1a1209; font-size: 11pt; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.06in; }
+  .cell { break-inside: avoid; page-break-inside: avoid; border: 0.4pt solid #d4c9b0; padding: 4pt 4pt 5pt; text-align: center; }
+  .qr { width: 1.5in; height: 1.5in; margin: 0 auto; }
+  .qr svg { width: 100%; height: 100%; display: block; }
+  .title { margin-top: 4pt; font-size: 8pt; font-weight: bold; line-height: 1.25; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .artist { margin-top: 2pt; font-size: 7pt; color: #5a4a30; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .cert { margin-top: 2pt; font-size: 5.5pt; color: #9a8060; font-family: 'Courier New', monospace; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head>
+<body>
+  <div class="head"><strong>${esc(exhibition.title)}</strong> · ${exhibition.artworks.length} ${exhibition.artworks.length === 1 ? 'work' : 'works'} · each code opens the work's certificate</div>
+  <div class="grid">${cells}</div>
+${AUTO_PRINT}</body></html>`;
+}

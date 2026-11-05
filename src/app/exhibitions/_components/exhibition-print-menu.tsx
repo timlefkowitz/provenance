@@ -2,7 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronDown, List, Printer, QrCode, Tag } from 'lucide-react';
+import { ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
 import { Label } from '@kit/ui/label';
@@ -24,6 +24,7 @@ import { EditorialDialogContent } from '~/components/editorial-dialog';
 import { openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import {
+  buildArtworkQrSheetHtml,
   buildChecklistHtml,
   buildExhibitionQrHtml,
   buildWallLabelsHtml,
@@ -104,6 +105,15 @@ export function ExhibitionPrintMenu({
     openPrintWindow(buildChecklistHtml(exhibition, ownerName, readQr('exhibition')));
   };
 
+  const handleArtworkQrSheet = () => {
+    console.log('[Exhibitions] Print artwork QR sheet', {
+      exhibitionId: exhibition.id,
+      count: exhibition.artworks.length,
+    });
+    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readQr(a.id)]));
+    openPrintWindow(buildArtworkQrSheetHtml(exhibition, qrSvgs), 860, 760);
+  };
+
   const handleWallLabels = () => {
     console.log('[Exhibitions] Print wall labels', {
       exhibitionId: exhibition.id,
@@ -144,17 +154,18 @@ export function ExhibitionPrintMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="font-serif text-ink/40 hover:text-wine h-8 gap-1.5"
+            className="font-serif h-8 gap-1.5 border-wine/30 text-wine hover:bg-wine/5 hover:text-wine"
             disabled={!origin}
+            title="Print the exhibition QR code, wall labels, artwork QR codes or checklist"
           >
             <Printer className="h-3.5 w-3.5" />
             Print
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem onSelect={() => setQrOpen(true)} className="font-serif text-xs cursor-pointer">
             <QrCode className="h-3.5 w-3.5 mr-2 opacity-60" />
             Exhibition QR Code…
@@ -172,12 +183,20 @@ export function ExhibitionPrintMenu({
             Wall Labels…
           </DropdownMenuItem>
           <DropdownMenuItem
+            onSelect={handleArtworkQrSheet}
+            disabled={!hasWorks}
+            className="font-serif text-xs cursor-pointer"
+          >
+            <Grid3x3 className="h-3.5 w-3.5 mr-2 opacity-60" />
+            Artwork QR Codes
+          </DropdownMenuItem>
+          <DropdownMenuItem
             onSelect={handleChecklist}
             disabled={!hasWorks}
             className="font-serif text-xs cursor-pointer"
           >
             <List className="h-3.5 w-3.5 mr-2 opacity-60" />
-            Checklist
+            Checklist of works
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
