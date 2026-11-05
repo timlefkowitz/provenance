@@ -1,4 +1,5 @@
 import { asUntyped } from '~/lib/supabase-untyped';
+import { computeScanStats, stripScanDetails } from '~/lib/scan-stats';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { formatCategoryLabel, type CollectibleRow } from '~/lib/collectibles/constants';
@@ -148,7 +149,13 @@ export default async function CollectibleCertificatePage({
           />
         </div>
       )}
-      <CollectibleCertificate collectible={collectible} isOwner={isOwner} ownerName={ownerName} />
+      <CollectibleCertificate
+        // Scan dates and places are for the owner; everyone gets the counts.
+        collectible={isOwner ? collectible : { ...collectible, metadata: stripScanDetails(collectible.metadata) }}
+        scanStats={computeScanStats(collectible.metadata)}
+        isOwner={isOwner}
+        ownerName={ownerName}
+      />
     </>
   );
 }

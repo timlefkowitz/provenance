@@ -186,7 +186,7 @@ export function PrintQRSheet({
           {selectedArtworks.map((artwork) => (
             <QRCodeCanvas
               key={artwork.id}
-              value={`${origin}/artworks/${artwork.id}/certificate`}
+              value={`${origin}/artworks/${artwork.id}/certificate?scan=true`}
               size={288}
               level="M"
               includeMargin={true}

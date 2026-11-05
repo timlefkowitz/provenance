@@ -233,7 +233,7 @@ export function ExhibitionPrintMenu({
           {exhibition.artworks.map((a) => (
             <div key={`sheet-${a.id}`} data-qr={`sheet-${a.id}`}>
               <QRCodeSVG
-                value={`${origin}/artworks/${a.id}/certificate`}
+                value={`${origin}/artworks/${a.id}/certificate?scan=true`}
                 size={256}
                 level="H"
                 marginSize={0}
@@ -246,7 +246,7 @@ export function ExhibitionPrintMenu({
           {exhibition.artworks.map((a) => (
             <div key={a.id} data-qr={a.id}>
               <QRCodeSVG
-                value={`${origin}/artworks/${a.id}/certificate`}
+                value={`${origin}/artworks/${a.id}/certificate?scan=true`}
                 size={256}
                 level="M"
                 marginSize={1}

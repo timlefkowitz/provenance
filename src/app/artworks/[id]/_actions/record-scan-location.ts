@@ -12,6 +12,7 @@ import {
   sanitizeScanGps,
   scanNotificationDue,
 } from '~/lib/scan-guard';
+import { isScanVisitorId, nextScanTotal } from '~/lib/scan-stats';
 
 export interface ScanLocation {
   /** GPS coordinates — only present when user grants browser location permission */
@@ -37,6 +38,11 @@ export interface ScanLocation {
   location_source: 'gps' | 'ip' | 'none';
 
   scanned_at: string;
+
+  /** Anonymous per-browser id, for counting distinct people. */
+  visitor?: string;
+  /** The owner scanning their own certificate; not counted in stats. */
+  by_owner?: boolean;
 }
 
 /**
@@ -56,6 +62,7 @@ export async function recordScanLocation(
     country?: string;
     formatted?: string;
   } | null,
+  rawVisitorId?: string | null,
 ) {
   const gpsLocation = sanitizeScanGps(rawGpsLocation);
   console.log('[CertificateScan] recordScanLocation started', {
@@ -143,6 +150,8 @@ export async function recordScanLocation(
     accept_language: acceptLanguage,
     location_source: locationSource,
     scanned_at: new Date().toISOString(),
+    ...(isScanVisitorId(rawVisitorId) ? { visitor: rawVisitorId } : {}),
+    ...(isOwner ? { by_owner: true } : {}),
   };
 
   const scanLocations = [...existingScanLocations, newScan].slice(-MAX_STORED_SCANS);
@@ -154,6 +163,7 @@ export async function recordScanLocation(
       metadata: {
         ...currentMetadata,
         scan_locations: scanLocations,
+        scan_stats: { total: nextScanTotal(currentMetadata, isOwner) },
       },
     })
     .eq('id', artworkId)

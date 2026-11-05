@@ -25,6 +25,7 @@ export default defineConfig({
       'src/lib/image-fingerprint/**/*.test.ts',
       'src/lib/portal-graphs/**/*.test.ts',
       'src/lib/collectors/**/*.test.ts',
+      'src/lib/scan-stats.test.ts',
     ],
   },
   resolve: {

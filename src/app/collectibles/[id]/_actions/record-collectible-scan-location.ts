@@ -12,6 +12,7 @@ import {
   sanitizeScanGps,
   scanNotificationDue,
 } from '~/lib/scan-guard';
+import { isScanVisitorId, nextScanTotal } from '~/lib/scan-stats';
 
 export interface CollectibleScanLocation {
   latitude?: number;
@@ -32,6 +33,10 @@ export interface CollectibleScanLocation {
 
   location_source: 'gps' | 'ip' | 'none';
   scanned_at: string;
+  /** Anonymous per-browser id, for counting distinct people. */
+  visitor?: string;
+  /** The owner scanning their own certificate; not counted in stats. */
+  by_owner?: boolean;
 }
 
 /**
@@ -50,6 +55,7 @@ export async function recordCollectibleScanLocation(
     country?: string;
     formatted?: string;
   } | null,
+  rawVisitorId?: string | null,
 ) {
   const gpsLocation = sanitizeScanGps(rawGpsLocation);
   console.log('[Collectibles] recordCollectibleScanLocation started', {
@@ -126,6 +132,8 @@ export async function recordCollectibleScanLocation(
     accept_language: acceptLanguage,
     location_source: locationSource,
     scanned_at: new Date().toISOString(),
+    ...(isScanVisitorId(rawVisitorId) ? { visitor: rawVisitorId } : {}),
+    ...(isOwner ? { by_owner: true } : {}),
   };
 
   const scanLocations = [...existingScans, newScan].slice(-MAX_STORED_SCANS);
@@ -133,7 +141,11 @@ export async function recordCollectibleScanLocation(
   const { data: updatedRow, error: updateError } = await asUntyped(adminClient)
     .from('collectibles')
     .update({
-      metadata: { ...currentMetadata, scan_locations: scanLocations },
+      metadata: {
+        ...currentMetadata,
+        scan_locations: scanLocations,
+        scan_stats: { total: nextScanTotal(currentMetadata, isOwner) },
+      },
     })
     .eq('id', collectibleId)
     .select('id')

@@ -1,4 +1,5 @@
 import { asUntyped } from '~/lib/supabase-untyped';
+import { computeScanStats, stripScanDetails } from '~/lib/scan-stats';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -443,7 +444,9 @@ export default async function CertificatePage({
         </div>
       )}
       <CertificateOfAuthenticity 
-        artwork={artwork} 
+        // Scan dates and places are for the owner and admins; everyone gets the counts.
+        artwork={isOwner || userIsAdmin ? artwork : { ...artwork, metadata: stripScanDetails(artwork.metadata) }}
+        scanStats={computeScanStats(artwork.metadata)}
         isOwner={isOwner} 
         canEditCertificate={canEditCertificate}
         canRequestProvenance={canRequestProvenance}

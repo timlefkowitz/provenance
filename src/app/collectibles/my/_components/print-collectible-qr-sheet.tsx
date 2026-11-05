@@ -109,7 +109,7 @@ export function PrintCollectibleQRSheet({
           {selected.map((c) => (
             <QRCodeCanvas
               key={c.id}
-              value={`${origin}/collectibles/${c.id}/certificate`}
+              value={`${origin}/collectibles/${c.id}/certificate?scan=true`}
               size={288}
               level="M"
               includeMargin

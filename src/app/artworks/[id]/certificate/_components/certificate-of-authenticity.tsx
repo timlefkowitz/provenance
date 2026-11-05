@@ -35,6 +35,8 @@ import { adminDeleteArtwork } from '../../_actions/admin-delete-artwork';
 import { UploadAttachmentsDialog, type ArtworkAttachmentRow } from './upload-attachments-dialog';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
+import { EMPTY_SCAN_STATS, formatScanStats, type ScanStats } from '~/lib/scan-stats';
+import { getScanVisitorId } from '~/lib/scan-visitor';
 import { shareLink } from '~/lib/capacitor/share';
 import { verifyCertificate } from '../../_actions/verify-certificate';
 import { RequestUpdateDialog } from './request-update-dialog';
@@ -231,6 +233,7 @@ export function CertificateOfAuthenticity({
   certificateType = 'authenticity',
   attachments = [],
   valuation = null,
+  scanStats = EMPTY_SCAN_STATS,
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -252,6 +255,8 @@ export function CertificateOfAuthenticity({
   certificateType?: CertificateType | string;
   attachments?: ArtworkAttachmentRow[];
   valuation?: ProvenanceValuation | null;
+  /** Public scan counts; per-scan details only reach the owner and admins. */
+  scanStats?: ScanStats;
 }) {
   // Log when component mounts to confirm we reached this point
   useEffect(() => {
@@ -391,7 +396,7 @@ export function CertificateOfAuthenticity({
             };
 
             try {
-              const result = await recordScanLocation(artwork.id, location);
+              const result = await recordScanLocation(artwork.id, location, getScanVisitorId());
               setScanLocations(prev => [...prev, (result?.scan ?? { ...location, scanned_at: new Date().toISOString() }) as ScanLocation]);
               router.refresh();
               const newUrl = window.location.pathname;
@@ -404,7 +409,7 @@ export function CertificateOfAuthenticity({
             const location = { latitude, longitude };
 
             try {
-              const result = await recordScanLocation(artwork.id, location);
+              const result = await recordScanLocation(artwork.id, location, getScanVisitorId());
               setScanLocations(prev => [...prev, (result?.scan ?? { ...location, scanned_at: new Date().toISOString() }) as ScanLocation]);
               router.refresh();
               const newUrl = window.location.pathname;
@@ -419,7 +424,7 @@ export function CertificateOfAuthenticity({
           // so the owner sees it happened (no location is recorded).
           console.log('[CertificateScan] Geolocation not available:', error);
           try {
-            const result = await recordScanLocation(artwork.id, null);
+            const result = await recordScanLocation(artwork.id, null, getScanVisitorId());
             if (result?.scan) {
               setScanLocations(prev => [...prev, result.scan as ScanLocation]);
             }
@@ -440,7 +445,7 @@ export function CertificateOfAuthenticity({
       console.log('[CertificateScan] Geolocation not supported by this browser');
       void (async () => {
         try {
-          const result = await recordScanLocation(artwork.id, null);
+          const result = await recordScanLocation(artwork.id, null, getScanVisitorId());
           if (result?.scan) {
             setScanLocations((prev) => [...prev, result.scan as ScanLocation]);
           }
@@ -1301,7 +1306,8 @@ export function CertificateOfAuthenticity({
           {(artwork.former_owners || artwork.auction_history || artwork.exhibition_history || 
             artwork.historic_context || artwork.celebrity_notes ||
             artwork.value || artwork.owned_by || artwork.sold_by ||
-            (scanLocations && scanLocations.length > 0)) && (
+            scanStats.total > 0 ||
+            (canViewScanMap && scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
                 Provenance
@@ -1442,8 +1448,24 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
-              {/* QR Code Scan Locations */}
-              {scanLocations && scanLocations.length > 0 && (
+              {/* QR scan stats: counts for everyone */}
+              {formatScanStats(scanStats) && (
+                <div className="mb-3 sm:mb-4 flex items-start gap-2">
+                  <Scan className="h-4 w-4 text-wine mt-0.5 flex-shrink-0" />
+                  <p className="text-xs sm:text-sm text-ink/70 font-serif">
+                    <span className="font-semibold text-ink">{formatScanStats(scanStats)}</span>
+                    {scanStats.lastScannedAt &&
+                      ` · last ${new Date(scanStats.lastScannedAt).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}`}
+                  </p>
+                </div>
+              )}
+
+              {/* QR Code Scan Locations: owner and admins only */}
+              {canViewScanMap && scanLocations && scanLocations.length > 0 && (
                 <div className="mb-3 sm:mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Scan className="h-4 w-4 text-wine" />

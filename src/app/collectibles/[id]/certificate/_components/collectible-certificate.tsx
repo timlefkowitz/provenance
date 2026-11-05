@@ -37,6 +37,8 @@ import { toast } from '@kit/ui/sonner';
 import { formatCategoryLabel, formatConditionLabel, type CollectibleRow } from '~/lib/collectibles/constants';
 import { formatMoneyCents, parseDeclaredValueCents } from '~/lib/collectibles/value';
 import { recordCollectibleScanLocation } from '../../_actions/record-collectible-scan-location';
+import { EMPTY_SCAN_STATS, formatScanStats, type ScanStats } from '~/lib/scan-stats';
+import { getScanVisitorId } from '~/lib/scan-visitor';
 import { shareLink } from '~/lib/capacitor/share';
 import { updateCollectibleValue } from '../../_actions/update-collectible-value';
 
@@ -78,10 +80,13 @@ export function CollectibleCertificate({
   collectible,
   isOwner,
   ownerName,
+  scanStats = EMPTY_SCAN_STATS,
 }: {
   collectible: CollectibleRow;
   isOwner: boolean;
   ownerName: string | null;
+  /** Public scan counts; per-scan details only reach the owner. */
+  scanStats?: ScanStats;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -134,7 +139,7 @@ export function CollectibleCertificate({
       } | null,
     ) => {
       try {
-        const result = await recordCollectibleScanLocation(collectible.id, loc);
+        const result = await recordCollectibleScanLocation(collectible.id, loc, getScanVisitorId());
         if (result?.scan) {
           setScanLocations((prev) => [...prev, result.scan as ScanLocation]);
         }
@@ -518,6 +523,9 @@ export function CollectibleCertificate({
                 <QRCodeSVG value={isOwner ? scanUrl || shareUrl : shareUrl} size={120} level="M" />
               </div>
               <p className="text-[11px] text-ink/50 font-serif mt-1">Scan to verify</p>
+              {formatScanStats(scanStats) && (
+                <p className="text-[11px] text-ink/60 font-serif mt-0.5">{formatScanStats(scanStats)}</p>
+              )}
             </div>
           </div>
         </div>
@@ -537,9 +545,9 @@ export function CollectibleCertificate({
                 shares their location, it will appear on a map here.
               </p>
             )}
-            {scanLocations.length > 0 && (
+            {formatScanStats(scanStats) && (
               <p className="font-serif text-xs text-ink/50 mt-3">
-                {scanLocations.length} total scan{scanLocations.length === 1 ? '' : 's'} recorded.
+                {formatScanStats(scanStats)} (not counting your own scans).
               </p>
             )}
           </div>
