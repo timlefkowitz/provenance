@@ -2,10 +2,11 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
+import { ChevronDown, Grid3x3, List, Loader2, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
 import { Label } from '@kit/ui/label';
+import { Textarea } from '@kit/ui/textarea';
 import {
   Dialog,
   DialogDescription,
@@ -23,6 +24,10 @@ import {
 import { EditorialDialogContent } from '~/components/editorial-dialog';
 import { openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
+import {
+  getExhibitionArtistBios,
+  type ExhibitionArtistBio,
+} from '../_actions/get-exhibition-artist-bios';
 import {
   buildArtworkQrSheetHtml,
   buildChecklistHtml,
@@ -43,6 +48,7 @@ const FIELD_TOGGLES: Array<{ key: Exclude<keyof WallLabelOptions, 'size'>; label
   { key: 'price', label: 'Price', hint: 'Exhibition list price' },
   { key: 'creditLine', label: 'Credit line', hint: 'Only when marked public' },
   { key: 'description', label: 'Description' },
+  { key: 'artistBio', label: 'Artist bio', hint: 'From their profile; editable below' },
   { key: 'qrCode', label: 'QR code', hint: 'Links to the certificate' },
 ];
 
@@ -59,6 +65,27 @@ function loadLabelOptions(): WallLabelOptions {
 function saveLabelOptions(options: WallLabelOptions) {
   try {
     window.localStorage.setItem(LABEL_OPTIONS_KEY, JSON.stringify(options));
+  } catch {
+    // ignore
+  }
+}
+
+/** Per-exhibition bio edits on this device, keyed by ExhibitionArtistBio.key. */
+const bioEditsKey = (exhibitionId: string) => `provenance.exhibition.artistBios.${exhibitionId}`;
+
+function loadBioEdits(exhibitionId: string): Record<string, string> {
+  try {
+    const raw = window.localStorage.getItem(bioEditsKey(exhibitionId));
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBioEdits(exhibitionId: string, edits: Record<string, string>) {
+  try {
+    window.localStorage.setItem(bioEditsKey(exhibitionId), JSON.stringify(edits));
   } catch {
     // ignore
   }
@@ -83,7 +110,37 @@ export function ExhibitionPrintMenu({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [options, setOptions] = useState<WallLabelOptions>(DEFAULT_LABEL_OPTIONS);
+  const [artistBios, setArtistBios] = useState<ExhibitionArtistBio[] | null>(null);
+  const [biosLoading, setBiosLoading] = useState(false);
+  const [biosError, setBiosError] = useState<string | null>(null);
+  const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
   const qrRef = useRef<HTMLDivElement>(null);
+
+  const loadArtistBios = async () => {
+    if (artistBios || biosLoading) return;
+    setBiosLoading(true);
+    setBiosError(null);
+    try {
+      const bios = await getExhibitionArtistBios(exhibition.id);
+      setArtistBios(bios);
+      setBioEdits(loadBioEdits(exhibition.id));
+    } catch (err) {
+      console.error('[Exhibitions] Load artist bios failed', err);
+      setBiosError(err instanceof Error ? err.message : 'Could not load artist bios.');
+    } finally {
+      setBiosLoading(false);
+    }
+  };
+
+  const bioText = (artist: ExhibitionArtistBio) => bioEdits[artist.key] ?? artist.bio;
+
+  const updateBio = (key: string, text: string) => {
+    setBioEdits((prev) => {
+      const next = { ...prev, [key]: text };
+      saveBioEdits(exhibition.id, next);
+      return next;
+    });
+  };
 
   const exhibitionUrl = origin ? `${origin}/exhibitions/${exhibition.id}` : '';
   const hasWorks = exhibition.artworks.length > 0;
@@ -122,7 +179,16 @@ export function ExhibitionPrintMenu({
     });
     saveLabelOptions(options);
     const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readQr(a.id)]));
-    openPrintWindow(buildWallLabelsHtml(exhibition, exhibition.artworks, options, qrSvgs), 960, 760);
+    const biosByArtwork = new Map<string, string>();
+    for (const artist of artistBios ?? []) {
+      const text = bioText(artist).trim();
+      if (text) for (const id of artist.artworkIds) biosByArtwork.set(id, text);
+    }
+    openPrintWindow(
+      buildWallLabelsHtml(exhibition, exhibition.artworks, options, qrSvgs, biosByArtwork),
+      960,
+      760,
+    );
     setLabelsOpen(false);
   };
 
@@ -173,8 +239,10 @@ export function ExhibitionPrintMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => {
-              setOptions(loadLabelOptions());
+              const saved = loadLabelOptions();
+              setOptions(saved);
               setLabelsOpen(true);
+              if (saved.artistBio) void loadArtistBios();
             }}
             disabled={!hasWorks}
             className="font-serif text-xs cursor-pointer"
@@ -228,9 +296,10 @@ export function ExhibitionPrintMenu({
                 <Checkbox
                   id={`wl-${key}`}
                   checked={options[key]}
-                  onCheckedChange={(checked) =>
-                    setOptions((o) => ({ ...o, [key]: checked === true }))
-                  }
+                  onCheckedChange={(checked) => {
+                    setOptions((o) => ({ ...o, [key]: checked === true }));
+                    if (key === 'artistBio' && checked === true) void loadArtistBios();
+                  }}
                   className="mt-0.5 border-wine/30"
                 />
                 <Label htmlFor={`wl-${key}`} className="font-serif text-sm leading-tight cursor-pointer">
@@ -240,6 +309,73 @@ export function ExhibitionPrintMenu({
               </div>
             ))}
           </div>
+
+          {options.artistBio && (
+            <div className="pt-2">
+              <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">
+                Artist bios
+              </p>
+              {biosLoading ? (
+                <p className="flex items-center gap-2 text-xs font-serif text-ink/50">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading bios…
+                </p>
+              ) : biosError ? (
+                <p className="text-xs font-serif text-red-700">
+                  {biosError}{' '}
+                  <button type="button" className="underline" onClick={() => void loadArtistBios()}>
+                    Try again
+                  </button>
+                </p>
+              ) : artistBios && artistBios.length === 0 ? (
+                <p className="text-xs font-serif text-ink/50">No artists found for these works.</p>
+              ) : (
+                <div className="space-y-3">
+                  {(artistBios ?? []).map((artist) => (
+                    <div key={artist.key} className="space-y-1">
+                      <Label
+                        htmlFor={`wl-bio-${artist.key}`}
+                        className="flex items-baseline justify-between gap-2 font-serif text-sm"
+                      >
+                        <span>{artist.name}</span>
+                        <span className="text-[11px] font-normal text-ink/40">
+                          {artist.artworkIds.length} {artist.artworkIds.length === 1 ? 'label' : 'labels'}
+                        </span>
+                      </Label>
+                      <Textarea
+                        id={`wl-bio-${artist.key}`}
+                        value={bioText(artist)}
+                        onChange={(e) => updateBio(artist.key, e.target.value)}
+                        placeholder="No bio on their profile. Type one for these labels, or leave blank."
+                        rows={3}
+                        className="font-serif text-sm"
+                      />
+                      {bioEdits[artist.key] !== undefined && bioEdits[artist.key] !== artist.bio && (
+                        <button
+                          type="button"
+                          className="text-[11px] font-serif text-ink/40 underline hover:text-ink"
+                          onClick={() =>
+                            setBioEdits((prev) => {
+                              const next = { ...prev };
+                              delete next[artist.key];
+                              saveBioEdits(exhibition.id, next);
+                              return next;
+                            })
+                          }
+                        >
+                          {artist.bio ? 'Reset to profile bio' : 'Clear'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 text-[11px] font-serif text-ink/40">
+                Edits are for printing only and are remembered on this device. They don&apos;t change
+                anyone&apos;s profile.
+              </p>
+            </div>
+          )}
 
           <div className="pt-2">
             <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Label size</p>

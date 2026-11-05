@@ -43,6 +43,7 @@ export type WallLabelOptions = {
   price: boolean;
   creditLine: boolean;
   description: boolean;
+  artistBio: boolean;
   qrCode: boolean;
   size: 'standard' | 'large';
 };
@@ -55,6 +56,7 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   price: false,
   creditLine: true,
   description: false,
+  artistBio: false,
   qrCode: true,
   size: 'standard',
 };
@@ -107,6 +109,8 @@ export function buildWallLabelsHtml(
   artworks: PrintArtwork[],
   options: WallLabelOptions,
   qrSvgs: Map<string, string>,
+  /** Artwork id → artist bio text, used when options.artistBio is on. */
+  artistBios: Map<string, string> = new Map(),
 ): string {
   const large = options.size === 'large';
   const widthIn = large ? 5 : 4;
@@ -124,6 +128,7 @@ export function buildWallLabelsHtml(
       if (options.price && a.listPriceDisplay?.trim()) meta.push(esc(a.listPriceDisplay.trim()));
       const credit = options.creditLine ? esc(a.credit_line) : '';
       const description = options.description ? esc(a.description?.trim()) : '';
+      const bio = options.artistBio ? esc(artistBios.get(a.id)?.trim()) : '';
       const qr = options.qrCode ? qrSvgs.get(a.id) ?? '' : '';
 
       return `
@@ -134,6 +139,7 @@ export function buildWallLabelsHtml(
           ${meta.map((m) => `<div class="meta">${m}</div>`).join('')}
           ${credit ? `<div class="credit">${credit}</div>` : ''}
           ${description ? `<div class="description">${description}</div>` : ''}
+          ${bio ? `<div class="bio">${bio.replace(/\n+/g, '<br />')}</div>` : ''}
         </div>
         ${qr ? `<div class="qr-col"><div class="qr">${qr}</div><div class="qr-caption">Scan for certificate</div></div>` : ''}
       </div>`;
@@ -160,6 +166,7 @@ export function buildWallLabelsHtml(
   .meta { font-size: ${large ? 10 : 9}pt; line-height: 1.4; }
   .credit { font-size: ${large ? 9 : 8}pt; color: #555; margin-top: 3px; }
   .description { font-size: ${large ? 9 : 7.5}pt; line-height: 1.5; color: #333; margin-top: 8px; }
+  .bio { font-size: ${large ? 8.5 : 7}pt; line-height: 1.5; color: #555; margin-top: 8px; padding-top: 6px; border-top: 0.5pt solid #e5e0da; }
   .qr-col { flex: none; width: ${large ? 1 : 0.8}in; text-align: center; }
   .qr svg { width: 100%; height: auto; display: block; }
   .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; color: #888; letter-spacing: 0.04em; margin-top: 2px; }
