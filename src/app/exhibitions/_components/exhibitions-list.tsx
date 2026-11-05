@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Calendar, MapPin, Edit, Trash2, ArrowRight, Copy, Check, Globe, Lock, Loader2 } from 'lucide-react';
+import { Plus, Calendar, MapPin, Image as ImageIcon, Users, Edit, Trash2, ArrowRight, Copy, Check, Globe, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -20,6 +20,7 @@ import { publishExhibition, unpublishExhibition } from '../_actions/publish-exhi
 import { toast } from '@kit/ui/sonner';
 import { useRouter } from 'next/navigation';
 import type { Exhibition } from '../_actions/get-exhibitions';
+import type { ExhibitionCounts } from '../_helpers/get-exhibition-counts';
 import { stripMarkdown } from '~/lib/strip-markdown';
 
 function getStatus(ex: Exhibition): 'upcoming' | 'ongoing' | 'past' {
@@ -52,13 +53,20 @@ function formatRange(start: string, end: string | null) {
   return `${sStr} – ${eStr}`;
 }
 
+function plural(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
 export function ExhibitionsList({
   exhibitions,
+  counts = {},
   newExhibitionHref = '/exhibitions/new',
   showCreate = true,
   canDelete = true,
 }: {
   exhibitions: Exhibition[];
+  /** Artwork and artist counts keyed by exhibition ID. */
+  counts?: Record<string, ExhibitionCounts>;
   galleryId: string;
   newExhibitionHref?: string;
   /** Hide "New Exhibition" / empty-state CTA (e.g. team exhibitions of another gallery). */
@@ -165,6 +173,7 @@ export function ExhibitionsList({
           {exhibitions.map((ex, i) => {
             const status = getStatus(ex);
             const styles = STATUS_STYLES[status];
+            const count = counts[ex.id];
             return (
               <li key={ex.id} className="group">
                 <div className="flex items-start gap-6 py-8 md:py-10">
@@ -226,6 +235,23 @@ export function ExhibitionsList({
                               <MapPin className="h-3 w-3 text-wine/40" />
                               {ex.location}
                             </span>
+                          )}
+                          {count && (
+                            <>
+                              <span className="flex items-center gap-1.5">
+                                <ImageIcon className="h-3 w-3 text-wine/40" />
+                                {plural(count.artworks, 'artwork')}
+                                {count.draftArtworks > 0 && (
+                                  <span className="text-amber-800/70">
+                                    ({count.draftArtworks} draft)
+                                  </span>
+                                )}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <Users className="h-3 w-3 text-wine/40" />
+                                {plural(count.artists, 'artist')}
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>

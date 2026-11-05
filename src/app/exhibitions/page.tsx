@@ -5,6 +5,7 @@ import { cn } from '@kit/ui/utils';
 import { getRoleLabel, getUserRole } from '~/lib/user-roles';
 import { getExhibitionsForGallery } from './_actions/get-exhibitions';
 import { ExhibitionsList } from './_components/exhibitions-list';
+import { getExhibitionCounts } from './_helpers/get-exhibition-counts';
 import {
   defaultExhibitionOwnerRole,
   getExhibitionOwnerRoleOptions,
@@ -64,6 +65,11 @@ export default async function ExhibitionsPage({
     )
   ).filter((group) => group.exhibitions.length > 0);
 
+  const counts = await getExhibitionCounts([
+    ...exhibitions.map((ex) => ex.id),
+    ...teamExhibitions.flatMap((group) => group.exhibitions.map((ex) => ex.id)),
+  ]);
+
   return (
     <div className="min-h-screen">
       <div className="border-b border-wine/15">
@@ -82,6 +88,7 @@ export default async function ExhibitionsPage({
       <div className="container mx-auto px-4 max-w-6xl py-10 pb-12">
         <ExhibitionsList
           exhibitions={exhibitions}
+          counts={counts}
           galleryId={user.id}
           newExhibitionHref={`/exhibitions/new?as=${ownerRole}`}
         />
@@ -95,6 +102,7 @@ export default async function ExhibitionsPage({
             </h2>
             <ExhibitionsList
               exhibitions={galleryExhibitions}
+              counts={counts}
               galleryId={gallery.accountId}
               showCreate={false}
               canDelete={gallery.isAdmin}
