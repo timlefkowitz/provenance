@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Label } from '@kit/ui/label';
+import { cn } from '@kit/ui/utils';
+import { FIELD_HINT, FIELD_INPUT, FIELD_LABEL } from '~/components/editorial-form';
 import {
   Select,
   SelectContent,
@@ -23,11 +25,14 @@ export function ExhibitionSelector({
   onChange,
   userId,
   currentExhibitionId,
+  editorial = false,
 }: {
   value: string | null;
   onChange: (exhibitionId: string | null) => void;
   userId: string;
   currentExhibitionId?: string | null;
+  /** Mono label + hairline trigger, matching the navbar-styled forms. */
+  editorial?: boolean;
 }) {
   // Fetch user's exhibitions
   const { data: exhibitions = [], isLoading } = useQuery<Exhibition[]>({
@@ -60,16 +65,16 @@ export function ExhibitionSelector({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="exhibition">Exhibition</Label>
+      <Label htmlFor="exhibition" className={editorial ? FIELD_LABEL : undefined}>Exhibition</Label>
       <Select
         value={value || '__none__'}
         onValueChange={handleChange}
         disabled={isLoading}
       >
-        <SelectTrigger id="exhibition" className="font-serif">
+        <SelectTrigger id="exhibition" className={editorial ? cn(FIELD_INPUT, 'w-full') : 'font-serif'}>
           <SelectValue placeholder={isLoading ? 'Loading exhibitions...' : 'Select an exhibition (optional)'} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className={editorial ? 'rounded-none border-editorial-border bg-bone' : undefined}>
           <SelectItem value="__none__" className="font-serif">
             None
           </SelectItem>
@@ -98,7 +103,7 @@ export function ExhibitionSelector({
           )}
         </SelectContent>
       </Select>
-      <p className="text-xs text-ink/60 font-serif">
+      <p className={editorial ? FIELD_HINT : 'text-xs text-ink/60 font-serif'}>
         Link this artwork to an exhibition. Only exhibitions you own are shown.
       </p>
     </div>

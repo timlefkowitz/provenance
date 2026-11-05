@@ -17,10 +17,13 @@ export function GallerySelector({
   value,
   onChange,
   placeholder: _placeholder = 'Search for galleries or type manually...',
+  inputClassName,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Overrides the search input's classes (e.g. the editorial hairline input). */
+  inputClassName?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGalleries, setSelectedGalleries] = useState<Gallery[]>([]);
@@ -111,7 +114,7 @@ export function GallerySelector({
       {/* Search Input */}
       <div className="relative">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink/40" />
+          <Search className={`absolute ${inputClassName ? 'left-0' : 'left-3'} top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink/40`} />
           <Input
             ref={inputRef}
             type="text"
@@ -126,7 +129,7 @@ export function GallerySelector({
               }
             }}
             placeholder="Search galleries..."
-            className="pl-10 font-serif"
+            className={inputClassName ?? 'pl-10 font-serif'}
           />
         </div>
 

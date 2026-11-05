@@ -2,6 +2,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { EditProvenanceForm } from './_components/edit-provenance-form';
+import { EditorialPageHeader } from '~/components/editorial-form';
 import { getArtworkExhibition } from '../../[id]/certificate/_actions/get-artwork-exhibition';
 
 export const metadata = {
@@ -37,15 +38,12 @@ export default async function EditProvenancePage({
   const currentExhibition = await getArtworkExhibition(id);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-wine mb-2">
-          Edit Provenance Information
-        </h1>
-        <p className="text-ink/70 font-serif">
-          Update the provenance details for &quot;{artwork.title}&quot;
-        </p>
-      </div>
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <EditorialPageHeader
+        eyebrow="Certificate / Edit"
+        title="Edit artwork"
+        description={<>Update the details and provenance for <span className="text-editorial-ink">“{artwork.title}”</span>.</>}
+      />
 
       <EditProvenanceForm 
         artwork={artwork} 
