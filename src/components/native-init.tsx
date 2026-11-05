@@ -12,6 +12,7 @@ import {
 } from '~/lib/capacitor/resume-route';
 import { NATIVE_PLATFORM_COOKIE } from '~/lib/capacitor/native-platform-cookie';
 import { handleNativeAuthCallbackUrl, nativeOAuthHandler } from '~/lib/capacitor/native-oauth';
+import { claimIncomingLink, incomingLinkPath } from '~/lib/capacitor/incoming-link';
 import { setNativeOAuthHandler } from '@kit/supabase/native-oauth';
 import { StoreKit } from '~/lib/capacitor/storekit';
 import { APPLE_PRODUCT_TO_PLAN } from '~/lib/capacitor/apple-iap-config';
@@ -36,7 +37,11 @@ export function NativeInit({ userId: _userId }: Props) {
   // home page though — it doesn't navigate the already-running WebView to the
   // tapped path. appUrlOpen fires with that original URL so we can route there
   // ourselves (covers magic links, email confirmations, shared artwork/profile
-  // links, etc.).
+  // links, scanned exhibition and certificate QR codes, etc.).
+  //
+  // appUrlOpen can be lost (see incoming-link.ts), which left scanned QR codes
+  // on the landing page. So the launch URL is also read on load and followed
+  // once.
   useEffect(() => {
     if (!isNativePlatform()) return;
 
@@ -45,6 +50,23 @@ export function NativeInit({ userId: _userId }: Props) {
 
     // Google and Apple sign-in use system sheets on native (see native-oauth.ts).
     setNativeOAuthHandler(nativeOAuthHandler);
+
+    const currentPath = () => `${window.location.pathname}${window.location.search}`;
+    // Links the launch-URL check below just followed, so the same link's
+    // appUrlOpen (newer native builds deliver both) doesn't navigate twice —
+    // which would replay a one-time /auth/* token.
+    const followedAtLaunch = new Map<string, number>();
+
+    const goTo = (path: string) => {
+      claimLaunchNavigation();
+      // /auth/* are route handlers that set the session cookie and
+      // redirect — they need a real navigation, not a client transition.
+      if (path.startsWith('/auth/')) {
+        window.location.assign(path);
+      } else {
+        router.push(path);
+      }
+    };
 
     async function setup() {
       const { App } = await import('@capacitor/app');
@@ -55,13 +77,14 @@ export function NativeInit({ userId: _userId }: Props) {
           if (await handleNativeAuthCallbackUrl(target)) return;
 
           const path = `${target.pathname}${target.search}`;
-          // /auth/* are route handlers that set the session cookie and
-          // redirect — they need a real navigation, not a client transition.
-          if (target.pathname.startsWith('/auth/')) {
-            window.location.assign(path);
-          } else {
-            router.push(path);
-          }
+          // An explicit open always navigates (the same QR can be scanned
+          // twice), unless the launch-URL check below just took us there.
+          const followedAt = followedAtLaunch.get(url);
+          followedAtLaunch.delete(url);
+          if (followedAt !== undefined && Date.now() - followedAt < 10_000) return;
+          claimIncomingLink(url);
+          console.log('[NativeInit] appUrlOpen', { path });
+          goTo(path);
         } catch (err) {
           console.error('[NativeInit] appUrlOpen handling failed', { url, err });
         }
@@ -72,6 +95,22 @@ export function NativeInit({ userId: _userId }: Props) {
         return;
       }
       removeListener = () => handle.remove();
+
+      // Fallback for a lost appUrlOpen: follow the link iOS launched us with.
+      // Only https Provenance links — the custom-scheme auth callback is
+      // one-time and handled solely by appUrlOpen above.
+      try {
+        const launch = await App.getLaunchUrl();
+        const path = launch?.url ? incomingLinkPath(launch.url) : null;
+        if (cancelled || !launch?.url || !path) return;
+        if (!claimIncomingLink(launch.url)) return;
+        if (currentPath() === path) return;
+        console.log('[NativeInit] following launch URL', { path });
+        followedAtLaunch.set(launch.url, Date.now());
+        goTo(path);
+      } catch (err) {
+        console.error('[NativeInit] launch URL check failed', err);
+      }
     }
 
     void setup();
