@@ -57,6 +57,7 @@ type ParsedArtworkInput = {
   historicContext: string;
   celebrityNotes: string;
   value: string;
+  valueIsPublic: boolean;
   edition: string;
   productionLocation: string;
   ownedBy: string;
@@ -142,6 +143,7 @@ function parseArtworkInputs(formData: FormData): ParsedArtworkInput[] | { error:
       historicContext: getTextField(formData, `${prefix}historicContext`),
       celebrityNotes: getTextField(formData, `${prefix}celebrityNotes`),
       value: getTextField(formData, `${prefix}value`),
+      valueIsPublic: getTextField(formData, `${prefix}valueIsPublic`) === 'true',
       edition: getTextField(formData, `${prefix}edition`),
       productionLocation: getTextField(formData, `${prefix}productionLocation`),
       ownedBy: getTextField(formData, `${prefix}ownedBy`),
@@ -711,6 +713,7 @@ export async function submitExhibitionArtwork(
         historic_context: artwork.historicContext || null,
         celebrity_notes: artwork.celebrityNotes || null,
         value: artwork.value || null,
+        value_is_public: Boolean(artwork.value) && artwork.valueIsPublic,
         edition: artwork.edition || null,
         production_location: artwork.productionLocation || null,
         owned_by: artwork.ownedBy || null,

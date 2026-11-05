@@ -307,6 +307,8 @@ export async function getExhibitionWithDetails(
         certificate_number,
         owned_by,
         owned_by_is_public,
+        value,
+        value_is_public,
         metadata
       `)
       .in('id', linkedArtworkIds);
@@ -383,10 +385,17 @@ export async function getExhibitionWithDetails(
     .map((a) => {
       const meta =
         a.metadata && typeof a.metadata === 'object' ? (a.metadata as Record<string, unknown>) : {};
+      // Gallery checklist uploads store the price in metadata; artists who add or
+      // submit a work enter it as the artwork's value. Value is private unless the
+      // owner made it public, so only the exhibition's managers see a private one.
+      const artworkValue =
+        typeof a.value === 'string' && a.value.trim() ? a.value.trim() : null;
       const listPrice =
         typeof meta.exhibition_list_price === 'string' && meta.exhibition_list_price.trim()
           ? meta.exhibition_list_price.trim()
-          : null;
+          : artworkValue && (a.value_is_public === true || canSeeDraftListings)
+            ? artworkValue
+            : null;
       const rawArtistName =
         typeof a.artist_name === 'string' && a.artist_name.trim() ? a.artist_name.trim() : null;
       const resolvedArtistName =

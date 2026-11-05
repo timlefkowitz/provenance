@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
+import { Switch } from '@kit/ui/switch';
 import { Textarea } from '@kit/ui/textarea';
 import { Heading } from '@kit/ui/heading';
 import { toast } from '@kit/ui/sonner';
@@ -56,6 +57,7 @@ type ArtworkEntry = {
   historicContext: string;
   celebrityNotes: string;
   value: string;
+  valueIsPublic: boolean;
   edition: string;
   productionLocation: string;
   ownedBy: string;
@@ -87,6 +89,7 @@ function emptyEntry(): ArtworkEntry {
     historicContext: '',
     celebrityNotes: '',
     value: '',
+    valueIsPublic: false,
     edition: '',
     productionLocation: '',
     ownedBy: '',
@@ -108,6 +111,7 @@ function appendArtworkTextFields(formData: FormData, index: number, entry: Artwo
   formData.append(`${prefix}historicContext`, entry.historicContext.trim());
   formData.append(`${prefix}celebrityNotes`, entry.celebrityNotes.trim());
   formData.append(`${prefix}value`, entry.value.trim());
+  formData.append(`${prefix}valueIsPublic`, entry.valueIsPublic ? 'true' : 'false');
   formData.append(`${prefix}edition`, entry.edition.trim());
   formData.append(`${prefix}productionLocation`, entry.productionLocation.trim());
   formData.append(`${prefix}ownedBy`, entry.ownedBy.trim());
@@ -433,6 +437,26 @@ function ArtworkEntryCard({
                 value={entry.value}
                 onChange={(e) => onUpdate(entry.id, { value: e.target.value })}
               />
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <Label
+                  htmlFor={`value-public-${entry.id}`}
+                  className="text-xs font-normal text-ink/60"
+                >
+                  Show value on the exhibition page
+                </Label>
+                <Switch
+                  id={`value-public-${entry.id}`}
+                  checked={entry.valueIsPublic}
+                  onCheckedChange={(checked) =>
+                    onUpdate(entry.id, { valueIsPublic: checked })
+                  }
+                />
+              </div>
+              {!entry.valueIsPublic && entry.value.trim() && (
+                <p className="text-xs text-ink/50">
+                  Private: only the gallery sees this value.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor={`edition-${entry.id}`}>Edition</Label>
