@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Calendar, MapPin, Image as ImageIcon, Users, Edit, Trash2, ArrowRight, Copy, Check, Globe, Lock, Loader2 } from 'lucide-react';
+import { Plus, Calendar, MapPin, Image as ImageIcon, Users, LayoutList, Edit, Trash2, ArrowRight, Copy, Check, Globe, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -289,6 +289,17 @@ export function ExhibitionsList({
                           ) : (
                             'Publish'
                           )}
+                        </Button>
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 font-serif text-xs text-ink/40 hover:text-wine hover:bg-wine/10 gap-1"
+                        >
+                          <Link href={`/exhibitions/${ex.id}/curate`} aria-label="Curator view">
+                            <LayoutList className="h-3.5 w-3.5" />
+                            Curate
+                          </Link>
                         </Button>
                         <Button
                           asChild

@@ -10,7 +10,7 @@ import { getExhibitionMemories } from '../_actions/exhibition-memories';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
-import { ArrowLeft, Calendar, MapPin, User, Edit } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Edit, LayoutList } from 'lucide-react';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
@@ -224,6 +224,17 @@ export default async function ExhibitionPage({
             {isOwner && (
               <div className="flex items-center gap-1">
               <ExhibitionPrintMenu exhibition={exhibition} ownerName={printOwnerName} />
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif text-ink/40 hover:text-wine h-8 gap-1.5"
+              >
+                <Link href={`/exhibitions/${id}/curate`}>
+                  <LayoutList className="h-3.5 w-3.5" />
+                  Curator view
+                </Link>
+              </Button>
               <Button
                 asChild
                 variant="ghost"

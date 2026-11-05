@@ -21,7 +21,18 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import type { Artwork } from './certificate-of-authenticity';
 
-export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
+export function RequestUpdateDialog({
+  artwork,
+  exhibitionId,
+  triggerLabel = 'Request Update',
+  onSubmitted,
+}: {
+  artwork: Artwork;
+  /** Set when a curator suggests the change from an exhibition's curator view. */
+  exhibitionId?: string;
+  triggerLabel?: string;
+  onSubmitted?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const user = useCurrentUser();
@@ -141,6 +152,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
           updateFields,
           formData.request_message || undefined,
           'provenance_update',
+          exhibitionId ? { exhibitionId } : undefined,
         );
 
         if (result.error) {
@@ -149,6 +161,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
           toast.success('Update request submitted. The certificate owner will be notified.');
           setOpen(false);
           setRequestType('provenance_update');
+          onSubmitted?.();
           // Reset form
           setFormData({
             ...formData,
@@ -182,7 +195,7 @@ export function RequestUpdateDialog({ artwork }: { artwork: Artwork }) {
             className="font-serif border-wine/30 hover:bg-wine/10"
             onClick={() => setRequestType('provenance_update')}
           >
-            Request Update
+            {triggerLabel}
           </Button>
         </DialogTrigger>
         <EditorialDialogContent className={requestType === 'ownership_request' ? 'sm:max-w-lg font-serif' : 'sm:max-w-2xl max-h-[90vh] overflow-y-auto font-serif'}>

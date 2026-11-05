@@ -32,6 +32,10 @@ export async function createProvenanceUpdateRequest(
   updateFields: ProvenanceUpdateFields,
   requestMessage?: string,
   requestType: 'provenance_update' | 'ownership_request' = 'provenance_update',
+  options?: {
+    /** The show the change was suggested from (curator view); named in the notification. */
+    exhibitionId?: string;
+  },
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const client = asUntyped(getSupabaseServerClient());
@@ -131,9 +135,22 @@ export async function createProvenanceUpdateRequest(
       const notificationTitle = requestType === 'ownership_request' 
         ? `Ownership Request: ${artwork.title}`
         : `Provenance Update Request: ${artwork.title}`;
-      const notificationMessage = requestType === 'ownership_request'
+      let notificationMessage = requestType === 'ownership_request'
         ? `An artist has requested ownership of "${artwork.title}". Review the request in your portal.`
         : `A user has requested to update the provenance information for "${artwork.title}". Review the request in your portal.`;
+
+      let exhibitionTitle: string | null = null;
+      if (requestType === 'provenance_update' && options?.exhibitionId) {
+        const [{ data: requester }, { data: exhibition }] = await Promise.all([
+          asUntyped(client).from('accounts').select('name').eq('id', user.id).maybeSingle(),
+          asUntyped(client).from('exhibitions').select('title').eq('id', options.exhibitionId).maybeSingle(),
+        ]);
+        exhibitionTitle = (exhibition?.title as string | undefined) ?? null;
+        const who = (requester?.name as string | undefined) || 'The curator';
+        notificationMessage = exhibitionTitle
+          ? `${who}, curating "${exhibitionTitle}", suggested changes to your certificate for "${artwork.title}". Accept or decline them in your portal.`
+          : `${who} suggested changes to your certificate for "${artwork.title}". Accept or decline them in your portal.`;
+      }
 
       await createNotification({
         userId: artwork.account_id,
@@ -142,6 +159,9 @@ export async function createProvenanceUpdateRequest(
         message: notificationMessage,
         artworkId: artwork.id,
         relatedUserId: user.id,
+        ...(options?.exhibitionId
+          ? { metadata: { exhibition_id: options.exhibitionId, exhibition_title: exhibitionTitle } }
+          : {}),
       });
     } catch (notifError) {
       logger.error('provenance_request_notification_failed', {

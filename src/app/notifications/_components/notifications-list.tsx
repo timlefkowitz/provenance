@@ -339,6 +339,19 @@ export function NotificationsList({
                       </Link>
                     )}
 
+                    {(notification.type === 'provenance_update_request' ||
+                      notification.type === 'ownership_request') && (
+                      <Link href="/portal">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          Review in Portal
+                        </Button>
+                      </Link>
+                    )}
+
                     {notification.type === 'artist_claim_request' && notification.artwork_id && (
                       <Link href="/portal">
                         <Button
