@@ -46,6 +46,8 @@ export type WallLabelOptions = {
   artistBio: boolean;
   qrCode: boolean;
   size: 'standard' | 'large';
+  /** Where the certificate QR code sits on each label. */
+  qrPosition: 'top' | 'bottom';
 };
 
 export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
@@ -59,6 +61,7 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   artistBio: false,
   qrCode: true,
   size: 'standard',
+  qrPosition: 'top',
 };
 
 // ── HTML builders ─────────────────────────────────────────────────────────────
@@ -167,7 +170,7 @@ export function buildWallLabelsHtml(
   .credit { font-size: ${large ? 9 : 8}pt; color: #555; margin-top: 3px; }
   .description { font-size: ${large ? 9 : 7.5}pt; line-height: 1.5; color: #333; margin-top: 8px; }
   .bio { font-size: ${large ? 8.5 : 7}pt; line-height: 1.5; color: #555; margin-top: 8px; padding-top: 6px; border-top: 0.5pt solid #e5e0da; }
-  .qr-col { flex: none; width: ${large ? 1 : 0.8}in; text-align: center; }
+  .qr-col { flex: none; width: ${large ? 1 : 0.8}in; text-align: center; align-self: ${options.qrPosition === 'bottom' ? 'flex-end' : 'flex-start'}; }
   .qr svg { width: 100%; height: auto; display: block; }
   .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; color: #888; letter-spacing: 0.04em; margin-top: 2px; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

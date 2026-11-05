@@ -43,7 +43,7 @@ import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
 
 const LABEL_OPTIONS_KEY = 'provenance.exhibition.wallLabelOptions';
 
-const FIELD_TOGGLES: Array<{ key: Exclude<keyof WallLabelOptions, 'size'>; label: string; hint?: string }> = [
+const FIELD_TOGGLES: Array<{ key: Exclude<keyof WallLabelOptions, 'size' | 'qrPosition'>; label: string; hint?: string }> = [
   { key: 'year', label: 'Year' },
   { key: 'medium', label: 'Medium' },
   { key: 'dimensions', label: 'Dimensions' },
@@ -415,6 +415,34 @@ export function ExhibitionPrintMenu({
                 Edits are for printing only and are remembered on this device. They don&apos;t change
                 anyone&apos;s profile.
               </p>
+            </div>
+          )}
+
+          {options.qrCode && (
+            <div className="pt-2">
+              <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">QR code position</p>
+              <div className="flex gap-2">
+                {(
+                  [
+                    ['top', 'Top right'],
+                    ['bottom', 'Bottom right'],
+                  ] as const
+                ).map(([value, text]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setOptions((o) => ({ ...o, qrPosition: value }))}
+                    aria-pressed={options.qrPosition === value}
+                    className={`flex-1 rounded-md border px-3 py-2 text-xs font-serif transition-colors ${
+                      options.qrPosition === value
+                        ? 'border-wine bg-wine/10 text-wine'
+                        : 'border-wine/20 text-ink/60 hover:border-wine/40'
+                    }`}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
