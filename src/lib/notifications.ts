@@ -59,7 +59,9 @@ export type NotificationType =
   | 'av_scan_outage'
   | 'invite_email_failed'
   | 'owned_artwork_exhibited'
-  | 'new_work_by_followed_artist';
+  | 'new_work_by_followed_artist'
+  | 'artwork_reservation_request'
+  | 'artwork_reservation_response';
 
 export interface CreateNotificationParams {
   userId: string;

@@ -44,6 +44,7 @@ export function ProfileForm({
     galleries: profile?.galleries?.join('\n') || '',
     contact_email: profile?.contact_email || '',
     phone: profile?.phone || '',
+    show_phone: profile?.show_phone === true,
     established_year: profile?.established_year?.toString() || '',
   });
   const [newsPublications, setNewsPublications] = useState<NewsPublication[]>(
@@ -145,6 +146,10 @@ export function ProfileForm({
               : undefined,
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
+            // Only send when changed, so saving works before the column exists.
+            ...(formData.show_phone !== (profile.show_phone === true)
+              ? { show_phone: formData.show_phone }
+              : {}),
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
             ...(profile.role === USER_ROLES.GALLERY ? { slug: publicSlug } : {}),
             news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
@@ -176,6 +181,7 @@ export function ProfileForm({
               : undefined,
             contact_email: formData.contact_email || undefined,
             phone: formData.phone || undefined,
+            ...(formData.show_phone ? { show_phone: true } : {}),
             established_year: formData.established_year ? parseInt(formData.established_year, 10) : undefined,
             ...(role === USER_ROLES.GALLERY && publicSlug.trim()
               ? { slug: publicSlug.trim() }
@@ -634,6 +640,20 @@ export function ProfileForm({
               className="font-serif"
               placeholder="+1 (555) 123-4567"
             />
+            <label className="mt-2 flex items-start gap-2 text-sm font-serif text-ink/70 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-wine"
+                checked={formData.show_phone}
+                onChange={(e) => setFormData({ ...formData, show_phone: e.target.checked })}
+              />
+              <span>
+                Show my phone number on my public profile
+                <span className="block text-xs text-ink/45">
+                  Off by default. When on, anyone viewing your profile or your exhibitions can call you.
+                </span>
+              </span>
+            </label>
           </div>
 
           {/* Submit Buttons */}

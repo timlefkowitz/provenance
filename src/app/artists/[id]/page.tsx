@@ -37,6 +37,7 @@ import {
   FeedPanelThumbnailPicker,
   type FeedPanelEligibleArtwork,
 } from './_components/feed-panel-thumbnail-picker';
+import { PhoneLink } from './_components/phone-link';
 import { SocialLinkItem } from './_components/social-link-item';
 import { ProfileQuestionnaire } from '~/components/profile-questionnaire';
 import { sanitizeQuestionnaire } from '~/lib/profile-questionnaire';
@@ -392,6 +393,9 @@ export default async function ArtistProfilePage({
   const bio = roleProfile?.bio || '';
   const location = roleProfile?.location || '';
   const website = roleProfile?.website || '';
+  // Only shown when the owner opted in on their profile.
+  const publicPhone =
+    roleProfile?.show_phone === true && roleProfile.phone?.trim() ? roleProfile.phone.trim() : null;
   const establishedYear = roleProfile?.established_year;
   const pictureUrl = roleProfile?.picture_url || account.picture_url;
   const newsPublications = (roleProfile?.news_publications as { title: string; url: string; publication_name?: string; date?: string }[] | undefined) || [];
@@ -771,6 +775,7 @@ export default async function ArtistProfilePage({
         questionnaire,
         links,
         website: website || null,
+        phone: publicPhone,
         isOwner,
         profileId: roleProfile?.id,
         publishedSiteUrl,
@@ -902,8 +907,9 @@ export default async function ArtistProfilePage({
                   )}
 
                   {/* Social links — inline horizontal */}
-                  {(links.length > 0 || website) && (
+                  {(links.length > 0 || website || publicPhone) && (
                     <div className="flex flex-wrap gap-4 mt-4">
+                      {publicPhone && <PhoneLink phone={publicPhone} />}
                       {website && <SocialLinkItem url={website} />}
                       {links.map((link) => (
                         <SocialLinkItem key={link} url={link} />

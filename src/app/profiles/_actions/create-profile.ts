@@ -23,6 +23,7 @@ export interface CreateProfileInput {
   galleries?: string[];
   contact_email?: string;
   phone?: string;
+  show_phone?: boolean;
   established_year?: number;
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
 }
@@ -121,6 +122,7 @@ export async function createProfile(input: CreateProfileInput) {
         galleries: input.galleries || [],
         contact_email: input.contact_email?.trim() || null,
         phone: input.phone?.trim() || null,
+        ...(input.show_phone ? { show_phone: true } : {}),
         established_year: input.established_year || null,
         news_publications: Array.isArray(input.news_publications) ? input.news_publications : [],
         is_active: true,

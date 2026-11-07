@@ -12,6 +12,7 @@ import {
   type ExhibitionArtistInviteInput,
 } from './manage-exhibition-invites';
 import { exhibitionHasEnded, parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
+import { normalizePhoneInput } from '~/lib/phone';
 
 export async function updateExhibition(exhibitionId: string, formData: FormData) {
   const client = asUntyped(getSupabaseServerClient());
@@ -67,6 +68,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   const location = formData.get('location') as string | null;
   const curator = formData.get('curator') as string | null;
   const theme = formData.get('theme') as string | null;
+  const contactPhone = normalizePhoneInput(formData.get('contactPhone') as string | null);
   const artistIdsJson = formData.get('artistIds') as string | null;
   const artistInvitesJson = formData.get('artistInvites') as string | null;
   const maxArtworksPerArtist = parseMaxArtworksPerArtist(formData.get('maxArtworksPerArtist'));
@@ -98,6 +100,11 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
     metadata.theme = theme.trim();
   } else {
     delete metadata.theme;
+  }
+  if (contactPhone) {
+    metadata.contact_phone = contactPhone;
+  } else {
+    delete metadata.contact_phone;
   }
   if (maxArtworksPerArtist) {
     metadata.max_artworks_per_artist = maxArtworksPerArtist;

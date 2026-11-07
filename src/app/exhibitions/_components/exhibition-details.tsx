@@ -27,14 +27,30 @@ import { publishExhibitionListing } from '../_actions/publish-exhibition-listing
 import { updateExhibitionListing } from '../_actions/update-exhibition-listing';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { FindByPhotoDialog } from '~/app/artworks/_components/find-by-photo-dialog';
+import { ReserveArtworkDialog } from './reserve-artwork-dialog';
+
+/** Visitor-side "request to reserve" settings; null when reserving is off. */
+export interface ReserveOptions {
+  contactPhone: string | null;
+  /** Works the gallery has accepted a reservation for (shown as Reserved). */
+  reservedArtworkIds: string[];
+  defaultName?: string;
+  defaultEmail?: string;
+}
 
 export function ExhibitionDetails({
   exhibition,
   isOwner,
+  reserve,
 }: {
   exhibition: ExhibitionWithDetails;
   isOwner: boolean;
+  reserve?: ReserveOptions | null;
 }) {
+  const reservedIds = useMemo(
+    () => new Set(reserve?.reservedArtworkIds ?? []),
+    [reserve?.reservedArtworkIds],
+  );
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -216,6 +232,7 @@ export function ExhibitionDetails({
                 artwork.artist_name ||
                 artwork.dimensions ||
                 artwork.listPriceDisplay ||
+                reserve ||
                 isOwner ||
                 artwork.status === 'draft') && (
                 <div className="px-4 pt-3 pb-4 border-t border-wine/10">
@@ -262,6 +279,28 @@ export function ExhibitionDetails({
                         </span>
                       )}
                     </div>
+                  )}
+
+                  {reservedIds.has(artwork.id) ? (
+                    <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-serif text-wine">
+                      <span className="h-1.5 w-1.5 rounded-full bg-wine" />
+                      Reserved
+                    </p>
+                  ) : (
+                    reserve &&
+                    !isOwner &&
+                    artwork.status === 'verified' && (
+                      <div className="mt-3">
+                        <ReserveArtworkDialog
+                          exhibitionId={exhibition.id}
+                          artworkId={artwork.id}
+                          artworkTitle={artwork.title}
+                          contactPhone={reserve.contactPhone}
+                          defaultName={reserve.defaultName}
+                          defaultEmail={reserve.defaultEmail}
+                        />
+                      </div>
+                    )
                   )}
 
                   {isOwner && artwork.status === 'draft' && (

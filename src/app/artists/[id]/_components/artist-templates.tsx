@@ -8,6 +8,7 @@ import { Button } from '@kit/ui/button';
 import { StreakStar } from '~/components/streak-star';
 import type { StarTier } from '~/lib/streak-service';
 import { SocialLinkItem } from './social-link-item';
+import { PhoneLink } from './phone-link';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { ProfileQuestionnaire } from '~/components/profile-questionnaire';
 import type { QuestionnaireEntry } from '~/lib/profile-questionnaire';
@@ -46,6 +47,8 @@ export interface ArtistTemplateProps {
   questionnaire?: QuestionnaireEntry[];
   links: string[];
   website: string | null;
+  /** Public phone, only set when the owner opted in */
+  phone?: string | null;
   isOwner: boolean;
   profileId?: string;
   publishedSiteUrl: string | null;
@@ -224,10 +227,11 @@ function ArtworkLink({
   );
 }
 
-function SocialRow({ website, links }: Pick<ArtistTemplateProps, 'website' | 'links'>) {
-  if (!website && links.length === 0) return null;
+function SocialRow({ website, links, phone }: Pick<ArtistTemplateProps, 'website' | 'links' | 'phone'>) {
+  if (!website && links.length === 0 && !phone) return null;
   return (
     <div className="flex flex-wrap gap-4">
+      {phone && <PhoneLink phone={phone} />}
       {website && <SocialLinkItem url={website} />}
       {links.map((link) => (
         <SocialLinkItem key={link} url={link} />
@@ -343,7 +347,7 @@ export function ManifestoTemplate(props: ArtistTemplateProps) {
             {streak && (
               <StreakStar tier={streak.starTier} streakDays={streak.currentStreakDays} isFoundingArtist={streak.isFoundingArtist} />
             )}
-            <SocialRow website={props.website} links={props.links} />
+            <SocialRow website={props.website} links={props.links} phone={props.phone} />
             <div className="flex flex-wrap gap-3 pt-2">
               <OwnerActions {...actions} />
               {!props.isOwner && (
@@ -534,7 +538,7 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
             )}
           </div>
           <div className="mt-6 flex justify-center">
-            <SocialRow website={props.website} links={props.links} />
+            <SocialRow website={props.website} links={props.links} phone={props.phone} />
           </div>
         </div>
       </header>
@@ -701,7 +705,7 @@ export function ArchiveTemplate(props: ArtistTemplateProps) {
         </div>
         <hr className="mt-6 border-ink/20" />
         <div className="mt-4 flex flex-wrap gap-3 items-center justify-between">
-          <SocialRow website={props.website} links={props.links} />
+          <SocialRow website={props.website} links={props.links} phone={props.phone} />
           <OwnerActions {...actions} />
           {!props.isOwner && (
             <VisitorBadges
@@ -1120,7 +1124,7 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
         )}
 
         <div className="break-inside-avoid clear-both">
-          <SocialRow website={props.website} links={props.links} />
+          <SocialRow website={props.website} links={props.links} phone={props.phone} />
         </div>
       </article>
 
@@ -1272,7 +1276,7 @@ export function VoidTemplate(props: ArtistTemplateProps) {
         )}
 
         <div className="opacity-0 hover:opacity-100 transition-opacity pt-8">
-          <SocialRow website={props.website} links={props.links} />
+          <SocialRow website={props.website} links={props.links} phone={props.phone} />
         </div>
       </div>
     </div>

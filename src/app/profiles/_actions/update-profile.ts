@@ -8,6 +8,7 @@ import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 import { sanitizeQuestionnaire, supportsQuestionnaire, type QuestionnaireEntry } from '~/lib/profile-questionnaire';
+import { normalizePhoneInput } from '~/lib/phone';
 
 export interface UpdateProfileInput {
   profileId: string;
@@ -21,6 +22,7 @@ export interface UpdateProfileInput {
   galleries?: string[];
   contact_email?: string;
   phone?: string;
+  show_phone?: boolean;
   established_year?: number;
   is_active?: boolean;
   /** Gallery only: public URL segment for /g/{slug} and /gallery/{slug} */
@@ -90,7 +92,14 @@ export async function updateProfile(input: UpdateProfileInput) {
     if (input.links !== undefined) updateData.links = input.links || [];
     if (input.galleries !== undefined) updateData.galleries = input.galleries || [];
     if (input.contact_email !== undefined) updateData.contact_email = input.contact_email?.trim() || null;
-    if (input.phone !== undefined) updateData.phone = input.phone?.trim() || null;
+    if (input.phone !== undefined) {
+      try {
+        updateData.phone = normalizePhoneInput(input.phone);
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    }
+    if (input.show_phone !== undefined) updateData.show_phone = input.show_phone === true;
     if (input.established_year !== undefined) updateData.established_year = input.established_year || null;
     if (input.is_active !== undefined) updateData.is_active = input.is_active;
     if (input.news_publications !== undefined) {

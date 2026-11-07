@@ -17,6 +17,7 @@ import {
   type ExhibitionArtistInviteInput,
 } from './manage-exhibition-invites';
 import { exhibitionHasEnded, parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
+import { normalizePhoneInput } from '~/lib/phone';
 
 export async function createExhibition(formData: FormData) {
   console.log('[Exhibitions] createExhibition started');
@@ -56,6 +57,7 @@ export async function createExhibition(formData: FormData) {
   const location = formData.get('location') as string | null;
   const curator = formData.get('curator') as string | null;
   const theme = formData.get('theme') as string | null;
+  const contactPhone = normalizePhoneInput(formData.get('contactPhone') as string | null);
   const artistIdsJson = formData.get('artistIds') as string | null;
   const artistInvitesJson = formData.get('artistInvites') as string | null;
   const maxArtworksPerArtist = parseMaxArtworksPerArtist(formData.get('maxArtworksPerArtist'));
@@ -98,6 +100,9 @@ export async function createExhibition(formData: FormData) {
   }
   if (theme?.trim()) {
     metadata.theme = theme.trim();
+  }
+  if (contactPhone) {
+    metadata.contact_phone = contactPhone;
   }
   if (maxArtworksPerArtist) {
     metadata.max_artworks_per_artist = maxArtworksPerArtist;

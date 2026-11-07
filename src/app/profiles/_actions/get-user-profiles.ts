@@ -20,6 +20,8 @@ export type UserProfile = {
   galleries: string[] | null;
   contact_email: string | null;
   phone: string | null;
+  /** Owner opted in to showing `phone` publicly (default false) */
+  show_phone?: boolean;
   established_year: number | null;
   is_active: boolean;
   /** false for a managed collection built on someone else's behalf (not yet handed off) */

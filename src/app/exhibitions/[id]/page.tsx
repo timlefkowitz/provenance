@@ -10,7 +10,13 @@ import { getExhibitionMemories } from '../_actions/exhibition-memories';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
-import { ArrowLeft, Calendar, MapPin, User, Edit, LayoutList } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Edit, LayoutList, Phone } from 'lucide-react';
+import { formatPhone, phoneHref } from '~/lib/phone';
+import {
+  getExhibitionReservationRequests,
+  getReservedArtworkIds,
+} from '../_actions/reservation-requests';
+import { ExhibitionReservationsPanel } from '../_components/exhibition-reservations-panel';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
@@ -136,6 +142,9 @@ export default async function ExhibitionPage({
   const memories = await getExhibitionMemories(id);
   const printOwnerName = isOwner ? ((await getExhibitionShareMeta(id))?.ownerName ?? null) : null;
 
+  // Owner's public profile phone, if they opted in, is the fallback contact
+  // number when the show doesn't set its own.
+  let ownerProfilePhone: string | null = null;
   // Resolve back link
   let backLink = '/exhibitions';
   let backLabel = 'Exhibitions';
@@ -156,6 +165,9 @@ export default async function ExhibitionPage({
     const ownerLabel = ownerRole === USER_ROLES.INSTITUTION ? 'Institution' : 'Gallery';
     try {
       const galleryProfile = await getUserProfileByRole(exhibition.gallery_id, ownerRole);
+      if (galleryProfile?.show_phone && galleryProfile.phone?.trim()) {
+        ownerProfilePhone = galleryProfile.phone.trim();
+      }
       if (galleryProfile) {
         const profileId = resolvedSearchParams?.profileId || galleryProfile.id;
         backLink = `/artists/${exhibition.gallery_id}?role=${ownerRole}&profileId=${profileId}`;
@@ -171,7 +183,24 @@ export default async function ExhibitionPage({
 
   const status = getStatus(exhibition.start_date, exhibition.end_date ?? null);
   const statusStyle = STATUS_STYLES[status];
-  const metadata = (exhibition as any).metadata as { curator?: string; theme?: string } | undefined;
+  const metadata = (exhibition as any).metadata as
+    | { curator?: string; theme?: string; contact_phone?: string }
+    | undefined;
+  const contactPhone = metadata?.contact_phone?.trim() || ownerProfilePhone;
+
+  // Visitors can ask to reserve a piece until the show closes.
+  const [reservedArtworkIds, reservationRequests] = await Promise.all([
+    getReservedArtworkIds(id),
+    isOwner ? getExhibitionReservationRequests(id) : Promise.resolve([]),
+  ]);
+  const reserve =
+    status === 'past'
+      ? null
+      : {
+          contactPhone,
+          reservedArtworkIds,
+          defaultEmail: user?.email ?? undefined,
+        };
 
   const pageUrl = new URL(`/exhibitions/${id}`, appConfig.url).href;
   const exhibitionJsonLd = {
@@ -191,6 +220,9 @@ export default async function ExhibitionPage({
       : { '@type': 'Organization', name: 'Provenance', url: appConfig.url },
     isPartOf: { '@type': 'WebSite', name: 'Provenance', url: appConfig.url },
   };
+  if (contactPhone) {
+    (exhibitionJsonLd.organizer as Record<string, unknown>).telephone = contactPhone;
+  }
 
   return (
     <>
@@ -282,6 +314,15 @@ export default async function ExhibitionPage({
                 {exhibition.location}
               </span>
             )}
+            {contactPhone && (
+              <a
+                href={phoneHref(contactPhone)}
+                className="flex items-center gap-1.5 hover:text-wine transition-colors"
+              >
+                <Phone className="h-3.5 w-3.5 text-wine/40" />
+                {formatPhone(contactPhone)}
+              </a>
+            )}
             {metadata?.curator && (
               <span className="flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-wine/40" />
@@ -335,6 +376,7 @@ export default async function ExhibitionPage({
             publishedAt={exhibition.published_at ?? null}
           />
         )}
+        {isOwner && <ExhibitionReservationsPanel requests={reservationRequests} />}
         {isOwner && (
           <ExhibitionSellThroughLine exhibitionId={id} galleryOwnerId={exhibition.gallery_id} />
         )}
@@ -344,6 +386,7 @@ export default async function ExhibitionPage({
           memories={memories}
           canPost={!!user}
           currentUserId={user?.id ?? null}
+          reserve={reserve}
         />
       </div>
     </div>

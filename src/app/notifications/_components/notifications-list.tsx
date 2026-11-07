@@ -149,6 +149,8 @@ export function NotificationsList({
       case 'exhibition_artwork_submitted':
       case 'exhibition_artwork_selected':
       case 'owned_artwork_exhibited':
+      case 'artwork_reservation_request':
+      case 'artwork_reservation_response':
         return <GalleryVerticalEnd className="h-5 w-5" />;
       case 'new_work_by_followed_artist':
         return <Heart className="h-5 w-5" />;
@@ -169,7 +171,10 @@ export function NotificationsList({
       case 'artist_claim_approved':
       case 'exhibition_artwork_selected':
       case 'owned_artwork_exhibited':
+      case 'artwork_reservation_response':
         return 'text-notify-success';
+      case 'artwork_reservation_request':
+        return 'text-wine';
       case 'new_work_by_followed_artist':
         return 'text-wine';
       case 'certificate_claimed':
@@ -511,7 +516,9 @@ export function NotificationsList({
                       </Link>
                     )}
 
-                    {notification.type === 'owned_artwork_exhibited' &&
+                    {(notification.type === 'owned_artwork_exhibited' ||
+                      notification.type === 'artwork_reservation_request' ||
+                      notification.type === 'artwork_reservation_response') &&
                       typeof notification.metadata?.exhibition_id === 'string' && (
                       <Link href={`/exhibitions/${notification.metadata.exhibition_id}`}>
                         <Button
@@ -519,7 +526,9 @@ export function NotificationsList({
                           size="sm"
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
-                          View exhibition
+                          {notification.type === 'artwork_reservation_request'
+                            ? 'Review request'
+                            : 'View exhibition'}
                         </Button>
                       </Link>
                     )}

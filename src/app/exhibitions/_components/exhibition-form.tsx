@@ -74,6 +74,7 @@ export function ExhibitionForm({
     location: exhibition?.location || '',
     curator: initialMetadata.curator || '',
     theme: initialMetadata.theme || '',
+    contactPhone: initialMetadata.contact_phone || '',
     maxArtworksPerArtist: initialMetadata.max_artworks_per_artist
       ? String(initialMetadata.max_artworks_per_artist)
       : '',
@@ -109,6 +110,7 @@ export function ExhibitionForm({
         formDataObj.append('location', formData.location);
         formDataObj.append('curator', formData.curator);
         formDataObj.append('theme', formData.theme);
+        formDataObj.append('contactPhone', formData.contactPhone);
         formDataObj.append('maxArtworksPerArtist', formData.maxArtworksPerArtist);
         if (!exhibition && ownerRole) {
           formDataObj.append('ownerRole', ownerRole);
@@ -349,6 +351,25 @@ export function ExhibitionForm({
             placeholder="e.g., Abstract Expressionism, Contemporary Portraits"
             className={FIELD_INPUT}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="contactPhone" className={FIELD_LABEL}>Contact phone</Label>
+          <Input
+            id="contactPhone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={formData.contactPhone}
+            onChange={(e) =>
+              setFormData({ ...formData, contactPhone: e.target.value })
+            }
+            placeholder="e.g., (210) 555-0123"
+            className={FIELD_INPUT}
+          />
+          <p className={FIELD_HINT}>
+            Shown on the exhibition page so visitors can call about the show or a piece.
+          </p>
         </div>
       </div>
 
