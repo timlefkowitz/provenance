@@ -1,16 +1,32 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
+import { useRef, useState, useSyncExternalStore } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@kit/ui/button';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
-import { BookOpen, ChevronDown, List, Printer, Tag } from 'lucide-react';
+import { BookOpen, ChevronDown, Grid3x3, List, Printer, Tag } from 'lucide-react';
+import { formatPrintPrice, loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
+import {
+  buildArtworkQrSheetHtml,
+  buildWallLabelsHtml as buildLabelsHtml,
+  DEFAULT_LABEL_OPTIONS,
+  type WallLabelItem,
+  type WallLabelOptions,
+} from '~/app/exhibitions/_helpers/exhibition-print-html';
+import { composeStyledQr, type QrStyleSettings } from '~/app/exhibitions/_helpers/qr-style';
+import { WallLabelsDialog } from '~/app/exhibitions/_components/wall-labels-dialog';
+import { getArtworkArtistBios } from '../_actions/get-artwork-artist-bios';
+import { loadCollectionQrStyle, QrSheetDialog, saveCollectionQrStyle } from './qr-sheet-dialog';
+
+const LABEL_OPTIONS_KEY = 'provenance.collection.wallLabelOptions';
+const BIO_EDITS_KEY = 'provenance.collection.artistBios';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -86,82 +102,37 @@ export type ArtworkFormDataForPrintMenu = {
 
 // ── Wall Labels ───────────────────────────────────────────────────────────────
 
-function formatPrice(value: string | null | undefined): string {
-  if (!value) return '';
-  const raw = value.trim();
-  const num = parseFloat(raw.replace(/[^0-9.]/g, ''));
-  if (isNaN(num)) return raw;
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
+/** A collection work as a wall label, with unsaved form edits taking precedence. */
+function collectionLabelItem(
+  artwork: ArtworkForPrintMenu,
+  form: ArtworkFormDataForPrintMenu | undefined,
+): WallLabelItem {
+  return {
+    id: artwork.id,
+    title: mergeField(form?.title, artwork.title) || null,
+    artist_name: mergeField(form?.artist_name, artwork.artist_name) || null,
+    creation_date: form?.creation_date || artwork.creation_date,
+    medium: mergeField(form?.medium, artwork.medium) || null,
+    dimensions: mergeField(form?.dimensions, artwork.dimensions) || null,
+    edition: mergeField(form?.edition, artwork.edition) || null,
+    price: mergeField(form?.value, artwork.value) || null,
+    credit_line: mergeField(form?.owned_by, artwork.owned_by) || null,
+    description: mergeField(form?.description, artwork.description) || null,
+  };
 }
 
+/** Plain wall labels with price, no QR (used by the certificate page). */
 export function buildWallLabelsHtml(
   artworks: ArtworkForPrintMenu[],
   artworkData: Record<string, ArtworkFormDataForPrintMenu>,
+  priceSymbol = true,
 ): string {
-  // Landscape labels: 4 × 2.5 in at 96 DPI
-  const W_PX = Math.round(4 * 96);
-  const H_PX = Math.round(2.5 * 96);
-
-  const labelCells = artworks
-    .map((artwork) => {
-      const form       = artworkData[artwork.id];
-      const title      = escapeHtml(form?.title        || artwork.title        || 'Untitled');
-      const artist     = escapeHtml(form?.artist_name   || artwork.artist_name  || '');
-      const year       = getYear(form?.creation_date    || artwork.creation_date);
-      const medium     = escapeHtml(form?.medium         || artwork.medium        || '');
-      const dims       = escapeHtml(form?.dimensions     || artwork.dimensions    || '');
-      const edition    = escapeHtml(form?.edition        || artwork.edition       || '');
-      const creditLine = escapeHtml(form?.owned_by       || artwork.owned_by      || '');
-      const rawValue   = form?.value || artwork.value;
-      const price      = escapeHtml(formatPrice(rawValue));
-      const titleLine  = year ? `${title}, ${year}` : title;
-      const editionStr = edition ? `Edition ${edition}` : '';
-
-      return `
-        <div class="label" style="width:${W_PX}px;min-height:${H_PX}px;">
-          ${artist     ? `<div class="artist">${artist}</div><div class="spacer"></div>` : ''}
-          <div class="title">${titleLine}</div>
-          ${medium     ? `<div class="meta">${medium}</div>`       : ''}
-          ${dims       ? `<div class="meta">${dims}</div>`         : ''}
-          ${editionStr ? `<div class="meta">${editionStr}</div>`   : ''}
-          ${price      ? `<div class="meta">${price}</div>`        : ''}
-          ${creditLine ? `<div class="credit">${creditLine}</div>` : ''}
-        </div>`;
-    })
-    .join('');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Wall Labels — Provenance</title>
-  <style>
-    @page { size: letter landscape; margin: 0.5in; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #111; }
-    .page-grid { display: flex; flex-wrap: wrap; gap: 0.25in; align-items: flex-start; }
-    .label {
-      break-inside: avoid; page-break-inside: avoid;
-      border: 0.5pt solid #d0cdc8;
-      padding: 14px 16px 14px;
-      display: flex; flex-direction: column;
-      justify-content: flex-start; gap: 2px;
-    }
-    .spacer  { height: 6px; }
-    .artist  { font-size: 10pt; font-weight: bold; line-height: 1.25; letter-spacing: 0.01em; }
-    .title   { font-size: 9.5pt; font-style: italic; line-height: 1.3; }
-    .meta    { font-size: 9pt; line-height: 1.4; }
-    .credit  { font-size: 8pt; color: #555; margin-top: 2px; }
-    @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  </style>
-</head>
-<body>
-  <div class="page-grid">${labelCells}</div>
-  <script>
-    window.onload = function () { window.print(); window.onafterprint = function () { window.close(); }; };
-  </script>
-</body>
-</html>`;
+  return buildLabelsHtml(
+    'Provenance',
+    artworks.map((a) => collectionLabelItem(a, artworkData[a.id])),
+    { ...DEFAULT_LABEL_OPTIONS, price: true, priceSymbol, qrCode: false },
+    new Map(),
+  );
 }
 
 // ── Catalog ───────────────────────────────────────────────────────────────────
@@ -171,6 +142,7 @@ function buildCatalogHtml(
   artworkData: Record<string, ArtworkFormDataForPrintMenu>,
   galleryName: string,
   printDate: string,
+  priceSymbol: boolean,
 ): string {
   const heroArtwork = artworks.find((a) => a.image_url);
   const heroHtml = heroArtwork?.image_url
@@ -285,7 +257,7 @@ function buildCatalogHtml(
             const artist = escapeHtml(mergeField(form?.artist_name, artwork.artist_name));
             const year   = getYear(form?.creation_date || artwork.creation_date);
             const medium = escapeHtml(mergeField(form?.medium, artwork.medium));
-            const value  = escapeHtml(form?.value?.trim() || artwork.value?.trim() || '');
+            const value  = escapeHtml(formatPrintPrice(form?.value || artwork.value, priceSymbol));
             return `<tr><td class="num">${idx + 1}</td><td class="title-cell">${title}${year ? `, ${year}` : ''}</td><td>${artist}</td><td>${medium}</td><td class="price">${value}</td></tr>`;
           }).join('')}</tbody>
         </table>
@@ -419,6 +391,8 @@ function buildChecklistOnlyHtml(
 
 // ── PrintMenu component ───────────────────────────────────────────────────────
 
+const noopSubscribe = () => () => {};
+
 export function PrintMenu({
   artworks,
   artworkData,
@@ -430,94 +404,77 @@ export function PrintMenu({
   selectedArtworkIds: Set<string>;
   galleryName?: string;
 }) {
-  const [mounted, setMounted] = useState(false);
-  const [origin, setOrigin] = useState('');
-  const [printingQR, setPrintingQR] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-    setOrigin(window.location.origin);
-  }, []);
+  const origin = useSyncExternalStore(
+    noopSubscribe,
+    () => window.location.origin,
+    () => '',
+  );
+  const [priceSymbol, setPriceSymbol] = useState(true);
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrStyle, setQrStyle] = useState<QrStyleSettings | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   const selectedArtworks = artworks.filter((a) => selectedArtworkIds.has(a.id));
   const disabled = selectedArtworks.length === 0;
+  const certificateUrl = (id: string) => `${origin}/artworks/${id}/certificate?scan=true`;
 
   const printDate = () =>
     new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // QR
-  const handlePrintQR = async () => {
-    if (!containerRef.current || disabled) return;
-    console.log('[Collection] PrintMenu: Print QR', { count: selectedArtworks.length });
-    setPrintingQR(true);
-    try {
-      const canvases = containerRef.current.querySelectorAll('canvas');
-      const cells = selectedArtworks
-        .map((artwork, idx) => {
-          const canvas = canvases[idx] as HTMLCanvasElement | undefined;
-          const dataUrl = canvas ? canvas.toDataURL('image/png') : '';
-          const title  = escapeHtml(artwork.title || 'Untitled');
-          const artist = artwork.artist_name ? escapeHtml(artwork.artist_name) : '';
-          const cert   = artwork.certificate_number ? escapeHtml(artwork.certificate_number) : '';
-          return `
-            <div class="cell">
-              ${dataUrl ? `<img src="${dataUrl}" alt="QR code for ${title}" />` : '<div class="qr-placeholder"></div>'}
-              <div class="title">${title}</div>
-              ${artist ? `<div class="artist">${artist}</div>` : ''}
-              ${cert   ? `<div class="cert">${cert}</div>`     : ''}
-            </div>`;
-        })
-        .join('');
-      const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8" /><title>QR Codes — Provenance</title>
-<style>
-  @page { size: letter; margin: 0.45in; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #1a1209; }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.06in; }
-  .cell { break-inside: avoid; page-break-inside: avoid; border: 0.4pt solid #d4c9b0; padding: 4pt 4pt 5pt; text-align: center; }
-  .cell img, .qr-placeholder { display: block; margin: 0 auto; width: 1.5in; height: 1.5in; }
-  .qr-placeholder { background: #f5f0e8; }
-  .title  { margin-top: 4pt; font-size: 8pt; font-weight: bold; line-height: 1.25; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .artist { margin-top: 2pt; font-size: 7pt; color: #5a4a30; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .cert   { margin-top: 2pt; font-size: 5.5pt; color: #9a8060; font-family: 'Courier New', monospace; letter-spacing: 0.02em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-</style></head>
-<body><div class="grid">${cells}</div>
-<script>window.onload = function () { window.print(); window.onafterprint = function () { window.close(); }; };</script>
-</body></html>`;
-      openPrintWindow(html, 860, 700);
-    } finally {
-      setPrintingQR(false);
+  const readQr = (key: string): string =>
+    qrRef.current?.querySelector(`[data-qr="${key}"]`)?.innerHTML ?? '';
+
+  // QR codes
+  const openQrSheet = () => {
+    setQrStyle(loadCollectionQrStyle());
+    setQrOpen(true);
+  };
+
+  const changeQrStyle = (next: QrStyleSettings) => {
+    setQrStyle(next);
+    if (!saveCollectionQrStyle(next)) {
+      console.warn('[Collection] QR style not saved: storage unavailable');
     }
   };
 
-  // Wall Labels
-  const handlePrintWallLabels = () => {
-    if (disabled) return;
-    console.log('[Collection] PrintMenu: Wall Labels', { count: selectedArtworks.length });
-    // Diagnostic: surface which fields resolve for each label so we can tell
-    // whether missing dimensions/price is a data issue vs a rendering issue.
-    console.log(
-      '[Collection] Wall Labels field check',
+  const handlePrintQR = () => {
+    if (disabled || !qrStyle) return;
+    console.log('[Collection] PrintMenu: Print QR', { count: selectedArtworks.length, style: qrStyle.style });
+    const qrSvgs = new Map(
       selectedArtworks.map((a) => {
-        const form = artworkData[a.id];
-        return {
-          id: a.id,
-          title: form?.title || a.title,
-          dimensions: form?.dimensions || a.dimensions || '(empty)',
-          value: form?.value || a.value || '(empty)',
-        };
+        const base = readQr(`sheet-${a.id}`);
+        return [a.id, base ? composeStyledQr(base, qrStyle) : ''];
       }),
     );
-    openPrintWindow(buildWallLabelsHtml(selectedArtworks, artworkData), 900, 720);
+    const items = selectedArtworks.map((a) => {
+      const form = artworkData[a.id];
+      return {
+        id: a.id,
+        title: mergeField(form?.title, a.title) || null,
+        artist_name: mergeField(form?.artist_name, a.artist_name) || null,
+        certificate_number: a.certificate_number,
+      };
+    });
+    openPrintWindow(buildArtworkQrSheetHtml(galleryName, items, qrSvgs), 860, 760);
+    setQrOpen(false);
+  };
+
+  // Wall Labels
+  const handlePrintWallLabels = (options: WallLabelOptions, biosByArtwork: Map<string, string>) => {
+    if (disabled) return;
+    console.log('[Collection] PrintMenu: Wall Labels', { count: selectedArtworks.length, options });
+    setPriceSymbol(options.priceSymbol);
+    const qrSvgs = new Map(selectedArtworks.map((a) => [a.id, readQr(`label-${a.id}`)]));
+    const items = selectedArtworks.map((a) => collectionLabelItem(a, artworkData[a.id]));
+    openPrintWindow(buildLabelsHtml(galleryName, items, options, qrSvgs, biosByArtwork), 960, 760);
   };
 
   // Catalog
   const handlePrintCatalog = () => {
     if (disabled) return;
     console.log('[Collection] PrintMenu: Catalog', { count: selectedArtworks.length });
-    openPrintWindow(buildCatalogHtml(selectedArtworks, artworkData, galleryName, printDate()));
+    openPrintWindow(buildCatalogHtml(selectedArtworks, artworkData, galleryName, printDate(), priceSymbol));
   };
 
   // Checklist
@@ -529,26 +486,36 @@ export function PrintMenu({
 
   return (
     <>
-      {/* Hidden QR canvas grid — must stay in the DOM for canvas.toDataURL() to work */}
-      {mounted && (
+      {/* Hidden QR SVGs, serialised into the print windows. Only drawn while a
+          print dialog is open, since a collection can hold many works. */}
+      {origin && (labelsOpen || qrOpen) && (
         <div
-          ref={containerRef}
+          ref={qrRef}
           aria-hidden="true"
           style={{ position: 'fixed', left: -9999, top: -9999, pointerEvents: 'none', visibility: 'hidden' }}
         >
-          {selectedArtworks.map((artwork) => (
-            <QRCodeCanvas
-              key={artwork.id}
-              value={`${origin}/artworks/${artwork.id}/certificate?scan=true`}
-              size={288}
-              level="M"
-              includeMargin={true}
-            />
-          ))}
+          {qrOpen &&
+            selectedArtworks.map((a) => (
+              // Level H, no margin, black on white: what composeStyledQr expects.
+              <div key={`sheet-${a.id}`} data-qr={`sheet-${a.id}`}>
+                <QRCodeSVG value={certificateUrl(a.id)} size={256} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
+              </div>
+            ))}
+          {/* Wall labels: plain level M, readable at small sizes. */}
+          {labelsOpen &&
+            selectedArtworks.map((a) => (
+              <div key={`label-${a.id}`} data-qr={`label-${a.id}`}>
+                <QRCodeSVG value={certificateUrl(a.id)} size={256} level="M" marginSize={1} />
+              </div>
+            ))}
         </div>
       )}
 
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          if (open) setPriceSymbol(loadPriceSymbolPref());
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
@@ -567,22 +534,19 @@ export function PrintMenu({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem
-            onSelect={handlePrintQR}
-            disabled={printingQR}
-            className="text-xs font-serif cursor-pointer"
-          >
-            <Printer className="h-3.5 w-3.5 mr-2 opacity-60" />
-            {printingQR ? 'Preparing…' : 'Print QR'}
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onSelect={openQrSheet} disabled={!origin} className="text-xs font-serif cursor-pointer">
+            <Grid3x3 className="h-3.5 w-3.5 mr-2 opacity-60" />
+            Artwork QR Codes…
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onSelect={handlePrintWallLabels}
+            onSelect={() => setLabelsOpen(true)}
+            disabled={!origin}
             className="text-xs font-serif cursor-pointer"
           >
             <Tag className="h-3.5 w-3.5 mr-2 opacity-60" />
-            Wall Labels
+            Wall Labels…
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -602,8 +566,45 @@ export function PrintMenu({
             <List className="h-3.5 w-3.5 mr-2 opacity-60" />
             Checklist
           </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuCheckboxItem
+            checked={priceSymbol}
+            onCheckedChange={(checked) => {
+              setPriceSymbol(checked);
+              savePriceSymbolPref(checked);
+            }}
+            onSelect={(e) => e.preventDefault()}
+            className="text-xs font-serif cursor-pointer"
+          >
+            Dollar sign on prices
+          </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <WallLabelsDialog
+        open={labelsOpen}
+        onOpenChange={setLabelsOpen}
+        count={selectedArtworks.length}
+        optionsStorageKey={LABEL_OPTIONS_KEY}
+        bioEditsStorageKey={BIO_EDITS_KEY}
+        loadBios={() => getArtworkArtistBios(selectedArtworks.map((a) => a.id))}
+        hints={{ price: 'Artwork value', creditLine: 'Owner or collection' }}
+        onPrint={handlePrintWallLabels}
+      />
+
+      {qrStyle && (
+        <QrSheetDialog
+          open={qrOpen}
+          onOpenChange={setQrOpen}
+          count={selectedArtworks.length}
+          sampleUrl={selectedArtworks[0] ? certificateUrl(selectedArtworks[0].id) : ''}
+          qrStyle={qrStyle}
+          onQrStyleChange={changeQrStyle}
+          onPrint={handlePrintQR}
+        />
+      )}
     </>
   );
 }

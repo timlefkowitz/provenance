@@ -1,6 +1,7 @@
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { parseDateOnly } from '~/lib/parse-date-only';
 import type { PosterText } from './poster-text';
+import { formatPrintPrice } from '~/lib/print-price';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ export type WallLabelOptions = {
   dimensions: boolean;
   edition: boolean;
   price: boolean;
+  /** Prefix prices with "$"; off prints e.g. "12,000". */
+  priceSymbol: boolean;
   creditLine: boolean;
   description: boolean;
   artistBio: boolean;
@@ -57,6 +60,7 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   dimensions: true,
   edition: true,
   price: false,
+  priceSymbol: true,
   creditLine: true,
   description: false,
   artistBio: false,
@@ -126,9 +130,40 @@ export function buildExhibitionQrHtml(text: PosterText, qrSvg: string): string {
 </div>${AUTO_PRINT}</body></html>`;
 }
 
+/** One wall label's text, from an exhibition work or a collection work. */
+export type WallLabelItem = {
+  id: string;
+  title: string | null;
+  artist_name: string | null;
+  creation_date: string | null;
+  medium: string | null;
+  dimensions: string | null;
+  edition: string | null;
+  /** Raw price text; formatted with formatPrintPrice. */
+  price: string | null;
+  credit_line: string | null;
+  description: string | null;
+};
+
+export function exhibitionLabelItems(artworks: PrintArtwork[]): WallLabelItem[] {
+  return artworks.map((a) => ({
+    id: a.id,
+    title: a.title,
+    artist_name: a.artist_name,
+    creation_date: a.creation_date,
+    medium: a.medium,
+    dimensions: a.dimensions,
+    edition: a.edition,
+    price: a.listPriceDisplay ?? null,
+    credit_line: a.credit_line ?? null,
+    description: a.description ?? null,
+  }));
+}
+
 export function buildWallLabelsHtml(
-  exhibition: ExhibitionWithDetails,
-  artworks: PrintArtwork[],
+  /** Shown in the print window's title, e.g. the exhibition or gallery name. */
+  docTitle: string,
+  items: WallLabelItem[],
   options: WallLabelOptions,
   qrSvgs: Map<string, string>,
   /** Artwork id → artist bio text, used when options.artistBio is on. */
@@ -138,7 +173,7 @@ export function buildWallLabelsHtml(
   const widthIn = large ? 5 : 4;
   const minHeightIn = large ? 3.5 : 2.5;
 
-  const cells = artworks
+  const cells = items
     .map((a) => {
       const year = options.year ? getYear(a.creation_date) : '';
       const title = esc(a.title || 'Untitled');
@@ -147,8 +182,11 @@ export function buildWallLabelsHtml(
       if (options.medium && a.medium?.trim()) meta.push(esc(a.medium.trim()));
       if (options.dimensions && a.dimensions?.trim()) meta.push(esc(a.dimensions.trim()));
       if (options.edition && a.edition?.trim()) meta.push(`Edition ${esc(a.edition.trim())}`);
-      if (options.price && a.listPriceDisplay?.trim()) meta.push(esc(a.listPriceDisplay.trim()));
-      const credit = options.creditLine ? esc(a.credit_line) : '';
+      if (options.price) {
+        const price = formatPrintPrice(a.price, options.priceSymbol);
+        if (price) meta.push(esc(price));
+      }
+      const credit = options.creditLine ? esc(a.credit_line?.trim()) : '';
       const description = options.description ? esc(a.description?.trim()) : '';
       const bio = options.artistBio ? esc(artistBios.get(a.id)?.trim()) : '';
       const qr = options.qrCode ? qrSvgs.get(a.id) ?? '' : '';
@@ -170,7 +208,7 @@ export function buildWallLabelsHtml(
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
-<title>Wall Labels — ${esc(exhibition.title)}</title>
+<title>Wall Labels — ${esc(docTitle)}</title>
 <style>
   @page { size: letter landscape; margin: 0.5in; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -201,12 +239,13 @@ export function buildChecklistHtml(
   exhibition: ExhibitionWithDetails,
   ownerName: string | null,
   qrSvg: string,
+  priceSymbol: boolean,
 ): string {
   const dates = formatRange(exhibition.start_date, exhibition.end_date ?? null);
   const rows = exhibition.artworks
     .map((a, i) => {
       const year = getYear(a.creation_date);
-      return `<tr><td class="num">${i + 1}</td><td>${esc(a.artist_name)}</td><td class="t">${esc(a.title || 'Untitled')}${year ? `, ${year}` : ''}</td><td>${esc(a.medium)}</td><td>${esc(a.dimensions)}</td><td class="price">${esc(a.listPriceDisplay)}</td></tr>`;
+      return `<tr><td class="num">${i + 1}</td><td>${esc(a.artist_name)}</td><td class="t">${esc(a.title || 'Untitled')}${year ? `, ${year}` : ''}</td><td>${esc(a.medium)}</td><td>${esc(a.dimensions)}</td><td class="price">${esc(formatPrintPrice(a.listPriceDisplay, priceSymbol))}</td></tr>`;
     })
     .join('');
   const hasPrices = exhibition.artworks.some((a) => a.listPriceDisplay);
@@ -251,15 +290,25 @@ ${AUTO_PRINT}</body></html>`;
 }
 
 
+/** One cell of the artwork QR sheet. */
+export type QrSheetItem = {
+  id: string;
+  title: string | null;
+  artist_name: string | null;
+  certificate_number: string | null;
+};
+
 /**
  * One QR code per work, linking to its certificate — 4 across on US Letter,
  * with title, artist and certificate number under each.
  */
 export function buildArtworkQrSheetHtml(
-  exhibition: ExhibitionWithDetails,
+  /** Exhibition title or gallery name, printed above the grid. */
+  heading: string,
+  items: QrSheetItem[],
   qrSvgs: Map<string, string>,
 ): string {
-  const cells = exhibition.artworks
+  const cells = items
     .map((a) => {
       const qr = qrSvgs.get(a.id) ?? '';
       return `
@@ -274,7 +323,7 @@ export function buildArtworkQrSheetHtml(
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
-<title>Artwork QR Codes — ${esc(exhibition.title)}</title>
+<title>Artwork QR Codes — ${esc(heading)}</title>
 <style>
   @page { size: letter; margin: 0.45in; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -291,7 +340,7 @@ export function buildArtworkQrSheetHtml(
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head>
 <body>
-  <div class="head"><strong>${esc(exhibition.title)}</strong> · ${exhibition.artworks.length} ${exhibition.artworks.length === 1 ? 'work' : 'works'} · each code opens the work's certificate</div>
+  <div class="head">${heading ? `<strong>${esc(heading)}</strong> · ` : ''}${items.length} ${items.length === 1 ? 'work' : 'works'} · each code opens the work's certificate</div>
   <div class="grid">${cells}</div>
 ${AUTO_PRINT}</body></html>`;
 }

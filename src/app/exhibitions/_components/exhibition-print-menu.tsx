@@ -2,40 +2,29 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronDown, Grid3x3, List, Loader2, Printer, QrCode, Tag } from 'lucide-react';
+import { ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
-import { Checkbox } from '@kit/ui/checkbox';
-import { Label } from '@kit/ui/label';
-import { Textarea } from '@kit/ui/textarea';
-import {
-  Dialog,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@kit/ui/dialog';
+import { Dialog } from '@kit/ui/dialog';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
-import { EditorialDialogContent } from '~/components/editorial-dialog';
+import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import { openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
-import {
-  getExhibitionArtistBios,
-  type ExhibitionArtistBio,
-} from '../_actions/get-exhibition-artist-bios';
+import { getExhibitionArtistBios } from '../_actions/get-exhibition-artist-bios';
 import {
   buildArtworkQrSheetHtml,
   buildChecklistHtml,
   buildExhibitionQrHtml,
-  posterDefaults,
   buildWallLabelsHtml,
-  DEFAULT_LABEL_OPTIONS,
+  exhibitionLabelItems,
+  posterDefaults,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
 import { updateExhibitionQrStyle } from '../_actions/update-exhibition-qr-style';
@@ -47,59 +36,11 @@ import {
 } from '../_helpers/poster-text';
 import { updateExhibitionPosterText } from '../_actions/update-exhibition-poster-text';
 import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
+import { WallLabelsDialog } from './wall-labels-dialog';
 
 const LABEL_OPTIONS_KEY = 'provenance.exhibition.wallLabelOptions';
-
-const FIELD_TOGGLES: Array<{ key: Exclude<keyof WallLabelOptions, 'size' | 'qrPosition'>; label: string; hint?: string }> = [
-  { key: 'year', label: 'Year' },
-  { key: 'medium', label: 'Medium' },
-  { key: 'dimensions', label: 'Dimensions' },
-  { key: 'edition', label: 'Edition' },
-  { key: 'price', label: 'Price', hint: 'Exhibition list price' },
-  { key: 'creditLine', label: 'Credit line', hint: 'Only when marked public' },
-  { key: 'description', label: 'Description' },
-  { key: 'artistBio', label: 'Artist bio', hint: 'From their profile; editable below' },
-  { key: 'qrCode', label: 'QR code', hint: 'Links to the certificate' },
-];
-
-function loadLabelOptions(): WallLabelOptions {
-  try {
-    const raw = window.localStorage.getItem(LABEL_OPTIONS_KEY);
-    if (raw) return { ...DEFAULT_LABEL_OPTIONS, ...(JSON.parse(raw) as Partial<WallLabelOptions>) };
-  } catch {
-    // storage unavailable — use defaults
-  }
-  return DEFAULT_LABEL_OPTIONS;
-}
-
-function saveLabelOptions(options: WallLabelOptions) {
-  try {
-    window.localStorage.setItem(LABEL_OPTIONS_KEY, JSON.stringify(options));
-  } catch {
-    // ignore
-  }
-}
-
-/** Per-exhibition bio edits on this device, keyed by ExhibitionArtistBio.key. */
+/** Per-exhibition bio edits on this device, keyed by ArtistBio.key. */
 const bioEditsKey = (exhibitionId: string) => `provenance.exhibition.artistBios.${exhibitionId}`;
-
-function loadBioEdits(exhibitionId: string): Record<string, string> {
-  try {
-    const raw = window.localStorage.getItem(bioEditsKey(exhibitionId));
-    const parsed: unknown = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveBioEdits(exhibitionId: string, edits: Record<string, string>) {
-  try {
-    window.localStorage.setItem(bioEditsKey(exhibitionId), JSON.stringify(edits));
-  } catch {
-    // ignore
-  }
-}
 
 const noopSubscribe = () => () => {};
 
@@ -150,41 +91,12 @@ export function ExhibitionPrintMenu({
       toast.error(result.error);
     }
   };
-  const [options, setOptions] = useState<WallLabelOptions>(DEFAULT_LABEL_OPTIONS);
-  const [artistBios, setArtistBios] = useState<ExhibitionArtistBio[] | null>(null);
-  const [biosLoading, setBiosLoading] = useState(false);
-  const [biosError, setBiosError] = useState<string | null>(null);
-  const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
+  const [priceSymbol, setPriceSymbol] = useState(true);
   const qrRef = useRef<HTMLDivElement>(null);
-
-  const loadArtistBios = async () => {
-    if (artistBios || biosLoading) return;
-    setBiosLoading(true);
-    setBiosError(null);
-    try {
-      const bios = await getExhibitionArtistBios(exhibition.id);
-      setArtistBios(bios);
-      setBioEdits(loadBioEdits(exhibition.id));
-    } catch (err) {
-      console.error('[Exhibitions] Load artist bios failed', err);
-      setBiosError(err instanceof Error ? err.message : 'Could not load artist bios.');
-    } finally {
-      setBiosLoading(false);
-    }
-  };
-
-  const bioText = (artist: ExhibitionArtistBio) => bioEdits[artist.key] ?? artist.bio;
-
-  const updateBio = (key: string, text: string) => {
-    setBioEdits((prev) => {
-      const next = { ...prev, [key]: text };
-      saveBioEdits(exhibition.id, next);
-      return next;
-    });
-  };
 
   const exhibitionUrl = origin ? `${origin}/exhibitions/${exhibition.id}` : '';
   const hasWorks = exhibition.artworks.length > 0;
+  const hasPrices = exhibition.artworks.some((a) => a.listPriceDisplay?.trim());
 
   const readQr = (key: string): string =>
     qrRef.current?.querySelector(`[data-qr="${key}"]`)?.innerHTML ?? '';
@@ -209,7 +121,7 @@ export function ExhibitionPrintMenu({
 
   const handleChecklist = () => {
     console.log('[Exhibitions] Print checklist', { exhibitionId: exhibition.id });
-    openPrintWindow(buildChecklistHtml(exhibition, ownerName, readStyled('exhibition')));
+    openPrintWindow(buildChecklistHtml(exhibition, ownerName, readStyled('exhibition'), priceSymbol));
   };
 
   const handleArtworkQrSheet = () => {
@@ -218,28 +130,22 @@ export function ExhibitionPrintMenu({
       count: exhibition.artworks.length,
     });
     const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readStyled(`sheet-${a.id}`)]));
-    openPrintWindow(buildArtworkQrSheetHtml(exhibition, qrSvgs), 860, 760);
+    openPrintWindow(buildArtworkQrSheetHtml(exhibition.title, exhibition.artworks, qrSvgs), 860, 760);
   };
 
-  const handleWallLabels = () => {
+  const handleWallLabels = (options: WallLabelOptions, biosByArtwork: Map<string, string>) => {
     console.log('[Exhibitions] Print wall labels', {
       exhibitionId: exhibition.id,
       count: exhibition.artworks.length,
       options,
     });
-    saveLabelOptions(options);
+    setPriceSymbol(options.priceSymbol);
     const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readQr(a.id)]));
-    const biosByArtwork = new Map<string, string>();
-    for (const artist of artistBios ?? []) {
-      const text = bioText(artist).trim();
-      if (text) for (const id of artist.artworkIds) biosByArtwork.set(id, text);
-    }
     openPrintWindow(
-      buildWallLabelsHtml(exhibition, exhibition.artworks, options, qrSvgs, biosByArtwork),
+      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(exhibition.artworks), options, qrSvgs, biosByArtwork),
       960,
       760,
     );
-    setLabelsOpen(false);
   };
 
   return (
@@ -282,7 +188,11 @@ export function ExhibitionPrintMenu({
         </div>
       )}
 
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          if (open) setPriceSymbol(loadPriceSymbolPref());
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
@@ -303,12 +213,7 @@ export function ExhibitionPrintMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onSelect={() => {
-              const saved = loadLabelOptions();
-              setOptions(saved);
-              setLabelsOpen(true);
-              if (saved.artistBio) void loadArtistBios();
-            }}
+            onSelect={() => setLabelsOpen(true)}
             disabled={!hasWorks}
             className="font-serif text-xs cursor-pointer"
           >
@@ -331,6 +236,22 @@ export function ExhibitionPrintMenu({
             <List className="h-3.5 w-3.5 mr-2 opacity-60" />
             Checklist of works
           </DropdownMenuItem>
+          {hasPrices && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={priceSymbol}
+                onCheckedChange={(checked) => {
+                  setPriceSymbol(checked);
+                  savePriceSymbolPref(checked);
+                }}
+                onSelect={(e) => e.preventDefault()}
+                className="font-serif text-xs cursor-pointer"
+              >
+                Dollar sign on prices
+              </DropdownMenuCheckboxItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -350,167 +271,16 @@ export function ExhibitionPrintMenu({
         )}
       </Dialog>
 
-      <Dialog open={labelsOpen} onOpenChange={setLabelsOpen}>
-        <EditorialDialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Wall labels</DialogTitle>
-            <DialogDescription>
-              Choose what appears on each label. Artist and title are always included.{' '}
-              {exhibition.artworks.length} {exhibition.artworks.length === 1 ? 'label' : 'labels'}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 py-2">
-            {FIELD_TOGGLES.map(({ key, label, hint }) => (
-              <div key={key} className="flex items-start gap-2">
-                <Checkbox
-                  id={`wl-${key}`}
-                  checked={options[key]}
-                  onCheckedChange={(checked) => {
-                    setOptions((o) => ({ ...o, [key]: checked === true }));
-                    if (key === 'artistBio' && checked === true) void loadArtistBios();
-                  }}
-                  className="mt-0.5 border-wine/30"
-                />
-                <Label htmlFor={`wl-${key}`} className="font-serif text-sm leading-tight cursor-pointer">
-                  {label}
-                  {hint && <span className="block text-[11px] text-ink/40 font-normal">{hint}</span>}
-                </Label>
-              </div>
-            ))}
-          </div>
-
-          {options.artistBio && (
-            <div className="pt-2">
-              <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">
-                Artist bios
-              </p>
-              {biosLoading ? (
-                <p className="flex items-center gap-2 text-xs font-serif text-ink/50">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Loading bios…
-                </p>
-              ) : biosError ? (
-                <p className="text-xs font-serif text-red-700">
-                  {biosError}{' '}
-                  <button type="button" className="underline" onClick={() => void loadArtistBios()}>
-                    Try again
-                  </button>
-                </p>
-              ) : artistBios && artistBios.length === 0 ? (
-                <p className="text-xs font-serif text-ink/50">No artists found for these works.</p>
-              ) : (
-                <div className="space-y-3">
-                  {(artistBios ?? []).map((artist) => (
-                    <div key={artist.key} className="space-y-1">
-                      <Label
-                        htmlFor={`wl-bio-${artist.key}`}
-                        className="flex items-baseline justify-between gap-2 font-serif text-sm"
-                      >
-                        <span>{artist.name}</span>
-                        <span className="text-[11px] font-normal text-ink/40">
-                          {artist.artworkIds.length} {artist.artworkIds.length === 1 ? 'label' : 'labels'}
-                        </span>
-                      </Label>
-                      <Textarea
-                        id={`wl-bio-${artist.key}`}
-                        value={bioText(artist)}
-                        onChange={(e) => updateBio(artist.key, e.target.value)}
-                        placeholder="No bio on their profile. Type one for these labels, or leave blank."
-                        rows={3}
-                        className="font-serif text-sm"
-                      />
-                      {bioEdits[artist.key] !== undefined && bioEdits[artist.key] !== artist.bio && (
-                        <button
-                          type="button"
-                          className="text-[11px] font-serif text-ink/40 underline hover:text-ink"
-                          onClick={() =>
-                            setBioEdits((prev) => {
-                              const next = { ...prev };
-                              delete next[artist.key];
-                              saveBioEdits(exhibition.id, next);
-                              return next;
-                            })
-                          }
-                        >
-                          {artist.bio ? 'Reset to profile bio' : 'Clear'}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="mt-2 text-[11px] font-serif text-ink/40">
-                Edits are for printing only and are remembered on this device. They don&apos;t change
-                anyone&apos;s profile.
-              </p>
-            </div>
-          )}
-
-          {options.qrCode && (
-            <div className="pt-2">
-              <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">QR code position</p>
-              <div className="flex gap-2">
-                {(
-                  [
-                    ['top', 'Top right'],
-                    ['bottom', 'Bottom right'],
-                  ] as const
-                ).map(([value, text]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setOptions((o) => ({ ...o, qrPosition: value }))}
-                    aria-pressed={options.qrPosition === value}
-                    className={`flex-1 rounded-md border px-3 py-2 text-xs font-serif transition-colors ${
-                      options.qrPosition === value
-                        ? 'border-wine bg-wine/10 text-wine'
-                        : 'border-wine/20 text-ink/60 hover:border-wine/40'
-                    }`}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="pt-2">
-            <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Label size</p>
-            <div className="flex gap-2">
-              {(
-                [
-                  ['standard', 'Standard · 4 × 2.5 in'],
-                  ['large', 'Large · 5 × 3.5 in'],
-                ] as const
-              ).map(([value, text]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setOptions((o) => ({ ...o, size: value }))}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-serif transition-colors ${
-                    options.size === value
-                      ? 'border-wine bg-wine/10 text-wine'
-                      : 'border-wine/20 text-ink/60 hover:border-wine/40'
-                  }`}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLabelsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleWallLabels}>
-              <Printer className="h-3.5 w-3.5 mr-1.5" />
-              Print labels
-            </Button>
-          </DialogFooter>
-        </EditorialDialogContent>
-      </Dialog>
+      <WallLabelsDialog
+        open={labelsOpen}
+        onOpenChange={setLabelsOpen}
+        count={exhibition.artworks.length}
+        optionsStorageKey={LABEL_OPTIONS_KEY}
+        bioEditsStorageKey={bioEditsKey(exhibition.id)}
+        loadBios={() => getExhibitionArtistBios(exhibition.id)}
+        hints={{ price: 'Exhibition list price', creditLine: 'Only when marked public' }}
+        onPrint={handleWallLabels}
+      />
     </>
   );
 }
