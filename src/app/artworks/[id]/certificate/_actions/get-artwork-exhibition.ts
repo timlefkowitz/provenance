@@ -1,6 +1,6 @@
 'use server';
 
-import { asUntyped } from '~/lib/supabase-untyped';
+import { asUntyped, type UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { getUserRole, isTeamProfileRole } from '~/lib/user-roles';
@@ -19,14 +19,35 @@ export type ArtworkExhibition = {
   } | null;
 } | null;
 
+export type ArtworkExhibitionEntry = NonNullable<ArtworkExhibition>;
+
 /**
- * Get the exhibition that an artwork is linked to, including gallery information
+ * Get the most recent exhibition an artwork is linked to (used where only one
+ * show fits, e.g. the edit form). Certificates should use getArtworkExhibitions.
  */
 export async function getArtworkExhibition(artworkId: string): Promise<ArtworkExhibition> {
+  const all = await getArtworkExhibitions(artworkId);
+  return all[0] ?? null;
+}
+
+type ExhibitionRow = {
+  id: string;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  location: string | null;
+  gallery_id: string | null;
+  owner_role: string | null;
+};
+
+/**
+ * Every exhibition an artwork has been selected for, newest first, each with
+ * its gallery / institution, so a certificate can list the full show history.
+ */
+export async function getArtworkExhibitions(artworkId: string): Promise<ArtworkExhibitionEntry[]> {
   const client = asUntyped(getSupabaseServerClient());
 
-  // Get exhibition from junction table, including gallery_id
-  const { data: exhibitionArtwork, error } = await asUntyped(client)
+  const { data: rows, error } = await client
     .from('exhibition_artworks')
     .select(`
       exhibition_id,
@@ -41,25 +62,32 @@ export async function getArtworkExhibition(artworkId: string): Promise<ArtworkEx
       )
     `)
     .eq('artwork_id', artworkId)
-    .eq('status', 'selected')
-    .limit(1)
-    .maybeSingle();
+    .eq('status', 'selected');
 
   if (error) {
-    console.error('Error fetching artwork exhibition:', error);
-    return null;
-  }
-
-  if (!exhibitionArtwork || !exhibitionArtwork.exhibitions) {
-    return null;
+    console.error('Error fetching artwork exhibitions:', error);
+    return [];
   }
 
   // A to-one embed is an object at runtime; the inferred type is an array.
-  const embedded = exhibitionArtwork.exhibitions;
-  const exhibition = Array.isArray(embedded) ? embedded[0] : embedded;
-  if (!exhibition) {
-    return null;
+  const seen = new Set<string>();
+  const exhibitions: ExhibitionRow[] = [];
+  for (const row of (rows ?? []) as Array<{ exhibitions: ExhibitionRow | ExhibitionRow[] | null }>) {
+    const ex = Array.isArray(row.exhibitions) ? row.exhibitions[0] : row.exhibitions;
+    if (!ex || !ex.title || seen.has(ex.id)) continue;
+    seen.add(ex.id);
+    exhibitions.push(ex);
   }
+
+  exhibitions.sort((a, b) => (b.start_date || '').localeCompare(a.start_date || ''));
+
+  return Promise.all(exhibitions.map((ex) => withGallery(client, ex)));
+}
+
+async function withGallery(
+  client: UntypedSupabaseClient,
+  exhibition: ExhibitionRow,
+): Promise<ArtworkExhibitionEntry> {
   let galleryInfo: { id: string; name: string; profileId?: string; slug?: string } | null = null;
 
   // Fetch gallery information if gallery_id exists

@@ -221,6 +221,10 @@ function FieldWithHistory({
   );
 }
 
+function formatExhibitionDate(date: string): string {
+  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 export function CertificateOfAuthenticity({ 
   artwork, 
   isOwner = false,
@@ -229,6 +233,7 @@ export function CertificateOfAuthenticity({
   isAdmin = false,
   creatorInfo = null,
   exhibition = null,
+  exhibitions,
   showVerifyCta = false,
   certificateStatus = null,
   certificateType = 'authenticity',
@@ -251,6 +256,15 @@ export function CertificateOfAuthenticity({
     location: string | null;
     gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   } | null;
+  /** Every exhibition the work has been selected for, newest first. */
+  exhibitions?: Array<{
+    id: string;
+    title: string;
+    start_date: string;
+    end_date: string | null;
+    location: string | null;
+    gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
+  }>;
   showVerifyCta?: boolean;
   certificateStatus?: string | null;
   certificateType?: CertificateType | string;
@@ -259,6 +273,8 @@ export function CertificateOfAuthenticity({
   /** Public scan counts; per-scan details only reach the owner and admins. */
   scanStats?: ScanStats;
 }) {
+  const exhibitionList = exhibitions ?? (exhibition?.title ? [exhibition] : []);
+
   // Log when component mounts to confirm we reached this point
   useEffect(() => {
     console.log('[v0] [CertificateOfAuthenticity] Component mounted', {
@@ -1163,34 +1179,35 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
-              {exhibition && exhibition.title && (
+              {exhibitionList.length > 0 && (
                 <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Exhibition</p>
-                  <Link
-                    href={`/exhibitions/${exhibition.id}`}
-                    className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
-                  >
-                    {exhibition.title || 'Unknown Exhibition'}
-                  </Link>
-                  {exhibition.start_date && (
-                    <p className="text-xs text-ink/60 font-serif mt-1">
-                      {new Date(exhibition.start_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                      {exhibition.end_date && ` - ${new Date(exhibition.end_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}`}
-                    </p>
-                  )}
-                  {exhibition.location && (
-                    <p className="text-xs text-ink/60 font-serif mt-1">
-                      {exhibition.location}
-                    </p>
-                  )}
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                    {exhibitionList.length > 1 ? `Exhibitions (${exhibitionList.length})` : 'Exhibition'}
+                  </p>
+                  <ul className="space-y-2">
+                    {exhibitionList.map((ex) => (
+                      <li key={ex.id}>
+                        <Link
+                          href={`/exhibitions/${ex.id}`}
+                          className="text-sm sm:text-base font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                        >
+                          {ex.title || 'Unknown Exhibition'}
+                        </Link>
+                        {ex.gallery?.name && (
+                          <p className="text-xs text-ink/60 font-serif mt-0.5">{ex.gallery.name}</p>
+                        )}
+                        {ex.start_date && (
+                          <p className="text-xs text-ink/60 font-serif mt-0.5">
+                            {formatExhibitionDate(ex.start_date)}
+                            {ex.end_date && ` - ${formatExhibitionDate(ex.end_date)}`}
+                          </p>
+                        )}
+                        {ex.location && (
+                          <p className="text-xs text-ink/60 font-serif mt-0.5">{ex.location}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

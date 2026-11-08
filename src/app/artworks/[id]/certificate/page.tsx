@@ -10,7 +10,7 @@ import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_action
 import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import { collectionOwnerName } from '~/lib/managed-collections';
 
-import { getArtworkExhibition } from './_actions/get-artwork-exhibition';
+import { getArtworkExhibitions } from './_actions/get-artwork-exhibition';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 import appConfig from '~/config/app.config';
@@ -378,8 +378,9 @@ export default async function CertificatePage({
     return <BlockedContentNotice ownerId={blockedOwner} ownerName={blockedOwner === artwork.account_id ? creatorInfo?.name : artwork.artist_name} />;
   }
 
-  // Fetch exhibition for this artwork
-  const exhibition = await getArtworkExhibition(artwork.id);
+  // Every show this artwork has been in, newest first; the edit dialog takes the latest.
+  const exhibitions = await getArtworkExhibitions(artwork.id);
+  const exhibition = exhibitions[0] ?? null;
 
   const certificateType = artwork.certificate_type || 'authenticity';
 
@@ -453,6 +454,7 @@ export default async function CertificatePage({
         isAdmin={userIsAdmin}
         creatorInfo={creatorInfo}
         exhibition={exhibition}
+        exhibitions={exhibitions}
         showVerifyCta={showVerifyCta}
         certificateStatus={artwork.certificate_status ?? null}
         certificateType={certificateType}
