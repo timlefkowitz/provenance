@@ -26,6 +26,7 @@ export default defineConfig({
       'src/lib/portal-graphs/**/*.test.ts',
       'src/lib/collectors/**/*.test.ts',
       'src/lib/scan-stats.test.ts',
+      'src/lib/exhibition-scan-stats.test.ts',
       'src/lib/phone.test.ts',
     ],
   },

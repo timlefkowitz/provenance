@@ -10,7 +10,8 @@ import { getExhibitionMemories } from '../_actions/exhibition-memories';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
-import { ArrowLeft, Calendar, MapPin, User, Edit, LayoutList, Phone } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Edit, LayoutList, Phone, ScanLine } from 'lucide-react';
+import { hasOwnWorkInExhibition } from '../_helpers/exhibition-scans';
 import { formatPhone, phoneHref } from '~/lib/phone';
 import {
   getExhibitionReservationRequests,
@@ -133,6 +134,10 @@ export default async function ExhibitionPage({
 
   const isOwner =
     !!user && (await canManageExhibition(user.id, exhibition.gallery_id));
+
+  // Artists with a work in the show see its QR scans for their works.
+  const artistInShow =
+    !!user && !isOwner && (await hasOwnWorkInExhibition(user.id, exhibition.id));
 
   // Guideline 1.2: hide content from users the viewer has blocked.
   if (!isOwner && (await getBlockedUserIds(user?.id)).has(exhibition.gallery_id)) {
@@ -273,12 +278,36 @@ export default async function ExhibitionPage({
                 size="sm"
                 className="font-serif text-ink/40 hover:text-wine h-8 gap-1.5"
               >
+                <Link href={`/exhibitions/${id}/scans`}>
+                  <ScanLine className="h-3.5 w-3.5" />
+                  QR scans
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif text-ink/40 hover:text-wine h-8 gap-1.5"
+              >
                 <Link href={`/exhibitions/${id}/edit`}>
                   <Edit className="h-3.5 w-3.5" />
                   Edit
                 </Link>
               </Button>
               </div>
+            )}
+            {artistInShow && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="font-serif text-ink/40 hover:text-wine h-8 gap-1.5"
+              >
+                <Link href={`/exhibitions/${id}/scans`}>
+                  <ScanLine className="h-3.5 w-3.5" />
+                  Your QR scans
+                </Link>
+              </Button>
             )}
             {!isOwner && (
               <ContentSafetyMenu
