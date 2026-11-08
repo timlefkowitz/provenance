@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { isShownInExhibition } from '../_helpers/exhibition-submission-status';
 import { resolveShowArtists, type ShowArtist } from '../_helpers/show-artists';
+import { preferArtistCoa } from '../_helpers/prefer-artist-coa';
 
 export type Exhibition = {
   id: string;
@@ -278,7 +279,7 @@ export async function getExhibitionWithDetails(
     .eq('exhibition_id', exhibitionId);
   const { data: artworkLinks, error: linksError } = await asUntyped(client)
     .from('exhibition_artworks')
-    .select('artwork_id, exhibition_id, status')
+    .select('artwork_id, exhibition_id, status, cos_artwork_id')
     .eq('exhibition_id', exhibitionId);
 
   if (linksError) {
@@ -315,7 +316,9 @@ export async function getExhibitionWithDetails(
         owned_by_is_public,
         value,
         value_is_public,
-        metadata
+        metadata,
+        certificate_type,
+        source_artwork_id
       `)
       .in('id', linkedArtworkIds);
 
@@ -381,13 +384,25 @@ export async function getExhibitionWithDetails(
     console.log('[Exhibitions] resolved artist profile names', { resolved: profileNameMap.size });
   }
 
-  const visibleArtworkRows = rawArtworkRows.filter((row) => {
-    if (row.status === 'verified') return true;
-    if (canSeeDraftListings && row.status === 'draft') return true;
-    return false;
-  });
+  // A work linked through both the artist's COA and the Certificate of Show
+  // issued from it is listed once, as the COA.
+  const { rows: visibleArtworkRows, foldedInto } = preferArtistCoa(
+    rawArtworkRows
+      .filter((row) => {
+        if (row.status === 'verified') return true;
+        if (canSeeDraftListings && row.status === 'draft') return true;
+        return false;
+      })
+      .map((row) => ({
+        ...row,
+        id: row.id as string,
+        certificate_type: (row.certificate_type as string | null) ?? null,
+        source_artwork_id: (row.source_artwork_id as string | null) ?? null,
+      }) as Record<string, unknown> & { id: string }),
+    (artworkLinks || []).filter((l: { status?: string }) => isShownInExhibition(l.status)),
+  );
 
-  const filteredArtworks = visibleArtworkRows
+  const mappedArtworks = [...visibleArtworkRows, ...rawArtworkRows.filter((r) => foldedInto.has(r.id as string))]
     .sort((a, b) => (linkOrder.get(a.id as string) ?? 0) - (linkOrder.get(b.id as string) ?? 0))
     .map((a) => {
       const meta =
@@ -428,6 +443,15 @@ export async function getExhibitionWithDetails(
         status: a.status as string,
       };
     });
+
+  // A gallery checklist price may sit on the COS; the COA shown in its place keeps it.
+  const mappedById = new Map(mappedArtworks.map((a) => [a.id, a]));
+  for (const [foldedId, coaId] of foldedInto) {
+    const coa = mappedById.get(coaId);
+    const folded = mappedById.get(foldedId);
+    if (coa && folded && !coa.listPriceDisplay) coa.listPriceDisplay = folded.listPriceDisplay;
+  }
+  const filteredArtworks = mappedArtworks.filter((a) => !foldedInto.has(a.id));
 
   const withArtistName = filteredArtworks.filter((a) => Boolean(a.artist_name?.trim())).length;
   const missingArtistName = filteredArtworks.length - withArtistName;

@@ -51,13 +51,13 @@ export async function loadCuratorWorks(
     .eq('exhibition_id', exhibitionId);
 
   type Link = { artwork_id: string; status: unknown; cos_artwork_id: string | null };
-  // An artist's COA with a Certificate of Show in this show is represented by
-  // that COS, so the COA itself isn't listed.
-  const coveredByCos = new Set(
-    ((links ?? []) as Link[])
-      .filter((l) => l.cos_artwork_id && l.cos_artwork_id !== l.artwork_id)
-      .map((l) => l.artwork_id),
+  // An artist's COA with a Certificate of Show in this show is listed once:
+  // shown as the COA, while selling and edits go through the curator's COS.
+  const folded = ((links ?? []) as Link[]).filter(
+    (l) => isShownInExhibition(l.status) && l.cos_artwork_id && l.cos_artwork_id !== l.artwork_id,
   );
+  const coveredByCos = new Set(folded.map((l) => l.artwork_id));
+  const coaOfCos = new Map(folded.map((l) => [l.cos_artwork_id as string, l.artwork_id]));
   const shown = ((links ?? []) as Link[]).filter(
     (l) => isShownInExhibition(l.status) && !coveredByCos.has(l.artwork_id),
   );
@@ -128,6 +128,7 @@ export async function loadCuratorWorks(
     const needsApproval = Boolean(approvingArtist && approvingArtist !== userId);
     works.push({
       artwork: a as unknown as CuratorWork['artwork'],
+      coaId: coaOfCos.get(a.id as string) ?? null,
       certificateType: (a.certificate_type as string | null) ?? null,
       isDraft: a.status === 'draft',
       holderName: holderName.get(a.account_id as string) || null,

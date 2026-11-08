@@ -20,6 +20,11 @@ import { SellWorkDialog } from './sell-work-dialog';
 
 export type CuratorWork = {
   artwork: Artwork;
+  /**
+   * The artist's COA this Certificate of Show was issued from. The work is
+   * shown as that COA; selling and edits still act on the COS in `artwork`.
+   */
+  coaId?: string | null;
   certificateType: string | null;
   isDraft: boolean;
   /** Name of the account holding the certificate. */
@@ -222,7 +227,7 @@ function Section({
               />
             )}
             <Link
-              href={`/artworks/${w.artwork.id}/certificate`}
+              href={`/artworks/${w.coaId ?? w.artwork.id}/certificate`}
               className="bg-ink/5 relative h-16 w-16 shrink-0 overflow-hidden rounded"
             >
               {w.artwork.image_url && (
@@ -237,7 +242,7 @@ function Section({
             </Link>
             <div className="min-w-0 flex-1">
               <Link
-                href={`/artworks/${w.artwork.id}/certificate`}
+                href={`/artworks/${w.coaId ?? w.artwork.id}/certificate`}
                 className="font-display text-ink hover:text-wine block truncate text-lg font-semibold"
               >
                 {w.artwork.title}
@@ -247,8 +252,11 @@ function Section({
               </p>
               <div className="text-ink/45 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-serif text-[11px]">
                 <span>
-                  {TYPE_LABEL[w.certificateType ?? ''] ?? 'Certificate'}
+                  {w.coaId
+                    ? TYPE_LABEL[CERTIFICATE_TYPES.AUTHENTICITY]
+                    : (TYPE_LABEL[w.certificateType ?? ''] ?? 'Certificate')}
                 </span>
+                {w.coaId && <span>Your Certificate of Show issued</span>}
                 {!w.editable && w.holderName && (
                   <span>Held by {w.holderName}</span>
                 )}

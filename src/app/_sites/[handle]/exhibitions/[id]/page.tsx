@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSiteData } from '../../_data/get-site-data';
 import { resolveAccent } from '../../../_templates/palette';
 import { stripMarkdown } from '~/lib/strip-markdown';
+import { preferArtistCoa } from '~/app/exhibitions/_helpers/prefer-artist-coa';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,17 +134,24 @@ async function fetchExhibition(exhibitionId: string) {
   const { data: artworkLinks } = await sb
     .from('exhibition_artworks')
     .select(`
+      artwork_id,
+      cos_artwork_id,
       artworks!exhibition_artworks_artwork_id_fkey (
-        id, title, artist_name, artist_account_id, artist_profile_id, account_id, image_url, dimensions
+        id, title, artist_name, artist_account_id, artist_profile_id, account_id, image_url, dimensions,
+        certificate_type, source_artwork_id
       )
     `)
     .eq('exhibition_id', exhibitionId)
     .eq('status', 'selected')
     .limit(24);
 
-  const linkedArtworks = (artworkLinks ?? [])
-    .map((r: Record<string, unknown>) => r.artworks)
-    .filter(Boolean);
+  // A work linked through both the artist's COA and its Certificate of Show is shown once, as the COA.
+  const { rows: linkedArtworks } = preferArtistCoa(
+    (artworkLinks ?? [])
+      .map((r: Record<string, unknown>) => r.artworks)
+      .filter(Boolean) as Array<{ id: string; certificate_type: string | null; source_artwork_id: string | null }>,
+    artworkLinks ?? [],
+  );
 
   const missingAccountIds = Array.from(
     new Set(

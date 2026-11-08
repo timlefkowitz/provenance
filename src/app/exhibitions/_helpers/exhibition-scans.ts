@@ -13,7 +13,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { isShownInExhibition } from './exhibition-submission-status';
 
 export type ExhibitionScanWork = {
-  /** The certificate shown in the exhibition (the Certificate of Show when there is one). */
+  /** The certificate shown in the exhibition (the artist's COA when there is one). */
   id: string;
   title: string;
   artistName: string | null;
@@ -77,25 +77,19 @@ export async function getExhibitionScans(
     .eq('exhibition_id', exhibitionId);
   const links = ((linkRows ?? []) as Link[]).filter((l) => isShownInExhibition(l.status));
 
-  // One work per certificate on the wall; a COA with a Certificate of Show in
-  // the show is folded into that COS.
+  // One work per piece on the wall; the Certificate of Show issued for an
+  // artist's COA in the show is folded into that COA.
   const certsOf = new Map<string, Set<string>>();
   const joinedAt = new Map<string, string | null>();
   const folded = links.filter((l) => l.cos_artwork_id && l.cos_artwork_id !== l.artwork_id);
-  const foldedIds = new Set(folded.map((l) => l.artwork_id));
+  const foldedCosIds = new Set(folded.map((l) => l.cos_artwork_id as string));
   for (const l of links) {
-    if (foldedIds.has(l.artwork_id)) continue;
+    if (foldedCosIds.has(l.artwork_id)) continue;
     certsOf.set(l.artwork_id, new Set([l.artwork_id]));
     joinedAt.set(l.artwork_id, l.created_at);
   }
   for (const l of folded) {
-    const cos = l.cos_artwork_id as string;
-    const set = certsOf.get(cos);
-    if (set) set.add(l.artwork_id);
-    else {
-      certsOf.set(cos, new Set([cos, l.artwork_id]));
-      joinedAt.set(cos, l.created_at);
-    }
+    certsOf.get(l.artwork_id)?.add(l.cos_artwork_id as string);
   }
 
   const allIds = [...new Set([...certsOf.values()].flatMap((s) => [...s]))];
@@ -106,6 +100,19 @@ export async function getExhibitionScans(
       .select('id, title, artist_name, image_url, account_id, artist_account_id, status, metadata')
       .in('id', allIds.slice(i, i + 200));
     for (const r of (data ?? []) as Row[]) rows.set(r.id, r);
+  }
+  // If the COA itself can't be shown, the work is shown as its COS instead.
+  const showable = (id: string) => {
+    const r = rows.get(id);
+    return !!r && (r.status === 'verified' || r.status === 'draft');
+  };
+  for (const l of folded) {
+    const cos = l.cos_artwork_id as string;
+    const certs = certsOf.get(l.artwork_id);
+    if (!certs || showable(l.artwork_id) || !showable(cos)) continue;
+    certsOf.delete(l.artwork_id);
+    certsOf.set(cos, certs);
+    joinedAt.set(cos, joinedAt.get(l.artwork_id) ?? null);
   }
 
   const isMine = (r: Row | undefined) =>
