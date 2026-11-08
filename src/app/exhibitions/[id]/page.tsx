@@ -18,6 +18,8 @@ import {
   getReservedArtworkIds,
 } from '../_actions/reservation-requests';
 import { ExhibitionReservationsPanel } from '../_components/exhibition-reservations-panel';
+import { ExhibitionInquiriesPanel } from '../_components/exhibition-inquiries-panel';
+import { getExhibitionInquiries } from '../_actions/exhibition-inquiries';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
@@ -194,9 +196,10 @@ export default async function ExhibitionPage({
   const contactPhone = metadata?.contact_phone?.trim() || ownerProfilePhone;
 
   // Visitors can ask to reserve a piece until the show closes.
-  const [reservedArtworkIds, reservationRequests] = await Promise.all([
+  const [reservedArtworkIds, reservationRequests, inquiries] = await Promise.all([
     getReservedArtworkIds(id),
     isOwner ? getExhibitionReservationRequests(id) : Promise.resolve([]),
+    isOwner ? getExhibitionInquiries(id) : Promise.resolve([]),
   ]);
   const reserve =
     status === 'past'
@@ -406,6 +409,7 @@ export default async function ExhibitionPage({
           />
         )}
         {isOwner && <ExhibitionReservationsPanel requests={reservationRequests} />}
+        {isOwner && <ExhibitionInquiriesPanel inquiries={inquiries} />}
         {isOwner && (
           <ExhibitionSellThroughLine exhibitionId={id} galleryOwnerId={exhibition.gallery_id} />
         )}

@@ -8,6 +8,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
+import { getExhibitionTeamUserIds } from '~/lib/exhibitions/exhibition-team';
 import { createNotification } from '~/lib/notifications';
 import { normalizePhoneInput } from '~/lib/phone';
 import { checkRateLimit } from '~/lib/rate-limit';
@@ -146,16 +147,27 @@ export async function submitReservationRequest(input: SubmitReservationInput): P
     return { ok: false, error: 'Couldn’t send your request. Please try again.' };
   }
 
+  // The curator account and its whole team hear about it, not just the owner login.
   try {
-    await createNotification({
-      userId: exhibition.gallery_id,
-      type: 'artwork_reservation_request',
-      title: `Reservation request: ${artwork.title || 'Untitled'}`,
-      message: `${name} would like to reserve this piece from ${exhibition.title}.`,
-      artworkId: artwork.id,
-      relatedUserId: user?.id,
-      metadata: { exhibition_id: exhibition.id },
-    });
+    const teamIds = await getExhibitionTeamUserIds(admin, exhibition.gallery_id);
+    const results = await Promise.allSettled(
+      teamIds
+        .filter((id) => id !== user?.id)
+        .map((teamUserId) =>
+          createNotification({
+            userId: teamUserId,
+            type: 'artwork_reservation_request',
+            title: `Reservation request: ${artwork.title || 'Untitled'}`,
+            message: `${name} would like to reserve this piece from ${exhibition.title}.`,
+            artworkId: artwork.id,
+            relatedUserId: user?.id,
+            metadata: { exhibition_id: exhibition.id },
+          }),
+        ),
+    );
+    for (const r of results) {
+      if (r.status === 'rejected') console.error('[Reservations] notify failed', r.reason);
+    }
   } catch (e) {
     console.error('[Reservations] notify failed', e);
   }

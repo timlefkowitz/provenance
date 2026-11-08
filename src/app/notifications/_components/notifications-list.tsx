@@ -152,6 +152,8 @@ export function NotificationsList({
       case 'artwork_reservation_request':
       case 'artwork_reservation_response':
         return <GalleryVerticalEnd className="h-5 w-5" />;
+      case 'artwork_inquiry':
+        return <MessageSquare className="h-5 w-5" />;
       case 'new_work_by_followed_artist':
         return <Heart className="h-5 w-5" />;
       case 'message':
@@ -174,6 +176,7 @@ export function NotificationsList({
       case 'artwork_reservation_response':
         return 'text-notify-success';
       case 'artwork_reservation_request':
+      case 'artwork_inquiry':
         return 'text-wine';
       case 'new_work_by_followed_artist':
         return 'text-wine';
@@ -512,6 +515,24 @@ export function NotificationsList({
                             : typeof notification.metadata.open_call_slug === 'string'
                               ? 'View your submission'
                               : 'View exhibition'}
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'artwork_inquiry' && notification.artwork_id && (
+                      <Link
+                        href={
+                          typeof notification.metadata?.exhibition_id === 'string'
+                            ? `/exhibitions/${notification.metadata.exhibition_id}#inquiries`
+                            : `/artworks/${notification.artwork_id}/inquiries`
+                        }
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View inquiry
                         </Button>
                       </Link>
                     )}
