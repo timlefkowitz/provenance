@@ -674,7 +674,9 @@ export function EditArtworkDialog({
                     ? 'Uploaded by gallery'
                     : creatorInfo.role === 'institution'
                       ? 'Uploaded by institution'
-                      : 'Created by'}
+                      : creatorInfo.role === 'curator'
+                        ? 'Uploaded by curator'
+                        : 'Created by'}
                 </span>
                 <span className="text-right text-sm font-serif text-editorial-ink">
                   {creatorInfo.name}

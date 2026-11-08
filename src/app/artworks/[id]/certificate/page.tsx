@@ -382,6 +382,25 @@ export default async function CertificatePage({
   const exhibitions = await getArtworkExhibitions(artwork.id);
   const exhibition = exhibitions[0] ?? null;
 
+  // A Certificate of Show issued for a curator-run show (owner mode `artist`) is stamped
+  // with the posting account's gallery profile; credit the curator instead. Judge by the
+  // show the certificate was issued for (metadata.exhibition_id, else the poster's earliest
+  // show), so a gallery certificate later added to a curator show still credits the gallery.
+  if (creatorInfo && artwork.certificate_type === CERTIFICATE_TYPES.SHOW) {
+    const metadataExhibitionId = (artwork.metadata as Record<string, unknown> | null)?.exhibition_id;
+    const postersShows = exhibitions.filter((ex) => ex.gallery?.id === artwork.account_id);
+    const issuingShow =
+      postersShows.find((ex) => ex.id === metadataExhibitionId) ?? postersShows.at(-1) ?? null;
+    const curatorShow = issuingShow?.owner_role === USER_ROLES.ARTIST ? issuingShow : null;
+    if (curatorShow) {
+      creatorInfo = {
+        name: curatorShow.curator || curatorShow.gallery?.name || creatorInfo.name,
+        role: 'curator',
+        accountId: artwork.account_id,
+      };
+    }
+  }
+
   const certificateType = artwork.certificate_type || 'authenticity';
 
   // Latest provenance valuation (public for non-owners, latest for owners).
