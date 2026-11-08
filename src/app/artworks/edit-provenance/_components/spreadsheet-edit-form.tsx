@@ -880,12 +880,33 @@ export function SpreadsheetEditForm({
     });
   };
 
+  // Curator mode: the show's works held outside this collection, picked with
+  // their own checkboxes. They join the editor's selection for printing.
+  const [curatorSelectedIds, setCuratorSelectedIds] = useState<Set<string>>(() => new Set());
+  const curatorWorkIds = curatorPanelOpen && curatorMode ? curatorMode.works.map((w) => w.artwork.id) : [];
+  const curatorSelectedCount = curatorWorkIds.filter((id) => curatorSelectedIds.has(id)).length;
+  const toggleCuratorSelection = (artworkId: string) => {
+    setCuratorSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artworkId)) next.delete(artworkId);
+      else next.add(artworkId);
+      return next;
+    });
+  };
+  /** What curator mode's Print menu prints: selected works in view plus selected show works. */
+  const curatorPrintIds = new Set([
+    ...visibleArtworkIds,
+    ...curatorWorkIds.filter((id) => curatorSelectedIds.has(id)),
+  ]);
+
   const handleSelectAll = () => {
     setSelectedArtworkIds(new Set(filteredArtworks.map((artwork) => artwork.id)));
+    if (curatorPanelOpen) setCuratorSelectedIds(new Set(curatorWorkIds));
   };
 
   const handleClearSelection = () => {
     setSelectedArtworkIds(new Set());
+    setCuratorSelectedIds(new Set());
   };
 
   const toggleOptionalPrimaryField = (field: OptionalPrimaryField) => {
@@ -1552,23 +1573,13 @@ export function SpreadsheetEditForm({
                   : `${curatorMode.inCollectionCount} works in your collection above, and ${curatorMode.works.length} more in the show held by artists or others. Their changes go to the holder to accept.`}
               </p>
             </summary>
-            {curatorMode.printExhibition && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <ExhibitionPrintMenu
-                  exhibition={curatorMode.printExhibition}
-                  ownerName={curatorMode.printOwnerName}
-                />
-                <span className="font-serif text-xs text-ink/50">
-                  Every work in the show: wall labels, QR codes, checklist and the show&apos;s QR poster.
-                </span>
-              </div>
-            )}
             {curatorMode.works.length > 0 && (
               <div className="mt-6">
                 <CuratorWorksList
                   works={curatorMode.works}
                   exhibitionId={curatorMode.exhibitionId}
                   awaitingCosCount={curatorMode.awaitingCosCount}
+                  selection={{ selectedIds: curatorSelectedIds, onToggle: toggleCuratorSelection }}
                 />
               </div>
             )}
@@ -1576,7 +1587,9 @@ export function SpreadsheetEditForm({
         )}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <p className="text-xs text-ink/60 font-serif order-2 sm:order-1">
-            {visibleArtworks.length} selected of {filteredArtworks.length} in view
+            {curatorPanelOpen && curatorWorkIds.length > 0
+              ? `${visibleArtworks.length + curatorSelectedCount} selected of ${filteredArtworks.length + curatorWorkIds.length} in the show`
+              : `${visibleArtworks.length} selected of ${filteredArtworks.length} in view`}
           </p>
           <div className="flex items-center gap-2 order-1 sm:order-2 justify-end sm:justify-start">
             <Button
@@ -1595,12 +1608,20 @@ export function SpreadsheetEditForm({
             >
               Clear
             </Button>
-            <PrintMenu
-              artworks={artworks}
-              artworkData={artworkData}
-              selectedArtworkIds={visibleArtworkIds}
-              galleryName={galleryName}
-            />
+            {curatorPanelOpen && curatorMode?.printExhibition ? (
+              <ExhibitionPrintMenu
+                exhibition={curatorMode.printExhibition}
+                ownerName={curatorMode.printOwnerName}
+                selectedArtworkIds={curatorPrintIds}
+              />
+            ) : (
+              <PrintMenu
+                artworks={artworks}
+                artworkData={artworkData}
+                selectedArtworkIds={visibleArtworkIds}
+                galleryName={galleryName}
+              />
+            )}
             <AddToListButton artworkIds={Array.from(visibleArtworkIds)} showQuickAdd={false} />
             <SendMenu
               selectedArtworkIds={visibleArtworkIds}

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Clock, Edit, Loader2 } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
+import { Checkbox } from '@kit/ui/checkbox';
 import { toast } from '@kit/ui/sonner';
 
 import type { Artwork } from '~/app/artworks/[id]/certificate/_components/certificate-of-authenticity';
@@ -43,14 +44,22 @@ const TYPE_LABEL: Record<string, string> = {
   [CERTIFICATE_TYPES.OWNERSHIP]: 'Certificate of Ownership',
 };
 
+export type CuratorSelection = {
+  selectedIds: Set<string>;
+  onToggle: (artworkId: string) => void;
+};
+
 export function CuratorWorksList({
   works,
   exhibitionId,
   awaitingCosCount,
+  selection,
 }: {
   works: CuratorWork[];
   exhibitionId: string;
   awaitingCosCount: number;
+  /** When set, each work gets a checkbox (e.g. to choose what to print). */
+  selection?: CuratorSelection;
 }) {
   const router = useRouter();
   const [issuing, startIssuing] = useTransition();
@@ -110,6 +119,7 @@ export function CuratorWorksList({
         title="Your certificates"
         note="Certificates of Show for this show. Changes to one issued from an artist's certificate go to the artist to approve."
         works={editable}
+        selection={selection}
         renderAction={(w) => (
           <div className="flex flex-wrap items-center justify-end gap-2">
             {!w.sold && (
@@ -154,6 +164,7 @@ export function CuratorWorksList({
         title="Artists' certificates"
         note="Held by the artist. Suggested changes go to them to accept or decline."
         works={heldByOthers}
+        selection={selection}
         renderAction={(w) =>
           w.changePending ? (
             <span className="inline-flex items-center gap-1.5 font-serif text-xs text-amber-800">
@@ -178,11 +189,13 @@ function Section({
   title,
   note,
   works,
+  selection,
   renderAction,
 }: {
   title: string;
   note: string;
   works: CuratorWork[];
+  selection?: CuratorSelection;
   renderAction: (work: CuratorWork) => React.ReactNode;
 }) {
   if (works.length === 0) return null;
@@ -200,6 +213,14 @@ function Section({
       <ol className="divide-wine/10 divide-y">
         {works.map((w) => (
           <li key={w.artwork.id} className="flex items-center gap-4 py-4">
+            {selection && (
+              <Checkbox
+                checked={selection.selectedIds.has(w.artwork.id)}
+                onCheckedChange={() => selection.onToggle(w.artwork.id)}
+                aria-label={`Select ${w.artwork.title}`}
+                className="border-wine/40 data-[state=checked]:bg-wine data-[state=checked]:border-wine shrink-0"
+              />
+            )}
             <Link
               href={`/artworks/${w.artwork.id}/certificate`}
               className="bg-ink/5 relative h-16 w-16 shrink-0 overflow-hidden rounded"

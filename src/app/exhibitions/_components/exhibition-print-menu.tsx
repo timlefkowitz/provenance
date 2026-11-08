@@ -50,9 +50,15 @@ const noopSubscribe = () => () => {};
 export function ExhibitionPrintMenu({
   exhibition,
   ownerName,
+  selectedArtworkIds,
 }: {
   exhibition: ExhibitionWithDetails;
   ownerName: string | null;
+  /**
+   * When set, wall labels, artwork QR codes and the checklist print only these
+   * works (curator mode's selection). The show's QR poster is unaffected.
+   */
+  selectedArtworkIds?: Set<string>;
 }) {
   const origin = useSyncExternalStore(
     noopSubscribe,
@@ -97,8 +103,11 @@ export function ExhibitionPrintMenu({
   const qrRef = useRef<HTMLDivElement>(null);
 
   const exhibitionUrl = origin ? `${origin}/exhibitions/${exhibition.id}` : '';
-  const hasWorks = exhibition.artworks.length > 0;
-  const hasPrices = exhibition.artworks.some((a) => a.listPriceDisplay?.trim());
+  const printArtworks = selectedArtworkIds
+    ? exhibition.artworks.filter((a) => selectedArtworkIds.has(a.id))
+    : exhibition.artworks;
+  const hasWorks = printArtworks.length > 0;
+  const hasPrices = printArtworks.some((a) => a.listPriceDisplay?.trim());
 
   const readQr = (key: string): string =>
     qrRef.current?.querySelector(`[data-qr="${key}"]`)?.innerHTML ?? '';
@@ -123,16 +132,16 @@ export function ExhibitionPrintMenu({
 
   const handleChecklist = () => {
     console.log('[Exhibitions] Print checklist', { exhibitionId: exhibition.id });
-    openPrintWindow(buildChecklistHtml(exhibition, ownerName, readStyled('exhibition'), priceSymbol));
+    openPrintWindow(buildChecklistHtml({ ...exhibition, artworks: printArtworks }, ownerName, readStyled('exhibition'), priceSymbol));
   };
 
   const handleArtworkQrSheet = () => {
     console.log('[Exhibitions] Print artwork QR sheet', {
       exhibitionId: exhibition.id,
-      count: exhibition.artworks.length,
+      count: printArtworks.length,
     });
-    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readStyled(`sheet-${a.id}`)]));
-    openPrintWindow(buildArtworkQrSheetHtml(exhibition.title, exhibition.artworks, qrSvgs), 860, 760);
+    const qrSvgs = new Map(printArtworks.map((a) => [a.id, readStyled(`sheet-${a.id}`)]));
+    openPrintWindow(buildArtworkQrSheetHtml(exhibition.title, printArtworks, qrSvgs), 860, 760);
   };
 
   const handleWallLabels = (
@@ -143,7 +152,7 @@ export function ExhibitionPrintMenu({
   ) => {
     console.log('[Exhibitions] Print wall labels', {
       exhibitionId: exhibition.id,
-      count: exhibition.artworks.length,
+      count: printArtworks.length,
       options,
       qrStyle: labelQrStyle.style,
     });
@@ -155,9 +164,9 @@ export function ExhibitionPrintMenu({
       const base = readQr(`sheet-${id}`);
       return base ? composeStyledQr(base, labelQrStyle) : '';
     };
-    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, labelQr(a.id)]));
+    const qrSvgs = new Map(printArtworks.map((a) => [a.id, labelQr(a.id)]));
     openPrintWindow(
-      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(exhibition.artworks), options, qrSvgs, biosByArtwork, extraQrs),
+      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(printArtworks), options, qrSvgs, biosByArtwork, extraQrs),
       960,
       760,
     );
@@ -214,7 +223,11 @@ export function ExhibitionPrintMenu({
             size="sm"
             className="font-serif h-8 gap-1.5 border-wine/30 text-wine hover:bg-wine/5 hover:text-wine"
             disabled={!origin}
-            title="Print the exhibition QR code, wall labels, artwork QR codes or checklist"
+            title={
+              selectedArtworkIds
+                ? `Wall labels, QR codes and checklist for ${printArtworks.length} selected ${printArtworks.length === 1 ? 'work' : 'works'}, or the show's QR poster`
+                : 'Print the exhibition QR code, wall labels, artwork QR codes or checklist'
+            }
           >
             <Printer className="h-3.5 w-3.5" />
             Print
@@ -289,13 +302,13 @@ export function ExhibitionPrintMenu({
       <WallLabelsDialog
         open={labelsOpen}
         onOpenChange={setLabelsOpen}
-        count={exhibition.artworks.length}
+        count={printArtworks.length}
         optionsStorageKey={LABEL_OPTIONS_KEY}
         extraQrStorageKey={`provenance.exhibition.labelQrs.${exhibition.id}`}
         qrStyleStorageKey={`provenance.exhibition.labelQrStyle.${exhibition.id}`}
         sampleQrUrl={
-          origin && exhibition.artworks[0]
-            ? `${origin}/artworks/${exhibition.artworks[0].id}/certificate?scan=true`
+          origin && printArtworks[0]
+            ? `${origin}/artworks/${printArtworks[0].id}/certificate?scan=true`
             : ''
         }
         bioEditsStorageKey={bioEditsKey(exhibition.id)}
