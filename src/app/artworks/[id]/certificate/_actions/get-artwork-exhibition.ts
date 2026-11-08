@@ -3,7 +3,8 @@
 import { asUntyped, type UntypedSupabaseClient } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
-import { getUserRole, isTeamProfileRole } from '~/lib/user-roles';
+import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
+import { resolveCuratorLink } from '~/app/exhibitions/_helpers/curator-profile';
 
 export type ArtworkExhibition = {
   id: string;
@@ -11,6 +12,12 @@ export type ArtworkExhibition = {
   start_date: string;
   end_date: string | null;
   location: string | null;
+  /** Owner mode the show runs under; `artist` means a curator-run show. */
+  owner_role?: string | null;
+  /** Curator named on the show (exhibitions.metadata.curator), when set. */
+  curator?: string | null;
+  /** Profile page for the curator, when the name resolves to one. */
+  curatorHref?: string | null;
   gallery?: {
     id: string;
     name: string;
@@ -38,6 +45,7 @@ type ExhibitionRow = {
   location: string | null;
   gallery_id: string | null;
   owner_role: string | null;
+  metadata: Record<string, unknown> | null;
 };
 
 /**
@@ -58,7 +66,8 @@ export async function getArtworkExhibitions(artworkId: string): Promise<ArtworkE
         end_date,
         location,
         gallery_id,
-        owner_role
+        owner_role,
+        metadata
       )
     `)
     .eq('artwork_id', artworkId)
@@ -89,6 +98,8 @@ async function withGallery(
   exhibition: ExhibitionRow,
 ): Promise<ArtworkExhibitionEntry> {
   let galleryInfo: { id: string; name: string; profileId?: string; slug?: string } | null = null;
+  const curatorRaw = exhibition.metadata?.curator;
+  const curator = typeof curatorRaw === 'string' && curatorRaw.trim() ? curatorRaw.trim() : null;
 
   // Fetch gallery information if gallery_id exists
   if (exhibition.gallery_id) {
@@ -100,7 +111,13 @@ async function withGallery(
         .eq('id', exhibition.gallery_id)
         .single();
 
-      if (galleryAccount) {
+      if (galleryAccount && exhibition.owner_role === USER_ROLES.ARTIST) {
+        // Curator-run show: credit the curator, not the account's gallery profile.
+        galleryInfo = {
+          id: galleryAccount.id,
+          name: curator || galleryAccount.name,
+        };
+      } else if (galleryAccount) {
         // The show's owner mode (gallery / institution) decides which profile to name;
         // fall back to the account's current role for older rows without owner_role.
         const accountRole = getUserRole(galleryAccount.public_data as Record<string, unknown>);
@@ -145,12 +162,17 @@ async function withGallery(
     }
   }
 
+  const curatorLink = await resolveCuratorLink(curator, exhibition.gallery_id);
+
   return {
     id: exhibition.id,
     title: exhibition.title,
     start_date: exhibition.start_date,
     end_date: exhibition.end_date,
     location: exhibition.location,
+    owner_role: exhibition.owner_role,
+    curator,
+    curatorHref: curatorLink?.href ?? null,
     gallery: galleryInfo,
   };
 }

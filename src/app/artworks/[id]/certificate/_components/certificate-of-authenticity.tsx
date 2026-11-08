@@ -158,6 +158,10 @@ const SYNC_METHOD_LABEL: Record<string, string> = {
 };
 
 /** "via CoO · ownership accepted" */
+function formatExhibitionDate(date: string): string {
+  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 function syncTagLabel(tag: ProvenanceSyncTag): string {
   const cert = (tag.certificate_type && SYNC_CERT_LABEL[tag.certificate_type]) || 'linked certificate';
   return `via ${cert} · ${SYNC_METHOD_LABEL[tag.method] ?? tag.method.replace(/_/g, ' ')}`;
@@ -269,10 +273,6 @@ function FieldWithHistory({
   );
 }
 
-function formatExhibitionDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-}
-
 export function CertificateOfAuthenticity({ 
   artwork, 
   isOwner = false,
@@ -302,6 +302,8 @@ export function CertificateOfAuthenticity({
     start_date: string; 
     end_date: string | null; 
     location: string | null;
+    curator?: string | null;
+    curatorHref?: string | null;
     gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   } | null;
   /** Every exhibition the work has been selected for, newest first. */
@@ -311,6 +313,8 @@ export function CertificateOfAuthenticity({
     start_date: string;
     end_date: string | null;
     location: string | null;
+    curator?: string | null;
+    curatorHref?: string | null;
     gallery?: { id: string; name: string; profileId?: string; slug?: string } | null;
   }>;
   showVerifyCta?: boolean;
@@ -1237,7 +1241,9 @@ export function CertificateOfAuthenticity({
                       ? 'Uploaded by Gallery'
                       : creatorInfo.role === 'institution'
                         ? 'Uploaded by Institution'
-                        : 'Created by'}
+                        : creatorInfo.role === 'curator'
+                          ? 'Uploaded by Curator'
+                          : 'Created by'}
                   </p>
                   <Link
                     href={creatorInfo.role === 'gallery' && creatorInfo.slug
@@ -1268,8 +1274,23 @@ export function CertificateOfAuthenticity({
                         >
                           {ex.title || 'Unknown Exhibition'}
                         </Link>
-                        {ex.gallery?.name && (
+                        {ex.gallery?.name && ex.gallery.name !== ex.curator && (
                           <p className="text-xs text-ink/60 font-serif mt-0.5">{ex.gallery.name}</p>
+                        )}
+                        {ex.curator && (
+                          <p className="text-xs text-ink/60 font-serif mt-0.5">
+                            Curated by{' '}
+                            {ex.curatorHref ? (
+                              <Link
+                                href={ex.curatorHref}
+                                className="text-wine underline-offset-4 hover:underline"
+                              >
+                                {ex.curator}
+                              </Link>
+                            ) : (
+                              <span className="text-ink/80">{ex.curator}</span>
+                            )}
+                          </p>
                         )}
                         {ex.start_date && (
                           <p className="text-xs text-ink/60 font-serif mt-0.5">

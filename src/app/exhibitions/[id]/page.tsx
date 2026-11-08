@@ -29,6 +29,7 @@ import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 import { EditorialMarkdown } from '~/components/editorial-markdown';
 import { resolveExhibitionHeaderImage } from '../_helpers/header-image';
+import { resolveCuratorLink } from '../_helpers/curator-profile';
 import { stripMarkdown } from '~/lib/strip-markdown';
 import { endOfDateOnly, parseDateOnly } from '~/lib/parse-date-only';
 
@@ -208,6 +209,7 @@ export default async function ExhibitionPage({
     | { curator?: string; theme?: string; contact_phone?: string }
     | undefined;
   const contactPhone = metadata?.contact_phone?.trim() || ownerProfilePhone;
+  const curatorLink = await resolveCuratorLink(metadata?.curator, exhibition.gallery_id);
 
   // Visitors can ask to reserve a piece until the show closes.
   const [reservedArtworkIds, reservationRequests, inquiries] = await Promise.all([
@@ -386,7 +388,14 @@ export default async function ExhibitionPage({
             {metadata?.curator && (
               <span className="flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-wine/40" />
-                Curated by {metadata.curator}
+                Curated by{' '}
+                {curatorLink ? (
+                  <Link href={curatorLink.href} className="hover:text-wine underline-offset-4 hover:underline">
+                    {metadata.curator}
+                  </Link>
+                ) : (
+                  metadata.curator
+                )}
               </span>
             )}
           </div>
