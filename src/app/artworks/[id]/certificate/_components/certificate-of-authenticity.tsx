@@ -158,10 +158,6 @@ const SYNC_METHOD_LABEL: Record<string, string> = {
 };
 
 /** "via CoO · ownership accepted" */
-function formatExhibitionDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-}
-
 function syncTagLabel(tag: ProvenanceSyncTag): string {
   const cert = (tag.certificate_type && SYNC_CERT_LABEL[tag.certificate_type]) || 'linked certificate';
   return `via ${cert} · ${SYNC_METHOD_LABEL[tag.method] ?? tag.method.replace(/_/g, ' ')}`;
