@@ -28,6 +28,7 @@ export default defineConfig({
       'src/lib/scan-stats.test.ts',
       'src/lib/exhibition-scan-stats.test.ts',
       'src/lib/phone.test.ts',
+      'src/lib/artwork-lists.test.ts',
     ],
   },
   resolve: {

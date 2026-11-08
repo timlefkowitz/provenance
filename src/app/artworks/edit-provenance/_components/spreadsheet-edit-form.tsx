@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { PrintMenu } from './print-menu';
+import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
 import { SendMenu } from './send-menu';
 import { RegistryPhotoToggle } from '~/app/artworks/my/_components/registry-photo-toggle';
 import { getSelectedProfileId } from '~/components/profile-switcher';
@@ -1495,6 +1496,7 @@ export function SpreadsheetEditForm({
               selectedArtworkIds={visibleArtworkIds}
               galleryName={galleryName}
             />
+            <AddToListButton artworkIds={Array.from(visibleArtworkIds)} showQuickAdd={false} />
             <SendMenu
               selectedArtworkIds={visibleArtworkIds}
               senderRole={senderRole}

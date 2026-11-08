@@ -13,6 +13,7 @@ import { isLikelyImageFile, prepareImageForUpload } from '~/lib/client-image-upl
 import type { MatchConfidence } from '~/lib/image-fingerprint/similarity';
 
 import { findArtworksByPhoto, type PhotoMatch } from '../_actions/find-artworks-by-photo';
+import { AddToListButton } from './add-to-list-button';
 
 const CONFIDENCE_LABEL: Record<MatchConfidence, string> = {
   strong: 'Strong match',
@@ -35,10 +36,13 @@ export function FindByPhotoDialog({
   exhibitionId,
   trigger,
   description,
+  onClose,
 }: {
   exhibitionId?: string;
   trigger?: ReactNode;
   description?: string;
+  /** Called when the dialog closes (e.g. to refresh a list the user added works to). */
+  onClose?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -95,7 +99,10 @@ export function FindByPhotoDialog({
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
-        if (!v) reset();
+        if (!v) {
+          reset();
+          onClose?.();
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -128,7 +135,7 @@ export function FindByPhotoDialog({
             className="bg-wine text-parchment hover:bg-wine/90 font-serif gap-1.5"
           >
             <Camera className="h-4 w-4" />
-            Take photo
+            {matches ? 'Scan next' : 'Take photo'}
           </Button>
           <Button
             type="button"
@@ -202,6 +209,19 @@ export function FindByPhotoDialog({
 }
 
 function MatchRow({ match, featured = false }: { match: PhotoMatch; featured?: boolean }) {
+  if (!match.isOwner) return <MatchLink match={match} featured={featured} />;
+  // Owners can queue the work straight from the scan (e.g. "To print" for wall labels).
+  return (
+    <div className="flex flex-col gap-1.5">
+      <MatchLink match={match} featured={featured} />
+      <div className="flex justify-end">
+        <AddToListButton artworkIds={[match.artworkId]} showQuickAdd={featured} />
+      </div>
+    </div>
+  );
+}
+
+function MatchLink({ match, featured = false }: { match: PhotoMatch; featured?: boolean }) {
   return (
     <Link
       href={`/artworks/${match.artworkId}/certificate`}

@@ -48,6 +48,7 @@ import { SendCertificateDialog } from './send-certificate-dialog';
 import { PendingCooInviteStatus } from './pending-coo-invite-status';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 import { buildWallLabelsHtml, openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
+import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
 import {
   ProvenanceValuationBlock,
   type ProvenanceValuation,
@@ -729,6 +730,9 @@ export function CertificateOfAuthenticity({
               isCreatorForEdit={canEditCertificate}
             />
           )}
+
+          {/* Add to a list, e.g. a "To print" wall-label queue (owner only) */}
+          {isOwner && <AddToListButton artworkIds={[artwork.id]} />}
 
           {/* Print dropdown (owner only) */}
           {isOwner && (

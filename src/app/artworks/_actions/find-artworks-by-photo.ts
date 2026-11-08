@@ -20,6 +20,8 @@ export type PhotoMatch = {
   imageUrl: string | null;
   certificateNumber: string | null;
   status: string | null;
+  /** True when the signed-in viewer owns this artwork (can add it to their lists, edit it). */
+  isOwner: boolean;
   similarity: number;
   confidence: MatchConfidence;
   score: number;
@@ -94,7 +96,7 @@ export async function findArtworksByPhoto(formData: FormData): Promise<FindArtwo
 
   const { data: artworks } = await db
     .from('artworks')
-    .select('id, title, artist_name, image_url, certificate_number, status')
+    .select('id, title, artist_name, image_url, certificate_number, status, account_id')
     .in(
       'id',
       ranked.map((r) => r.artworkId),
@@ -112,6 +114,7 @@ export async function findArtworksByPhoto(formData: FormData): Promise<FindArtwo
         imageUrl: (a.image_url as string | null) ?? null,
         certificateNumber: (a.certificate_number as string | null) ?? null,
         status: (a.status as string | null) ?? null,
+        isOwner: !!user && a.account_id === user.id,
       },
     ];
   });
