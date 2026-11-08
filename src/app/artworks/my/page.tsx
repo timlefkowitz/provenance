@@ -5,6 +5,8 @@ import { Images } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
 import { loadCuratorWorks } from '~/app/exhibitions/_helpers/load-curator-works';
+import { getExhibitionWithDetails } from '~/app/exhibitions/_actions/get-exhibitions';
+import { getExhibitionShareMeta } from '~/app/exhibitions/_actions/get-exhibition-share-meta';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { getUserGalleryProfiles } from '~/app/artworks/add/_actions/get-user-gallery-profiles';
 import {
@@ -360,9 +362,18 @@ export default async function MyArtworksPage({
   if (curatorShow && !linkableIds.has(curatorShow.exhibition.id)) {
     missingExhibitionIds.push(curatorShow.exhibition.id);
   }
+  // The whole show, for its print menu (poster, labels, QR sheet, checklist).
+  const [curatorPrintExhibition, curatorPrintMeta] = curatorShow
+    ? await Promise.all([
+        getExhibitionWithDetails(curatorShow.exhibition.id, { viewerUserId: user.id }),
+        getExhibitionShareMeta(curatorShow.exhibition.id),
+      ])
+    : [null, null];
   const collectionIdSet = new Set(artworkIds);
   const curatorMode = curatorShow
     ? {
+        printExhibition: curatorPrintExhibition,
+        printOwnerName: curatorPrintMeta?.ownerName ?? null,
         exhibitionId: curatorShow.exhibition.id,
         title: curatorShow.exhibition.title,
         works: curatorShow.works.filter((w) => !collectionIdSet.has(w.artwork.id)),

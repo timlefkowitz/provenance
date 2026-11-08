@@ -466,11 +466,23 @@ export function PrintMenu({
     options: WallLabelOptions,
     biosByArtwork: Map<string, string>,
     extraQrs: (artworkId: string) => LabelQr[],
+    labelQrStyle: QrStyleSettings,
   ) => {
     if (disabled) return;
-    console.log('[Collection] PrintMenu: Wall Labels', { count: selectedArtworks.length, options });
+    console.log('[Collection] PrintMenu: Wall Labels', {
+      count: selectedArtworks.length,
+      options,
+      qrStyle: labelQrStyle.style,
+    });
     setPriceSymbol(options.priceSymbol);
-    const qrSvgs = new Map(selectedArtworks.map((a) => [a.id, readQr(`label-${a.id}`)]));
+    // Plain stays the level-M code, which reads best at label size; any other
+    // style is composed from the level-H code.
+    const labelQr = (id: string) => {
+      if (labelQrStyle.style === 'plain') return readQr(`label-${id}`);
+      const base = readQr(`sheet-${id}`);
+      return base ? composeStyledQr(base, labelQrStyle) : '';
+    };
+    const qrSvgs = new Map(selectedArtworks.map((a) => [a.id, labelQr(a.id)]));
     const items = selectedArtworks.map((a) => collectionLabelItem(a, artworkData[a.id]));
     openPrintWindow(buildLabelsHtml(galleryName, items, options, qrSvgs, biosByArtwork, extraQrs), 960, 760);
   };
@@ -499,7 +511,7 @@ export function PrintMenu({
           aria-hidden="true"
           style={{ position: 'fixed', left: -9999, top: -9999, pointerEvents: 'none', visibility: 'hidden' }}
         >
-          {qrOpen &&
+          {(qrOpen || labelsOpen) &&
             selectedArtworks.map((a) => (
               // Level H, no margin, black on white: what composeStyledQr expects.
               <div key={`sheet-${a.id}`} data-qr={`sheet-${a.id}`}>
@@ -594,6 +606,8 @@ export function PrintMenu({
         count={selectedArtworks.length}
         optionsStorageKey={LABEL_OPTIONS_KEY}
         extraQrStorageKey={'provenance.collection.labelQrs'}
+        qrStyleStorageKey={'provenance.collection.labelQrStyle'}
+        sampleQrUrl={origin && selectedArtworks[0] ? certificateUrl(selectedArtworks[0].id) : ''}
         bioEditsStorageKey={BIO_EDITS_KEY}
         loadBios={() => getArtworkArtistBios(selectedArtworks.map((a) => a.id))}
         hints={{ price: 'Artwork value', creditLine: 'Owner or collection' }}

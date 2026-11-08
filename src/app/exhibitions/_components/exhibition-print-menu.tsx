@@ -62,7 +62,8 @@ export function ExhibitionPrintMenu({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   // The show's QR style (exhibitions.metadata.qr), used by the poster,
-  // downloads, artwork QR sheet and checklist. Wall labels stay plain.
+  // downloads, artwork QR sheet and checklist. Wall labels have their own
+  // style, picked in the labels dialog.
   const [qrStyle, setQrStyle] = useState<QrStyleSettings>(() =>
     readQrStyle((exhibition as { metadata?: unknown }).metadata),
   );
@@ -138,14 +139,23 @@ export function ExhibitionPrintMenu({
     options: WallLabelOptions,
     biosByArtwork: Map<string, string>,
     extraQrs: (artworkId: string) => LabelQr[],
+    labelQrStyle: QrStyleSettings,
   ) => {
     console.log('[Exhibitions] Print wall labels', {
       exhibitionId: exhibition.id,
       count: exhibition.artworks.length,
       options,
+      qrStyle: labelQrStyle.style,
     });
     setPriceSymbol(options.priceSymbol);
-    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readQr(a.id)]));
+    // Plain stays the level-M code, which reads best at label size; any other
+    // style is composed from the level-H code.
+    const labelQr = (id: string) => {
+      if (labelQrStyle.style === 'plain') return readQr(id);
+      const base = readQr(`sheet-${id}`);
+      return base ? composeStyledQr(base, labelQrStyle) : '';
+    };
+    const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, labelQr(a.id)]));
     openPrintWindow(
       buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(exhibition.artworks), options, qrSvgs, biosByArtwork, extraQrs),
       960,
@@ -282,6 +292,12 @@ export function ExhibitionPrintMenu({
         count={exhibition.artworks.length}
         optionsStorageKey={LABEL_OPTIONS_KEY}
         extraQrStorageKey={`provenance.exhibition.labelQrs.${exhibition.id}`}
+        qrStyleStorageKey={`provenance.exhibition.labelQrStyle.${exhibition.id}`}
+        sampleQrUrl={
+          origin && exhibition.artworks[0]
+            ? `${origin}/artworks/${exhibition.artworks[0].id}/certificate?scan=true`
+            : ''
+        }
         bioEditsStorageKey={bioEditsKey(exhibition.id)}
         loadBios={() => getExhibitionArtistBios(exhibition.id)}
         hints={{ price: 'Exhibition list price', creditLine: 'Only when marked public' }}

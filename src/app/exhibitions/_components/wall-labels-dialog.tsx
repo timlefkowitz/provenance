@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Loader2, Printer } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -16,6 +17,8 @@ import {
   type LabelQr,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
+import { composeStyledQr, DEFAULT_QR_STYLE, readQrStyle, type QrStyleSettings } from '../_helpers/qr-style';
+import { QrStylePicker } from './qr-style-picker';
 import { ExtraLabelQrsEditor, readExtraQrs, resolveExtraQrs, type ExtraLabelQr } from './extra-label-qrs';
 
 export type WallLabelToggleKey = Exclude<keyof WallLabelOptions, 'size' | 'qrPosition' | 'layout'>;
@@ -70,6 +73,15 @@ function loadExtraQrs(key: string): ExtraLabelQr[] {
   }
 }
 
+function loadQrStyle(key: string): QrStyleSettings {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return readQrStyle({ qr: raw ? (JSON.parse(raw) as unknown) : null });
+  } catch {
+    return DEFAULT_QR_STYLE;
+  }
+}
+
 const inches = (n: number) => `${n}`.replace(/\.0+$/, '');
 
 function loadBioEdits(key: string): Record<string, string> {
@@ -94,6 +106,8 @@ export function WallLabelsDialog({
   optionsStorageKey,
   bioEditsStorageKey,
   extraQrStorageKey,
+  qrStyleStorageKey,
+  sampleQrUrl,
   loadBios,
   hints,
   onPrint,
@@ -108,15 +122,20 @@ export function WallLabelsDialog({
   bioEditsStorageKey: string;
   /** localStorage key for extra QR codes (links or uploaded images). */
   extraQrStorageKey: string;
+  /** localStorage key for the certificate QR code's style on the labels. */
+  qrStyleStorageKey: string;
+  /** One work's certificate URL, for the style preview. */
+  sampleQrUrl: string;
   loadBios: () => Promise<ArtistBio[]>;
   /** Per-toggle hint text, e.g. where the price comes from. */
   hints?: Partial<Record<WallLabelToggleKey, string>>;
   /** Artwork id → bio text for the works whose artist has one. */
-  /** extraQrs gives the added QR codes for each artwork id. */
+  /** extraQrs gives the added QR codes for each artwork id; qrStyle styles the certificate code. */
   onPrint: (
     options: WallLabelOptions,
     biosByArtwork: Map<string, string>,
     extraQrs: (artworkId: string) => LabelQr[],
+    qrStyle: QrStyleSettings,
   ) => void;
 }) {
   const [options, setOptions] = useState<WallLabelOptions>(DEFAULT_LABEL_OPTIONS);
@@ -126,6 +145,14 @@ export function WallLabelsDialog({
   const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
   const [extras, setExtras] = useState<ExtraLabelQr[]>([]);
   const extraSvgRef = useRef<HTMLDivElement>(null);
+  const [qrStyle, setQrStyle] = useState<QrStyleSettings>(DEFAULT_QR_STYLE);
+  const [qrBaseSvg, setQrBaseSvg] = useState('');
+  const [stylePickerOpen, setStylePickerOpen] = useState(false);
+
+  const changeQrStyle = (next: QrStyleSettings) => {
+    setQrStyle(next);
+    saveJson(qrStyleStorageKey, next);
+  };
 
   const fetchBios = async () => {
     setBiosLoading(true);
@@ -149,6 +176,8 @@ export function WallLabelsDialog({
     setArtistBios(null);
     const savedExtras = loadExtraQrs(extraQrStorageKey);
     setExtras(savedExtras);
+    setQrStyle(loadQrStyle(qrStyleStorageKey));
+    setStylePickerOpen(false);
     // Artists drive both bios and "only on this artist's labels".
     if (saved.artistBio || savedExtras.length > 0) void fetchBios();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +207,7 @@ export function WallLabelsDialog({
       const text = bioText(artist).trim();
       if (text) for (const id of artist.artworkIds) biosByArtwork.set(id, text);
     }
-    onPrint(options, biosByArtwork, resolveExtraQrs(extras, artistBios, extraSvgRef.current));
+    onPrint(options, biosByArtwork, resolveExtraQrs(extras, artistBios, extraSvgRef.current), qrStyle);
     onOpenChange(false);
   };
 
@@ -283,6 +312,57 @@ export function WallLabelsDialog({
               Edits are for printing only and are remembered on this device. They don&apos;t change
               anyone&apos;s profile.
             </p>
+          </div>
+        )}
+
+        {options.qrCode && sampleQrUrl && (
+          <div className="pt-2">
+            <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">QR code style</p>
+            {/* Plain code (level H, no margin) that every style is composed from. */}
+            <div
+              aria-hidden="true"
+              className="hidden"
+              ref={(el) => {
+                const svg = el?.innerHTML ?? '';
+                if (svg && svg !== qrBaseSvg) setQrBaseSvg(svg);
+              }}
+            >
+              <QRCodeSVG value={sampleQrUrl} size={256} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
+            </div>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-16 flex-none rounded border border-wine/15 bg-white p-1 [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
+                role="img"
+                aria-label="Label QR code preview"
+                dangerouslySetInnerHTML={{ __html: qrBaseSvg ? composeStyledQr(qrBaseSvg, qrStyle) : '' }}
+              />
+              <div className="min-w-0 text-xs font-serif text-ink/60">
+                <p>Same choices as the exhibition QR code. Remembered on this device.</p>
+                <button
+                  type="button"
+                  className="mt-1 text-wine underline hover:text-wine/80"
+                  onClick={() => setStylePickerOpen((v) => !v)}
+                  aria-expanded={stylePickerOpen}
+                >
+                  {stylePickerOpen ? 'Done' : 'Change style'}
+                </button>
+              </div>
+            </div>
+            {stylePickerOpen && (
+              <div className="mt-3">
+                <QrStylePicker
+                  baseSvg={qrBaseSvg}
+                  qrStyle={qrStyle}
+                  onQrStyleChange={changeQrStyle}
+                  logTag="[Wall labels]"
+                />
+              </div>
+            )}
+            {qrStyle.style !== 'plain' && (
+              <p className="mt-2 text-[11px] font-serif text-ink/40">
+                Labels print small codes; test-scan one before printing the full set.
+              </p>
+            )}
           </div>
         )}
 

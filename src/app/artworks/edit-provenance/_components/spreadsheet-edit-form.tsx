@@ -18,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import { PrintMenu } from './print-menu';
+import { ExhibitionPrintMenu } from '~/app/exhibitions/_components/exhibition-print-menu';
+import type { ExhibitionWithDetails } from '~/app/exhibitions/_actions/get-exhibitions';
 import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
 import { SendMenu } from './send-menu';
 import { RegistryPhotoToggle } from '~/app/artworks/my/_components/registry-photo-toggle';
@@ -582,6 +584,9 @@ export function SpreadsheetEditForm({
   curatableExhibitionIds?: string[];
   /** Curator mode for one show: its works that aren't in this collection. */
   curatorMode?: {
+    /** The whole show for its print menu; null if it couldn't be loaded. */
+    printExhibition: ExhibitionWithDetails | null;
+    printOwnerName: string | null;
     exhibitionId: string;
     title: string;
     works: CuratorWork[];
@@ -1547,6 +1552,17 @@ export function SpreadsheetEditForm({
                   : `${curatorMode.inCollectionCount} works in your collection above, and ${curatorMode.works.length} more in the show held by artists or others. Their changes go to the holder to accept.`}
               </p>
             </summary>
+            {curatorMode.printExhibition && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <ExhibitionPrintMenu
+                  exhibition={curatorMode.printExhibition}
+                  ownerName={curatorMode.printOwnerName}
+                />
+                <span className="font-serif text-xs text-ink/50">
+                  Every work in the show: wall labels, QR codes, checklist and the show&apos;s QR poster.
+                </span>
+              </div>
+            )}
             {curatorMode.works.length > 0 && (
               <div className="mt-6">
                 <CuratorWorksList
