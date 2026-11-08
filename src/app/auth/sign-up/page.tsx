@@ -1,6 +1,4 @@
 import { SignUpMethodsContainer } from '@kit/auth/sign-up';
-import { Button } from '@kit/ui/button';
-import { Trans } from '@kit/ui/trans';
 import { Separator } from '@kit/ui/separator';
 
 import authConfig from '~/config/auth.config';
@@ -29,11 +27,12 @@ const paths = {
 function SignUpPage() {
   return (
     <div className="flex flex-col gap-y-6">
-      <div className="flex flex-col gap-y-1 text-center">
-        <h2 className="text-xl font-semibold tracking-tight text-[#111111]">
-          Create your account
-        </h2>
-        <p className="text-sm" style={{ color: '#4A2F25', opacity: 0.7 }}>
+      <div className="flex flex-col gap-y-2">
+        <span className="label-editorial text-gilt">§ Sign up</span>
+        <h1 className="font-fraunces italic text-[2rem] font-normal leading-none tracking-tight text-editorial-ink">
+          Create your account<span className="text-vermillion">.</span>
+        </h1>
+        <p className="text-sm text-editorial-ink/60">
           Start documenting your artwork&apos;s story today
         </p>
       </div>
@@ -74,21 +73,13 @@ function SignUpPage() {
         </>
       )}
 
-      <div className="flex justify-center pt-1">
-        <span className="text-sm" style={{ color: '#111111', opacity: 0.5 }}>
-          Already have an account?{' '}
-          <Button
-            asChild
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-sm font-medium"
-            style={{ color: '#4A2F25' }}
-          >
-            <AuthSwitchLink href={pathsConfig.auth.signIn}>
-              <Trans i18nKey={'auth:alreadyHaveAnAccount'} defaults="Sign in" />
-            </AuthSwitchLink>
-          </Button>
-        </span>
+      <div className="flex items-baseline justify-center gap-2 border-t border-editorial-border/15 pt-5">
+        <span className="text-sm text-editorial-ink/50">Already have an account?</span>
+        <AuthSwitchLink href={pathsConfig.auth.signIn}>
+          <span className="label-editorial text-[11px] text-editorial-ink underline decoration-vermillion decoration-[1.5px] underline-offset-4 transition-colors hover:text-vermillion">
+            Sign in
+          </span>
+        </AuthSwitchLink>
       </div>
     </div>
   );

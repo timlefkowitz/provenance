@@ -22,15 +22,15 @@ export function CollapsibleSignUpSection({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={
-          'group flex w-full items-center justify-between rounded-md px-0 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          'group flex w-full items-center justify-between px-0 py-1 text-left transition-colors hover:text-vermillion focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vermillion/30'
         }
         aria-expanded={open}
       >
-        <span className="text-lg font-semibold tracking-tight">{label}</span>
+        <span className="label-editorial text-[11px] font-medium">{label}</span>
 
         <ChevronDown
           className={[
-            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300',
+            'h-4 w-4 shrink-0 text-editorial-ink/50 transition-transform duration-300',
             open ? 'rotate-180' : 'rotate-0',
           ].join(' ')}
         />

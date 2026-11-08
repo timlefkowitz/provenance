@@ -1,6 +1,4 @@
 import { SignInMethodsContainer } from '@kit/auth/sign-in';
-import { Button } from '@kit/ui/button';
-import { Heading } from '@kit/ui/heading';
 import { Separator } from '@kit/ui/separator';
 
 import authConfig from '~/config/auth.config';
@@ -36,12 +34,12 @@ function SignInPage() {
 
   return (
     <div className={'flex flex-col gap-y-6'}>
-      <div className={'flex flex-col gap-y-1 text-center'}>
-        <Heading level={4} className={'tracking-tight text-[#111111]'}>
-          Welcome back
-        </Heading>
-
-        <p className={'text-sm'} style={{ color: '#4A2F25', opacity: 0.7 }}>
+      <div className={'flex flex-col gap-y-2'}>
+        <span className="label-editorial text-gilt">§ Sign in</span>
+        <h1 className="font-fraunces italic text-[2rem] font-normal leading-none tracking-tight text-editorial-ink">
+          Welcome back<span className="text-vermillion">.</span>
+        </h1>
+        <p className="text-sm text-editorial-ink/60">
           Sign in to your Provenance account
         </p>
       </div>
@@ -59,15 +57,13 @@ function SignInPage() {
         </>
       )}
 
-      <div className={'flex justify-center pt-1'}>
-        <span className="text-sm" style={{ color: '#111111', opacity: 0.5 }}>
-          New to Provenance?{' '}
-          <Button asChild variant={'link'} size={'sm'} className="h-auto p-0 text-sm font-medium" style={{ color: '#4A2F25' }}>
-            <AuthSwitchLink href={pathsConfig.auth.signUp}>
-              Create an account
-            </AuthSwitchLink>
-          </Button>
-        </span>
+      <div className={'flex items-baseline justify-center gap-2 border-t border-editorial-border/15 pt-5'}>
+        <span className="text-sm text-editorial-ink/50">New to Provenance?</span>
+        <AuthSwitchLink href={pathsConfig.auth.signUp}>
+          <span className="label-editorial text-[11px] text-editorial-ink underline decoration-vermillion decoration-[1.5px] underline-offset-4 transition-colors hover:text-vermillion">
+            Create an account
+          </span>
+        </AuthSwitchLink>
       </div>
     </div>
   );

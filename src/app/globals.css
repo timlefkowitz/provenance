@@ -587,3 +587,112 @@
   border-color: var(--vermillion);
   box-shadow: none;
 }
+
+/* ── Editorial auth (sign-in / sign-up card) ───────────────────────────────
+   Unlayered so it beats the ui-kit's layered utilities, like .editorial-dialog.
+   Mirrors the navbar: mono uppercase labels and buttons, underline fields,
+   square corners, ink primary that warms to vermillion on hover. */
+.editorial-auth {
+  --ea-field-line: color-mix(in oklab, var(--editorial-border) 30%, transparent);
+  --ea-hairline: color-mix(in oklab, var(--editorial-border) 15%, transparent);
+}
+.editorial-auth label:not(:has(input[type='checkbox'], input[type='radio'], [role='checkbox'], [role='switch'], [role='radio'])) {
+  font-family: var(--font-jetbrains);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: color-mix(in oklab, var(--editorial-ink) 60%, transparent);
+}
+.editorial-auth.editorial-auth :is([role='checkbox'], [role='switch'], [role='radio']) ~ label {
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--editorial-ink);
+}
+.editorial-auth input:not([type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='color'], [type='hidden']) {
+  height: 2.75rem;
+  border-width: 0 0 1px;
+  border-style: solid;
+  border-color: var(--ea-field-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-right: 0;
+  font-size: 1rem;
+  color: var(--editorial-ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.editorial-auth input:not([class*='pl-']) {
+  padding-left: 0;
+}
+.editorial-auth input::placeholder {
+  color: color-mix(in oklab, var(--editorial-ink) 35%, transparent);
+}
+.editorial-auth input:hover:not(:focus-visible, :disabled) {
+  border-color: color-mix(in oklab, var(--editorial-border) 60%, transparent);
+}
+.editorial-auth input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--vermillion);
+  box-shadow: 0 1px 0 0 var(--vermillion);
+}
+.editorial-auth button[data-variant] {
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-jetbrains);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.editorial-auth button:is([data-variant='default'], [type='submit']:not([data-variant])) {
+  height: 2.75rem;
+  background: var(--editorial-ink);
+  color: var(--bone);
+  border: 0;
+}
+.editorial-auth button[data-variant='default']:hover:not(:disabled) {
+  background: var(--vermillion);
+  color: var(--bone);
+}
+.editorial-auth button:is([data-variant='outline'], [data-variant='secondary']) {
+  height: 2.75rem;
+  background: transparent;
+  color: var(--editorial-ink);
+  border: 1px solid var(--ea-field-line);
+}
+.editorial-auth button:is([data-variant='outline'], [data-variant='secondary']):hover:not(:disabled) {
+  border-color: var(--vermillion);
+  color: var(--vermillion);
+  background: color-mix(in oklab, var(--vermillion) 5%, transparent);
+}
+.editorial-auth button[data-variant='link'] {
+  font-size: 10px;
+  color: color-mix(in oklab, var(--editorial-ink) 60%, transparent);
+}
+.editorial-auth button[data-variant='link']:hover {
+  color: var(--vermillion);
+}
+.editorial-auth button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--vermillion) 35%, transparent);
+  outline-offset: 2px;
+}
+.editorial-auth [data-orientation='horizontal'][role='none'],
+.editorial-auth [data-slot='separator'] {
+  background: var(--ea-hairline);
+}
+.editorial-auth a[href*='password-reset'] {
+  padding-inline: 0;
+  font-family: var(--font-jetbrains);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: color-mix(in oklab, var(--editorial-ink) 60%, transparent);
+}
+.editorial-auth a[href*='password-reset']:hover {
+  color: var(--vermillion);
+}
