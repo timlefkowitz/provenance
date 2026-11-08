@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { Images } from 'lucide-react';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getUserExhibitions } from '~/app/artworks/add/_actions/get-user-exhibitions';
+import { loadCuratorWorks } from '~/app/exhibitions/_helpers/load-curator-works';
 import { getUserProfiles } from '~/app/profiles/_actions/get-user-profiles';
 import { getUserGalleryProfiles } from '~/app/artworks/add/_actions/get-user-gallery-profiles';
 import {
@@ -26,7 +27,7 @@ export const metadata = {
 export default async function MyArtworksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ exhibition?: string; assign?: string }>;
+  searchParams?: Promise<{ exhibition?: string; assign?: string; curator?: string }>;
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const assignExhibitionIdParam =
@@ -34,6 +35,10 @@ export default async function MyArtworksPage({
       ? resolvedSearchParams.exhibition
       : null;
   const isAssignFlow = resolvedSearchParams.assign === '1' && assignExhibitionIdParam !== null;
+  const curatorExhibitionIdParam =
+    typeof resolvedSearchParams.curator === 'string' && resolvedSearchParams.curator.length > 0
+      ? resolvedSearchParams.curator
+      : null;
 
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
@@ -229,7 +234,7 @@ export default async function MyArtworksPage({
     galleryProfiles,
   );
 
-  if (!artworks || artworks.length === 0) {
+  if ((!artworks || artworks.length === 0) && !curatorExhibitionIdParam) {
     return (
       <div className="min-h-[calc(100vh-5rem)] bg-parchment">
         <div className="border-b border-wine/15 bg-gradient-to-b from-wine/[0.06] to-transparent">
@@ -281,14 +286,19 @@ export default async function MyArtworksPage({
     .select('artwork_id, exhibition_id')
     .in('artwork_id', artworkIds);
 
+  // A work can be in several shows. The first link is the one the "Exhibition
+  // link" field edits; the viewer filter matches any of them.
   const initialExhibitionIdByArtworkId: Record<string, string | null> = {};
+  const exhibitionIdsByArtworkId: Record<string, string[]> = {};
   for (const id of artworkIds) {
     initialExhibitionIdByArtworkId[id] = null;
+    exhibitionIdsByArtworkId[id] = [];
   }
   for (const row of exhibitionLinks || []) {
     const r = row as { artwork_id: string; exhibition_id: string };
     if (r.artwork_id && r.exhibition_id) {
-      initialExhibitionIdByArtworkId[r.artwork_id] = r.exhibition_id;
+      initialExhibitionIdByArtworkId[r.artwork_id] ??= r.exhibition_id;
+      exhibitionIdsByArtworkId[r.artwork_id]?.push(r.exhibition_id);
     }
   }
 
@@ -326,9 +336,9 @@ export default async function MyArtworksPage({
     ownerRole: ownerRole ?? undefined,
   });
   const linkableIds = new Set(linkableExhibitions.map((e) => e.id));
-  const linkedIds = new Set(
-    Object.values(initialExhibitionIdByArtworkId).filter(Boolean) as string[],
-  );
+  // Shows offered for curator mode: the ones this user manages.
+  const curatableExhibitionIds = [...linkableIds];
+  const linkedIds = new Set(Object.values(exhibitionIdsByArtworkId).flat());
   const missingExhibitionIds = [...linkedIds].filter((id) => !linkableIds.has(id));
 
   // Ensure the just-created exhibition from the New Exhibition dialog is visible
@@ -340,6 +350,25 @@ export default async function MyArtworksPage({
   ) {
     missingExhibitionIds.push(assignExhibitionIdParam);
   }
+
+  // Curator mode: every work selected for one show, whoever holds it. Works
+  // already in the collection stay in the editor; the rest are listed with
+  // what the curator can do with them (edit, or suggest changes to the holder).
+  const curatorShow = curatorExhibitionIdParam
+    ? await loadCuratorWorks(user.id, curatorExhibitionIdParam)
+    : null;
+  if (curatorShow && !linkableIds.has(curatorShow.exhibition.id)) {
+    missingExhibitionIds.push(curatorShow.exhibition.id);
+  }
+  const collectionIdSet = new Set(artworkIds);
+  const curatorMode = curatorShow
+    ? {
+        exhibitionId: curatorShow.exhibition.id,
+        title: curatorShow.exhibition.title,
+        works: curatorShow.works.filter((w) => !collectionIdSet.has(w.artwork.id)),
+        inCollectionCount: curatorShow.works.filter((w) => collectionIdSet.has(w.artwork.id)).length,
+      }
+    : null;
 
   if (missingExhibitionIds.length > 0) {
     const { data: extraRows } = await asUntyped(client)
@@ -427,6 +456,9 @@ export default async function MyArtworksPage({
           artworks={artworks as unknown as ComponentProps<typeof SpreadsheetEditForm>['artworks']}
           linkableExhibitions={linkableExhibitions}
           initialExhibitionIdByArtworkId={initialExhibitionIdByArtworkId}
+          exhibitionIdsByArtworkId={exhibitionIdsByArtworkId}
+          curatableExhibitionIds={curatableExhibitionIds}
+          curatorMode={curatorMode}
           receiverName={receiverName}
           assignExhibitionId={assignExhibitionId}
           assignExhibitionTitle={assignExhibitionTitle}

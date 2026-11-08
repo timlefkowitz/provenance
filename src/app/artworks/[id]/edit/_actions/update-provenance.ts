@@ -35,6 +35,8 @@ export async function updateProvenance(
     soldBy?: string;
     soldByIsPublic?: boolean;
     exhibitionId?: string | null;
+    /** The link the editor showed before the change; replaced by exhibitionId. */
+    previousExhibitionId?: string | null;
     isSold?: boolean;
     displayOrder?: number | null;
   },
@@ -265,15 +267,27 @@ export async function updateProvenance(
     // Handle exhibition linking/unlinking if exhibitionId is provided
     if (provenance.exhibitionId !== undefined) {
       try {
-        // Get current exhibition link
-        const { data: currentLink } = await asUntyped(client)
+        // A work can be in several shows. Replace the link the editor showed
+        // (previousExhibitionId), or the only link when there is just one,
+        // and leave the work's other shows alone.
+        const { data: currentLinks } = await asUntyped(client)
           .from('exhibition_artworks')
           .select('exhibition_id')
-          .eq('artwork_id', artworkId)
-          .maybeSingle();
+          .eq('artwork_id', artworkId);
 
-        const currentExhibitionId = currentLink?.exhibition_id || null;
+        const linkedIds = ((currentLinks ?? []) as { exhibition_id: string | null }[])
+          .map((l) => l.exhibition_id)
+          .filter((id): id is string => Boolean(id));
         const newExhibitionId = provenance.exhibitionId || null;
+        const currentExhibitionId =
+          provenance.previousExhibitionId !== undefined
+            ? provenance.previousExhibitionId && linkedIds.includes(provenance.previousExhibitionId)
+              ? provenance.previousExhibitionId
+              : null
+            : linkedIds.length === 1
+              ? linkedIds[0]!
+              : null;
+        const alreadyLinked = Boolean(newExhibitionId && linkedIds.includes(newExhibitionId));
 
         // Only update if the exhibition has changed
         if (currentExhibitionId !== newExhibitionId) {
@@ -287,7 +301,7 @@ export async function updateProvenance(
           }
 
           // Add to new exhibition if provided
-          if (newExhibitionId) {
+          if (newExhibitionId && !alreadyLinked) {
             // Verify the user owns this exhibition
             const { data: exhibition } = await asUntyped(client)
               .from('exhibitions')
@@ -349,7 +363,7 @@ export async function updateProvenance(
           message: `Your artwork "${provenance.title || originalTitle}" has been updated`,
           artworkId: artworkId,
           metadata: {
-            updated_fields: Object.keys(provenance).filter(key => provenance[key as keyof typeof provenance] !== undefined),
+            updated_fields: Object.keys(provenance).filter(key => key !== 'previousExhibitionId' && provenance[key as keyof typeof provenance] !== undefined),
           },
         });
       } catch (error) {

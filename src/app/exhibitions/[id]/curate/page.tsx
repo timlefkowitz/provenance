@@ -3,15 +3,10 @@ import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
-import {
-  canManageExhibition,
-  isGalleryMember,
-} from '~/app/profiles/_actions/gallery-members';
-import { isShownInExhibition } from '../../_helpers/exhibition-submission-status';
-import { CuratorWorksList, type CuratorWork } from './_components/curator-works-list';
+import { loadCuratorWorks } from '../../_helpers/load-curator-works';
+import { CuratorWorksList } from './_components/curator-works-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,91 +33,9 @@ export default async function CurateExhibitionPage({
 
   if (!user) redirect(`/auth/sign-in?next=/exhibitions/${id}/curate`);
 
-  const { data: exhibition } = await client
-    .from('exhibitions')
-    .select('id, title, gallery_id, published_at')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (!exhibition) notFound();
-  if (!(await canManageExhibition(user.id, exhibition.gallery_id as string))) notFound();
-
-  // Access is settled above; the service role reads works whose certificates
-  // other people hold (artists' COAs aren't visible to the gallery via RLS).
-  const admin = asUntyped(getSupabaseServerAdminClient());
-
-  const { data: links } = await admin
-    .from('exhibition_artworks')
-    .select('artwork_id, status, created_at')
-    .eq('exhibition_id', id);
-
-  const shown = (links ?? []).filter((l: { status: unknown }) => isShownInExhibition(l.status));
-  const order = new Map<string, number>(
-    shown.map((l: { artwork_id: string }, i: number) => [l.artwork_id, i]),
-  );
-  const artworkIds = shown.map((l: { artwork_id: string }) => l.artwork_id);
-
-  const rows: Record<string, unknown>[] = [];
-  for (let i = 0; i < artworkIds.length; i += 200) {
-    const { data } = await admin
-      .from('artworks')
-      .select('*')
-      .in('id', artworkIds.slice(i, i + 200));
-    rows.push(...((data ?? []) as Record<string, unknown>[]));
-  }
-
-  const visible = rows
-    .filter((a) => a.status === 'verified' || a.status === 'draft')
-    .sort((a, b) => (order.get(a.id as string) ?? 0) - (order.get(b.id as string) ?? 0));
-
-  const holderIds = Array.from(new Set(visible.map((a) => a.account_id as string)));
-  const { data: holders } = holderIds.length
-    ? await admin.from('accounts').select('id, name').in('id', holderIds)
-    : { data: [] };
-  const holderName = new Map<string, string>(
-    (holders ?? []).map((h: { id: string; name: string | null }) => [h.id, h.name ?? '']),
-  );
-
-  const { data: pendingRequests } = artworkIds.length
-    ? await admin
-        .from('provenance_update_requests')
-        .select('artwork_id')
-        .eq('requested_by', user.id)
-        .eq('status', 'pending')
-        .eq('request_type', 'provenance_update')
-        .in('artwork_id', artworkIds)
-    : { data: [] };
-  const pendingIds = new Set(
-    (pendingRequests ?? []).map((r: { artwork_id: string }) => r.artwork_id),
-  );
-
-  // Same rule as the certificate page: the holder, or a team member of the
-  // gallery profile the certificate was issued under, edits it directly.
-  const memberOf = new Map<string, boolean>();
-  const canEdit = async (a: Record<string, unknown>) => {
-    if (a.account_id === user.id) return true;
-    const profileId = a.gallery_profile_id as string | null;
-    if (!profileId) return false;
-    if (!memberOf.has(profileId)) memberOf.set(profileId, await isGalleryMember(user.id, profileId));
-    return memberOf.get(profileId) ?? false;
-  };
-
-  const works: CuratorWork[] = [];
-  for (const a of visible) {
-    const editable = await canEdit(a);
-    works.push({
-      artwork: a as unknown as CuratorWork['artwork'],
-      certificateType: (a.certificate_type as string | null) ?? null,
-      isDraft: a.status === 'draft',
-      holderName: holderName.get(a.account_id as string) || null,
-      editHref: editable
-        ? a.account_id === user.id
-          ? `/artworks/${a.id}/edit`
-          : `/artworks/${a.id}/certificate`
-        : null,
-      changePending: pendingIds.has(a.id as string),
-    });
-  }
+  const show = await loadCuratorWorks(user.id, id);
+  if (!show) notFound();
+  const { exhibition, works } = show;
 
   const galleryCount = works.filter((w) => w.editHref).length;
   const otherCount = works.length - galleryCount;

@@ -31,6 +31,8 @@ export async function batchUpdateProvenance(
     soldBy?: string;
     soldByIsPublic?: boolean;
     exhibitionId?: string | null;
+    /** The link the editor showed before the change; replaced by exhibitionId. */
+    previousExhibitionId?: string | null;
     isSold?: boolean;
     displayOrder?: number | null;
   }

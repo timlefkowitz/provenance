@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   Camera,
@@ -55,6 +55,10 @@ import { toast } from '@kit/ui/sonner';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
 import { updateArtworkImage } from '../_actions/update-artwork-image';
 import { publishExhibitionListing } from '~/app/exhibitions/_actions/publish-exhibition-listing';
+import {
+  CuratorWorksList,
+  type CuratorWork,
+} from '~/app/exhibitions/[id]/curate/_components/curator-works-list';
 import { markArtworkSold } from '~/app/artworks/[id]/_actions/mark-artwork-sold';
 import { SoldToPicker, type SoldToValue } from './sold-to-picker';
 import { RequestValuationRow } from './request-valuation-row';
@@ -558,6 +562,9 @@ export function SpreadsheetEditForm({
   artworks,
   linkableExhibitions,
   initialExhibitionIdByArtworkId,
+  exhibitionIdsByArtworkId = {},
+  curatableExhibitionIds = [],
+  curatorMode = null,
   receiverName,
   assignExhibitionId = null,
   assignExhibitionTitle = null,
@@ -569,6 +576,17 @@ export function SpreadsheetEditForm({
   artworks: Artwork[];
   linkableExhibitions: LinkableExhibition[];
   initialExhibitionIdByArtworkId: Record<string, string | null>;
+  /** Every show each work is in; the viewer filter matches any of them. */
+  exhibitionIdsByArtworkId?: Record<string, string[]>;
+  /** Shows the user manages, which can be opened in curator mode. */
+  curatableExhibitionIds?: string[];
+  /** Curator mode for one show: its works that aren't in this collection. */
+  curatorMode?: {
+    exhibitionId: string;
+    title: string;
+    works: CuratorWork[];
+    inCollectionCount: number;
+  } | null;
   receiverName?: string;
   assignExhibitionId?: string | null;
   assignExhibitionTitle?: string | null;
@@ -582,7 +600,9 @@ export function SpreadsheetEditForm({
   registryArtworkIdsByScope?: Record<string, string[]>;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const [curatorNavPending, startCuratorNav] = useTransition();
   const [publishingArtworkId, setPublishingArtworkId] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
   const imageUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -637,7 +657,7 @@ export function SpreadsheetEditForm({
     setRegistrySelections((prev) => ({ ...prev, [key]: nextIds }));
   };
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState(
-    isAssignFlow ? '__unassigned__' : '__all__',
+    isAssignFlow ? '__unassigned__' : (curatorMode?.exhibitionId ?? '__all__'),
   );
   const [artworkSearchTerm, setArtworkSearchTerm] = useState('');
   const [assignConfirmation, setAssignConfirmation] = useState<number | null>(null);
@@ -749,7 +769,11 @@ export function SpreadsheetEditForm({
   }
 
   for (const artwork of artworks) {
-    const cid = artworkData[artwork.id]?.exhibition_id ?? null;
+    const ids = new Set([
+      ...(exhibitionIdsByArtworkId[artwork.id] ?? []),
+      ...(artworkData[artwork.id]?.exhibition_id ? [artworkData[artwork.id]!.exhibition_id!] : []),
+    ]);
+    for (const cid of ids) {
     if (cid && !collectionOptionIds.has(cid)) {
       collectionOptionIds.add(cid);
       collectionOptions.push(
@@ -760,6 +784,7 @@ export function SpreadsheetEditForm({
           end_date: null,
         },
       );
+    }
     }
   }
 
@@ -780,8 +805,26 @@ export function SpreadsheetEditForm({
     if (selectedCollectionFilter === '__unassigned__') {
       return !collectionId;
     }
-    return collectionId === selectedCollectionFilter;
+    if (collectionId === selectedCollectionFilter) return true;
+    // Its other shows (the edited link aside) still count.
+    const initialId = initialExhibitionIdByArtworkId[artwork.id] ?? null;
+    return (exhibitionIdsByArtworkId[artwork.id] ?? []).some(
+      (id) => id !== initialId && id === selectedCollectionFilter,
+    );
   });
+
+  const curatorPanelOpen =
+    curatorMode !== null && selectedCollectionFilter === curatorMode.exhibitionId;
+  const canCurateSelected =
+    curatableExhibitionIds.includes(selectedCollectionFilter) ||
+    curatorMode?.exhibitionId === selectedCollectionFilter;
+  const setCuratorMode = (on: boolean) => {
+    startCuratorNav(() => {
+      router.push(
+        on ? `${pathname}?curator=${encodeURIComponent(selectedCollectionFilter)}` : pathname,
+      );
+    });
+  };
 
   const normalizedSearchTerm = artworkSearchTerm.trim().toLowerCase();
   const filteredArtworks = collectionFilteredArtworks.filter((artwork) => {
@@ -1078,6 +1121,7 @@ export function SpreadsheetEditForm({
             initialExhibitionIdByArtworkId[artwork.id] ?? null;
           if (data.exhibition_id !== initialExhibitionId) {
             update.exhibitionId = data.exhibition_id;
+            update.previousExhibitionId = initialExhibitionId;
           }
           if (data.exhibition_history !== (artwork.exhibition_history || '')) {
             update.exhibitionHistory = data.exhibition_history.trim() || null;
@@ -1333,6 +1377,19 @@ export function SpreadsheetEditForm({
                   ))}
                 </SelectContent>
               </Select>
+              {canCurateSelected && (
+                <label className="mt-2 flex items-center gap-2 font-serif text-xs text-ink/70">
+                  <Switch
+                    checked={curatorPanelOpen}
+                    onCheckedChange={setCuratorMode}
+                    disabled={curatorNavPending}
+                    aria-label="Curator mode: show every work in this exhibition"
+                  />
+                  Curator mode
+                  {curatorNavPending && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
+                  <span className="text-ink/45">· every work in the show</span>
+                </label>
+              )}
             </div>
             <div className="w-full min-w-0 sm:w-[280px]">
               <p className="text-xs text-ink/60 font-serif mb-1">Search artworks</p>
@@ -1469,6 +1526,31 @@ export function SpreadsheetEditForm({
             </div>
           )}
         </div>
+        {curatorPanelOpen && curatorMode && (
+          <details
+            open
+            className="rounded-xl border border-wine/20 bg-wine/[0.03] p-4 [&_summary::-webkit-details-marker]:hidden"
+          >
+            <summary className="cursor-pointer list-none">
+              <p className="text-[11px] font-serif uppercase tracking-widest text-wine/60">
+                Curator mode · {curatorMode.title}
+              </p>
+              <p className="mt-1 font-serif text-sm text-ink/70">
+                {curatorMode.works.length === 0
+                  ? `All ${curatorMode.inCollectionCount} works in this show are in your collection above.`
+                  : `${curatorMode.inCollectionCount} works in your collection above, and ${curatorMode.works.length} more in the show held by artists or others. Their changes go to the holder to accept.`}
+              </p>
+            </summary>
+            {curatorMode.works.length > 0 && (
+              <div className="mt-6">
+                <CuratorWorksList
+                  works={curatorMode.works}
+                  exhibitionId={curatorMode.exhibitionId}
+                />
+              </div>
+            )}
+          </details>
+        )}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <p className="text-xs text-ink/60 font-serif order-2 sm:order-1">
             {visibleArtworks.length} selected of {filteredArtworks.length} in view
