@@ -7,11 +7,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 import { artworkImageUploader } from '~/lib/artwork-storage';
+import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
+import { createProvenanceUpdateRequest } from '~/app/artworks/[id]/_actions/create-provenance-update-request';
 
 export async function updateArtworkImage(
   artworkId: string,
   formData: FormData,
-): Promise<{ success: boolean; error?: string; imageUrl?: string }> {
+): Promise<{ success: boolean; error?: string; imageUrl?: string; pendingApproval?: boolean }> {
   console.log('[Collection] updateArtworkImage started', { artworkId });
 
   try {
@@ -26,7 +28,7 @@ export async function updateArtworkImage(
 
     const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
-      .select('id, account_id, gallery_profile_id')
+      .select('id, account_id, gallery_profile_id, certificate_type, artist_account_id')
       .eq('id', artworkId)
       .single();
 
@@ -63,6 +65,17 @@ export async function updateArtworkImage(
 
     if (!imageUrl) {
       return { success: false, error: 'Image upload failed' };
+    }
+
+    // A new photo on a Certificate of Show issued from an artist's CoA goes to
+    // the artist to approve.
+    const approvingArtist = cosApprovingArtistId(artwork);
+    if (approvingArtist && approvingArtist !== user.id) {
+      const requestResult = await createProvenanceUpdateRequest(artworkId, { image_url: imageUrl });
+      if (!requestResult.success) {
+        return { success: false, error: requestResult.error || 'Could not send the photo to the artist' };
+      }
+      return { success: true, pendingApproval: true };
     }
 
     const { error: updateError } = await asUntyped(client)

@@ -48,9 +48,13 @@ export function defaultExhibitionOwnerRole(
   return USER_ROLES.GALLERY;
 }
 
-/** Whether invited artists' submissions should also produce a linked Certificate of Show. */
+/**
+ * Whether works selected into the show produce a linked Certificate of Show.
+ * Gallery, institution and curator (artist-owned) shows issue one; a
+ * collector's show doesn't.
+ */
 export function ownerReceivesCertificateOfShow(ownerRole: string | null | undefined): boolean {
-  return ownerRole !== USER_ROLES.ARTIST && ownerRole !== USER_ROLES.COLLECTOR;
+  return ownerRole !== USER_ROLES.COLLECTOR;
 }
 
 /**

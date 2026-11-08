@@ -2,6 +2,7 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import {
@@ -9,6 +10,18 @@ import {
   canManageExhibition,
 } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import {
+  SHARED_PROVENANCE_FIELDS,
+  syncProvenanceAcrossChain,
+  type ProvenanceSyncMethod,
+  type SharedProvenanceField,
+  type SharedProvenanceValues,
+} from '~/lib/provenance/chain';
+import { getAccountDisplayName } from '~/lib/certificate-claims/propagate-provenance';
+import { clearToggleSale, recordSale } from '~/lib/sales/record-sale';
+import { cosApprovingArtistId, splitCosContentChanges } from '~/lib/certificate-claims/cos-approval';
+import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
 export async function updateProvenance(
@@ -43,11 +56,26 @@ export async function updateProvenance(
   options?: {
     skipOwnershipCheck?: boolean;
     skipNotification?: boolean;
+    /**
+     * Client for the reads and writes, when the caller already authorized the
+     * change for someone RLS wouldn't let through (an artist approving a
+     * curator's change to a Certificate of Show). Server-side callers only.
+     */
+    dataClient?: SupabaseClient;
+    /**
+     * Apply content changes to a Certificate of Show directly, without the
+     * artist's approval. Only for applying a change request the reviewer has
+     * just approved.
+     */
+    skipArtistApproval?: boolean;
+    /** How mirrored changes are tagged on linked certificates. */
+    syncMethod?: ProvenanceSyncMethod;
   }
 ) {
   try {
-    const client = asUntyped(getSupabaseServerClient());
-    const { data: { user } } = await client.auth.getUser();
+    const authClient = asUntyped(getSupabaseServerClient());
+    const { data: { user } } = await authClient.auth.getUser();
+    const client = options?.dataClient ? asUntyped(options.dataClient) : authClient;
 
     if (!user) {
       return { error: 'You must be signed in to update provenance' };
@@ -93,7 +121,9 @@ export async function updateProvenance(
         sold_by_is_public,
         is_sold,
         display_order,
-        provenance_history
+        provenance_history,
+        certificate_type,
+        artist_account_id
       `)
       .eq('id', artworkId)
       .single();
@@ -109,6 +139,32 @@ export async function updateProvenance(
       });
       if (!canEdit) {
         return { error: 'You do not have permission to edit this artwork' };
+      }
+    }
+
+    // A Certificate of Show issued from an artist's CoA: its content changes go
+    // to the artist to approve; the holder's other changes apply directly.
+    let pendingApproval = false;
+    const approvingArtist = options?.skipArtistApproval ? null : cosApprovingArtistId(artwork);
+    if (approvingArtist && approvingArtist !== user.id) {
+      const { requestFields, remaining } = splitCosContentChanges(provenance, artwork);
+      if (Object.keys(requestFields).length > 0) {
+        const requestResult = await createProvenanceUpdateRequest(
+          artworkId,
+          requestFields,
+          undefined,
+          'provenance_update',
+        );
+        if (!requestResult.success) {
+          return { error: requestResult.error || 'Could not send the changes to the artist' };
+        }
+        pendingApproval = true;
+      }
+      provenance = remaining;
+      if (Object.values(provenance).every((v) => v === undefined)) {
+        revalidatePath(`/artworks/${artworkId}/certificate`);
+        revalidatePath('/portal');
+        return { success: true, pendingApproval };
       }
     }
 
@@ -350,8 +406,42 @@ export async function updateProvenance(
       }
     }
 
-    // Note: structured sale recording (sales_ledger + sale provenance_event) is
-    // handled by markArtworkSold in src/app/artworks/[id]/_actions/mark-artwork-sold.ts.
+    // Mirror shared provenance fields (owner, former owners, exhibition
+    // history, ...) to every linked certificate, tagged "via <cert> · edited".
+    // Only the fields this edit actually changed are written.
+    const admin = getSupabaseServerAdminClient();
+    const sharedChanges: SharedProvenanceValues = {};
+    for (const [incomingKey, dbColumn] of Object.entries(fieldMap)) {
+      if (
+        incomingKey in previousValues &&
+        (SHARED_PROVENANCE_FIELDS as readonly string[]).includes(dbColumn)
+      ) {
+        sharedChanges[dbColumn as SharedProvenanceField] = updateData[dbColumn] ?? null;
+      }
+    }
+    if (Object.keys(sharedChanges).length > 0) {
+      await syncProvenanceAcrossChain(admin, {
+        originArtworkId: artworkId,
+        fields: sharedChanges,
+        method: options?.syncMethod ?? 'edit',
+        actorAccountId: user.id,
+        actorName: await getAccountDisplayName(admin, user.id),
+      });
+    }
+
+    // The "sold" toggle goes through the sales ledger so the sale reaches
+    // collectors and sales analytics; undo removes the toggle's ledger row.
+    if ('isSold' in previousValues) {
+      if (provenance.isSold) {
+        await recordSale(admin, {
+          artworkId,
+          recordedBy: user.id,
+          metadata: { source: 'sold_toggle' },
+        });
+      } else {
+        await clearToggleSale(admin, artworkId);
+      }
+    }
 
     // Create notification for artwork owner about the update (unless skipped)
     if (!options?.skipNotification) {
@@ -423,7 +513,7 @@ export async function updateProvenance(
       }
     }
 
-    return { success: true };
+    return { success: true, pendingApproval };
   } catch (error) {
     logger.error('update_provenance_failed', {
       artworkId,

@@ -586,6 +586,7 @@ export function SpreadsheetEditForm({
     title: string;
     works: CuratorWork[];
     inCollectionCount: number;
+    awaitingCosCount: number;
   } | null;
   receiverName?: string;
   assignExhibitionId?: string | null;
@@ -1048,7 +1049,7 @@ export function SpreadsheetEditForm({
           toast.error(res.error ?? 'Failed to upload photo');
           return;
         }
-        toast.success('Photo updated');
+        toast.success(res.pendingApproval ? 'Photo sent to the artist to approve' : 'Photo updated');
         router.refresh();
       } catch (e: unknown) {
         console.error('[Collection] image upload failed', e);
@@ -1185,6 +1186,11 @@ export function SpreadsheetEditForm({
         for (const { artworkId, updates: updateData } of updates) {
           try {
             const result = await batchUpdateProvenance([artworkId], updateData);
+            if (!result.error && result.pendingApprovalCount) {
+              toast.info(
+                `Changes to "${artworks.find((a) => a.id === artworkId)?.title || 'a Certificate of Show'}" were sent to the artist to approve.`,
+              );
+            }
             if (result.error) {
               errors.push(`${artworks.find(a => a.id === artworkId)?.title || artworkId}: ${result.error}`);
             } else {
@@ -1546,6 +1552,7 @@ export function SpreadsheetEditForm({
                 <CuratorWorksList
                   works={curatorMode.works}
                   exhibitionId={curatorMode.exhibitionId}
+                  awaitingCosCount={curatorMode.awaitingCosCount}
                 />
               </div>
             )}

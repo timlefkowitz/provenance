@@ -137,9 +137,55 @@ describe('computeSellThrough', () => {
       sellThroughPct: 50,
       salesCents: 200_000,
       newCollectorKeys: ['name:ann'],
+      collectorKeys: ['name:ann'],
     });
     // Ann already bought at exA, so only Cal is new at exB.
     expect(result[1]).toMatchObject({ shownCount: 2, soldCount: 2, sellThroughPct: 100, salesCents: 100_000, newCollectorKeys: ['name:cal'] });
     expect(result[2]).toMatchObject({ shownCount: 0, soldCount: 0, sellThroughPct: 0 });
+  });
+});
+
+describe('fillMissingBuyers', () => {
+  it('uses the Certificate of Ownership holder for a sale recorded without a buyer', async () => {
+    const { fillMissingBuyers } = await import('./group-collectors');
+    const keys = buildWorkKeys([
+      { id: 'coa', source_artwork_id: null },
+      { id: 'cos', source_artwork_id: 'coa' },
+    ]);
+    const filled = fillMissingBuyers(
+      [sale({ id: 's1', artwork_id: 'cos' }), sale({ id: 's2', artwork_id: 'cos', sold_to_email: 'kept@x.com' })],
+      [
+        { artwork_id: 'coa', account_id: 'old', name: 'Old', email: null, claimed_at: '2026-01-01' },
+        { artwork_id: 'cos', account_id: 'jane', name: 'Jane', email: 'j@x.com', claimed_at: '2026-06-01' },
+      ],
+      keys,
+    );
+    expect(collectorKey(filled[0]!)).toBe('account:jane');
+    expect(collectorKey(filled[1]!)).toBe('email:kept@x.com');
+  });
+});
+
+describe('computeSellThrough collectorKeys', () => {
+  it('counts every buyer of the show, not only new ones', () => {
+    const keys = buildWorkKeys([
+      { id: 'w1', source_artwork_id: null },
+      { id: 'w2', source_artwork_id: null },
+      { id: 'w0', source_artwork_id: null },
+    ]);
+    const [s] = computeSellThrough({
+      exhibitionIds: ['ex'],
+      sales: [
+        sale({ id: 'a', artwork_id: 'w0', sold_to_email: 'repeat@x.com', sold_at: '2025-01-01T00:00:00Z' }),
+        sale({ id: 'b', artwork_id: 'w1', sold_to_email: 'repeat@x.com' }),
+        sale({ id: 'c', artwork_id: 'w2', sold_to_email: 'new@x.com' }),
+      ],
+      workKeys: keys,
+      shownLinks: [
+        { exhibition_id: 'ex', artwork_id: 'w1' },
+        { exhibition_id: 'ex', artwork_id: 'w2' },
+      ],
+    });
+    expect(s!.collectorKeys.sort()).toEqual(['email:new@x.com', 'email:repeat@x.com']);
+    expect(s!.newCollectorKeys).toEqual(['email:new@x.com']);
   });
 });

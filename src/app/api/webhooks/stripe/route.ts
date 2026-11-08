@@ -1,4 +1,5 @@
 import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
+import { recordSale } from '~/lib/sales/record-sale';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -262,14 +263,18 @@ export async function POST(request: NextRequest) {
           });
 
           try {
-            // Mark artwork as sold
-            const { error: updateErr } = await asUntyped(admin)
-              .from('artworks')
-              .update({ sold_at: new Date().toISOString() })
-              .eq('id', artworkId);
+            // Record the sale (sold columns, ledger, event, linked certs, stats)
+            const saleResult = await recordSale(admin, {
+              artworkId,
+              buyer: { email: buyerEmail, name: buyerName },
+              priceCents: typeof session.amount_total === 'number' ? session.amount_total : null,
+              currency: session.currency ?? 'USD',
+              recordedBy: null,
+              metadata: { source: 'stripe_checkout', stripe_session_id: session.id },
+            });
 
-            if (updateErr) {
-              console.error('[ArtworkSale] Webhook: failed to mark artwork sold', updateErr);
+            if (!saleResult.success) {
+              console.error('[ArtworkSale] Webhook: failed to record sale', saleResult.error);
             }
 
             // Record purchase in artwork_inquiries

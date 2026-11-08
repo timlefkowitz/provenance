@@ -15,10 +15,11 @@ export const metadata = {
 };
 
 /**
- * Every work in the show in one place, whoever holds its certificate. The
- * gallery edits its own Certificates of Show directly; for a certificate held
- * by someone else (an artist's COA) the curator suggests changes, which the
- * holder accepts or declines from their portal.
+ * Every work in the show in one place, whoever holds its certificate. A work
+ * selected from an artist's COA gets the show's Certificate of Show, which the
+ * curator edits with the artist's approval (the artist accepts or declines
+ * from their portal). The curator's other certificates are edited directly;
+ * for a certificate held by someone else the curator suggests changes.
  */
 export default async function CurateExhibitionPage({
   params,
@@ -35,12 +36,12 @@ export default async function CurateExhibitionPage({
 
   const show = await loadCuratorWorks(user.id, id);
   if (!show) notFound();
-  const { exhibition, works } = show;
+  const { exhibition, works, awaitingCosCount } = show;
 
-  const galleryCount = works.filter((w) => w.editHref).length;
+  const galleryCount = works.filter((w) => w.editable).length;
   const otherCount = works.length - galleryCount;
   const coaCount = works.filter(
-    (w) => !w.editHref && w.certificateType === CERTIFICATE_TYPES.AUTHENTICITY,
+    (w) => !w.editable && w.certificateType === CERTIFICATE_TYPES.AUTHENTICITY,
   ).length;
 
   return (
@@ -62,14 +63,15 @@ export default async function CurateExhibitionPage({
           </h1>
           <p className="mt-4 max-w-2xl font-serif text-sm leading-relaxed text-ink/60">
             {works.length} work{works.length === 1 ? '' : 's'} in the show: {galleryCount} with
-            certificates you can edit, {otherCount} held by{' '}
-            {coaCount === otherCount ? 'the artists' : 'artists and others'}. Changes to a certificate
-            someone else holds are sent to them to accept or decline.
+            certificates you hold, {otherCount} held by{' '}
+            {coaCount === otherCount ? 'the artists' : 'artists and others'}. Changes to a
+            Certificate of Show issued from an artist&apos;s certificate are sent to the artist to
+            approve; changes to a certificate someone else holds are sent to them.
           </p>
         </div>
       </div>
       <div className="container mx-auto max-w-6xl px-4 py-10 pb-16">
-        <CuratorWorksList works={works} exhibitionId={id} />
+        <CuratorWorksList works={works} exhibitionId={id} awaitingCosCount={awaitingCosCount} />
       </div>
     </div>
   );

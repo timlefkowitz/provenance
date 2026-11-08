@@ -6,9 +6,10 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { revalidatePath } from 'next/cache';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { notifyOwnersOfExhibition } from '~/lib/collectors/notify-owners-of-exhibition';
-import { createNotification } from '~/lib/notifications';
-import { USER_ROLES } from '~/lib/user-roles';
-import { insertLinkedCoSFromArtistCoa } from '~/lib/certificate-claims/insert-linked-cos-from-artist-coa';
+import {
+  issueExhibitionCos,
+  notifyArtistOfSelection,
+} from '~/lib/certificate-claims/issue-exhibition-cos';
 import { ownerReceivesCertificateOfShow } from '../_helpers/exhibition-owner-roles';
 import {
   parseExhibitionArtworkStatus,
@@ -198,40 +199,17 @@ export async function reviewExhibitionSubmission(
 
     let cosArtworkId: string | null = link.cos_artwork_id ?? null;
     if (plan.issueCos) {
-      const galleryRole =
-        exhibition.owner_role === USER_ROLES.INSTITUTION
-          ? USER_ROLES.INSTITUTION
-          : USER_ROLES.GALLERY;
-      const { data: galleryProfile } = await adminClient
-        .from('user_profiles')
-        .select('id')
-        .eq('user_id', exhibition.gallery_id)
-        .eq('role', galleryRole)
-        .eq('is_active', true)
-        // Galleries can have several active profiles; maybeSingle() alone errors
-        // on that and left the CoS untagged (and off the gallery's market cap).
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
       try {
-        const { id } = await insertLinkedCoSFromArtistCoa(adminClient, coa, {
-          galleryAccountId: exhibition.gallery_id,
+        ({ cosArtworkId } = await issueExhibitionCos(adminClient, {
+          exhibition,
+          coa,
+          actorUserId: userId,
           createdByUserId: artistAccountId ?? userId,
-          galleryProfileId: galleryProfile?.id ?? null,
-        });
-        cosArtworkId = id;
+          existingCosId: cosArtworkId,
+        }));
       } catch (cosErr) {
         console.error('[Exhibitions] reviewExhibitionSubmission COS creation failed', cosErr);
         return { success: false, error: 'Could not issue the Certificate of Show; try again' };
-      }
-
-      const { error: cosLinkError } = await adminClient.from('exhibition_artworks').insert({
-        exhibition_id: exhibitionId,
-        artwork_id: cosArtworkId,
-      });
-      if (cosLinkError && cosLinkError.code !== '23505') {
-        console.error('[Exhibitions] reviewExhibitionSubmission COS link failed', cosLinkError);
       }
     }
 
@@ -268,34 +246,8 @@ export async function reviewExhibitionSubmission(
       }
     }
 
-    if (plan.notifyArtist && artistAccountId && artistAccountId !== userId) {
-      try {
-        // The open call page shows the artist their status even while the
-        // exhibition itself is still an unpublished draft.
-        const { data: openCall } = await adminClient
-          .from('open_calls')
-          .select('slug')
-          .eq('exhibition_id', exhibitionId)
-          .eq('submission_mode', 'exhibition')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        await createNotification({
-          userId: artistAccountId,
-          type: 'exhibition_artwork_selected',
-          title: `Selected for "${exhibition.title}"`,
-          message: `"${(coa.title as string | null) ?? 'Your artwork'}" was selected for the exhibition "${exhibition.title}".`,
-          artworkId,
-          relatedUserId: userId,
-          metadata: {
-            exhibition_id: exhibitionId,
-            cos_artwork_id: cosArtworkId,
-            open_call_slug: openCall?.slug ?? null,
-          },
-        });
-      } catch (notifyErr) {
-        console.error('[Exhibitions] reviewExhibitionSubmission notify failed', notifyErr);
-      }
+    if (plan.notifyArtist) {
+      await notifyArtistOfSelection(adminClient, { exhibition, coa, actorUserId: userId, cosArtworkId });
     }
 
     revalidatePath(`/exhibitions/${exhibitionId}`);

@@ -247,7 +247,11 @@ export function EditArtworkDialog({
             if (!tagsResult.success) {
               toast.error(tagsResult.error || 'Artwork saved, but tags could not be updated');
             }
-            toast.success('Artwork updated successfully');
+            toast.success(
+              result.pendingApproval
+                ? "Changes sent to the artist to approve. They'll apply once approved."
+                : 'Artwork updated successfully',
+            );
           } else {
             toast.success('Edit request submitted. The creator will review your request.');
           }

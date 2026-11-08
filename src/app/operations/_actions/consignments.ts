@@ -5,7 +5,9 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { insertProvenanceEventForOperations } from '~/lib/operations/operations-provenance';
+import { recordSale } from '~/lib/sales/record-sale';
 import {
   notifyCounterpartyStatusActive,
   resolveCounterparty,
@@ -289,6 +291,17 @@ export async function updateConsignment(raw: z.infer<typeof updateSchema>) {
         consignee_name: rest.consignee_name ?? prior?.consignee_name,
       },
     });
+    // Also record the sale so it reaches sales analytics and collectors.
+    const saleResult = await recordSale(getSupabaseServerAdminClient(), {
+      artworkId: artId,
+      priceCents: saleCents || null,
+      recordedBy: user.id,
+      soldByDisplay: rest.consignee_name ?? prior?.consignee_name ?? null,
+      metadata: { source: 'consignment_sold', consignment_id: id },
+    });
+    if (!saleResult.success) {
+      console.error('[Operations/consignments] recordSale failed', saleResult.error);
+    }
   }
 
   revalidatePath('/operations');

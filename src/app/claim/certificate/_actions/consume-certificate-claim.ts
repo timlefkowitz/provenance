@@ -6,10 +6,12 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
+import { ensureSaleForAcceptedOwnership } from '~/lib/sales/record-sale';
 import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { hashClaimToken, emailsMatch, normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import {
   insertLinkedCertificateOfOwnershipFromCoa,
+  resolveOwnerDisplayName,
   insertArtistCoaFromSourceCertificate,
 } from '~/lib/certificate-claims/insert-linked-certificate';
 import { insertLinkedCoSFromArtistCoa } from '~/lib/certificate-claims/insert-linked-cos-from-artist-coa';
@@ -164,6 +166,22 @@ async function processOwnerBatch(
         result_artwork_id: newId,
       })
       .eq('id', invite.id);
+
+    // The buyer is now a collector: link them to the sale on the source
+    // certificate, or record the sale if none was recorded (e.g. a CoO sent
+    // straight from a CoA/CoS). This is what puts them on collector lists
+    // and into sales analytics.
+    try {
+      await ensureSaleForAcceptedOwnership(adminClient, {
+        sourceArtworkId: sourceArtwork.id as string,
+        buyerAccountId: user.id,
+        buyerEmail: normalizeInviteEmail(invite.invitee_email as string) || null,
+        buyerName: await resolveOwnerDisplayName(adminClient, user.id, sourceArtwork),
+        inviteId: invite.id as string,
+      });
+    } catch (e) {
+      logger.error('consume_coo_ensure_sale_failed', { inviteId: invite.id, error: e });
+    }
 
     try {
       await createNotification({

@@ -84,15 +84,19 @@ function PrivacyToggle({
 export function EditProvenanceForm({
   artwork,
   currentExhibitionId,
+  approverName = null,
 }: {
   artwork: Artwork;
   currentExhibitionId?: string | null;
+  /** Set for a Certificate of Show whose content changes the artist approves. */
+  approverName?: string | null;
 }) {
   const router = useRouter();
   const user = useCurrentUser();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [sentForApproval, setSentForApproval] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [invitePending, startInviteTransition] = useTransition();
@@ -140,6 +144,7 @@ export function EditProvenanceForm({
           setError(result.error);
         } else {
           setSuccess(true);
+          setSentForApproval(Boolean('pendingApproval' in result && result.pendingApproval));
           setTimeout(() => {
             router.push(`/artworks/${artwork.id}/certificate`);
           }, 1500);
@@ -157,6 +162,18 @@ export function EditProvenanceForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-12">
+      {approverName && (
+        <Alert className="rounded-none border-editorial-border/30 bg-cream/60">
+          <AlertTitle className="font-jetbrains text-[11px] uppercase tracking-[0.18em]">
+            Artist approval
+          </AlertTitle>
+          <AlertDescription className="font-serif">
+            This Certificate of Show was issued from {approverName}&apos;s Certificate of
+            Authenticity. Changes to its details are sent to them to approve and apply once
+            approved. Visibility and sale status still save straight away.
+          </AlertDescription>
+        </Alert>
+      )}
       {(error || success || inviteError || inviteSuccess) && (
         <div className="space-y-3">
           {error && (
@@ -169,10 +186,12 @@ export function EditProvenanceForm({
           {success && (
             <Alert className="rounded-none border-editorial-border/30 bg-cream/60">
               <AlertTitle className="font-jetbrains text-[11px] uppercase tracking-[0.18em]">
-                Saved
+                {sentForApproval ? 'Sent for approval' : 'Saved'}
               </AlertTitle>
               <AlertDescription className="font-serif">
-                Certificate updated. Taking you back to it…
+                {sentForApproval
+                  ? `Your changes were sent to ${approverName ?? 'the artist'} to approve; they apply once approved. Taking you back to the certificate…`
+                  : 'Certificate updated. Taking you back to it…'}
               </AlertDescription>
             </Alert>
           )}

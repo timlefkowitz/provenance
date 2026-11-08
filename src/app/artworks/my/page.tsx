@@ -353,7 +353,7 @@ export default async function MyArtworksPage({
 
   // Curator mode: every work selected for one show, whoever holds it. Works
   // already in the collection stay in the editor; the rest are listed with
-  // what the curator can do with them (edit, or suggest changes to the holder).
+  // what the curator can do with them (suggest changes, edit with approval).
   const curatorShow = curatorExhibitionIdParam
     ? await loadCuratorWorks(user.id, curatorExhibitionIdParam)
     : null;
@@ -367,6 +367,7 @@ export default async function MyArtworksPage({
         title: curatorShow.exhibition.title,
         works: curatorShow.works.filter((w) => !collectionIdSet.has(w.artwork.id)),
         inCollectionCount: curatorShow.works.filter((w) => collectionIdSet.has(w.artwork.id)).length,
+        awaitingCosCount: curatorShow.awaitingCosCount,
       }
     : null;
 

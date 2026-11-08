@@ -49,6 +49,49 @@ export interface ExhibitionSellThrough {
   salesCents: number;
   /** Buyers whose first purchase from the gallery came from this exhibition. */
   newCollectorKeys: string[];
+  /** Every buyer of a work from this exhibition, new or returning. */
+  collectorKeys: string[];
+}
+
+/** The account holding a Certificate of Ownership for a work. */
+export interface OwnershipHolder {
+  /** A certificate id in the same chain as the sale (any id; mapped via workKeys). */
+  artwork_id: string;
+  account_id: string;
+  name: string | null;
+  email: string | null;
+  /** When the CoO was created; the latest holder wins. */
+  claimed_at: string;
+}
+
+/**
+ * A sale recorded without a buyer (spreadsheet "Mark sold", the sold toggle,
+ * a consignment) still has a collector when someone holds the work's
+ * Certificate of Ownership: use that holder as the buyer.
+ */
+export function fillMissingBuyers(
+  sales: SaleRow[],
+  holders: OwnershipHolder[],
+  workKeys: Map<string, string>,
+): SaleRow[] {
+  if (!holders.length) return sales;
+  const latestByWork = new Map<string, OwnershipHolder>();
+  for (const h of holders) {
+    const key = workKeyOf(workKeys, h.artwork_id);
+    const existing = latestByWork.get(key);
+    if (!existing || h.claimed_at > existing.claimed_at) latestByWork.set(key, h);
+  }
+  return sales.map((sale) => {
+    if (collectorKey(sale)) return sale;
+    const holder = latestByWork.get(workKeyOf(workKeys, sale.artwork_id));
+    if (!holder) return sale;
+    return {
+      ...sale,
+      sold_to_account_id: holder.account_id,
+      sold_to_email: holder.email,
+      sold_to_name: holder.name,
+    };
+  });
 }
 
 /** Buyer identity: platform account, else email, else name. */
@@ -210,6 +253,7 @@ export function computeSellThrough(params: {
     let soldCount = 0;
     let salesCents = 0;
     const newCollectorKeys: string[] = [];
+    const collectorKeys: string[] = [];
 
     for (const work of works) {
       const sale = firstSaleByWork.get(work);
@@ -217,6 +261,7 @@ export function computeSellThrough(params: {
       soldCount += 1;
       salesCents += sale.price_cents ?? 0;
       const key = collectorKey(sale);
+      if (key && !collectorKeys.includes(key)) collectorKeys.push(key);
       if (key && firstPurchaseByCollector.get(key) === sale && !newCollectorKeys.includes(key)) {
         newCollectorKeys.push(key);
       }
@@ -229,6 +274,7 @@ export function computeSellThrough(params: {
       sellThroughPct: works.size ? Math.round((soldCount / works.size) * 100) : 0,
       salesCents,
       newCollectorKeys,
+      collectorKeys,
     };
   });
 }

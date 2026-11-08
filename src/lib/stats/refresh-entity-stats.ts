@@ -3,6 +3,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { getUserRole, type UserRole, USER_ROLES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
+import { after } from 'next/server';
 
 type EntityRole = 'gallery' | 'artist' | 'institution' | 'collector';
 
@@ -250,4 +251,35 @@ export async function refreshAllEntityStats(): Promise<{
 
   console.log('[Stats] refreshAllEntityStats complete', { count: ids.size });
   return { accountsRefreshed: ids.size, errors };
+}
+
+/**
+ * Refreshes stats for the accounts tied to these artworks (holder + artist)
+ * plus any extra account ids, after the response is sent.
+ */
+export function scheduleEntityStatsRefresh(params: {
+  artworkIds?: string[];
+  accountIds?: Array<string | null | undefined>;
+}): void {
+  after(async () => {
+    try {
+      const ids = new Set<string>(
+        (params.accountIds ?? []).filter((v): v is string => typeof v === 'string' && v.length > 0),
+      );
+      if (params.artworkIds?.length) {
+        const admin = asUntyped(getSupabaseServerAdminClient());
+        const { data } = await admin
+          .from('artworks')
+          .select('account_id, artist_account_id')
+          .in('id', params.artworkIds);
+        for (const row of (data ?? []) as Array<{ account_id: string | null; artist_account_id: string | null }>) {
+          if (row.account_id) ids.add(row.account_id);
+          if (row.artist_account_id) ids.add(row.artist_account_id);
+        }
+      }
+      await refreshEntityStatsForAccounts([...ids]);
+    } catch (err) {
+      logger.error('schedule_entity_stats_refresh_failed', { error: err });
+    }
+  });
 }

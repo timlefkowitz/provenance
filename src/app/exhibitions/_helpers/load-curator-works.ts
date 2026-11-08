@@ -6,12 +6,21 @@ import {
   canManageExhibition,
   isGalleryMember,
 } from '~/app/profiles/_actions/gallery-members';
+import { cosApprovingArtistId, shouldIssueExhibitionCos } from '~/lib/certificate-claims/cos-approval';
 import type { CuratorWork } from '../[id]/curate/_components/curator-works-list';
 import { isShownInExhibition } from './exhibition-submission-status';
+import { ownerReceivesCertificateOfShow } from './exhibition-owner-roles';
 
 export type CuratorShow = {
-  exhibition: { id: string; title: string; gallery_id: string; published_at: string | null };
+  exhibition: {
+    id: string;
+    title: string;
+    gallery_id: string;
+    owner_role: string | null;
+    published_at: string | null;
+  };
   works: CuratorWork[];
+  awaitingCosCount: number;
 };
 
 /**
@@ -29,7 +38,7 @@ export async function loadCuratorWorks(
 
   const { data: exhibition } = await admin
     .from('exhibitions')
-    .select('id, title, gallery_id, published_at')
+    .select('id, title, gallery_id, owner_role, published_at')
     .eq('id', exhibitionId)
     .maybeSingle();
 
@@ -38,14 +47,22 @@ export async function loadCuratorWorks(
 
   const { data: links } = await admin
     .from('exhibition_artworks')
-    .select('artwork_id, status, created_at')
+    .select('artwork_id, status, cos_artwork_id, created_at')
     .eq('exhibition_id', exhibitionId);
 
-  const shown = (links ?? []).filter((l: { status: unknown }) => isShownInExhibition(l.status));
-  const order = new Map<string, number>(
-    shown.map((l: { artwork_id: string }, i: number) => [l.artwork_id, i]),
+  type Link = { artwork_id: string; status: unknown; cos_artwork_id: string | null };
+  // An artist's COA with a Certificate of Show in this show is represented by
+  // that COS, so the COA itself isn't listed.
+  const coveredByCos = new Set(
+    ((links ?? []) as Link[])
+      .filter((l) => l.cos_artwork_id && l.cos_artwork_id !== l.artwork_id)
+      .map((l) => l.artwork_id),
   );
-  const artworkIds = shown.map((l: { artwork_id: string }) => l.artwork_id);
+  const shown = ((links ?? []) as Link[]).filter(
+    (l) => isShownInExhibition(l.status) && !coveredByCos.has(l.artwork_id),
+  );
+  const order = new Map<string, number>(shown.map((l, i) => [l.artwork_id, i]));
+  const artworkIds = shown.map((l) => l.artwork_id);
 
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < artworkIds.length; i += 200) {
@@ -60,7 +77,11 @@ export async function loadCuratorWorks(
     .filter((a) => a.status === 'verified' || a.status === 'draft')
     .sort((a, b) => (order.get(a.id as string) ?? 0) - (order.get(b.id as string) ?? 0));
 
-  const holderIds = Array.from(new Set(visible.map((a) => a.account_id as string)));
+  const holderIds = Array.from(
+    new Set(
+      visible.flatMap((a) => [a.account_id as string, (a.artist_account_id as string | null) ?? '']),
+    ),
+  ).filter(Boolean);
   const { data: holders } = holderIds.length
     ? await admin.from('accounts').select('id, name').in('id', holderIds)
     : { data: [] };
@@ -92,22 +113,58 @@ export async function loadCuratorWorks(
     return memberOf.get(profileId) ?? false;
   };
 
+  const showIssuesCos = ownerReceivesCertificateOfShow(exhibition.owner_role as string | null);
+
   const works: CuratorWork[] = [];
   for (const a of visible) {
     const editable = await canEdit(a);
+    const approvingArtist = editable
+      ? cosApprovingArtistId({
+          account_id: (a.account_id as string | null) ?? null,
+          certificate_type: (a.certificate_type as string | null) ?? null,
+          artist_account_id: (a.artist_account_id as string | null) ?? null,
+        })
+      : null;
+    const needsApproval = Boolean(approvingArtist && approvingArtist !== userId);
     works.push({
       artwork: a as unknown as CuratorWork['artwork'],
       certificateType: (a.certificate_type as string | null) ?? null,
       isDraft: a.status === 'draft',
       holderName: holderName.get(a.account_id as string) || null,
-      editHref: editable
-        ? a.account_id === userId
-          ? `/artworks/${a.id}/edit`
-          : `/artworks/${a.id}/certificate`
+      editable,
+      editHref:
+        editable && !needsApproval
+          ? a.account_id === userId
+            ? `/artworks/${a.id}/edit`
+            : `/artworks/${a.id}/certificate`
+          : null,
+      approverName: needsApproval
+        ? holderName.get(approvingArtist as string) || (a.artist_name as string | null) || 'the artist'
         : null,
       changePending: pendingIds.has(a.id as string),
+      sold: a.is_sold
+        ? {
+            to:
+              (a.sold_to_name as string | null) ||
+              (editable ? (a.sold_to_email as string | null) : null) ||
+              null,
+          }
+        : null,
+      awaitsCos:
+        showIssuesCos &&
+        !editable &&
+        shouldIssueExhibitionCos({
+          ownerRole: exhibition.owner_role as string | null,
+          ownerAccountId: exhibition.gallery_id as string,
+          certificateType: (a.certificate_type as string | null) ?? null,
+          holderAccountId: (a.account_id as string | null) ?? null,
+        }),
     });
   }
 
-  return { exhibition: exhibition as CuratorShow['exhibition'], works };
+  return {
+    exhibition: exhibition as CuratorShow['exhibition'],
+    works,
+    awaitingCosCount: works.filter((w) => w.awaitsCos).length,
+  };
 }

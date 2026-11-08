@@ -9,6 +9,21 @@ import {
 
 export type SourceArtworkRow = Record<string, unknown>;
 
+/**
+ * Metadata for a new linked certificate: everything from the source except its
+ * scan history. Scan counts and scan places belong to the certificate that was
+ * scanned (and its holder), so a new CoO/CoS/CoA starts at zero.
+ */
+export function metadataForLinkedCertificate(sourceMetadata: unknown): Record<string, unknown> {
+  if (!sourceMetadata || typeof sourceMetadata !== 'object' || Array.isArray(sourceMetadata)) {
+    return {};
+  }
+  const rest: Record<string, unknown> = { ...(sourceMetadata as Record<string, unknown>) };
+  delete rest.scan_stats;
+  delete rest.scan_locations;
+  return rest;
+}
+
 export async function generateCertificateNumber(client: SupabaseClient): Promise<string> {
   try {
     const { data, error } = await client.rpc('generate_certificate_number');
@@ -38,6 +53,27 @@ export async function insertLinkedCertificateOfOwnershipFromCoa(
   params: { ownerAccountId: string; createdByUserId: string },
 ): Promise<{ id: string }> {
   return insertLinkedCertificateOfOwnership(adminClient, source, params);
+}
+
+/**
+ * Name to show as "Owned by" for a collector: their account name, else the
+ * buyer name recorded on the sale, else a neutral label (never "Account 1a2b…").
+ */
+export async function resolveOwnerDisplayName(
+  adminClient: SupabaseClient,
+  accountId: string,
+  source?: SourceArtworkRow,
+): Promise<string> {
+  const { data } = await asUntyped(adminClient)
+    .from('accounts')
+    .select('name')
+    .eq('id', accountId)
+    .maybeSingle();
+  const name = (data?.name as string | null | undefined)?.trim();
+  if (name) return name;
+  const soldToName = (source?.sold_to_name as string | null | undefined)?.trim();
+  if (soldToName) return soldToName;
+  return 'Private collector';
 }
 
 /**
@@ -75,7 +111,7 @@ export async function insertLinkedCertificateOfOwnership(
       owned_by_is_public: source.owned_by_is_public,
       sold_by: source.sold_by,
       sold_by_is_public: source.sold_by_is_public,
-      metadata: source.metadata || {},
+      metadata: metadataForLinkedCertificate(source.metadata),
       certificate_number: certNumber,
       certificate_type: CERTIFICATE_TYPES.OWNERSHIP,
       source_artwork_id: sourceId,
@@ -96,7 +132,7 @@ export async function insertLinkedCertificateOfOwnership(
 
   const newId = data.id as string;
   try {
-    const actorName = await getAccountDisplayName(adminClient, params.ownerAccountId);
+    const actorName = await resolveOwnerDisplayName(adminClient, params.ownerAccountId, source);
     await propagateProvenanceAfterLinkedCertificate(adminClient, {
       eventKind: 'coo_issued',
       newArtworkId: newId,
@@ -188,7 +224,7 @@ export async function insertArtistCoaFromSourceCertificate(
       owned_by_is_public: source.owned_by_is_public,
       sold_by: source.sold_by,
       sold_by_is_public: source.sold_by_is_public,
-      metadata: source.metadata || {},
+      metadata: metadataForLinkedCertificate(source.metadata),
       certificate_number: certNumber,
       certificate_type: CERTIFICATE_TYPES.AUTHENTICITY,
       source_artwork_id: sourceId,

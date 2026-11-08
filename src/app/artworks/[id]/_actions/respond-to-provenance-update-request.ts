@@ -8,8 +8,14 @@ import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { createNotification } from '~/lib/notifications';
 import { updateProvenance } from '../edit/_actions/update-provenance';
 import { logger } from '~/lib/logger';
+import { transferOwnershipAcrossChain } from '~/lib/provenance/chain';
+import { getAccountDisplayName } from '~/lib/certificate-claims/propagate-provenance';
 import { createArtistClaimInviteAfterApproval } from '~/lib/certificate-claims/create-artist-claim-invite';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
+import {
+  loadRequestReviewer,
+  type ArtworkForReview,
+} from '~/lib/certificate-claims/request-reviewer';
 
 export async function respondToProvenanceUpdateRequest(
   requestId: string,
@@ -24,8 +30,11 @@ export async function respondToProvenanceUpdateRequest(
       return { success: false, error: 'You must be signed in' };
     }
 
-    // Get the request and verify ownership
-    const { data: request, error: requestError } = await asUntyped(client)
+    // Get the request and verify the reviewer. Read with the service role: the
+    // artist approving a change to someone else's Certificate of Show can't
+    // see the request through RLS. Authorization is checked right below.
+    const adminClient = getSupabaseServerAdminClient();
+    const { data: request, error: requestError } = await asUntyped(adminClient)
       .from('provenance_update_requests')
       .select(`
         *,
@@ -33,7 +42,10 @@ export async function respondToProvenanceUpdateRequest(
           id,
           account_id,
           title,
-          artist_name
+          artist_name,
+          certificate_type,
+          artist_account_id,
+          gallery_profile_id
         )
       `)
       .eq('id', requestId)
@@ -44,15 +56,23 @@ export async function respondToProvenanceUpdateRequest(
       return { success: false, error: 'Request not found or already processed' };
     }
 
-    // Verify user owns the artwork
-    if (request.artworks.account_id !== user.id) {
+    // The holder reviews requests on their certificate, except a change the
+    // holder's side proposed to a Certificate of Show, which the artist reviews.
+    const reviewerId =
+      (request.request_type ?? 'provenance_update') === 'provenance_update'
+        ? await loadRequestReviewer(adminClient, request.artworks as ArtworkForReview, request.requested_by)
+        : request.artworks.account_id;
+    if (!reviewerId || reviewerId !== user.id || request.requested_by === user.id) {
       return { success: false, error: 'You do not have permission to review this request' };
     }
+    const reviewerIsHolder = request.artworks.account_id === user.id;
+    // The artist isn't the holder, so their approval is applied with the service role.
+    const db = reviewerIsHolder ? asUntyped(client) : asUntyped(adminClient);
 
     if (action === 'approve') {
       // Handle artist claim: create email invite; artist completes CoA via /claim/certificate
       if (request.request_type === 'artist_claim') {
-        const { data: sourceArtwork, error: sourceError } = await asUntyped(client)
+        const { data: sourceArtwork, error: sourceError } = await db
           .from('artworks')
           .select('*')
           .eq('id', request.artworks.id)
@@ -85,7 +105,7 @@ export async function respondToProvenanceUpdateRequest(
         inviteeEmail = normalizeInviteEmail(inviteeEmail);
 
         const reviewedAt = new Date().toISOString();
-        const { error: approveFirstError } = await asUntyped(client)
+        const { error: approveFirstError } = await db
           .from('provenance_update_requests')
           .update({
             status: 'approved',
@@ -108,7 +128,7 @@ export async function respondToProvenanceUpdateRequest(
         });
 
         if (!inviteResult.success) {
-          await asUntyped(client)
+          await db
             .from('provenance_update_requests')
             .update({
               status: 'pending',
@@ -135,7 +155,7 @@ export async function respondToProvenanceUpdateRequest(
         }
       } else if (request.request_type === 'ownership_request') {
         // Transfer ownership to the requester
-        const { error: transferError } = await asUntyped(client)
+        const { error: transferError } = await db
           .from('artworks')
           .update({
             account_id: request.requested_by,
@@ -153,10 +173,19 @@ export async function respondToProvenanceUpdateRequest(
           });
           return { success: false, error: 'Failed to transfer ownership' };
         }
+
+        // Show the new holder as owner on every linked certificate.
+        await transferOwnershipAcrossChain(adminClient, {
+          originArtworkId: request.artworks.id,
+          newOwnerName: await getAccountDisplayName(adminClient, request.requested_by),
+          method: 'request_approved',
+          actorAccountId: user.id,
+          actorName: await getAccountDisplayName(adminClient, user.id),
+        });
       } else {
         // Handle image_url and created_at directly if present
         if (request.update_fields.image_url !== undefined) {
-          const { error: imageUpdateError } = await asUntyped(client)
+          const { error: imageUpdateError } = await db
             .from('artworks')
             .update({ image_url: request.update_fields.image_url })
             .eq('id', request.artworks.id);
@@ -174,7 +203,7 @@ export async function respondToProvenanceUpdateRequest(
         }
 
         if (request.update_fields.created_at !== undefined) {
-          const { error: dateUpdateError } = await asUntyped(client)
+          const { error: dateUpdateError } = await db
             .from('artworks')
             .update({ created_at: request.update_fields.created_at })
             .eq('id', request.artworks.id);
@@ -216,7 +245,7 @@ export async function respondToProvenanceUpdateRequest(
             request.update_fields.exhibitionId !== '__none__' && 
             request.update_fields.exhibitionTitle) {
           // Verify the artwork owner owns this exhibition (or the requester owns it)
-          const { data: exhibition } = await asUntyped(client)
+          const { data: exhibition } = await db
             .from('exhibitions')
             .select('gallery_id')
             .eq('id', request.update_fields.exhibitionId)
@@ -242,7 +271,7 @@ export async function respondToProvenanceUpdateRequest(
               exhibitionUpdate.gallery_id = request.update_fields.exhibitionGalleryId;
             }
 
-            const { error: exhibitionUpdateError } = await asUntyped(client)
+            const { error: exhibitionUpdateError } = await db
               .from('exhibitions')
               .update(exhibitionUpdate)
               .eq('id', request.update_fields.exhibitionId);
@@ -268,6 +297,11 @@ export async function respondToProvenanceUpdateRequest(
             {
               skipOwnershipCheck: true,
               skipNotification: true,
+              // The artist approving is the approval; a holder accepting someone
+              // else's suggestion to a COS still sends it on to the artist.
+              skipArtistApproval: !reviewerIsHolder,
+              syncMethod: 'request_approved',
+              ...(reviewerIsHolder ? {} : { dataClient: adminClient }),
             },
           );
 
@@ -279,7 +313,7 @@ export async function respondToProvenanceUpdateRequest(
 
       // Update the request status (artist_claim already approved before invite)
       if (request.request_type !== 'artist_claim') {
-        const { error: updateError } = await asUntyped(client)
+        const { error: updateError } = await db
           .from('provenance_update_requests')
           .update({
             status: 'approved',
@@ -332,7 +366,7 @@ export async function respondToProvenanceUpdateRequest(
       }
     } else {
       // Deny the request
-      const { error: updateError } = await asUntyped(client)
+      const { error: updateError } = await db
         .from('provenance_update_requests')
         .update({
           status: 'denied',

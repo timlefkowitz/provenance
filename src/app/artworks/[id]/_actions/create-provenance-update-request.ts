@@ -2,6 +2,12 @@
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import {
+  ARTWORK_FOR_REVIEW_COLUMNS,
+  loadRequestReviewer,
+  type ArtworkForReview,
+} from '~/lib/certificate-claims/request-reviewer';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
 
@@ -48,13 +54,25 @@ export async function createProvenanceUpdateRequest(
     // Verify artwork exists and get owner
     const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
-      .select('id, account_id, title, artist_name')
+      .select(`${ARTWORK_FOR_REVIEW_COLUMNS}, title, artist_name`)
       .eq('id', artworkId)
       .single();
 
     if (artworkError || !artwork) {
       return { success: false, error: 'Artwork not found' };
     }
+
+    // A change the holder's side proposes to a Certificate of Show goes to the
+    // artist to approve; every other request goes to the holder.
+    const reviewerId =
+      requestType === 'provenance_update'
+        ? await loadRequestReviewer(
+            getSupabaseServerAdminClient(),
+            artwork as ArtworkForReview,
+            user.id,
+          )
+        : (artwork.account_id as string);
+    const toArtist = reviewerId !== artwork.account_id;
 
     // For ownership requests, verify user is an artist and matches the artwork's artist_name
     if (requestType === 'ownership_request') {
@@ -86,8 +104,9 @@ export async function createProvenanceUpdateRequest(
         return { success: false, error: 'You already own this artwork' };
       }
     } else {
-      // For provenance updates, don't allow requesting updates to your own artwork
-      if (artwork.account_id === user.id) {
+      // For provenance updates, don't allow requesting updates to your own
+      // artwork, unless the change needs the artist's approval (a COS).
+      if (!reviewerId || reviewerId === user.id) {
         return { success: false, error: 'You cannot request updates to your own artwork' };
       }
     }
@@ -132,15 +151,29 @@ export async function createProvenanceUpdateRequest(
     // Create notification for artwork owner
     try {
       const notificationType: 'ownership_request' | 'provenance_update_request' = requestType === 'ownership_request' ? 'ownership_request' : 'provenance_update_request';
-      const notificationTitle = requestType === 'ownership_request' 
+      const notificationTitle = requestType === 'ownership_request'
         ? `Ownership Request: ${artwork.title}`
-        : `Provenance Update Request: ${artwork.title}`;
+        : toArtist
+          ? `Approve Certificate of Show changes: ${artwork.title}`
+          : `Provenance Update Request: ${artwork.title}`;
       let notificationMessage = requestType === 'ownership_request'
         ? `An artist has requested ownership of "${artwork.title}". Review the request in your portal.`
         : `A user has requested to update the provenance information for "${artwork.title}". Review the request in your portal.`;
 
       let exhibitionTitle: string | null = null;
-      if (requestType === 'provenance_update' && options?.exhibitionId) {
+      if (toArtist) {
+        const [{ data: requester }, { data: exhibition }] = await Promise.all([
+          asUntyped(client).from('accounts').select('name').eq('id', user.id).maybeSingle(),
+          options?.exhibitionId
+            ? asUntyped(client).from('exhibitions').select('title').eq('id', options.exhibitionId).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        exhibitionTitle = (exhibition?.title as string | undefined) ?? null;
+        const who = (requester?.name as string | undefined) || 'The curator';
+        notificationMessage = exhibitionTitle
+          ? `${who}, curating "${exhibitionTitle}", wants to update the Certificate of Show for "${artwork.title}". Approve or decline the changes in your portal.`
+          : `${who} wants to update the Certificate of Show for "${artwork.title}". Approve or decline the changes in your portal.`;
+      } else if (requestType === 'provenance_update' && options?.exhibitionId) {
         const [{ data: requester }, { data: exhibition }] = await Promise.all([
           asUntyped(client).from('accounts').select('name').eq('id', user.id).maybeSingle(),
           asUntyped(client).from('exhibitions').select('title').eq('id', options.exhibitionId).maybeSingle(),
@@ -153,7 +186,7 @@ export async function createProvenanceUpdateRequest(
       }
 
       await createNotification({
-        userId: artwork.account_id,
+        userId: reviewerId as string,
         type: notificationType,
         title: notificationTitle,
         message: notificationMessage,
@@ -167,7 +200,7 @@ export async function createProvenanceUpdateRequest(
       logger.error('provenance_request_notification_failed', {
         artworkId,
         requestedBy: user.id,
-        ownerId: artwork.account_id,
+        ownerId: reviewerId,
         requestType,
         error: notifError,
       });

@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
 import { scheduleArtistFollowerNotifications } from '~/lib/collectors/notify-artist-followers';
-import { generateCertificateNumber } from './insert-linked-certificate';
+import { generateCertificateNumber, metadataForLinkedCertificate } from './insert-linked-certificate';
 import {
   getAccountDisplayName,
   propagateProvenanceAfterLinkedCertificate,
@@ -49,7 +49,7 @@ export async function insertLinkedCoSFromArtistCoa(
       owned_by_is_public: sourceCoA.owned_by_is_public,
       sold_by: sourceCoA.sold_by,
       sold_by_is_public: sourceCoA.sold_by_is_public,
-      metadata: sourceCoA.metadata || {},
+      metadata: metadataForLinkedCertificate(sourceCoA.metadata),
       certificate_number: certNumber,
       certificate_type: CERTIFICATE_TYPES.SHOW,
       source_artwork_id: sourceId,

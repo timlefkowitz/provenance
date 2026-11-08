@@ -24,7 +24,11 @@ export async function ExhibitionSellThroughLine({
       </span>
       {s.salesCents > 0 && <span className="tabular-nums">{formatMoney(s.salesCents)} in sales</span>}
       <span>
-        {s.newCollectorKeys.length} new {s.newCollectorKeys.length === 1 ? 'collector' : 'collectors'}
+        <span className="tabular-nums">{s.collectorKeys.length}</span>{' '}
+        {s.collectorKeys.length === 1 ? 'collector' : 'collectors'}
+        {s.newCollectorKeys.length > 0 && (
+          <span className="text-ink/50"> ({s.newCollectorKeys.length} new)</span>
+        )}
       </span>
       <Link href="/portal/collectors" className="ml-auto text-wine underline underline-offset-4 text-xs">
         All collectors

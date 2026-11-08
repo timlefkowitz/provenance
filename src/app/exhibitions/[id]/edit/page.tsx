@@ -5,6 +5,8 @@ import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { ExhibitionForm } from '../../_components/exhibition-form';
 import { ExhibitionDetails } from '../../_components/exhibition-details';
 import { ExhibitionInvitesPanel } from '../../_components/exhibition-invites-panel';
+import { ExhibitionHeaderImagePanel } from '../../_components/exhibition-header-image-panel';
+import { readHeaderArtworkId } from '../../_helpers/header-image';
 import {
   getExhibitionInvites,
   getUninvitedCreditedArtists,
@@ -64,6 +66,13 @@ export default async function EditExhibitionPage({
       <EditorialPageHeader eyebrow="Exhibitions" title="Edit exhibition" description="Update exhibition details" />
 
       <ExhibitionForm exhibition={exhibition} />
+
+      <ExhibitionHeaderImagePanel
+        exhibitionId={id}
+        initialImageUrl={exhibition.image_url ?? null}
+        initialArtworkId={readHeaderArtworkId((exhibition as { metadata?: unknown }).metadata)}
+        artworks={exhibition.artworks}
+      />
 
       <ExhibitionOpenCallPanel
         exhibitionId={id}

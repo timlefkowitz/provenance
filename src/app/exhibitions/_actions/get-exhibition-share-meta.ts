@@ -15,6 +15,8 @@ export type ExhibitionShareMeta = {
    * gallery, falling back to the owner account name for non-gallery owners.
    */
   ownerName: string | null;
+  /** False for drafts — callers must not surface title/details for these. */
+  isPublished: boolean;
 };
 
 /**
@@ -33,7 +35,7 @@ export async function getExhibitionShareMeta(
   const { data: exhibition, error } = await admin
     .from('exhibitions')
     .select(
-      'title, description, location, start_date, end_date, image_url, gallery_id, owner_role',
+      'title, description, location, start_date, end_date, image_url, gallery_id, owner_role, published_at',
     )
     .eq('id', exhibitionId)
     .maybeSingle();
@@ -111,5 +113,6 @@ export async function getExhibitionShareMeta(
     endDate: exhibition.end_date ?? null,
     imageUrl: exhibition.image_url ?? null,
     ownerName,
+    isPublished: !!exhibition.published_at,
   };
 }

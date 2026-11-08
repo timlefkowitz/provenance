@@ -5,6 +5,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { createNotification } from '~/lib/notifications';
 import { notifyInviteEmailFailed } from '~/lib/certificate-claims/notify-invite-email-failed';
 import { logger } from '~/lib/logger';
+import { ensureSaleForSentOwnershipInvite } from '~/lib/sales/record-sale';
 import { CERTIFICATE_TYPES, getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { generateClaimToken, hashClaimToken, normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import {
@@ -85,6 +86,8 @@ export async function commitCertificateInviteBatch(params: {
   email: CommitInviteBatchEmail;
   createdByUserId: string;
   enforceOwnerRateLimit?: boolean;
+  /** Collector's name, when the sender gave one (owner invites). */
+  inviteeName?: string | null;
 }): Promise<CommitInviteBatchResult> {
   const {
     inviteeEmail,
@@ -215,6 +218,26 @@ export async function commitCertificateInviteBatch(params: {
     createdByUserId,
     workCount: rows.length,
   });
+
+  // Sending a Certificate of Ownership records the sale to this collector
+  // (no-op when "Mark sold" already recorded it).
+  if (email.variant === 'owner') {
+    for (const r of rows) {
+      try {
+        await ensureSaleForSentOwnershipInvite(adminClient, {
+          sourceArtworkId: r.source_artwork_id,
+          buyerEmail: normalizedEmail,
+          buyerName: params.inviteeName ?? null,
+          recordedBy: createdByUserId,
+        });
+      } catch (saleErr) {
+        logger.error('commit_invite_batch_ensure_sale_failed', {
+          artworkId: r.source_artwork_id,
+          error: saleErr,
+        });
+      }
+    }
+  }
 
   return {
     sent: rows.length,

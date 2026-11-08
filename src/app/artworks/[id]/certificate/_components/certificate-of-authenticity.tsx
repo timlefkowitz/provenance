@@ -49,6 +49,7 @@ import { PendingCooInviteStatus } from './pending-coo-invite-status';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 import { buildWallLabelsHtml, openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
+import { loadPriceSymbolPref } from '~/lib/print-price';
 import {
   ProvenanceValuationBlock,
   type ProvenanceValuation,
@@ -120,18 +121,51 @@ export type Artwork = {
       formatted?: string;
     };
   } | null;
-  provenance_history?: Array<{
-    editedAt: string;
-    editedBy: string;
-    previousValues: Record<string, unknown>;
-  }> | null;
+  provenance_history?: ProvenanceHistoryEntry[] | null;
+};
+
+/** Set on entries mirrored from a linked certificate (see lib/provenance/chain.ts). */
+type ProvenanceSyncTag = {
+  certificate_type: string | null;
+  artwork_id: string;
+  method: string;
+  actor_name: string | null;
 };
 
 type ProvenanceHistoryEntry = {
   editedAt: string;
-  editedBy: string;
+  editedBy: string | null;
   previousValues: Record<string, unknown>;
+  via?: ProvenanceSyncTag;
 };
+
+const SYNC_CERT_LABEL: Record<string, string> = {
+  authenticity: 'CoA',
+  show: 'CoS',
+  ownership: 'CoO',
+};
+
+const SYNC_METHOD_LABEL: Record<string, string> = {
+  edit: 'edited',
+  sale: 'sale recorded',
+  ownership_accepted: 'ownership accepted',
+  ownership_transfer: 'ownership transferred',
+  request_approved: 'request approved',
+  coo_issued: 'CoO issued',
+  cos_issued: 'CoS issued',
+  coa_issued: 'CoA issued',
+  backfill: 'records updated',
+};
+
+/** "via CoO · ownership accepted" */
+function formatExhibitionDate(date: string): string {
+  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function syncTagLabel(tag: ProvenanceSyncTag): string {
+  const cert = (tag.certificate_type && SYNC_CERT_LABEL[tag.certificate_type]) || 'linked certificate';
+  return `via ${cert} · ${SYNC_METHOD_LABEL[tag.method] ?? tag.method.replace(/_/g, ' ')}`;
+}
 
 /**
  * Maps the DB column name used on the Artwork object to the key stored in
@@ -168,16 +202,33 @@ function FieldWithHistory({
   renderValue: (v: string) => React.ReactNode;
 }) {
   const historyKey = FIELD_HISTORY_KEY[dbField] ?? dbField;
+  // Hand edits store the form's key (formerOwners); mirrored entries store the column (former_owners).
+  const previousOf = (e: ProvenanceHistoryEntry) =>
+    historyKey in e.previousValues ? e.previousValues[historyKey] : e.previousValues[dbField];
+  const touches = (e: ProvenanceHistoryEntry) =>
+    historyKey in e.previousValues || dbField in e.previousValues;
 
-  const edits = (history ?? [])
-    .filter((e) => e.previousValues[historyKey] != null && e.previousValues[historyKey] !== '')
+  const sorted = (history ?? [])
+    .filter(touches)
     .sort((a, b) => new Date(a.editedAt).getTime() - new Date(b.editedAt).getTime());
+  const edits = sorted.filter((e) => previousOf(e) != null && previousOf(e) !== '');
+  const latest = sorted[sorted.length - 1];
+  const latestTag = latest?.via;
 
   if (!currentValue) return null;
 
   return (
     <div className="flex items-start gap-2 flex-wrap">
       <span className="flex-1">{renderValue(currentValue)}</span>
+      {latestTag && (
+        <span
+          className="print:hidden shrink-0 mt-0.5 rounded-full border border-wine/20 bg-wine/5 px-2 py-0.5 text-[10px] font-serif text-wine/80"
+          title={latestTag.actor_name ? `Updated by ${latestTag.actor_name}` : undefined}
+        >
+          {syncTagLabel(latestTag)} ·{' '}
+          {new Date(latest!.editedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+      )}
       {edits.length > 0 && (
         <Popover>
           <PopoverTrigger asChild>
@@ -205,8 +256,9 @@ function FieldWithHistory({
                     })}
                   </p>
                   <p className="text-ink/70 italic">
-                    &ldquo;{String(entry.previousValues[historyKey])}&rdquo;
+                    &ldquo;{String(previousOf(entry))}&rdquo;
                   </p>
+                  {entry.via && <p className="text-wine/70 mt-0.5">{syncTagLabel(entry.via)}</p>}
                 </li>
               ))}
               <li className="border-l-2 border-wine/60 pl-2">
@@ -386,10 +438,31 @@ export function CertificateOfAuthenticity({
     
     if (!isScan) return;
 
+    // Count the scan even if the visitor never answers the location prompt:
+    // the timeout option only starts once permission is granted.
+    let settled = false;
+    const settle = () => {
+      if (settled) return false;
+      settled = true;
+      return true;
+    };
+    const promptFallback = window.setTimeout(async () => {
+      if (!settle()) return;
+      try {
+        const result = await recordScanLocation(artwork.id, null, getScanVisitorId());
+        if (result?.scan) setScanLocations(prev => [...prev, result.scan as ScanLocation]);
+      } catch (err) {
+        console.error('[CertificateScan] Error recording scan (prompt unanswered):', err);
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+    }, 15000);
+
     // Request geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          if (!settle()) return;
+          window.clearTimeout(promptFallback);
           const { latitude, longitude } = position.coords;
           
           // Try to get reverse geocoded location
@@ -437,6 +510,8 @@ export function CertificateOfAuthenticity({
           }
         },
         async (error) => {
+          if (!settle()) return;
+          window.clearTimeout(promptFallback);
           // User denied geolocation or it errored — still record the scan event
           // so the owner sees it happened (no location is recorded).
           console.log('[CertificateScan] Geolocation not available:', error);
@@ -460,6 +535,8 @@ export function CertificateOfAuthenticity({
     } else {
       // Geolocation API not available — still record the scan event (no location)
       console.log('[CertificateScan] Geolocation not supported by this browser');
+      settle();
+      window.clearTimeout(promptFallback);
       void (async () => {
         try {
           const result = await recordScanLocation(artwork.id, null, getScanVisitorId());
@@ -473,6 +550,8 @@ export function CertificateOfAuthenticity({
         window.history.replaceState({}, '', newUrl);
       })();
     }
+
+    return () => window.clearTimeout(promptFallback);
   }, [artwork.id]);
 
   // Generate the certificate URL - only for owners
@@ -598,7 +677,7 @@ export function CertificateOfAuthenticity({
 
   const handlePrintWallLabel = () => {
     console.log('[Certificate] Print wall label', { artworkId: artwork.id });
-    openPrintWindow(buildWallLabelsHtml([artwork], {}), 900, 720);
+    openPrintWindow(buildWallLabelsHtml([artwork], {}, loadPriceSymbolPref()), 900, 720);
   };
 
   const handleDownload = () => {

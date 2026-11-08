@@ -6,10 +6,12 @@ import { isShownInExhibition } from '~/app/exhibitions/_helpers/exhibition-submi
 import {
   buildWorkKeys,
   computeSellThrough,
+  fillMissingBuyers,
   type ExhibitionSellThrough,
   type SaleRow,
   type ShownLink,
 } from './group-collectors';
+import { loadOwnershipHolders } from './load-ownership-holders';
 
 const LEDGER_COLS = 'id, artwork_id, sold_to_account_id, sold_to_email, sold_to_name, price_cents, sold_at';
 
@@ -75,7 +77,11 @@ export async function loadExhibitionSellThrough(
 
     const [result] = computeSellThrough({
       exhibitionIds: [exhibitionId],
-      sales: [...ledgerSales, ...artworkOnlySales],
+      sales: fillMissingBuyers(
+        [...ledgerSales, ...artworkOnlySales],
+        await loadOwnershipHolders(admin, linkedIds),
+        workKeys,
+      ),
       workKeys,
       shownLinks,
     });

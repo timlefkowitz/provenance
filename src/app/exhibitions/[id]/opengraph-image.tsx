@@ -24,7 +24,9 @@ export default async function Image({
 
   try {
     const meta = await getExhibitionShareMeta(id);
-    if (meta) {
+    if (meta && !meta.isPublished) {
+      title = 'Private exhibition';
+    } else if (meta) {
       title = meta.title;
       ownerName = meta.ownerName;
       location = meta.location;

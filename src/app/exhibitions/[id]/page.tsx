@@ -24,9 +24,11 @@ import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
 import { ExhibitionPrintMenu } from '../_components/exhibition-print-menu';
+import { ExhibitionPrivateNotice } from '../_components/exhibition-private-notice';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 import { EditorialMarkdown } from '~/components/editorial-markdown';
+import { resolveExhibitionHeaderImage } from '../_helpers/header-image';
 import { stripMarkdown } from '~/lib/strip-markdown';
 import { endOfDateOnly, parseDateOnly } from '~/lib/parse-date-only';
 
@@ -43,6 +45,11 @@ export async function generateMetadata({
 
   if (!meta) {
     return { title: 'Exhibition | Provenance' };
+  }
+
+  // Drafts are private: never put their title or details in link previews.
+  if (!meta.isPublished) {
+    return { title: 'Private exhibition | Provenance', robots: { index: false } };
   }
 
   const galleryName = meta.ownerName;
@@ -132,7 +139,14 @@ export default async function ExhibitionPage({
   const { data: { user } } = await client.auth.getUser();
 
   const exhibition = await getExhibitionWithDetails(id, { viewerUserId: user?.id ?? null });
-  if (!exhibition) notFound();
+  if (!exhibition) {
+    // Distinguish "doesn't exist" from "exists but is a draft you can't see".
+    const meta = await getExhibitionShareMeta(id);
+    if (meta && !meta.isPublished) {
+      return <ExhibitionPrivateNotice exhibitionId={id} signedIn={!!user} />;
+    }
+    notFound();
+  }
 
   const isOwner =
     !!user && (await canManageExhibition(user.id, exhibition.gallery_id));
@@ -209,6 +223,7 @@ export default async function ExhibitionPage({
           reservedArtworkIds,
           defaultEmail: user?.email ?? undefined,
         };
+  const headerImageUrl = resolveExhibitionHeaderImage(exhibition);
 
   const pageUrl = new URL(`/exhibitions/${id}`, appConfig.url).href;
   const exhibitionJsonLd = {
@@ -222,7 +237,7 @@ export default async function ExhibitionPage({
     ...(exhibition.location
       ? { location: { '@type': 'Place', name: exhibition.location } }
       : {}),
-    ...(exhibition.image_url ? { image: exhibition.image_url } : {}),
+    ...(headerImageUrl ? { image: headerImageUrl } : {}),
     organizer: backLabel === 'Gallery'
       ? { '@type': 'Organization', name: backLabel, url: new URL(backLink, appConfig.url).href }
       : { '@type': 'Organization', name: 'Provenance', url: appConfig.url },
@@ -252,6 +267,19 @@ export default async function ExhibitionPage({
             <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
             {backLabel}
           </Link>
+
+          {/* Header image */}
+          {headerImageUrl && (
+            <div className="relative mb-10 aspect-[4/3] overflow-hidden bg-parchment/60 sm:aspect-[16/9] lg:aspect-[21/9]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={headerImageUrl}
+                alt={exhibition.title}
+                className="h-full w-full object-cover"
+                fetchPriority="high"
+              />
+            </div>
+          )}
 
           {/* Status + edit row */}
           <div className="flex items-center justify-between mb-5">

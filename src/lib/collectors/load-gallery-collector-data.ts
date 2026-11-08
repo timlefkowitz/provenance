@@ -8,12 +8,14 @@ import { valueAt, type ArtworkValueRow, type ValuationRow } from '~/lib/portal-g
 import {
   buildWorkKeys,
   computeSellThrough,
+  fillMissingBuyers,
   groupCollectors,
   type CollectorSummary,
   type ExhibitionSellThrough,
   type SaleRow,
   type ShownLink,
 } from './group-collectors';
+import { loadOwnershipHolders } from './load-ownership-holders';
 
 export interface GalleryExhibition {
   id: string;
@@ -141,7 +143,11 @@ export async function loadGalleryCollectorData(
         price_cents: a.sold_price_cents,
         sold_at: a.sold_at!,
       }));
-    const sales = [...ledgerSales, ...artworkOnlySales];
+    const sales = fillMissingBuyers(
+      [...ledgerSales, ...artworkOnlySales],
+      await loadOwnershipHolders(admin, artworkIds),
+      workKeys,
+    );
 
     const soldArtworkIds = Array.from(new Set(sales.map((s) => s.artwork_id)));
     const valuationsByArtwork = new Map<string, ValuationRow[]>();

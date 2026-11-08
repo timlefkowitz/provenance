@@ -61,7 +61,8 @@ export function EditableArtworkTag({
   });
 
   const getCertificateUrl = (artworkId: string) => {
-    return `${siteUrl}/artworks/${artworkId}/certificate`;
+    // ?scan=true so scans of a printed tag are counted on the certificate.
+    return `${siteUrl}/artworks/${artworkId}/certificate?scan=true`;
   };
 
   const handleFieldChange = (field: keyof EditableArtworkData, value: string) => {

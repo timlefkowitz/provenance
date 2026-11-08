@@ -26,13 +26,20 @@ export function RequestUpdateDialog({
   exhibitionId,
   triggerLabel = 'Request Update',
   onSubmitted,
+  approverName,
 }: {
   artwork: Artwork;
   /** Set when a curator suggests the change from an exhibition's curator view. */
   exhibitionId?: string;
   triggerLabel?: string;
   onSubmitted?: () => void;
+  /**
+   * Set when the change is the holder's own edit to a Certificate of Show and
+   * goes to the artist for approval instead of to the holder.
+   */
+  approverName?: string;
 }) {
+  const approver = approverName ? `${approverName} (the artist)` : 'The certificate owner';
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const user = useCurrentUser();
@@ -158,7 +165,11 @@ export function RequestUpdateDialog({
         if (result.error) {
           toast.error(result.error);
         } else {
-          toast.success('Update request submitted. The certificate owner will be notified.');
+          toast.success(
+            approverName
+              ? `Changes sent to ${approverName} to approve. They apply once approved.`
+              : 'Update request submitted. The certificate owner will be notified.',
+          );
           setOpen(false);
           setRequestType('provenance_update');
           onSubmitted?.();
@@ -178,7 +189,7 @@ export function RequestUpdateDialog({
   return (
     <div className="flex gap-2 justify-center">
       <Dialog open={open} onOpenChange={setOpen}>
-        {canRequestOwnership && (
+        {canRequestOwnership && !approverName && (
           <DialogTrigger asChild>
             <Button
               variant="default"
@@ -201,12 +212,18 @@ export function RequestUpdateDialog({
         <EditorialDialogContent className={requestType === 'ownership_request' ? 'sm:max-w-lg font-serif' : 'sm:max-w-2xl max-h-[90vh] overflow-y-auto font-serif'}>
           <DialogHeader>
             <DialogTitle className="font-display text-wine">
-              {requestType === 'ownership_request' ? 'Request Ownership' : 'Request Provenance Update'}
+              {requestType === 'ownership_request'
+                ? 'Request Ownership'
+                : approverName
+                  ? 'Edit Certificate of Show'
+                  : 'Request Provenance Update'}
             </DialogTitle>
             <DialogDescription>
               {requestType === 'ownership_request' 
                 ? `Request ownership of "${artwork.title}". Since your name matches the artist name, you can request to become the owner of this artwork. The current owner will review your request.`
-                : `Suggest updates to the provenance information for "${artwork.title}". The certificate owner will review your request.`}
+                : approverName
+                  ? `Changes to the Certificate of Show for "${artwork.title}" need the artist's approval. ${approver} will be asked to approve them; they apply once approved.`
+                  : `Suggest updates to the provenance information for "${artwork.title}". The certificate owner will review your request.`}
             </DialogDescription>
           </DialogHeader>
           {requestType === 'ownership_request' ? (

@@ -10,6 +10,7 @@ import { updateProvenance } from '../../edit/_actions/update-provenance';
 import { artworkImageUploader } from '~/lib/artwork-storage';
 import { canEditGalleryArtworks, canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
+import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
 
 export type EditArtworkFields = {
   title?: string | null;
@@ -23,7 +24,7 @@ export async function editArtwork(
   artworkId: string,
   formData: FormData,
   isCreator: boolean,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; pendingApproval?: boolean }> {
   try {
     const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
@@ -35,7 +36,7 @@ export async function editArtwork(
     // Verify artwork exists and get owner
     const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
-      .select('id, account_id, title, gallery_profile_id')
+      .select('id, account_id, title, artist_name, created_at, gallery_profile_id, certificate_type, artist_account_id')
       .eq('id', artworkId)
       .single();
 
@@ -106,6 +107,35 @@ export async function editArtwork(
     // If no changes, return early
     if (Object.keys(updateFields).length === 0 && !imageFile) {
       return { success: false, error: 'No changes detected' };
+    }
+
+    // A Certificate of Show issued from an artist's CoA: the certificate's
+    // content (title, artist, photo, date) goes to the artist to approve as one
+    // request; the exhibition link and details below still apply directly.
+    let pendingApproval = false;
+    const approvingArtist = isCreator ? cosApprovingArtistId(artwork) : null;
+    if (approvingArtist && approvingArtist !== user.id) {
+      const requestFields: Record<string, string> = {};
+      if (updateFields.title !== undefined) requestFields.title = updateFields.title ?? '';
+      if (updateFields.artist_name !== undefined && updateFields.artist_name !== (artwork.artist_name ?? null)) {
+        requestFields.artist_name = updateFields.artist_name ?? '';
+      }
+      if (updateFields.image_url) requestFields.image_url = updateFields.image_url;
+      if (
+        updateFields.created_at &&
+        updateFields.created_at.slice(0, 10) !== String(artwork.created_at ?? '').slice(0, 10)
+      ) {
+        requestFields.created_at = updateFields.created_at;
+      }
+      if (Object.keys(requestFields).length > 0) {
+        const requestResult = await createProvenanceUpdateRequest(artworkId, requestFields);
+        if (!requestResult.success) return requestResult;
+        pendingApproval = true;
+      }
+      delete updateFields.title;
+      delete updateFields.artist_name;
+      delete updateFields.image_url;
+      delete updateFields.created_at;
     }
 
     if (isCreator) {
@@ -226,7 +256,7 @@ export async function editArtwork(
         revalidatePath('/exhibitions');
       }
 
-      return { success: true };
+      return { success: true, pendingApproval };
     } else {
       // Approval request - user is not the creator
       const requestMessage = formData.get('request_message')?.toString();

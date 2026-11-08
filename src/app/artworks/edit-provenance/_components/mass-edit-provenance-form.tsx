@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@kit/ui/sonner';
 import { Button } from '@kit/ui/button';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { IndividualArtworkEditForm } from './individual-artwork-edit-form';
@@ -164,6 +165,11 @@ export function MassEditProvenanceForm({ artworks }: { artworks: Artwork[] }) {
         for (const { artworkId, updates: updateData } of updates) {
           try {
             const result = await batchUpdateProvenance([artworkId], updateData);
+            if (!result.error && result.pendingApprovalCount) {
+              toast.info(
+                `Changes to "${artworks.find((a) => a.id === artworkId)?.title || 'a Certificate of Show'}" were sent to the artist to approve.`,
+              );
+            }
             if (result.error) {
               errors.push(`Artwork ${artworkId}: ${result.error}`);
             } else {

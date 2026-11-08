@@ -4,6 +4,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { logger } from '~/lib/logger';
+import { ensureSaleForSentOwnershipInvite } from '~/lib/sales/record-sale';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { generateClaimToken, hashClaimToken, normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import { sendOwnerCoownershipInviteEmail } from '~/lib/certificate-claims/send-certificate-invite-email';
@@ -139,6 +140,18 @@ export async function createOwnerInviteFromCoa(
     }
 
     console.log('[Certificates] createOwnerInviteFromCoa success', { artworkId });
+    // Sending the CoO records the sale to this collector, so they appear on
+    // collector lists and in sales analytics before they accept.
+    try {
+      await ensureSaleForSentOwnershipInvite(adminClient, {
+        sourceArtworkId: artworkId,
+        buyerEmail: inviteeEmail,
+        buyerName: inviteeName || null,
+        recordedBy: user.id,
+      });
+    } catch (saleErr) {
+      logger.error('create_owner_invite_ensure_sale_failed', { artworkId, error: saleErr });
+    }
     await captureCrmContacts(user.id, [
       {
         email: inviteeEmail,

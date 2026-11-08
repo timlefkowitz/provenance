@@ -160,7 +160,7 @@ export async function uploadArtworksForArtist(
       return {
         success: false,
         error:
-          'Only gallery and institution exhibitions issue Certificates of Show. Invite the artist to upload instead.',
+          "Collector exhibitions don't issue Certificates of Show. Invite the artist to upload instead.",
         artworkIds: [],
       };
     }

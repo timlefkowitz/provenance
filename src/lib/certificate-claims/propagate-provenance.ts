@@ -2,83 +2,17 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createNotification } from '~/lib/notifications';
 import { logger } from '~/lib/logger';
+import {
+  appendLineIfMissing as appendIfMissing,
+  collectChainArtworkIds,
+  findRootId,
+  transferOwnershipAcrossChain,
+} from '~/lib/provenance/chain';
 
 export type LinkedCertEventKind = 'coo_issued' | 'cos_issued' | 'coa_issued';
 
 function formatDateLine(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-async function findRootId(
-  adminClient: SupabaseClient,
-  artworkId: string,
-): Promise<string> {
-  let current = artworkId;
-  for (let i = 0; i < 64; i++) {
-    const { data, error } = await asUntyped(adminClient)
-      .from('artworks')
-      .select('id, source_artwork_id')
-      .eq('id', current)
-      .maybeSingle();
-    if (error || !data) {
-      return current;
-    }
-    const parent = data.source_artwork_id as string | null;
-    if (!parent) {
-      return data.id as string;
-    }
-    current = parent;
-  }
-  return current;
-}
-
-/**
- * All artwork ids in the provenance tree from root (root + descendants via source_artwork_id).
- */
-async function collectChainArtworkIds(
-  adminClient: SupabaseClient,
-  rootId: string,
-): Promise<string[]> {
-  const chain = new Set<string>([rootId]);
-  let frontier: string[] = [rootId];
-
-  for (let depth = 0; depth < 64; depth++) {
-    const { data: children, error } = await asUntyped(adminClient)
-      .from('artworks')
-      .select('id')
-      .in('source_artwork_id', frontier);
-
-    if (error) {
-      logger.error('propagate_collect_chain_children_failed', { error, frontier });
-      break;
-    }
-
-    const next: string[] = [];
-    for (const row of children ?? []) {
-      const id = (row as { id: string }).id;
-      if (!chain.has(id)) {
-        chain.add(id);
-        next.push(id);
-      }
-    }
-    if (next.length === 0) {
-      break;
-    }
-    frontier = next;
-  }
-
-  return [...chain];
-}
-
-function appendIfMissing(existing: string | null | undefined, line: string): string {
-  const base = (existing ?? '').trim();
-  if (!base) {
-    return line.trim();
-  }
-  if (base.includes(line.trim())) {
-    return base;
-  }
-  return `${base}\n${line.trim()}`;
 }
 
 /**
@@ -135,13 +69,14 @@ export async function propagateProvenanceAfterLinkedCertificate(
         continue;
       }
 
-      let former_owners = row.former_owners as string | null;
+      const former_owners = row.former_owners as string | null;
       let exhibition_history = row.exhibition_history as string | null;
       let historic_context = row.historic_context as string | null;
 
       if (eventKind === 'coo_issued') {
-        const line = `${actorDisplayName} (${dateStr})`;
-        former_owners = appendIfMissing(former_owners, line);
+        // Ownership is handled below: the buyer becomes "Owned by" on every
+        // certificate and the previous owner moves into former owners.
+        continue;
       } else if (eventKind === 'cos_issued') {
         const line = `${actorDisplayName}, ${dateStr}`;
         exhibition_history = appendIfMissing(exhibition_history, line);
@@ -162,6 +97,17 @@ export async function propagateProvenanceAfterLinkedCertificate(
       if (updErr) {
         logger.error('propagate_provenance_text_mirror_failed', { artworkId, error: updErr });
       }
+    }
+
+    if (eventKind === 'coo_issued') {
+      await transferOwnershipAcrossChain(adminClient, {
+        originArtworkId: newArtworkId,
+        newOwnerName: actorDisplayName,
+        method: 'ownership_accepted',
+        actorAccountId,
+        actorName: actorDisplayName,
+        notify: false, // the notification below covers it
+      });
     }
 
     const accountIds = new Set<string>();

@@ -2,6 +2,8 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { EditProvenanceForm } from './_components/edit-provenance-form';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
 import { EditorialPageHeader } from '~/components/editorial-form';
 import { getArtworkExhibition } from '../../[id]/certificate/_actions/get-artwork-exhibition';
 
@@ -37,6 +39,19 @@ export default async function EditProvenancePage({
   // Get current exhibition for this artwork
   const currentExhibition = await getArtworkExhibition(id);
 
+  // A Certificate of Show issued from an artist's CoA: content changes go to
+  // the artist to approve.
+  const approvingArtistId = cosApprovingArtistId(artwork);
+  let approverName: string | null = null;
+  if (approvingArtistId && approvingArtistId !== user.id) {
+    const { data: artist } = await asUntyped(getSupabaseServerAdminClient())
+      .from('accounts')
+      .select('name')
+      .eq('id', approvingArtistId)
+      .maybeSingle();
+    approverName = (artist?.name as string | undefined) || artwork.artist_name || 'the artist';
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <EditorialPageHeader
@@ -48,6 +63,7 @@ export default async function EditProvenancePage({
       <EditProvenanceForm 
         artwork={artwork} 
         currentExhibitionId={currentExhibition?.id || null}
+        approverName={approverName}
       />
     </div>
   );
