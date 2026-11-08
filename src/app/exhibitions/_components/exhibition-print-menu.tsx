@@ -25,6 +25,7 @@ import {
   buildWallLabelsHtml,
   exhibitionLabelItems,
   posterDefaults,
+  type LabelQr,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
 import { updateExhibitionQrStyle } from '../_actions/update-exhibition-qr-style';
@@ -133,7 +134,11 @@ export function ExhibitionPrintMenu({
     openPrintWindow(buildArtworkQrSheetHtml(exhibition.title, exhibition.artworks, qrSvgs), 860, 760);
   };
 
-  const handleWallLabels = (options: WallLabelOptions, biosByArtwork: Map<string, string>) => {
+  const handleWallLabels = (
+    options: WallLabelOptions,
+    biosByArtwork: Map<string, string>,
+    extraQrs: (artworkId: string) => LabelQr[],
+  ) => {
     console.log('[Exhibitions] Print wall labels', {
       exhibitionId: exhibition.id,
       count: exhibition.artworks.length,
@@ -142,7 +147,7 @@ export function ExhibitionPrintMenu({
     setPriceSymbol(options.priceSymbol);
     const qrSvgs = new Map(exhibition.artworks.map((a) => [a.id, readQr(a.id)]));
     openPrintWindow(
-      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(exhibition.artworks), options, qrSvgs, biosByArtwork),
+      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(exhibition.artworks), options, qrSvgs, biosByArtwork, extraQrs),
       960,
       760,
     );
@@ -276,6 +281,7 @@ export function ExhibitionPrintMenu({
         onOpenChange={setLabelsOpen}
         count={exhibition.artworks.length}
         optionsStorageKey={LABEL_OPTIONS_KEY}
+        extraQrStorageKey={`provenance.exhibition.labelQrs.${exhibition.id}`}
         bioEditsStorageKey={bioEditsKey(exhibition.id)}
         loadBios={() => getExhibitionArtistBios(exhibition.id)}
         hints={{ price: 'Exhibition list price', creditLine: 'Only when marked public' }}

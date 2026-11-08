@@ -18,6 +18,7 @@ import {
   buildWallLabelsHtml as buildLabelsHtml,
   DEFAULT_LABEL_OPTIONS,
   type WallLabelItem,
+  type LabelQr,
   type WallLabelOptions,
 } from '~/app/exhibitions/_helpers/exhibition-print-html';
 import { composeStyledQr, type QrStyleSettings } from '~/app/exhibitions/_helpers/qr-style';
@@ -461,13 +462,17 @@ export function PrintMenu({
   };
 
   // Wall Labels
-  const handlePrintWallLabels = (options: WallLabelOptions, biosByArtwork: Map<string, string>) => {
+  const handlePrintWallLabels = (
+    options: WallLabelOptions,
+    biosByArtwork: Map<string, string>,
+    extraQrs: (artworkId: string) => LabelQr[],
+  ) => {
     if (disabled) return;
     console.log('[Collection] PrintMenu: Wall Labels', { count: selectedArtworks.length, options });
     setPriceSymbol(options.priceSymbol);
     const qrSvgs = new Map(selectedArtworks.map((a) => [a.id, readQr(`label-${a.id}`)]));
     const items = selectedArtworks.map((a) => collectionLabelItem(a, artworkData[a.id]));
-    openPrintWindow(buildLabelsHtml(galleryName, items, options, qrSvgs, biosByArtwork), 960, 760);
+    openPrintWindow(buildLabelsHtml(galleryName, items, options, qrSvgs, biosByArtwork, extraQrs), 960, 760);
   };
 
   // Catalog
@@ -588,6 +593,7 @@ export function PrintMenu({
         onOpenChange={setLabelsOpen}
         count={selectedArtworks.length}
         optionsStorageKey={LABEL_OPTIONS_KEY}
+        extraQrStorageKey={'provenance.collection.labelQrs'}
         bioEditsStorageKey={BIO_EDITS_KEY}
         loadBios={() => getArtworkArtistBios(selectedArtworks.map((a) => a.id))}
         hints={{ price: 'Artwork value', creditLine: 'Owner or collection' }}

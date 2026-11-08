@@ -50,9 +50,24 @@ export type WallLabelOptions = {
   artistBio: boolean;
   qrCode: boolean;
   size: 'standard' | 'large';
-  /** Where the certificate QR code sits on each label. */
+  /**
+   * compact: each label is only as tall as its text, packed in columns to fit
+   * the most on a page. institutional: every label the same height in a grid,
+   * text shrunk slightly if a label runs long.
+   */
+  layout: 'compact' | 'institutional';
+  /** Where the QR codes sit on each label. */
   qrPosition: 'top' | 'bottom';
 };
+
+/** Label sizes on US Letter. Widths are chosen so two labels fill a row. */
+export const LABEL_GEOMETRY = {
+  standard: { orientation: 'portrait', widthIn: 3.8, heightIn: 2.45, colGapIn: 0.2, rowGapIn: 0.15, cols: 2, rows: 4 },
+  large: { orientation: 'landscape', widthIn: 5, heightIn: 3.6, colGapIn: 0.3, rowGapIn: 0.2, cols: 2, rows: 2 },
+} as const;
+
+/** Page margin for wall labels (all sides). */
+const LABEL_PAGE_MARGIN_IN = 0.35;
 
 export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   year: true,
@@ -66,6 +81,7 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   artistBio: false,
   qrCode: true,
   size: 'standard',
+  layout: 'institutional',
   qrPosition: 'top',
 };
 
@@ -160,6 +176,20 @@ export function exhibitionLabelItems(artworks: PrintArtwork[]): WallLabelItem[] 
   }));
 }
 
+/** A QR code printed on a label: SVG or <img> markup, and a short caption. */
+export type LabelQr = { html: string; caption: string };
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Wall labels on US Letter, two across. "compact" packs labels that are only
+ * as tall as their text into columns; "institutional" prints a uniform grid
+ * (8 standard or 4 large per page) and shrinks text (to two-thirds at most) on any label that runs long.
+ */
 export function buildWallLabelsHtml(
   /** Shown in the print window's title, e.g. the exhibition or gallery name. */
   docTitle: string,
@@ -168,30 +198,47 @@ export function buildWallLabelsHtml(
   qrSvgs: Map<string, string>,
   /** Artwork id → artist bio text, used when options.artistBio is on. */
   artistBios: Map<string, string> = new Map(),
+  /** Extra QR codes for a work (e.g. the artist's own), after the certificate code. */
+  extraQrs: (artworkId: string) => LabelQr[] = () => [],
 ): string {
   const large = options.size === 'large';
-  const widthIn = large ? 5 : 4;
-  const minHeightIn = large ? 3.5 : 2.5;
+  const g = LABEL_GEOMETRY[options.size] ?? LABEL_GEOMETRY.standard;
+  const institutional = options.layout !== 'compact';
+  const qrBase = large ? 1 : 0.8;
 
-  const cells = items
-    .map((a) => {
-      const year = options.year ? getYear(a.creation_date) : '';
-      const title = esc(a.title || 'Untitled');
-      const titleLine = year ? `${title}, ${year}` : title;
-      const meta: string[] = [];
-      if (options.medium && a.medium?.trim()) meta.push(esc(a.medium.trim()));
-      if (options.dimensions && a.dimensions?.trim()) meta.push(esc(a.dimensions.trim()));
-      if (options.edition && a.edition?.trim()) meta.push(`Edition ${esc(a.edition.trim())}`);
-      if (options.price) {
-        const price = formatPrintPrice(a.price, options.priceSymbol);
-        if (price) meta.push(esc(price));
-      }
-      const credit = options.creditLine ? esc(a.credit_line?.trim()) : '';
-      const description = options.description ? esc(a.description?.trim()) : '';
-      const bio = options.artistBio ? esc(artistBios.get(a.id)?.trim()) : '';
-      const qr = options.qrCode ? qrSvgs.get(a.id) ?? '' : '';
+  const label = (a: WallLabelItem) => {
+    const year = options.year ? getYear(a.creation_date) : '';
+    const title = esc(a.title || 'Untitled');
+    const titleLine = year ? `${title}, ${year}` : title;
+    const meta: string[] = [];
+    if (options.medium && a.medium?.trim()) meta.push(esc(a.medium.trim()));
+    if (options.dimensions && a.dimensions?.trim()) meta.push(esc(a.dimensions.trim()));
+    if (options.edition && a.edition?.trim()) meta.push(`Edition ${esc(a.edition.trim())}`);
+    if (options.price) {
+      const price = formatPrintPrice(a.price, options.priceSymbol);
+      if (price) meta.push(esc(price));
+    }
+    const credit = options.creditLine ? esc(a.credit_line?.trim()) : '';
+    const description = options.description ? esc(a.description?.trim()) : '';
+    const bio = options.artistBio ? esc(artistBios.get(a.id)?.trim()) : '';
 
-      return `
+    const codes: LabelQr[] = [];
+    const cert = options.qrCode ? qrSvgs.get(a.id) ?? '' : '';
+    if (cert) codes.push({ html: cert, caption: 'Scan for certificate' });
+    codes.push(...extraQrs(a.id).filter((c) => c.html));
+    // Smaller codes as more share the column; three or more go two across.
+    const n = codes.length;
+    const size = n <= 1 ? qrBase : n === 2 ? qrBase * 0.8 : qrBase * 0.68;
+    const qrCol = n
+      ? `<div class="qr-col${n >= 3 ? ' two' : ''}" style="--qs:${size.toFixed(2)}in">${codes
+          .map(
+            (c) =>
+              `<div class="qr-item"><div class="qr">${c.html}</div>${c.caption ? `<div class="qr-caption">${esc(c.caption)}</div>` : ''}</div>`,
+          )
+          .join('')}</div>`
+      : '';
+
+    return `
       <div class="label">
         <div class="body">
           ${a.artist_name ? `<div class="artist">${esc(a.artist_name)}</div>` : ''}
@@ -201,38 +248,64 @@ export function buildWallLabelsHtml(
           ${description ? `<div class="description">${description}</div>` : ''}
           ${bio ? `<div class="bio">${bio.replace(/\n+/g, '<br />')}</div>` : ''}
         </div>
-        ${qr ? `<div class="qr-col"><div class="qr">${qr}</div><div class="qr-caption">Scan for certificate</div></div>` : ''}
+        ${qrCol}
       </div>`;
-    })
-    .join('');
+  };
+
+  const body = institutional
+    ? chunk(items, g.cols * g.rows)
+        .map((page) => `<div class="sheet">${page.map(label).join('')}</div>`)
+        .join('')
+    : `<div class="flow">${items.map(label).join('')}</div>`;
+
+  // Institutional labels have a fixed height: shrink the text of any that
+  // overflow (down to 70%) before printing.
+  const fitScript = institutional
+    ? `<script>function fitLabels(){document.querySelectorAll('.label').forEach(function(el){var b=el.querySelector('.body');var k=1;while(b&&b.scrollHeight>b.clientHeight+1&&k>0.66){k-=0.04;el.style.setProperty('--k',k.toFixed(2));}});}</script>`
+    : '<script>function fitLabels(){}</script>';
+
+  const pt = (n: number) => `calc(var(--k, 1) * ${n}pt)`;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>Wall Labels — ${esc(docTitle)}</title>
 <style>
-  @page { size: letter landscape; margin: 0.5in; }
+  @page { size: letter ${g.orientation}; margin: ${LABEL_PAGE_MARGIN_IN}in; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #111; }
-  .grid { display: flex; flex-wrap: wrap; gap: 0.25in; align-items: flex-start; }
+  .sheet {
+    display: grid;
+    grid-template-columns: repeat(${g.cols}, ${g.widthIn}in);
+    grid-auto-rows: ${g.heightIn}in;
+    column-gap: ${g.colGapIn}in; row-gap: ${g.rowGapIn}in;
+    break-after: page; page-break-after: always;
+  }
+  .sheet:last-child { break-after: auto; page-break-after: auto; }
+  .sheet .label { height: ${g.heightIn}in; overflow: hidden; }
+  .sheet .body { overflow: hidden; }
+  .flow { width: ${(g.widthIn * g.cols + g.colGapIn * (g.cols - 1)).toFixed(2)}in; column-count: ${g.cols}; column-gap: ${g.colGapIn}in; column-fill: auto; }
+  .flow .label { margin-bottom: 0.12in; }
   .label {
-    width: ${widthIn}in; min-height: ${minHeightIn}in;
+    width: ${g.widthIn}in;
     break-inside: avoid; page-break-inside: avoid;
-    border: 0.5pt solid #d0cdc8; padding: 0.16in 0.18in;
-    display: flex; gap: 0.16in; align-items: flex-start;
+    border: 0.5pt solid #d0cdc8; padding: ${institutional ? '0.16in 0.18in' : '0.12in 0.14in'};
+    display: flex; gap: 0.14in; align-items: stretch;
   }
   .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .artist { font-size: ${large ? 12 : 10}pt; font-weight: bold; line-height: 1.25; margin-bottom: 6px; }
-  .title { font-size: ${large ? 11 : 9.5}pt; font-style: italic; line-height: 1.3; }
-  .meta { font-size: ${large ? 10 : 9}pt; line-height: 1.4; }
-  .credit { font-size: ${large ? 9 : 8}pt; color: #555; margin-top: 3px; }
-  .description { font-size: ${large ? 9 : 7.5}pt; line-height: 1.5; color: #333; margin-top: 8px; }
-  .bio { font-size: ${large ? 8.5 : 7}pt; line-height: 1.5; color: #555; margin-top: 8px; padding-top: 6px; border-top: 0.5pt solid #e5e0da; }
-  .qr-col { flex: none; width: ${large ? 1 : 0.8}in; text-align: center; align-self: ${options.qrPosition === 'bottom' ? 'flex-end' : 'flex-start'}; }
-  .qr svg { width: 100%; height: auto; display: block; }
-  .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; color: #888; letter-spacing: 0.04em; margin-top: 2px; }
+  .artist { font-size: ${pt(large ? 12 : 10)}; font-weight: bold; line-height: 1.25; margin-bottom: 5px; }
+  .title { font-size: ${pt(large ? 11 : 9.5)}; font-style: italic; line-height: 1.3; }
+  .meta { font-size: ${pt(large ? 10 : 9)}; line-height: 1.4; }
+  .credit { font-size: ${pt(large ? 9 : 8)}; color: #555; margin-top: 3px; }
+  .description { font-size: ${pt(large ? 9 : 7.5)}; line-height: 1.45; color: #333; margin-top: 6px; }
+  .bio { font-size: ${pt(large ? 8.5 : 7)}; line-height: 1.45; color: #555; margin-top: 6px; padding-top: 5px; border-top: 0.5pt solid #e5e0da; }
+  .qr-col { flex: none; display: grid; grid-template-columns: var(--qs); gap: 0.06in; align-content: ${options.qrPosition === 'bottom' ? 'end' : 'start'}; }
+  .qr-col.two { grid-template-columns: var(--qs) var(--qs); }
+  .qr-item { width: var(--qs); text-align: center; }
+  .qr svg, .qr img { width: 100%; height: auto; display: block; }
+  .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; line-height: 1.2; color: #888; letter-spacing: 0.02em; margin-top: 2px; overflow-wrap: anywhere; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-</style></head>
-<body><div class="grid">${cells}</div>${AUTO_PRINT}</body></html>`;
+</style>${fitScript}</head>
+<body>${body}<script>window.onload = function () { fitLabels(); setTimeout(function () { window.print(); }, 150); window.onafterprint = function () { window.close(); }; };</script></body></html>`;
 }
 
 export function buildChecklistHtml(

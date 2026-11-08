@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Printer } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -10,9 +10,15 @@ import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } fr
 import { EditorialDialogContent } from '~/components/editorial-dialog';
 import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import type { ArtistBio } from '../_helpers/artist-bios';
-import { DEFAULT_LABEL_OPTIONS, type WallLabelOptions } from '../_helpers/exhibition-print-html';
+import {
+  DEFAULT_LABEL_OPTIONS,
+  LABEL_GEOMETRY,
+  type LabelQr,
+  type WallLabelOptions,
+} from '../_helpers/exhibition-print-html';
+import { ExtraLabelQrsEditor, readExtraQrs, resolveExtraQrs, type ExtraLabelQr } from './extra-label-qrs';
 
-export type WallLabelToggleKey = Exclude<keyof WallLabelOptions, 'size' | 'qrPosition'>;
+export type WallLabelToggleKey = Exclude<keyof WallLabelOptions, 'size' | 'qrPosition' | 'layout'>;
 
 const FIELD_TOGGLES: Array<{
   key: WallLabelToggleKey;
@@ -55,6 +61,17 @@ function saveJson(key: string, value: unknown) {
   }
 }
 
+function loadExtraQrs(key: string): ExtraLabelQr[] {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return readExtraQrs(raw ? (JSON.parse(raw) as unknown) : []);
+  } catch {
+    return [];
+  }
+}
+
+const inches = (n: number) => `${n}`.replace(/\.0+$/, '');
+
 function loadBioEdits(key: string): Record<string, string> {
   try {
     const raw = window.localStorage.getItem(key);
@@ -76,6 +93,7 @@ export function WallLabelsDialog({
   count,
   optionsStorageKey,
   bioEditsStorageKey,
+  extraQrStorageKey,
   loadBios,
   hints,
   onPrint,
@@ -88,17 +106,26 @@ export function WallLabelsDialog({
   optionsStorageKey: string;
   /** localStorage key for bio edits, keyed by ArtistBio.key. */
   bioEditsStorageKey: string;
+  /** localStorage key for extra QR codes (links or uploaded images). */
+  extraQrStorageKey: string;
   loadBios: () => Promise<ArtistBio[]>;
   /** Per-toggle hint text, e.g. where the price comes from. */
   hints?: Partial<Record<WallLabelToggleKey, string>>;
   /** Artwork id → bio text for the works whose artist has one. */
-  onPrint: (options: WallLabelOptions, biosByArtwork: Map<string, string>) => void;
+  /** extraQrs gives the added QR codes for each artwork id. */
+  onPrint: (
+    options: WallLabelOptions,
+    biosByArtwork: Map<string, string>,
+    extraQrs: (artworkId: string) => LabelQr[],
+  ) => void;
 }) {
   const [options, setOptions] = useState<WallLabelOptions>(DEFAULT_LABEL_OPTIONS);
   const [artistBios, setArtistBios] = useState<ArtistBio[] | null>(null);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState<string | null>(null);
   const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
+  const [extras, setExtras] = useState<ExtraLabelQr[]>([]);
+  const extraSvgRef = useRef<HTMLDivElement>(null);
 
   const fetchBios = async () => {
     setBiosLoading(true);
@@ -120,7 +147,10 @@ export function WallLabelsDialog({
     const saved = loadLabelOptions(optionsStorageKey);
     setOptions(saved);
     setArtistBios(null);
-    if (saved.artistBio) void fetchBios();
+    const savedExtras = loadExtraQrs(extraQrStorageKey);
+    setExtras(savedExtras);
+    // Artists drive both bios and "only on this artist's labels".
+    if (saved.artistBio || savedExtras.length > 0) void fetchBios();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -134,6 +164,12 @@ export function WallLabelsDialog({
     });
   };
 
+  const changeExtras = (next: ExtraLabelQr[]) => {
+    setExtras(next);
+    saveJson(extraQrStorageKey, next);
+    if (next.length > 0 && !artistBios && !biosLoading) void fetchBios();
+  };
+
   const handlePrint = () => {
     saveJson(optionsStorageKey, options);
     savePriceSymbolPref(options.priceSymbol);
@@ -142,7 +178,7 @@ export function WallLabelsDialog({
       const text = bioText(artist).trim();
       if (text) for (const id of artist.artworkIds) biosByArtwork.set(id, text);
     }
-    onPrint(options, biosByArtwork);
+    onPrint(options, biosByArtwork, resolveExtraQrs(extras, artistBios, extraSvgRef.current));
     onOpenChange(false);
   };
 
@@ -250,7 +286,7 @@ export function WallLabelsDialog({
           </div>
         )}
 
-        {options.qrCode && (
+        {(options.qrCode || extras.length > 0) && (
           <div className="pt-2">
             <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">QR code position</p>
             <div className="flex gap-2">
@@ -278,30 +314,77 @@ export function WallLabelsDialog({
           </div>
         )}
 
+        <ExtraLabelQrsEditor
+          extras={extras}
+          onChange={changeExtras}
+          artists={artistBios}
+          artistsLoading={biosLoading}
+          svgRootRef={extraSvgRef}
+        />
+
         <div className="pt-2">
-          <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Label size</p>
+          <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Layout</p>
           <div className="flex gap-2">
             {(
               [
-                ['standard', 'Standard · 4 × 2.5 in'],
-                ['large', 'Large · 5 × 3.5 in'],
+                ['institutional', 'Institutional', 'Same height, neat grid'],
+                ['compact', 'Compact', 'Fits the text, most per page'],
               ] as const
-            ).map(([value, text]) => (
+            ).map(([value, text, hint]) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setOptions((o) => ({ ...o, size: value }))}
-                aria-pressed={options.size === value}
-                className={`flex-1 rounded-md border px-3 py-2 text-xs font-serif transition-colors ${
-                  options.size === value
+                onClick={() => setOptions((o) => ({ ...o, layout: value }))}
+                aria-pressed={options.layout === value}
+                className={`flex-1 rounded-md border px-3 py-2 text-left text-xs font-serif transition-colors ${
+                  options.layout === value
                     ? 'border-wine bg-wine/10 text-wine'
                     : 'border-wine/20 text-ink/60 hover:border-wine/40'
                 }`}
               >
                 {text}
+                <span className="block text-[11px] text-ink/40">{hint}</span>
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="pt-2">
+          <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Label size</p>
+          <div className="flex gap-2">
+            {(['standard', 'large'] as const).map((value) => {
+              const g = LABEL_GEOMETRY[value];
+              const perPage = g.cols * g.rows;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setOptions((o) => ({ ...o, size: value }))}
+                  aria-pressed={options.size === value}
+                  className={`flex-1 rounded-md border px-3 py-2 text-left text-xs font-serif transition-colors ${
+                    options.size === value
+                      ? 'border-wine bg-wine/10 text-wine'
+                      : 'border-wine/20 text-ink/60 hover:border-wine/40'
+                  }`}
+                >
+                  {value === 'standard' ? 'Standard' : 'Large'} ·{' '}
+                  {options.layout === 'compact'
+                    ? `${inches(g.widthIn)} in wide`
+                    : `${inches(g.widthIn)} × ${inches(g.heightIn)} in`}
+                  <span className="block text-[11px] text-ink/40">
+                    {options.layout === 'compact'
+                      ? `2 across, ${g.orientation}`
+                      : `${perPage} per page, ${g.orientation}`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {options.layout === 'institutional' && (
+            <p className="mt-2 text-[11px] font-serif text-ink/40">
+              Long labels get slightly smaller text so every label keeps the same height.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
