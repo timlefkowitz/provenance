@@ -17,27 +17,8 @@ export function ExhibitionArtistsMedia({
 }: {
   exhibition: ExhibitionWithDetails;
 }) {
-  const { artists, artworks } = exhibition;
-
-  const workCountByArtist = (name: string) => {
-    const target = name.trim().toLowerCase();
-    if (!target) return 0;
-    return artworks.filter(
-      (a) => (a.artist_name ?? '').trim().toLowerCase() === target,
-    ).length;
-  };
-
-  // Artists credited via artworks but not in the explicit artists list.
-  const creditedNames = new Set(artists.map((a) => a.name.trim().toLowerCase()));
-  const extraArtistNames = Array.from(
-    new Set(
-      artworks
-        .map((a) => (a.artist_name ?? '').trim())
-        .filter((n) => n.length > 0 && !creditedNames.has(n.toLowerCase())),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
-
-  const hasArtists = artists.length > 0 || extraArtistNames.length > 0;
+  const { showArtists: artists, artworks } = exhibition;
+  const hasArtists = artists.length > 0;
 
   if (!hasArtists && artworks.length === 0) {
     return (
@@ -58,17 +39,12 @@ export function ExhibitionArtistsMedia({
       {hasArtists && (
         <section>
           <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-5">
-            Artists · {artists.length + extraArtistNames.length}
+            Artists · {artists.length}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {artists.map((artist) => {
-              const count = workCountByArtist(artist.name);
-              return (
-                <Link
-                  key={artist.id}
-                  href={`/artists/${artist.id}`}
-                  className="group flex items-center gap-3 rounded-xl border border-wine/12 bg-parchment/40 p-3 hover:border-wine/30 hover:bg-parchment/70 transition-colors"
-                >
+              const body = (
+                <>
                   {artist.picture_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -85,36 +61,28 @@ export function ExhibitionArtistsMedia({
                     <p className="font-serif text-sm text-ink/80 leading-tight truncate group-hover:text-wine transition-colors">
                       {artist.name}
                     </p>
-                    {count > 0 && (
+                    {artist.workCount > 0 && (
                       <p className="font-serif text-[11px] text-ink/40 leading-tight mt-0.5">
-                        {count} work{count === 1 ? '' : 's'}
+                        {artist.workCount} work{artist.workCount === 1 ? '' : 's'}
                       </p>
                     )}
                   </div>
-                </Link>
+                </>
               );
-            })}
-
-            {extraArtistNames.map((name) => {
-              const count = workCountByArtist(name);
-              return (
+              return artist.href ? (
+                <Link
+                  key={artist.key}
+                  href={artist.href}
+                  className="group flex items-center gap-3 rounded-xl border border-wine/12 bg-parchment/40 p-3 hover:border-wine/30 hover:bg-parchment/70 transition-colors"
+                >
+                  {body}
+                </Link>
+              ) : (
                 <div
-                  key={`extra-${name}`}
+                  key={artist.key}
                   className="flex items-center gap-3 rounded-xl border border-wine/12 bg-parchment/40 p-3"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-wine/12 text-xs font-serif font-semibold text-wine shrink-0">
-                    {initials(name)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-serif text-sm text-ink/80 leading-tight truncate">
-                      {name}
-                    </p>
-                    {count > 0 && (
-                      <p className="font-serif text-[11px] text-ink/40 leading-tight mt-0.5">
-                        {count} work{count === 1 ? '' : 's'}
-                      </p>
-                    )}
-                  </div>
+                  {body}
                 </div>
               );
             })}

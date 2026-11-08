@@ -4,6 +4,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { isShownInExhibition } from '../_helpers/exhibition-submission-status';
+import { resolveShowArtists, type ShowArtist } from '../_helpers/show-artists';
 
 export type Exhibition = {
   id: string;
@@ -42,6 +43,11 @@ export type ExhibitionWithDetails = Exhibition & {
     listPriceDisplay: string | null;
     status: string;
   }>;
+  /**
+   * Everyone in the show — credited artists plus the artist of every visible
+   * work — with a profile link. `artists` stays the editable credit list.
+   */
+  showArtists: ShowArtist[];
 };
 
 export async function getExhibitionsForGallery(
@@ -375,12 +381,13 @@ export async function getExhibitionWithDetails(
     console.log('[Exhibitions] resolved artist profile names', { resolved: profileNameMap.size });
   }
 
-  const filteredArtworks = rawArtworkRows
-    .filter((row) => {
-      if (row.status === 'verified') return true;
-      if (canSeeDraftListings && row.status === 'draft') return true;
-      return false;
-    })
+  const visibleArtworkRows = rawArtworkRows.filter((row) => {
+    if (row.status === 'verified') return true;
+    if (canSeeDraftListings && row.status === 'draft') return true;
+    return false;
+  });
+
+  const filteredArtworks = visibleArtworkRows
     .sort((a, b) => (linkOrder.get(a.id as string) ?? 0) - (linkOrder.get(b.id as string) ?? 0))
     .map((a) => {
       const meta =
@@ -433,14 +440,29 @@ export async function getExhibitionWithDetails(
     canSeeDraftListings,
   });
 
+  const creditedArtists = (artists || [])
+    .filter((ea: any) => ea.accounts)
+    .map((ea: any) => ({
+      id: ea.accounts.id as string,
+      name: ea.accounts.name as string,
+      picture_url: (ea.accounts.picture_url as string | null) ?? null,
+    }));
+
+  const showArtists = await resolveShowArtists(
+    client,
+    creditedArtists,
+    visibleArtworkRows.map((a) => ({
+      artist_name: (a.artist_name as string | null) ?? null,
+      artist_account_id: (a.artist_account_id as string | null) ?? null,
+      artist_profile_id: (a.artist_profile_id as string | null) ?? null,
+    })),
+  );
+
   return {
     ...exhibition,
-    artists: (artists || []).map((ea: any) => ({
-      id: ea.accounts.id,
-      name: ea.accounts.name,
-      picture_url: ea.accounts.picture_url,
-    })),
+    artists: creditedArtists,
     artworks: filteredArtworks,
+    showArtists,
   };
 }
 

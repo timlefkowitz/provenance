@@ -403,22 +403,26 @@ export default async function ExhibitionPage({
       </div>
 
       {/* ── ARTISTS STRIP ─────────────────────────────────────── */}
-      {exhibition.artists.length > 0 && (
+      {exhibition.showArtists.length > 0 && (
         <div className="border-b border-wine/10 bg-parchment/40">
           <div className="container mx-auto px-4 max-w-6xl py-5">
             <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
               <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mr-4">
                 Artists
               </p>
-              {exhibition.artists.map((artist, i) => (
-                <span key={artist.id} className="flex items-center gap-1">
-                  <Link
-                    href={`/artists/${artist.id}`}
-                    className="font-serif text-sm text-ink/70 hover:text-wine transition-colors"
-                  >
-                    {artist.name}
-                  </Link>
-                  {i < exhibition.artists.length - 1 && (
+              {exhibition.showArtists.map((artist, i) => (
+                <span key={artist.key} className="flex items-center gap-1">
+                  {artist.href ? (
+                    <Link
+                      href={artist.href}
+                      className="font-serif text-sm text-ink/70 hover:text-wine transition-colors"
+                    >
+                      {artist.name}
+                    </Link>
+                  ) : (
+                    <span className="font-serif text-sm text-ink/70">{artist.name}</span>
+                  )}
+                  {i < exhibition.showArtists.length - 1 && (
                     <span className="text-ink/25 mx-1">·</span>
                   )}
                 </span>
