@@ -31,6 +31,7 @@ export default defineConfig({
       'src/lib/phone.test.ts',
       'src/lib/artwork-lists.test.ts',
       'src/lib/provenance/**/*.test.ts',
+      'src/lib/valuation/provenance-value.test.ts',
     ],
   },
   resolve: {

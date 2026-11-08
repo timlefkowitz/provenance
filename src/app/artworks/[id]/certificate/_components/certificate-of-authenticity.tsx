@@ -33,6 +33,9 @@ import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { featureArtwork } from '../_actions/feature-artwork';
 import { adminDeleteArtwork } from '../../_actions/admin-delete-artwork';
 import { UploadAttachmentsDialog, type ArtworkAttachmentRow } from './upload-attachments-dialog';
+import { ArtworkPublications } from './artwork-publications';
+import { ProvenanceValueLine } from './provenance-value-line';
+import { computeProvenanceValue, type ArtworkPublication } from '~/lib/valuation/provenance-value';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { EMPTY_SCAN_STATS, formatScanStats, type ScanStats } from '~/lib/scan-stats';
@@ -287,6 +290,7 @@ export function CertificateOfAuthenticity({
   certificateType = 'authenticity',
   attachments = [],
   valuation = null,
+  publications = [],
   scanStats = EMPTY_SCAN_STATS,
 }: { 
   artwork: Artwork;
@@ -322,10 +326,17 @@ export function CertificateOfAuthenticity({
   certificateType?: CertificateType | string;
   attachments?: ArtworkAttachmentRow[];
   valuation?: ProvenanceValuation | null;
+  /** Publications this work has appeared in (artworks.publications). */
+  publications?: ArtworkPublication[];
   /** Public scan counts; per-scan details only reach the owner and admins. */
   scanStats?: ScanStats;
 }) {
   const exhibitionList = exhibitions ?? (exhibition?.title ? [exhibition] : []);
+  const provenanceValue = computeProvenanceValue({
+    value: artwork.value,
+    exhibitionCount: exhibitionList.length,
+    publicationCount: publications.length,
+  });
 
   // Log when component mounts to confirm we reached this point
   useEffect(() => {
@@ -1307,6 +1318,12 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
+              <ArtworkPublications
+                artworkId={artwork.id}
+                publications={publications}
+                canEdit={isOwner || canEditCertificate}
+              />
+
               {artwork.metadata?.certificate_location?.formatted && (
                 <div className="border-b border-wine/20 pb-2">
                   <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Created In</p>
@@ -1362,6 +1379,9 @@ export function CertificateOfAuthenticity({
                     )}
                   />
                 </div>
+              )}
+              {provenanceValue && artwork.value && (artwork.value_is_public || isOwner) && (
+                <ProvenanceValueLine value={provenanceValue} isPrivate={!artwork.value_is_public} />
               )}
 
               {/* Owned By - show if public OR if owner */}
@@ -1463,6 +1483,9 @@ export function CertificateOfAuthenticity({
                     )}
                   />
                 </div>
+              )}
+              {provenanceValue && artwork.value && (artwork.value_is_public || isOwner) && (
+                <ProvenanceValueLine value={provenanceValue} isPrivate={!artwork.value_is_public} variant="section" />
               )}
 
               {/* Owned By - show if it exists and (is public OR user is owner) */}

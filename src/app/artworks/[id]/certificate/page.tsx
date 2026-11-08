@@ -11,6 +11,7 @@ import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, isTeamProfileR
 import { collectionOwnerName } from '~/lib/managed-collections';
 
 import { getArtworkExhibitions } from './_actions/get-artwork-exhibition';
+import { sanitizePublications } from '~/lib/valuation/provenance-value';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 import appConfig from '~/config/app.config';
@@ -380,6 +381,18 @@ export default async function CertificatePage({
 
   // Every show this artwork has been in, newest first; the edit dialog takes the latest.
   const exhibitions = await getArtworkExhibitions(artwork.id);
+
+  // Separate query so certificates still load if the publications column is missing.
+  let publications: ReturnType<typeof sanitizePublications> = [];
+  {
+    const { data: pubRow, error: pubError } = await asUntyped(client)
+      .from('artworks')
+      .select('publications')
+      .eq('id', artwork.id)
+      .maybeSingle();
+    if (pubError) console.error('[Certificate] publications fetch failed', pubError.message);
+    else publications = sanitizePublications(pubRow?.publications);
+  }
   const exhibition = exhibitions[0] ?? null;
 
   // A Certificate of Show issued for a curator-run show (owner mode `artist`) is stamped
@@ -479,6 +492,7 @@ export default async function CertificatePage({
         certificateType={certificateType}
         attachments={attachments}
         valuation={latestValuation}
+        publications={publications}
       />
       {/* Viral acquisition surface: shown only to unauthenticated visitors */}
       {!user && artwork.status === 'verified' && (
