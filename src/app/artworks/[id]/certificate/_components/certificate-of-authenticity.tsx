@@ -57,6 +57,10 @@ import {
   ProvenanceValuationBlock,
   type ProvenanceValuation,
 } from './provenance-valuation-block';
+
+// Provenance Valuation is hidden on certificates while the feature is reworked.
+// Flip to true to bring the block (and the "Submit valuation" CTA) back.
+const SHOW_PROVENANCE_VALUATION = false;
 import {
   Popover,
   PopoverContent,
@@ -1424,8 +1428,9 @@ export function CertificateOfAuthenticity({
               )}
 
               {/* Provenance Valuation — gated on public || owner. Show CTA for owners even without an existing row. */}
-              {(valuation && (valuation.is_public || isOwner || canEditCertificate)) ||
-              (!valuation && (isOwner || canRequestProvenance)) ? (
+              {SHOW_PROVENANCE_VALUATION &&
+              ((valuation && (valuation.is_public || isOwner || canEditCertificate)) ||
+                (!valuation && (isOwner || canRequestProvenance))) ? (
                 <div className="pb-2">
                   <ProvenanceValuationBlock
                     artworkId={artwork.id}
