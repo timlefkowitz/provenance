@@ -43,6 +43,29 @@ describe('computeProvenanceValue', () => {
     ).toBe(1150);
   });
 
+  it('adds 10% for a recorded sale, stacking with exhibition', () => {
+    const v = computeProvenanceValue({
+      value: '$1,000',
+      exhibitionCount: 1,
+      publicationCount: 0,
+      sale: { priceCents: null, currency: null },
+    });
+    expect(v?.total).toBe(1200);
+    expect(v?.premiums.map((p) => p.label)).toEqual(['Exhibited', 'Sold']);
+  });
+
+  it('uses the sale price as base when the artist listed no price', () => {
+    const v = computeProvenanceValue({
+      value: null,
+      exhibitionCount: 1,
+      publicationCount: 0,
+      sale: { priceCents: 200000, currency: 'USD' },
+    });
+    expect(v?.base).toBe(2000);
+    expect(v?.total).toBe(2400);
+    expect(v && formatProvenanceAmount(v.total, v.currency)).toBe('$2,400');
+  });
+
   it('is null with no premiums or no parseable price', () => {
     expect(computeProvenanceValue({ value: '$1,000', exhibitionCount: 0, publicationCount: 0 })).toBeNull();
     expect(computeProvenanceValue({ value: 'NFS', exhibitionCount: 1, publicationCount: 1 })).toBeNull();

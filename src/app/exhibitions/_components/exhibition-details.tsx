@@ -28,6 +28,7 @@ import { updateExhibitionListing } from '../_actions/update-exhibition-listing';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { FindByPhotoDialog } from '~/app/artworks/_components/find-by-photo-dialog';
 import { ReserveArtworkDialog } from './reserve-artwork-dialog';
+import { SoldDot } from '~/components/sold-dot';
 
 /** Visitor-side "request to reserve" settings; null when reserving is off. */
 export interface ReserveOptions {
@@ -225,6 +226,7 @@ export function ExhibitionDetails({
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                {artwork.isSold && <SoldDot variant="overlay" />}
               </Link>
 
               {(artwork.title ||
@@ -267,10 +269,17 @@ export function ExhibitionDetails({
                     </Link>
                   )}
 
-                  {(artwork.listPriceDisplay || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
+                  {(artwork.isSold || artwork.listPriceDisplay || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-serif text-ink/45">
-                      {artwork.listPriceDisplay && (
-                        <span className="text-ink/55">{artwork.listPriceDisplay}</span>
+                      {artwork.isSold ? (
+                        <span className="inline-flex items-center gap-1.5 text-ink/55">
+                          <SoldDot className="h-2 w-2" />
+                          Sold
+                        </span>
+                      ) : (
+                        artwork.listPriceDisplay && (
+                          <span className="text-ink/55">{artwork.listPriceDisplay}</span>
+                        )
                       )}
                       {artwork.dimensions && <span>{artwork.dimensions}</span>}
                       {isOwner && artwork.status === 'draft' && (

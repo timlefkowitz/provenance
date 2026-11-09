@@ -113,6 +113,22 @@ export async function loadCuratorWorks(
     return memberOf.get(profileId) ?? false;
   };
 
+  // A sale the artist recorded on their own COA also marks the show's COS copy sold.
+  const coaIds = Array.from(coaOfCos.values());
+  const { data: soldCoas } = coaIds.length
+    ? await admin
+        .from('artworks')
+        .select('id, sold_to_name')
+        .in('id', coaIds)
+        .or('is_sold.eq.true,sold_at.not.is.null')
+    : { data: [] };
+  const soldCoa = new Map<string, string | null>(
+    ((soldCoas ?? []) as Array<{ id: string; sold_to_name: string | null }>).map((r) => [
+      r.id,
+      r.sold_to_name,
+    ]),
+  );
+
   const showIssuesCos = ownerReceivesCertificateOfShow(exhibition.owner_role as string | null);
 
   const works: CuratorWork[] = [];
@@ -143,14 +159,17 @@ export async function loadCuratorWorks(
         ? holderName.get(approvingArtist as string) || (a.artist_name as string | null) || 'the artist'
         : null,
       changePending: pendingIds.has(a.id as string),
-      sold: a.is_sold
-        ? {
-            to:
-              (a.sold_to_name as string | null) ||
-              (editable ? (a.sold_to_email as string | null) : null) ||
-              null,
-          }
-        : null,
+      sold:
+        a.is_sold || a.sold_at
+          ? {
+              to:
+                (a.sold_to_name as string | null) ||
+                (editable ? (a.sold_to_email as string | null) : null) ||
+                null,
+            }
+          : soldCoa.has(coaOfCos.get(a.id as string) ?? '')
+            ? { to: soldCoa.get(coaOfCos.get(a.id as string) as string) ?? null }
+            : null,
       awaitsCos:
         showIssuesCos &&
         !editable &&

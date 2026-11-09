@@ -6,6 +6,7 @@ import { getSiteData } from '../../_data/get-site-data';
 import { resolveAccent } from '../../../_templates/palette';
 import { stripMarkdown } from '~/lib/strip-markdown';
 import { preferArtistCoa } from '~/app/exhibitions/_helpers/prefer-artist-coa';
+import { SoldDot } from '~/components/sold-dot';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,7 @@ export default async function SiteExhibitionPage({
               {exhibition.artworks.map((artwork: any) => (
                 <div key={artwork.id}>
                   <div className="relative aspect-square overflow-hidden bg-gray-50 mb-2">
+                    {artwork.isSold && <SoldDot variant="overlay" />}
                     {artwork.image_url ? (
                       <Image
                         src={artwork.image_url}
@@ -138,12 +140,28 @@ async function fetchExhibition(exhibitionId: string) {
       cos_artwork_id,
       artworks!exhibition_artworks_artwork_id_fkey (
         id, title, artist_name, artist_account_id, artist_profile_id, account_id, image_url, dimensions,
-        certificate_type, source_artwork_id
+        certificate_type, source_artwork_id, is_sold, sold_at
       )
     `)
     .eq('exhibition_id', exhibitionId)
     .eq('status', 'selected')
     .limit(24);
+
+  // A sale recorded on either the artist's COA or the show's COS marks the work sold.
+  const soldIds = new Set<string>();
+  const linkedPairs: Array<[string, string]> = [];
+  for (const r of (artworkLinks ?? []) as Array<Record<string, any>>) {
+    const a = Array.isArray(r.artworks) ? r.artworks[0] : r.artworks;
+    if (a && (a.is_sold || a.sold_at)) soldIds.add(a.id);
+    if (a?.source_artwork_id) linkedPairs.push([a.id, a.source_artwork_id]);
+    if (r.cos_artwork_id && r.cos_artwork_id !== r.artwork_id) linkedPairs.push([r.artwork_id, r.cos_artwork_id]);
+  }
+  for (const [x, y] of linkedPairs) {
+    if (soldIds.has(x) || soldIds.has(y)) {
+      soldIds.add(x);
+      soldIds.add(y);
+    }
+  }
 
   // A work linked through both the artist's COA and its Certificate of Show is shown once, as the COA.
   const { rows: linkedArtworks } = preferArtistCoa(
@@ -213,6 +231,7 @@ async function fetchExhibition(exhibitionId: string) {
 
     return {
       ...artwork,
+      isSold: soldIds.has(artwork.id),
       artist_name: resolvedArtistName,
     };
   });

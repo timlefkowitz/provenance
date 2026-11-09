@@ -35,6 +35,7 @@ import { adminDeleteArtwork } from '../../_actions/admin-delete-artwork';
 import { UploadAttachmentsDialog, type ArtworkAttachmentRow } from './upload-attachments-dialog';
 import { ArtworkPublications } from './artwork-publications';
 import { ProvenanceValueLine } from './provenance-value-line';
+import { SoldDot } from '~/components/sold-dot';
 import { computeProvenanceValue, type ArtworkPublication } from '~/lib/valuation/provenance-value';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
@@ -117,6 +118,10 @@ export type Artwork = {
   owned_by_is_public: boolean | null;
   sold_by: string | null;
   sold_by_is_public: boolean | null;
+  is_sold?: boolean | null;
+  sold_at?: string | null;
+  sold_price_cents?: number | null;
+  sold_currency?: string | null;
   is_public?: boolean | null;
   metadata?: {
     certificate_location?: {
@@ -336,10 +341,14 @@ export function CertificateOfAuthenticity({
   scanStats?: ScanStats;
 }) {
   const exhibitionList = exhibitions ?? (exhibition?.title ? [exhibition] : []);
+  const isSold = !!(artwork.is_sold || artwork.sold_at);
   const provenanceValue = computeProvenanceValue({
     value: artwork.value,
     exhibitionCount: exhibitionList.length,
     publicationCount: publications.length,
+    sale: isSold
+      ? { priceCents: artwork.sold_price_cents ?? null, currency: artwork.sold_currency ?? null }
+      : null,
   });
 
   // Log when component mounts to confirm we reached this point
@@ -1144,7 +1153,10 @@ export function CertificateOfAuthenticity({
                 currentValue={artwork.title || 'Untitled Artwork'}
                 history={artwork.provenance_history}
                 renderValue={(v) => (
-                  <p className="text-xl sm:text-2xl font-display font-bold text-wine break-words">{v}</p>
+                  <p className="text-xl sm:text-2xl font-display font-bold text-wine break-words">
+                    {v}
+                    {isSold && <SoldDot className="ml-2 -mt-1" />}
+                  </p>
                 )}
               />
             </div>

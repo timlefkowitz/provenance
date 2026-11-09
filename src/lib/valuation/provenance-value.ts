@@ -5,6 +5,8 @@
 
 export const EXHIBITION_PREMIUM = 0.1;
 export const PUBLICATION_PREMIUM = 0.05;
+/** A recorded sale is market proof of the price. */
+export const SALE_PREMIUM = 0.1;
 
 export type ArtworkPublication = {
   title: string;
@@ -69,13 +71,25 @@ export function computeProvenanceValue(input: {
   value: string | null | undefined;
   exhibitionCount: number;
   publicationCount: number;
+  /** Set when the work has a recorded sale (artworks.is_sold / sold_at). */
+  sale?: { priceCents: number | null; currency: string | null } | null;
 }): ProvenanceValue | null {
-  const price = parseArtworkPrice(input.value);
+  // The artist's price is the base; a work sold with no listed price uses the sale price.
+  let price = parseArtworkPrice(input.value);
+  if (!price && input.sale?.priceCents && input.sale.priceCents > 0) {
+    const code = input.sale.currency?.toUpperCase() || 'USD';
+    price = {
+      amount: input.sale.priceCents / 100,
+      symbol: code === 'USD' ? '$' : null,
+      code: code === 'USD' ? null : code,
+    };
+  }
   if (!price) return null;
 
   const premiums: ProvenancePremium[] = [];
   if (input.exhibitionCount > 0) premiums.push({ label: 'Exhibited', rate: EXHIBITION_PREMIUM });
   if (input.publicationCount > 0) premiums.push({ label: 'Published', rate: PUBLICATION_PREMIUM });
+  if (input.sale) premiums.push({ label: 'Sold', rate: SALE_PREMIUM });
   if (premiums.length === 0) return null;
 
   const rate = premiums.reduce((sum, p) => sum + p.rate, 0);

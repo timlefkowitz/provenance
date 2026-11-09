@@ -42,6 +42,8 @@ export type ExhibitionWithDetails = Exhibition & {
     /** Credit line — only populated when the owner marked it public. */
     credit_line: string | null;
     listPriceDisplay: string | null;
+    /** Sold (on this certificate or its linked COA / COS); drawn as a red dot. */
+    isSold?: boolean;
     status: string;
   }>;
   /**
@@ -318,7 +320,9 @@ export async function getExhibitionWithDetails(
         value_is_public,
         metadata,
         certificate_type,
-        source_artwork_id
+        source_artwork_id,
+        is_sold,
+        sold_at
       `)
       .in('id', linkedArtworkIds);
 
@@ -440,6 +444,7 @@ export async function getExhibitionWithDetails(
             ? a.owned_by.trim()
             : null,
         listPriceDisplay: listPrice,
+        isSold: Boolean(a.is_sold || a.sold_at),
         status: a.status as string,
       };
     });
@@ -450,6 +455,8 @@ export async function getExhibitionWithDetails(
     const coa = mappedById.get(coaId);
     const folded = mappedById.get(foldedId);
     if (coa && folded && !coa.listPriceDisplay) coa.listPriceDisplay = folded.listPriceDisplay;
+    // Sold through the show's COS, or by the artist on their COA: either way it's sold.
+    if (coa && folded && (coa.isSold || folded.isSold)) coa.isSold = folded.isSold = true;
   }
   const filteredArtworks = mappedArtworks.filter((a) => !foldedInto.has(a.id));
 

@@ -17,6 +17,7 @@ import { issueMissingCertificatesOfShow } from '~/app/exhibitions/_actions/manag
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
 import { SellWorkDialog } from './sell-work-dialog';
+import { SoldDot } from '~/components/sold-dot';
 
 export type CuratorWork = {
   artwork: Artwork;
@@ -269,7 +270,8 @@ function Section({
                   </span>
                 )}
                 {w.sold && (
-                  <span className="border-wine/25 bg-wine/5 text-wine rounded-full border px-2 py-0.5 tracking-widest uppercase">
+                  <span className="border-wine/25 bg-wine/5 text-wine inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 tracking-widest uppercase">
+                    <SoldDot className="h-2 w-2" />
                     Sold{w.sold.to ? ` · ${w.sold.to}` : ''}
                   </span>
                 )}

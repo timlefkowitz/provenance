@@ -159,6 +159,26 @@ export async function commitCertificateInviteBatch(params: {
     };
   }
 
+  // Sending a Certificate of Ownership is the sale to this collector, even if the
+  // email bounces (no-op when "Mark sold" already recorded it).
+  if (email.variant === 'owner') {
+    for (const r of rows) {
+      try {
+        await ensureSaleForSentOwnershipInvite(adminClient, {
+          sourceArtworkId: r.source_artwork_id,
+          buyerEmail: normalizedEmail,
+          buyerName: params.inviteeName ?? null,
+          recordedBy: createdByUserId,
+        });
+      } catch (saleErr) {
+        logger.error('commit_invite_batch_ensure_sale_failed', {
+          artworkId: r.source_artwork_id,
+          error: saleErr,
+        });
+      }
+    }
+  }
+
   try {
     if (email.variant === 'artist') {
       await sendBatchArtistCoaInviteEmail({
@@ -218,26 +238,6 @@ export async function commitCertificateInviteBatch(params: {
     createdByUserId,
     workCount: rows.length,
   });
-
-  // Sending a Certificate of Ownership records the sale to this collector
-  // (no-op when "Mark sold" already recorded it).
-  if (email.variant === 'owner') {
-    for (const r of rows) {
-      try {
-        await ensureSaleForSentOwnershipInvite(adminClient, {
-          sourceArtworkId: r.source_artwork_id,
-          buyerEmail: normalizedEmail,
-          buyerName: params.inviteeName ?? null,
-          recordedBy: createdByUserId,
-        });
-      } catch (saleErr) {
-        logger.error('commit_invite_batch_ensure_sale_failed', {
-          artworkId: r.source_artwork_id,
-          error: saleErr,
-        });
-      }
-    }
-  }
 
   return {
     sent: rows.length,
