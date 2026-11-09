@@ -149,6 +149,8 @@ export function NotificationsList({
       case 'exhibition_artwork_submitted':
       case 'exhibition_artwork_selected':
       case 'exhibition_artwork_sold':
+      case 'artist_artwork_sold':
+      case 'artist_artwork_exhibited':
       case 'owned_artwork_exhibited':
       case 'artwork_reservation_request':
       case 'artwork_reservation_response':
@@ -174,6 +176,8 @@ export function NotificationsList({
       case 'artist_claim_approved':
       case 'exhibition_artwork_selected':
       case 'exhibition_artwork_sold':
+      case 'artist_artwork_sold':
+      case 'artist_artwork_exhibited':
       case 'owned_artwork_exhibited':
       case 'artwork_reservation_response':
         return 'text-notify-success';

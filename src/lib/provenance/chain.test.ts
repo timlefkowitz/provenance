@@ -6,6 +6,7 @@ vi.mock('~/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: 
 import {
   appendLineIfMissing,
   computeOwnershipTransfer,
+  describeChangedFields,
   removeOwnerLine,
   syncProvenanceAcrossChain,
   transferOwnershipAcrossChain,
@@ -132,5 +133,13 @@ describe('syncProvenanceAcrossChain', () => {
       expect(row.former_owners).toMatch(/^Flight Gallery \(until \d{4}-\d{2}-\d{2}\)$/);
     }
     expect(tables.artworks!.find((r) => r.id === 'unrelated')!.owned_by).toBe('Someone');
+  });
+});
+
+describe('describeChangedFields', () => {
+  it('names the provenance fields a sync changed, without privacy flags', () => {
+    expect(describeChangedFields(['owned_by', 'former_owners', 'owned_by_is_public'])).toBe('owner and former owners');
+    expect(describeChangedFields(['exhibition_history'])).toBe('exhibition history');
+    expect(describeChangedFields(['owned_by_is_public'])).toBe('provenance');
   });
 });

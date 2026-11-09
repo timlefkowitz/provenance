@@ -55,6 +55,8 @@ export type NotificationType =
   | 'exhibition_artwork_submitted'
   | 'exhibition_artwork_selected'
   | 'exhibition_artwork_sold'
+  | 'artist_artwork_sold'
+  | 'artist_artwork_exhibited'
   | 'exhibition_invite'
   | 'open_call_submission_reminder'
   | 'av_scan_outage'

@@ -9,7 +9,6 @@ import { markArtworkSold } from '~/app/artworks/[id]/_actions/mark-artwork-sold'
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { normalizeInviteEmail } from '~/lib/certificate-claims/tokens';
 import { logger } from '~/lib/logger';
-import { createNotification } from '~/lib/notifications';
 import { asUntyped } from '~/lib/supabase-untyped';
 
 export interface SellExhibitionWorkInput {
@@ -32,7 +31,7 @@ export type SellExhibitionWorkResult =
  * Certificate of Ownership to claim. The work must be in the show and its
  * certificate (usually the show's Certificate of Show) held by the curator's
  * side; markArtworkSold re-checks that. The artist behind a Certificate of
- * Show is told the work sold.
+ * Show is told the work sold, and what it did to its Provenance Value.
  */
 export async function sellExhibitionWork(
   input: SellExhibitionWorkInput,
@@ -109,30 +108,8 @@ export async function sellExhibitionWork(
       };
     }
 
-    const artistId = (artwork.artist_account_id as string | null) ?? null;
-    if (artistId && artistId !== artwork.account_id && artistId !== user.id) {
-      try {
-        const title = (artwork.title as string | null) || 'Your artwork';
-        await createNotification({
-          userId: artistId,
-          type: 'exhibition_artwork_sold',
-          title: `Sold at "${exhibition.title as string}"`,
-          message: `"${title}" sold through the exhibition "${exhibition.title as string}". The buyer was sent a Certificate of Ownership.`,
-          artworkId: input.artworkId,
-          relatedUserId: user.id,
-          metadata: {
-            exhibition_id: input.exhibitionId,
-            sale_id: result.saleId ?? null,
-          },
-        });
-      } catch (err) {
-        logger.error('exhibition_sale_artist_notify_failed', {
-          exhibitionId: input.exhibitionId,
-          artworkId: input.artworkId,
-          error: err,
-        });
-      }
-    }
+    // recordSale tells the artist (with the show's name and the work's new
+    // Provenance Value) via metadata.exhibition_id.
 
     revalidatePath(`/exhibitions/${input.exhibitionId}/curate`);
     revalidatePath(`/exhibitions/${input.exhibitionId}`);

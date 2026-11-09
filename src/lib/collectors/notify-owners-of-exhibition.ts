@@ -2,6 +2,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { asUntyped } from '~/lib/supabase-untyped';
 
 import { isShownInExhibition } from '~/app/exhibitions/_helpers/exhibition-submission-status';
+import { notifyArtistsOfExhibition } from '~/lib/artists/notify-artist';
 import { createNotification } from '~/lib/notifications';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
@@ -11,7 +12,8 @@ import { loadDescendants } from './certificate-chain';
  * Tell collectors when a work they own is shown in a published exhibition.
  * Owners are the holders of Certificates of Ownership issued from the shown
  * certificate (or the shown certificate itself). The organiser and the person
- * acting are skipped, and each collector hears about a show once.
+ * acting are skipped, and each collector hears about a show once. The works'
+ * artists are told as well (notifyArtistsOfExhibition).
  * Best-effort: never throws.
  */
 export async function notifyOwnersOfExhibition(params: {
@@ -42,6 +44,17 @@ export async function notifyOwnersOfExhibition(params: {
         .map((l) => l.artwork_id);
     }
     if (!artworkIds.length) return;
+
+    // Artists hear about the show too, with what it did to the work's value.
+    await notifyArtistsOfExhibition(admin, {
+      exhibition: {
+        id: exhibition.id as string,
+        title: exhibition.title as string,
+        gallery_id: (exhibition.gallery_id as string | null) ?? null,
+      },
+      artworkIds,
+      actorUserId: params.actorUserId,
+    });
 
     const chain = await loadDescendants(admin, artworkIds);
     const skip = new Set([exhibition.gallery_id, params.actorUserId].filter(Boolean));

@@ -8,6 +8,7 @@ import {
   type ProvenanceSyncMethod,
 } from '~/lib/provenance/chain';
 import { logger } from '~/lib/logger';
+import { notifyArtistOfSale } from '~/lib/artists/notify-artist';
 
 export interface RecordSaleBuyer {
   accountId?: string | null;
@@ -29,6 +30,8 @@ export interface RecordSaleInput {
   metadata?: Record<string, unknown> & { source: string };
   /** How the ownership change is tagged on linked certificates. */
   syncMethod?: ProvenanceSyncMethod;
+  /** Tell the artist about a new sale and its Provenance Value. Default true. */
+  notifyArtist?: boolean;
 }
 
 export interface RecordSaleResult {
@@ -184,6 +187,19 @@ export async function recordSale(
   await recordSaleInProvenance(admin, input.artworkId, soldAt, input.recordedBy);
 
   await refreshStatsQuietly([sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null]);
+
+  // Only a new sale reaches the artist; a same-day repeat (above) is the same sale.
+  if (input.notifyArtist !== false) {
+    const exhibitionId = input.metadata?.exhibition_id;
+    await notifyArtistOfSale(admin, {
+      artworkId: input.artworkId,
+      saleId: saleId ?? null,
+      recordedBy: input.recordedBy,
+      source: input.metadata?.source ?? 'unknown',
+      hasBuyer: Boolean(buyerAccountId || buyerEmail),
+      exhibitionId: typeof exhibitionId === 'string' ? exhibitionId : null,
+    });
+  }
 
   return { success: true, saleId, sellerAccountId, buyerAccountId, buyerEmail, buyerName };
 }

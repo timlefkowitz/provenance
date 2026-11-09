@@ -278,6 +278,33 @@ export async function syncProvenanceAcrossChain(
     }
 
     if (params.notify !== false) {
+      // The artist hears about every change to their work's provenance, even
+      // when they no longer hold a certificate in the chain.
+      const artistId = await findArtistAccountId(adminClient, rootId);
+      const artistIsHolder = !!artistId && holders.has(artistId);
+      if (artistId && artistId !== actorAccountId && synced.length > 0) {
+        holders.delete(artistId);
+        try {
+          const { data: work } = await asUntyped(adminClient)
+            .from('artworks')
+            .select('title')
+            .eq('id', rootId)
+            .maybeSingle();
+          const title = (work?.title as string | null) || 'your artwork';
+          const changed = describeChangedFields(Object.keys(fields));
+          await createNotification({
+            userId: artistId,
+            type: 'provenance_updated',
+            title: `Provenance updated for "${title}"`,
+            message: `${params.actorName ?? 'A certificate holder'} updated the ${changed} of "${title}". The change is now on every certificate of the work.`,
+            artworkId: rootId,
+            relatedUserId: actorAccountId ?? undefined,
+            metadata: { method, via: tag.certificate_type, chain_root_id: rootId, artist: true, was_holder: artistIsHolder },
+          });
+        } catch (e) {
+          logger.error('provenance_sync_artist_notify_failed', { userId: artistId, error: e });
+        }
+      }
       for (const uid of holders) {
         try {
           await createNotification({
@@ -300,6 +327,46 @@ export async function syncProvenanceAcrossChain(
     logger.error('provenance_sync_failed', { originArtworkId, error: err });
     return { syncedIds: [] };
   }
+}
+
+const FIELD_LABELS: Record<SharedProvenanceField, string> = {
+  owned_by: 'owner',
+  owned_by_is_public: 'owner privacy',
+  former_owners: 'former owners',
+  auction_history: 'sale history',
+  exhibition_history: 'exhibition history',
+  historic_context: 'historic context',
+  sold_by: 'seller',
+  sold_by_is_public: 'seller privacy',
+};
+
+/** "owner and former owners" — the provenance fields a sync touched. Pure. */
+export function describeChangedFields(fields: string[]): string {
+  const labels = [
+    ...new Set(
+      fields
+        .filter((f): f is SharedProvenanceField => f in FIELD_LABELS)
+        .filter((f) => !f.endsWith('_is_public'))
+        .map((f) => FIELD_LABELS[f]),
+    ),
+  ];
+  if (labels.length === 0) return 'provenance';
+  if (labels.length === 1) return labels[0]!;
+  return `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;
+}
+
+/** The artist behind a chain: the root's artist_account_id, else the holder of a root CoA. */
+async function findArtistAccountId(adminClient: SupabaseClient, rootId: string): Promise<string | null> {
+  const { data } = await asUntyped(adminClient)
+    .from('artworks')
+    .select('account_id, artist_account_id, certificate_type')
+    .eq('id', rootId)
+    .maybeSingle();
+  if (!data) return null;
+  return (
+    (data.artist_account_id as string | null) ??
+    (data.certificate_type === 'authenticity' ? (data.account_id as string | null) : null)
+  );
 }
 
 /**
