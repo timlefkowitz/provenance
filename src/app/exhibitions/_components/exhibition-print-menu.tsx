@@ -292,6 +292,24 @@ export function ExhibitionPrintMenu({
         </div>
       )}
 
+      {/* The catalog is also in the menu; this button keeps it easy to find. */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="font-serif h-8 gap-1.5 border-wine/30 text-wine hover:bg-wine/5 hover:text-wine"
+        disabled={!origin || !hasWorks}
+        onClick={() => setCatalogOpen(true)}
+        title={
+          selectedArtworkIds
+            ? `Print a catalog of the ${printArtworks.length} selected ${printArtworks.length === 1 ? 'work' : 'works'}`
+            : 'Print a catalog of the show: standard, editorial or monograph'
+        }
+      >
+        <BookOpen className="h-3.5 w-3.5" />
+        {/* Icon only on phones, where the owner row is already full. */}
+        <span className="sr-only sm:not-sr-only">Catalog</span>
+      </Button>
+
       <DropdownMenu
         onOpenChange={(open) => {
           if (open) setPriceSymbol(loadPriceSymbolPref());
