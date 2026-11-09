@@ -56,7 +56,8 @@ export function ProfileForm({
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireEntry[]>(
     sanitizeQuestionnaire(profile?.questionnaire),
   );
-  const showQuestionnaire = !!profile && supportsQuestionnaire(profile.role);
+  const formRole = profile?.role ?? role;
+  const showQuestionnaire = supportsQuestionnaire(formRole);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -187,6 +188,7 @@ export function ProfileForm({
               ? { slug: publicSlug.trim() }
               : {}),
             news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
+            ...(showQuestionnaire ? { questionnaire } : {}),
           });
 
           if (result.error) {
@@ -604,9 +606,9 @@ export function ProfileForm({
           </div>
 
           {/* Questionnaire (artist / gallery / institution) */}
-          {showQuestionnaire && profile && (
+          {showQuestionnaire && formRole && (
             <QuestionnaireEditor
-              role={profile.role}
+              role={formRole}
               entries={questionnaire}
               onChange={setQuestionnaire}
             />

@@ -8,6 +8,7 @@ import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 import { getInstitutionLockError } from '~/lib/institution-account-guard';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { sanitizeQuestionnaire, supportsQuestionnaire, type QuestionnaireEntry } from '~/lib/profile-questionnaire';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 export interface CreateProfileInput {
   role: string;
@@ -26,6 +27,8 @@ export interface CreateProfileInput {
   show_phone?: boolean;
   established_year?: number;
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
+  /** Public Q&A (artist / gallery / institution only); sanitized before insert */
+  questionnaire?: QuestionnaireEntry[];
 }
 
 /**
@@ -43,7 +46,18 @@ export async function createProfile(input: CreateProfileInput) {
     if (!isValidRole(input.role)) {
       return { error: 'Invalid role' };
     }
-    if (containsObjectionableText(input.name, input.bio, input.medium, input.location)) {
+    const questionnaire = supportsQuestionnaire(input.role)
+      ? sanitizeQuestionnaire(input.questionnaire)
+      : [];
+    if (
+      containsObjectionableText(
+        input.name,
+        input.bio,
+        input.medium,
+        input.location,
+        ...questionnaire.flatMap((e) => [e.question, e.answer]),
+      )
+    ) {
       return { error: OBJECTIONABLE_TEXT_MESSAGE };
     }
 
@@ -125,6 +139,8 @@ export async function createProfile(input: CreateProfileInput) {
         ...(input.show_phone ? { show_phone: true } : {}),
         established_year: input.established_year || null,
         news_publications: Array.isArray(input.news_publications) ? input.news_publications : [],
+        // Only send when answered, so the insert matches the column default otherwise.
+        ...(questionnaire.length > 0 ? { questionnaire } : {}),
         is_active: true,
       })
       .select()
