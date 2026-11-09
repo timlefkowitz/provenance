@@ -2,7 +2,11 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { refreshEntityStatsForAccounts } from '~/lib/stats/refresh-entity-stats';
-import { transferOwnershipAcrossChain, type ProvenanceSyncMethod } from '~/lib/provenance/chain';
+import {
+  syncProvenanceAcrossChain,
+  transferOwnershipAcrossChain,
+  type ProvenanceSyncMethod,
+} from '~/lib/provenance/chain';
 import { logger } from '~/lib/logger';
 
 export interface RecordSaleBuyer {
@@ -91,6 +95,37 @@ export async function recordSale(
     return { success: false, error: updateError.message || 'Failed to mark artwork as sold' };
   }
 
+  // The same sale saved twice (double click, or the CoA and the show's CoS)
+  // is one sale: reuse that day's ledger row and fill in what it was missing.
+  const existing = await findSameDaySale(db, input.artworkId, soldAt, {
+    accountId: buyerAccountId,
+    email: buyerEmail,
+    name: buyerName,
+  });
+  if (existing) {
+    const fill: Record<string, unknown> = {};
+    if (!existing.sold_to_account_id && buyerAccountId) fill.sold_to_account_id = buyerAccountId;
+    if (!existing.sold_to_email && buyerEmail) fill.sold_to_email = buyerEmail;
+    if (!existing.sold_to_name && buyerName) fill.sold_to_name = buyerName;
+    if (existing.price_cents == null && priceCents != null) fill.price_cents = priceCents;
+    if (Object.keys(fill).length) {
+      const { error } = await db.from('sales_ledger').update(fill).eq('id', existing.id);
+      if (error) logger.error('record_sale_ledger_fill_failed', { saleId: existing.id, error });
+    }
+    if (buyerName) {
+      await transferOwnershipAcrossChain(admin, {
+        originArtworkId: input.artworkId,
+        newOwnerName: buyerName,
+        method: input.syncMethod ?? 'sale',
+        actorAccountId: input.recordedBy,
+        notify: false,
+      });
+    }
+    await recordSaleInProvenance(admin, input.artworkId, soldAt, input.recordedBy);
+    await refreshStatsQuietly([sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null]);
+    return { success: true, saleId: existing.id, sellerAccountId, buyerAccountId, buyerEmail, buyerName };
+  }
+
   let saleId: string | undefined;
   const { data: sale, error: saleError } = await db
     .from('sales_ledger')
@@ -146,9 +181,105 @@ export async function recordSale(
     });
   }
 
+  await recordSaleInProvenance(admin, input.artworkId, soldAt, input.recordedBy);
+
   await refreshStatsQuietly([sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null]);
 
   return { success: true, saleId, sellerAccountId, buyerAccountId, buyerEmail, buyerName };
+}
+
+type LedgerMatchRow = {
+  id: string;
+  sold_to_account_id: string | null;
+  sold_to_email: string | null;
+  sold_to_name: string | null;
+  price_cents: number | null;
+};
+
+/** A ledger row for this artwork on the same day whose buyer doesn't conflict. */
+async function findSameDaySale(
+  db: ReturnType<typeof asUntyped>,
+  artworkId: string,
+  soldAt: string,
+  buyer: { accountId: string | null; email: string | null; name: string | null },
+): Promise<LedgerMatchRow | null> {
+  const day = soldAt.slice(0, 10);
+  const { data } = await db
+    .from('sales_ledger')
+    .select('id, sold_to_account_id, sold_to_email, sold_to_name, price_cents')
+    .eq('artwork_id', artworkId)
+    .gte('sold_at', `${day}T00:00:00Z`)
+    .lte('sold_at', `${day}T23:59:59.999Z`);
+  const differs = (a: string | null, b: string | null) =>
+    !!a && !!b && a.trim().toLowerCase() !== b.trim().toLowerCase();
+  return (
+    ((data ?? []) as LedgerMatchRow[]).find(
+      (r) =>
+        !differs(r.sold_to_account_id, buyer.accountId) &&
+        !differs(r.sold_to_email, buyer.email) &&
+        !differs(r.sold_to_name, buyer.name),
+    ) ?? null
+  );
+}
+
+/** "November 9, 2026" — the date style the collection editor writes. */
+export function formatSaleDate(soldAt: string): string {
+  return new Date(soldAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/**
+ * The provenance line for a sale. Names and prices stay out: the buyer is
+ * recorded as the owner (with its own privacy setting) and prices are private.
+ */
+export function saleProvenanceLine(soldAt: string): string {
+  return `Sold, ${formatSaleDate(soldAt)}`;
+}
+
+/** True when `history` already has a "Sold…" line for that day. Pure. */
+export function hasSaleLine(history: string | null | undefined, soldAt: string): boolean {
+  const long = formatSaleDate(soldAt).toLowerCase();
+  const iso = soldAt.slice(0, 10);
+  return (history ?? '')
+    .split('\n')
+    .map((l) => l.trim().toLowerCase())
+    .some((l) => l.startsWith('sold') && (l.includes(long) || l.includes(iso)));
+}
+
+/**
+ * Writes the sale into the work's provenance (Auction History, shared by every
+ * certificate of the work) unless that day's sale is already there.
+ */
+export async function recordSaleInProvenance(
+  admin: SupabaseClient,
+  artworkId: string,
+  soldAt: string,
+  recordedBy: string | null,
+): Promise<void> {
+  try {
+    const { data: row } = await asUntyped(admin)
+      .from('artworks')
+      .select('auction_history')
+      .eq('id', artworkId)
+      .maybeSingle();
+    const current = (row?.auction_history as string | null) ?? null;
+    if (hasSaleLine(current, soldAt)) return;
+    const next = current?.trim() ? `${current.trim()}\n${saleProvenanceLine(soldAt)}` : saleProvenanceLine(soldAt);
+    await syncProvenanceAcrossChain(admin, {
+      originArtworkId: artworkId,
+      fields: { auction_history: next },
+      method: 'sale',
+      actorAccountId: recordedBy,
+      includeOrigin: true,
+      notify: false,
+    });
+  } catch (err) {
+    logger.error('record_sale_provenance_line_failed', { artworkId, error: err });
+  }
 }
 
 /**

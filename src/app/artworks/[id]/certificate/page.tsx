@@ -12,6 +12,7 @@ import { collectionOwnerName } from '~/lib/managed-collections';
 
 import { getArtworkExhibitions } from './_actions/get-artwork-exhibition';
 import { sanitizePublications } from '~/lib/valuation/provenance-value';
+import { countChainSales } from '~/lib/sales/count-chain-sales';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 import appConfig from '~/config/app.config';
@@ -449,6 +450,9 @@ export default async function CertificatePage({
     console.error('[Certificate] artwork_valuations fetch exception', err);
   }
 
+  // Each sale of the work, on any of its certificates, adds to Provenance Value.
+  const saleCount = await countChainSales(getSupabaseServerAdminClient(), artwork.id);
+
   const pageUrl = new URL(`/artworks/${artwork.id}/certificate`, appConfig.url).href;
   const artworkJsonLd = {
     '@context': 'https://schema.org',
@@ -501,6 +505,7 @@ export default async function CertificatePage({
         attachments={attachments}
         valuation={latestValuation}
         publications={publications}
+        saleCount={saleCount}
       />
       {/* Viral acquisition surface: shown only to unauthenticated visitors */}
       {!user && artwork.status === 'verified' && (

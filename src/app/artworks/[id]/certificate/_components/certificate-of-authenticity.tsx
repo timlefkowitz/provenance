@@ -301,6 +301,7 @@ export function CertificateOfAuthenticity({
   valuation = null,
   publications = [],
   scanStats = EMPTY_SCAN_STATS,
+  saleCount = 0,
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -339,6 +340,8 @@ export function CertificateOfAuthenticity({
   publications?: ArtworkPublication[];
   /** Public scan counts; per-scan details only reach the owner and admins. */
   scanStats?: ScanStats;
+  /** Distinct sales of this work across its linked certificates. */
+  saleCount?: number;
 }) {
   const exhibitionList = exhibitions ?? (exhibition?.title ? [exhibition] : []);
   const isSold = !!(artwork.is_sold || artwork.sold_at);
@@ -349,6 +352,7 @@ export function CertificateOfAuthenticity({
     sale: isSold
       ? { priceCents: artwork.sold_price_cents ?? null, currency: artwork.sold_currency ?? null }
       : null,
+    saleCount,
   });
 
   // Log when component mounts to confirm we reached this point

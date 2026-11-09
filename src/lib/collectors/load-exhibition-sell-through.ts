@@ -36,14 +36,26 @@ export async function loadExhibitionSellThrough(
     if (!shownLinks.length) return null;
 
     const linkedIds = Array.from(new Set(shownLinks.map((l) => l.artwork_id)));
-    const [byArtwork, bySeller, artworkRes] = await Promise.all([
-      admin.from('sales_ledger').select(LEDGER_COLS).in('artwork_id', linkedIds),
+    const ARTWORK_COLS =
+      'id, source_artwork_id, is_sold, sold_at, sold_price_cents, sold_to_account_id, sold_to_email, sold_to_name';
+    const linkedRes = await admin.from('artworks').select(ARTWORK_COLS).in('id', linkedIds);
+    // A show's CoS copy points at the artist's CoA; a sale the artist recorded
+    // there is a sale of the shown work too.
+    const sourceIds = Array.from(
+      new Set(
+        ((linkedRes.data ?? []) as Array<{ source_artwork_id: string | null }>)
+          .map((a) => a.source_artwork_id)
+          .filter((id): id is string => !!id && !linkedIds.includes(id)),
+      ),
+    );
+    const [byArtwork, bySeller, sourceRes] = await Promise.all([
+      admin.from('sales_ledger').select(LEDGER_COLS).in('artwork_id', [...linkedIds, ...sourceIds]),
       admin.from('sales_ledger').select(LEDGER_COLS).eq('sold_by_account_id', galleryOwnerId),
-      admin
-        .from('artworks')
-        .select('id, source_artwork_id, is_sold, sold_at, sold_price_cents, sold_to_account_id, sold_to_email, sold_to_name')
-        .in('id', linkedIds),
+      sourceIds.length
+        ? admin.from('artworks').select(ARTWORK_COLS).in('id', sourceIds)
+        : Promise.resolve({ data: [] }),
     ]);
+    const artworkRes = { data: [...(linkedRes.data ?? []), ...(sourceRes.data ?? [])] };
 
     const ledgerById = new Map<string, SaleRow>();
     for (const row of [...(byArtwork.data ?? []), ...(bySeller.data ?? [])] as SaleRow[]) {
