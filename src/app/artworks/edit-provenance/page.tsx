@@ -10,6 +10,9 @@ export const metadata = {
   title: 'Collection Management | Provenance',
 };
 
+// Curator mode's Print menu can run a wall scan (an image model, several seconds).
+export const maxDuration = 60;
+
 export default async function MassEditProvenancePage({
   searchParams,
 }: {

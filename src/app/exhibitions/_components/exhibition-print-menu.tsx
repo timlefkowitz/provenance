@@ -2,7 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BookOpen, ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
+import { BookOpen, Camera, ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Dialog } from '@kit/ui/dialog';
 import {
@@ -21,11 +21,13 @@ import { getExhibitionArtistBios } from '../_actions/get-exhibition-artist-bios'
 import {
   buildArtworkQrSheetHtml,
   buildChecklistHtml,
+  buildWallGroupLabelHtml,
   buildExhibitionQrHtml,
   buildWallLabelsHtml,
   exhibitionLabelItems,
   posterDefaults,
   type LabelQr,
+  type WallGroupLabelOptions,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
 import { updateExhibitionQrStyle } from '../_actions/update-exhibition-qr-style';
@@ -38,6 +40,7 @@ import {
 import { updateExhibitionPosterText } from '../_actions/update-exhibition-poster-text';
 import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
 import { WallLabelsDialog } from './wall-labels-dialog';
+import { WallScanDialog } from './wall-scan-dialog';
 import { CatalogDialog } from './catalog-dialog';
 import {
   buildCatalogHtml,
@@ -77,6 +80,9 @@ export function ExhibitionPrintMenu({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [wallScanOpen, setWallScanOpen] = useState(false);
+  /** Hanging order from a wall scan; while set, wall labels print just these works in this order. */
+  const [wallOrder, setWallOrder] = useState<string[] | null>(null);
   // The show's QR style (exhibitions.metadata.qr), used by the poster,
   // downloads, artwork QR sheet and checklist. Wall labels have their own
   // style, picked in the labels dialog.
@@ -119,6 +125,9 @@ export function ExhibitionPrintMenu({
     ? exhibition.artworks.filter((a) => selectedArtworkIds.has(a.id))
     : exhibition.artworks;
   const hasWorks = printArtworks.length > 0;
+  const labelArtworks = wallOrder
+    ? wallOrder.flatMap((id) => exhibition.artworks.find((a) => a.id === id) ?? [])
+    : printArtworks;
   const hasPrices = printArtworks.some((a) => a.listPriceDisplay?.trim());
 
   const readQr = (key: string): string =>
@@ -164,7 +173,8 @@ export function ExhibitionPrintMenu({
   ) => {
     console.log('[Exhibitions] Print wall labels', {
       exhibitionId: exhibition.id,
-      count: printArtworks.length,
+      count: labelArtworks.length,
+      fromWallScan: !!wallOrder,
       options,
       qrStyle: labelQrStyle.style,
     });
@@ -176,11 +186,26 @@ export function ExhibitionPrintMenu({
       const base = readQr(`sheet-${id}`);
       return base ? composeStyledQr(base, labelQrStyle) : '';
     };
-    const qrSvgs = new Map(printArtworks.map((a) => [a.id, labelQr(a.id)]));
+    const qrSvgs = new Map(labelArtworks.map((a) => [a.id, labelQr(a.id)]));
     openPrintWindow(
-      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(printArtworks), options, qrSvgs, biosByArtwork, extraQrs),
+      buildWallLabelsHtml(exhibition.title, exhibitionLabelItems(labelArtworks), options, qrSvgs, biosByArtwork, extraQrs),
       960,
       760,
+    );
+  };
+
+  const handleWallGroupLabel = (orderedIds: string[], options: WallGroupLabelOptions) => {
+    const works = orderedIds.flatMap((id) => exhibition.artworks.find((a) => a.id === id) ?? []);
+    console.log('[Exhibitions] Print wall label from scan', {
+      exhibitionId: exhibition.id,
+      count: works.length,
+      wallName: options.wallName || null,
+    });
+    setPriceSymbol(options.priceSymbol);
+    openPrintWindow(
+      buildWallGroupLabelHtml(exhibition.title, exhibitionLabelItems(works), options, readStyled('exhibition')),
+      820,
+      900,
     );
   };
 
@@ -296,12 +321,23 @@ export function ExhibitionPrintMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onSelect={() => setLabelsOpen(true)}
+            onSelect={() => {
+              setWallOrder(null);
+              setLabelsOpen(true);
+            }}
             disabled={!hasWorks}
             className="font-serif text-xs cursor-pointer"
           >
             <Tag className="h-3.5 w-3.5 mr-2 opacity-60" />
             Wall Labels…
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => setWallScanOpen(true)}
+            disabled={!hasWorks}
+            className="font-serif text-xs cursor-pointer"
+          >
+            <Camera className="h-3.5 w-3.5 mr-2 opacity-60" />
+            Label a Wall from a Photo…
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => setCatalogOpen(true)}
@@ -363,16 +399,32 @@ export function ExhibitionPrintMenu({
         )}
       </Dialog>
 
+      <WallScanDialog
+        open={wallScanOpen}
+        onOpenChange={setWallScanOpen}
+        exhibitionId={exhibition.id}
+        artworks={printArtworks}
+        onPrintWallLabel={handleWallGroupLabel}
+        onPrintIndividualLabels={(ids) => {
+          setWallOrder(ids);
+          setWallScanOpen(false);
+          setLabelsOpen(true);
+        }}
+      />
+
       <WallLabelsDialog
         open={labelsOpen}
-        onOpenChange={setLabelsOpen}
-        count={printArtworks.length}
+        onOpenChange={(open) => {
+          setLabelsOpen(open);
+          if (!open) setWallOrder(null);
+        }}
+        count={labelArtworks.length}
         optionsStorageKey={LABEL_OPTIONS_KEY}
         extraQrStorageKey={`provenance.exhibition.labelQrs.${exhibition.id}`}
         qrStyleStorageKey={`provenance.exhibition.labelQrStyle.${exhibition.id}`}
         sampleQrUrl={
-          origin && printArtworks[0]
-            ? `${origin}/artworks/${printArtworks[0].id}/certificate?scan=true`
+          origin && labelArtworks[0]
+            ? `${origin}/artworks/${labelArtworks[0].id}/certificate?scan=true`
             : ''
         }
         bioEditsStorageKey={bioEditsKey(exhibition.id)}

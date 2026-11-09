@@ -417,3 +417,99 @@ export function buildArtworkQrSheetHtml(
   <div class="grid">${cells}</div>
 ${AUTO_PRINT}</body></html>`;
 }
+
+// ── Wall label (one label for a whole wall) ───────────────────────────────────
+
+export type WallGroupLabelOptions = {
+  year: boolean;
+  medium: boolean;
+  dimensions: boolean;
+  price: boolean;
+  priceSymbol: boolean;
+  /** The exhibition's QR code under the list. */
+  qrCode: boolean;
+  /** How the works are read, printed above the list, e.g. "Left to right". */
+  direction: string;
+  /** Optional name for the wall, e.g. "North wall". */
+  wallName: string;
+};
+
+export const DEFAULT_WALL_GROUP_LABEL_OPTIONS: WallGroupLabelOptions = {
+  year: true,
+  medium: true,
+  dimensions: true,
+  price: false,
+  priceSymbol: true,
+  qrCode: false,
+  direction: 'Left to right',
+  wallName: '',
+};
+
+/**
+ * One label for a whole wall, as museums hang beside a group of works: a numbered list in
+ * hanging order ("Left to right"), each with artist, title and year, medium, dimensions and
+ * optionally price. Long walls (more than 7 works) set in two columns.
+ */
+export function buildWallGroupLabelHtml(
+  exhibitionTitle: string,
+  items: WallLabelItem[],
+  options: WallGroupLabelOptions,
+  qrSvg: string,
+): string {
+  const twoCols = items.length > 7;
+  const entry = (a: WallLabelItem, i: number) => {
+    const year = options.year ? getYear(a.creation_date) : '';
+    const title = esc(a.title || 'Untitled');
+    const meta: string[] = [];
+    if (options.medium && a.medium?.trim()) meta.push(esc(a.medium.trim()));
+    if (options.dimensions && a.dimensions?.trim()) meta.push(esc(a.dimensions.trim()));
+    if (options.price) {
+      const price = formatPrintPrice(a.price, options.priceSymbol);
+      if (price) meta.push(esc(price));
+    }
+    return `
+      <li>
+        <span class="num">${i + 1}</span>
+        <div>
+          ${a.artist_name ? `<div class="artist">${esc(a.artist_name)}</div>` : ''}
+          <div class="title">${year ? `${title}, <span class="year">${year}</span>` : title}</div>
+          ${meta.map((m) => `<div class="meta">${m}</div>`).join('')}
+        </div>
+      </li>`;
+  };
+  const heading = options.wallName.trim();
+  const qr = options.qrCode && qrSvg ? `<div class="qr"><div class="code">${qrSvg}</div><div class="cap">Scan for the list of works</div></div>` : '';
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" />
+<title>Wall Label — ${esc(heading || exhibitionTitle)}</title>
+<style>
+  @page { size: letter portrait; margin: 0.6in; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #111; background: #fff; }
+  .label { width: ${twoCols ? '7.3in' : '4.6in'}; border: 0.5pt solid #d0cdc8; padding: 0.32in 0.36in 0.34in; }
+  .kicker { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7pt; letter-spacing: 0.2em; text-transform: uppercase; color: #888; }
+  .heading { font-size: 15pt; font-weight: bold; line-height: 1.15; margin-top: 0.05in; }
+  .direction { font-size: 9pt; font-style: italic; color: #555; margin-top: 0.1in; padding-bottom: 0.12in; border-bottom: 0.5pt solid #e0dbd4; }
+  ol { list-style: none; margin-top: 0.16in; ${twoCols ? 'column-count: 2; column-gap: 0.4in;' : ''} }
+  li { display: flex; gap: 0.12in; break-inside: avoid; page-break-inside: avoid; margin-bottom: 0.15in; }
+  .num { flex: none; width: 0.2in; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt; color: #999; padding-top: 1.5pt; }
+  .artist { font-size: 10pt; font-weight: bold; line-height: 1.3; }
+  .title { font-size: 9.5pt; font-style: italic; line-height: 1.35; }
+  .title .year { font-style: normal; }
+  .meta { font-size: 8.5pt; line-height: 1.4; color: #333; }
+  .qr { display: flex; align-items: center; gap: 0.12in; margin-top: 0.06in; padding-top: 0.14in; border-top: 0.5pt solid #e0dbd4; }
+  .qr .code { width: 0.8in; flex: none; }
+  .qr svg { width: 100%; height: auto; display: block; }
+  .qr .cap { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7pt; color: #888; letter-spacing: 0.04em; }
+  @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head>
+<body>
+  <div class="label">
+    ${heading ? `<div class="kicker">${esc(exhibitionTitle)}</div><div class="heading">${esc(heading)}</div>` : `<div class="heading">${esc(exhibitionTitle)}</div>`}
+    ${options.direction.trim() ? `<div class="direction">${esc(options.direction.trim())}</div>` : ''}
+    <ol>${items.map(entry).join('')}</ol>
+    ${qr}
+  </div>
+${AUTO_PRINT}</body></html>`;
+}

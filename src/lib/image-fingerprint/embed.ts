@@ -108,6 +108,33 @@ export async function embedImage(input: Buffer | Uint8Array): Promise<number[]> 
   return l2Normalize((hidden.data as Float32Array).subarray(0, dim));
 }
 
+/**
+ * Embeds many already-preprocessed 3×224×224 tensors (see imageToPixelValues) in batches.
+ * Used by the wall scan, which embeds dozens of crops of one photo.
+ */
+export async function embedPixelBatch(items: Float32Array[], batchSize = 16): Promise<number[][]> {
+  const { ort, session } = await getSession();
+  const plane = 3 * INPUT_SIZE * INPUT_SIZE;
+  const out: number[][] = [];
+  for (let start = 0; start < items.length; start += batchSize) {
+    const batch = items.slice(start, start + batchSize);
+    const data = new Float32Array(batch.length * plane);
+    batch.forEach((px, i) => data.set(px, i * plane));
+    const tensor = new ort.Tensor('float32', data, [batch.length, 3, INPUT_SIZE, INPUT_SIZE]);
+    const output = await session.run({ pixel_values: tensor });
+    const hidden = output.last_hidden_state;
+    if (!hidden) throw new Error('Model returned no last_hidden_state');
+    const [, tokens, dim] = hidden.dims as [number, number, number];
+    if (dim !== IMAGE_EMBEDDING_DIM) throw new Error(`Unexpected embedding width ${dim}`);
+    const values = hidden.data as Float32Array;
+    for (let i = 0; i < batch.length; i++) {
+      const offset = i * tokens * dim; // CLS token is the first of each item's tokens
+      out.push(l2Normalize(values.subarray(offset, offset + dim)));
+    }
+  }
+  return out;
+}
+
 /** Downloads with up to 3 attempts (network blips and storage timeouts are common in bulk runs). */
 export async function embedImageUrl(url: string, attempts = 3): Promise<number[]> {
   let lastError: unknown;

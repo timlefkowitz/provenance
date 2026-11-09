@@ -35,6 +35,8 @@ import { stripMarkdown } from '~/lib/strip-markdown';
 import { endOfDateOnly, parseDateOnly } from '~/lib/parse-date-only';
 
 export const dynamic = 'force-dynamic';
+// Wall scans (Print → Label a wall from a photo) run an image model for several seconds.
+export const maxDuration = 60;
 
 export async function generateMetadata({
   params,
