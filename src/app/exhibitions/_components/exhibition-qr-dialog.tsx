@@ -96,6 +96,7 @@ export function ExhibitionQrDialogContent({
   exhibitionId,
   exhibitionTitle,
   exhibitionUrl,
+  qrUrl,
   qrStyle,
   onQrStyleChange,
   posterDefaults,
@@ -106,6 +107,8 @@ export function ExhibitionQrDialogContent({
   exhibitionId: string;
   exhibitionTitle: string;
   exhibitionUrl: string;
+  /** What the code encodes: the page plus ?scan=poster, so scans are counted. */
+  qrUrl: string;
   qrStyle: QrStyleSettings;
   onQrStyleChange: (next: QrStyleSettings) => void;
   /** Poster lines before edits, the saved edits, and where edits go. */
@@ -171,7 +174,7 @@ export function ExhibitionQrDialogContent({
           if (svg && svg !== baseSvg) setBaseSvg(svg);
         }}
       >
-        <QRCodeSVG value={exhibitionUrl} size={512} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
+        <QRCodeSVG value={qrUrl} size={512} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
       </div>
 
       <div className="flex flex-col items-center gap-3 py-2">

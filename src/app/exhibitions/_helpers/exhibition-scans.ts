@@ -4,7 +4,9 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import {
   computeExhibitionWorkScanStats,
+  computePosterScanStats,
   exhibitionScanWindow,
+  type PosterScanStats,
   type ExhibitionWorkScanStats,
   type ScanWindow,
 } from '~/lib/exhibition-scan-stats';
@@ -27,6 +29,8 @@ export type ExhibitionScans = {
   scope: 'all' | 'artist';
   window: ScanWindow;
   works: ExhibitionScanWork[];
+  /** Scans of the show's own QR code (poster, flyer, catalog); organisers only. */
+  poster: PosterScanStats | null;
 };
 
 type Link = {
@@ -165,6 +169,24 @@ export async function getExhibitionScans(
     };
   });
 
+  // The show's own QR code: organisers only, the team's own scans left out.
+  let poster: PosterScanStats | null = null;
+  if (organiser) {
+    const { data: posterRows, error: posterError } = await admin
+      .from('exhibition_poster_scans')
+      .select('scanned_at, visitor')
+      .eq('exhibition_id', exhibitionId)
+      .eq('by_team', false)
+      .order('scanned_at', { ascending: false })
+      .limit(5000);
+    if (posterError) {
+      console.error('[Exhibitions] poster scans fetch failed', { exhibitionId, posterError });
+    }
+    poster = computePosterScanStats(
+      (posterRows ?? []) as { scanned_at: string; visitor: string | null }[],
+    );
+  }
+
   works.sort(
     (a, b) =>
       b.stats.duringShow - a.stats.duringShow ||
@@ -182,6 +204,7 @@ export async function getExhibitionScans(
     scope: organiser ? 'all' : 'artist',
     window: showWindow,
     works,
+    poster,
   };
 }
 

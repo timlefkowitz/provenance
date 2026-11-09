@@ -48,7 +48,7 @@ export default async function ExhibitionScansPage({
   const data = await getExhibitionScans(user.id, id);
   if (!data) notFound();
 
-  const { exhibition, works, scope, window } = data;
+  const { exhibition, works, scope, window, poster } = data;
   const duringShow = works.reduce((n, w) => n + w.stats.duringShow, 0);
   const people = works.reduce((n, w) => n + w.stats.peopleDuringShow, 0);
   const scanned = works.filter((w) => w.stats.duringShow > 0).length;
@@ -81,6 +81,24 @@ export default async function ExhibitionScansPage({
             Scans by a certificate&apos;s own holder aren&apos;t counted, and places are shown by
             city only.
           </p>
+
+          {poster && (
+            <div className="mt-8 flex flex-wrap items-baseline gap-x-3 gap-y-1 border border-wine/15 bg-parchment/40 p-4 font-serif text-sm text-ink/70">
+              <span className="text-[11px] uppercase tracking-widest text-ink/50">Show QR code</span>
+              <span>
+                <span className="font-display text-2xl font-bold text-ink">
+                  {poster.total.toLocaleString('en-US')}
+                </span>{' '}
+                {poster.total === 1 ? 'scan' : 'scans'}
+                {poster.people > 0 && <> by {plural(poster.people, 'person', 'people')}</>}
+              </span>
+              <span className="text-xs text-ink/50">
+                The code on the poster, flyers, catalog and checklist, counted since it started being
+                tracked (November 2026){poster.lastScannedAt ? ` · last ${formatDate(poster.lastScannedAt)}` : ''}. Your
+                team&apos;s own scans aren&apos;t counted, and no place is recorded.
+              </span>
+            </div>
+          )}
 
           <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[

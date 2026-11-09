@@ -22,7 +22,8 @@ import { ExhibitionInquiriesPanel } from '../_components/exhibition-inquiries-pa
 import { getExhibitionInquiries } from '../_actions/exhibition-inquiries';
 import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
-import { ExhibitionSellThroughLine } from '../_components/exhibition-sell-through-line';
+import { ExhibitionStatsPanel } from '../_components/exhibition-stats-panel';
+import { PosterScanRecorder } from '../_components/poster-scan-recorder';
 import { ExhibitionPrintMenu } from '../_components/exhibition-print-menu';
 import { ExhibitionPrivateNotice } from '../_components/exhibition-private-notice';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
@@ -256,6 +257,7 @@ export default async function ExhibitionPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(exhibitionJsonLd) }}
       />
+      <PosterScanRecorder exhibitionId={id} />
     <div className="min-h-screen">
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div className="border-b border-wine/15">
@@ -449,11 +451,17 @@ export default async function ExhibitionPage({
             publishedAt={exhibition.published_at ?? null}
           />
         )}
+        {isOwner && user && (
+          <ExhibitionStatsPanel
+            exhibitionId={id}
+            galleryOwnerId={exhibition.gallery_id}
+            userId={user.id}
+            inquiries={inquiries}
+            reservations={reservationRequests}
+          />
+        )}
         {isOwner && <ExhibitionReservationsPanel requests={reservationRequests} />}
         {isOwner && <ExhibitionInquiriesPanel inquiries={inquiries} />}
-        {isOwner && (
-          <ExhibitionSellThroughLine exhibitionId={id} galleryOwnerId={exhibition.gallery_id} />
-        )}
         <ExhibitionTabs
           exhibition={exhibition}
           isOwner={isOwner}

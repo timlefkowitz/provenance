@@ -161,3 +161,26 @@ export function exhibitionScanWindow(
 ): ScanWindow {
   return { from: exhibition.start_date || joinedAt || null, to: exhibition.end_date || null };
 }
+
+export type PosterScanStats = {
+  /** Scans of the show's QR code, team excluded. Flyers go out before the show opens, so every scan counts. */
+  total: number;
+  /** Distinct people among them. */
+  people: number;
+  lastScannedAt: string | null;
+};
+
+/** Stats for scans of the show's own QR code, from exhibition_poster_scans rows. */
+export function computePosterScanStats(
+  rows: Array<{ scanned_at: string; visitor: string | null }>,
+): PosterScanStats {
+  let anonymous = 0;
+  let last: string | null = null;
+  const visitors = new Set<string>();
+  for (const row of rows) {
+    if (isScanVisitorId(row.visitor)) visitors.add(row.visitor);
+    else anonymous += 1;
+    if (!last || row.scanned_at > last) last = row.scanned_at;
+  }
+  return { total: rows.length, people: Math.min(rows.length, visitors.size + anonymous), lastScannedAt: last };
+}

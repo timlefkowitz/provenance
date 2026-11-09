@@ -2,7 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
+import { BookOpen, ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Dialog } from '@kit/ui/dialog';
 import {
@@ -38,8 +38,17 @@ import {
 import { updateExhibitionPosterText } from '../_actions/update-exhibition-poster-text';
 import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
 import { WallLabelsDialog } from './wall-labels-dialog';
+import { CatalogDialog } from './catalog-dialog';
+import {
+  buildCatalogHtml,
+  type CatalogArtist,
+  type CatalogItem,
+  type CatalogOptions,
+} from '../_helpers/catalog-print-html';
+import { stripMarkdown } from '~/lib/strip-markdown';
 
 const LABEL_OPTIONS_KEY = 'provenance.exhibition.wallLabelOptions';
+const CATALOG_OPTIONS_KEY = 'provenance.exhibition.catalogOptions';
 /** Per-exhibition bio edits on this device, keyed by ArtistBio.key. */
 const bioEditsKey = (exhibitionId: string) => `provenance.exhibition.artistBios.${exhibitionId}`;
 
@@ -67,6 +76,7 @@ export function ExhibitionPrintMenu({
   );
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   // The show's QR style (exhibitions.metadata.qr), used by the poster,
   // downloads, artwork QR sheet and checklist. Wall labels have their own
   // style, picked in the labels dialog.
@@ -103,6 +113,8 @@ export function ExhibitionPrintMenu({
   const qrRef = useRef<HTMLDivElement>(null);
 
   const exhibitionUrl = origin ? `${origin}/exhibitions/${exhibition.id}` : '';
+  // What the show's QR codes encode: the page, marked so the scan is counted.
+  const exhibitionQrUrl = exhibitionUrl ? `${exhibitionUrl}?scan=poster` : '';
   const printArtworks = selectedArtworkIds
     ? exhibition.artworks.filter((a) => selectedArtworkIds.has(a.id))
     : exhibition.artworks;
@@ -172,6 +184,49 @@ export function ExhibitionPrintMenu({
     );
   };
 
+  const handleCatalog = (options: CatalogOptions, artists: CatalogArtist[]) => {
+    console.log('[Exhibitions] Print catalog', {
+      exhibitionId: exhibition.id,
+      count: printArtworks.length,
+      style: options.style,
+    });
+    setPriceSymbol(options.priceSymbol);
+    const items: CatalogItem[] = printArtworks.map((a) => ({
+      id: a.id,
+      title: a.title,
+      artist_name: a.artist_name,
+      creation_date: a.creation_date,
+      medium: a.medium,
+      dimensions: a.dimensions,
+      edition: a.edition,
+      description: a.description,
+      credit_line: a.credit_line ?? null,
+      image_url: a.image_url,
+      price: a.listPriceDisplay ?? null,
+    }));
+    const subtitle = [posterDefaults(exhibition, ownerName, exhibitionUrl).dates, exhibition.location]
+      .filter(Boolean)
+      .join(' · ');
+    const qrSvgs = new Map(printArtworks.map((a) => [a.id, readStyled(`sheet-${a.id}`)]));
+    openPrintWindow(
+      buildCatalogHtml(
+        {
+          kicker: ownerName ?? '',
+          title: exhibition.title,
+          subtitle,
+          introduction: exhibition.description ? stripMarkdown(exhibition.description) : null,
+          printDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          qrSvg: readStyled('exhibition'),
+          label: 'Exhibition catalogue',
+        },
+        items,
+        options,
+        qrSvgs,
+        artists,
+      ),
+    );
+  };
+
   return (
     <>
       {/* Hidden QR SVGs — serialised into the print windows. */}
@@ -183,7 +238,7 @@ export function ExhibitionPrintMenu({
         >
           <div data-qr="exhibition">
             {/* Level H, no margin, black on white: what composeStyledQr expects. */}
-            <QRCodeSVG value={exhibitionUrl} size={512} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
+            <QRCodeSVG value={exhibitionQrUrl} size={512} level="H" marginSize={0} fgColor="#000000" bgColor="#FFFFFF" />
           </div>
           {/* Artwork QR sheet: styled like the exhibition code. */}
           {exhibition.artworks.map((a) => (
@@ -225,8 +280,8 @@ export function ExhibitionPrintMenu({
             disabled={!origin}
             title={
               selectedArtworkIds
-                ? `Wall labels, QR codes and checklist for ${printArtworks.length} selected ${printArtworks.length === 1 ? 'work' : 'works'}, or the show's QR poster`
-                : 'Print the exhibition QR code, wall labels, artwork QR codes or checklist'
+                ? `Wall labels, catalog, QR codes and checklist for ${printArtworks.length} selected ${printArtworks.length === 1 ? 'work' : 'works'}, or the show's QR poster`
+                : 'Print the exhibition QR code, wall labels, catalog, artwork QR codes or checklist'
             }
           >
             <Printer className="h-3.5 w-3.5" />
@@ -247,6 +302,14 @@ export function ExhibitionPrintMenu({
           >
             <Tag className="h-3.5 w-3.5 mr-2 opacity-60" />
             Wall Labels…
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => setCatalogOpen(true)}
+            disabled={!hasWorks}
+            className="font-serif text-xs cursor-pointer"
+          >
+            <BookOpen className="h-3.5 w-3.5 mr-2 opacity-60" />
+            Catalog…
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={handleArtworkQrSheet}
@@ -289,6 +352,7 @@ export function ExhibitionPrintMenu({
             exhibitionId={exhibition.id}
             exhibitionTitle={exhibition.title}
             exhibitionUrl={exhibitionUrl}
+            qrUrl={exhibitionQrUrl}
             qrStyle={qrStyle}
             onQrStyleChange={(next) => void saveQrStyle(next)}
             posterDefaults={posterDefaults(exhibition, ownerName, exhibitionUrl)}
@@ -315,6 +379,25 @@ export function ExhibitionPrintMenu({
         loadBios={() => getExhibitionArtistBios(exhibition.id)}
         hints={{ price: 'Exhibition list price', creditLine: 'Only when marked public' }}
         onPrint={handleWallLabels}
+      />
+
+      <CatalogDialog
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        count={printArtworks.length}
+        optionsStorageKey={CATALOG_OPTIONS_KEY}
+        bioEditsStorageKey={bioEditsKey(exhibition.id)}
+        loadBios={async () => {
+          // Only the artists of the works being printed.
+          const ids = new Set(printArtworks.map((a) => a.id));
+          return (await getExhibitionArtistBios(exhibition.id)).filter((b) =>
+            b.artworkIds.some((id) => ids.has(id)),
+          );
+        }}
+        hasPrices={hasPrices}
+        hasProvenance={false}
+        priceHint="Exhibition list prices"
+        onPrint={handleCatalog}
       />
     </>
   );

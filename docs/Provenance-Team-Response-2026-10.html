@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Provenance Team Response</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400;1,9..144,600&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --wine: #4A2F25;
+    --rust: #7A4E3F;
+    --gold: #C8A86B;
+    --ink: #111111;
+    --parchment: #F5F1E8;
+    --paper: #FBF8F1;
+    --muted: #6B5A50;
+    --hair: #D9CDB8;
+  }
+  @page { size: Letter; margin: 0.7in 0.7in 0.66in; }
+  body.cover-only .page { display: none; }
+  body.body-only .cover { display: none; }
+  body.cover-only { background: var(--ink); }
+  @page cover { margin: 0; }
+  .cover { page: cover; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--parchment);
+    color: var(--ink);
+    font-family: "Libre Caslon Text", Georgia, serif;
+    font-size: 9pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---------- Cover ---------- */
+  .cover {
+    width: 8.5in; height: 11in;
+    display: grid;
+    grid-template-columns: 2.6in 0.12in 1fr;
+    page-break-after: always;
+    background: var(--ink);
+  }
+  .cover .left {
+    background: var(--wine);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 0 0.35in 0.7in;
+  }
+  .cover .bar { background: var(--gold); }
+  .cover .right {
+    padding: 2.3in 0.6in 0.6in 0.55in;
+    color: #fff;
+    display: flex; flex-direction: column;
+  }
+  .stamp {
+    display: inline-block;
+    border: 1px solid var(--gold);
+    background: var(--rust);
+    color: var(--gold);
+    font-size: 7pt; letter-spacing: 0.32em; text-transform: uppercase;
+    padding: 7px 12px; font-weight: 700;
+    align-self: flex-start;
+  }
+  .cover .tagline {
+    margin-top: 0.3in;
+    color: var(--gold);
+    font-size: 7pt; letter-spacing: 0.38em; text-transform: uppercase; line-height: 1.9;
+  }
+  .eyebrow {
+    font-size: 7.2pt; letter-spacing: 0.34em; text-transform: uppercase;
+    color: var(--gold);
+  }
+  .cover .eyebrow { color: #B9AA98; }
+  .rule-gold { height: 3px; background: var(--gold); margin: 0.2in 0; }
+  .cover h1 {
+    font-family: "Fraunces", serif; font-weight: 800;
+    font-size: 42pt; letter-spacing: 0.02em; margin: 0.12in 0 0.05in; line-height: 1;
+  }
+  .cover .sub {
+    font-family: "Fraunces", serif; font-style: italic; font-size: 19pt; line-height: 1.25;
+    margin: 0.3in 0 0.1in;
+  }
+  .cover .meta { color: #B9AA98; font-size: 9.5pt; line-height: 1.7; }
+  .cover .meta b { color: #fff; font-weight: 400; }
+  .cover .foot { margin-top: auto; color: #8C7F73; font-size: 8pt; font-style: italic; }
+
+  /* ---------- Interior pages ---------- */
+  .page { break-before: page; }
+  .page.cont { break-before: auto; margin-top: 0.1in; }
+  .running {
+    display: flex; justify-content: space-between;
+    font-size: 6.8pt; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--hair); padding-bottom: 8px; margin-bottom: 0.32in;
+  }
+  .running .mark { color: var(--wine); font-weight: 700; }
+  .section { margin-bottom: 0.26in; break-inside: auto; }
+  .num {
+    font-family: "Fraunces", serif; font-style: italic; color: var(--gold);
+    font-size: 11pt; margin-right: 8px;
+  }
+  h2 {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 19pt; line-height: 1.12;
+    color: var(--wine); margin: 0.04in 0 0.06in; letter-spacing: -0.005em;
+  }
+  h2 + .rule-gold { margin: 0.08in 0 0.16in; height: 2px; }
+  h3 {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 11.5pt; color: var(--ink);
+    margin: 0.14in 0 0.04in; break-after: avoid;
+  }
+  .lede { font-family: "Fraunces", serif; font-style: italic; font-size: 12pt; line-height: 1.45; color: var(--wine); margin: 0 0 0.12in; }
+  p { margin: 0 0 0.09in; }
+  ul { margin: 0.02in 0 0.1in; padding-left: 0.2in; }
+  li { margin-bottom: 0.04in; }
+  li::marker { color: var(--gold); }
+  b, strong { font-weight: 700; color: var(--wine); }
+  .muted { color: var(--muted); }
+  .small { font-size: 8.3pt; }
+
+  /* Pitch card */
+  .pitch {
+    background: var(--ink); color: #fff; padding: 0.26in 0.32in;
+    border-left: 6px solid var(--gold); margin: 0.1in 0 0.16in; break-inside: avoid;
+  }
+  .pitch .eyebrow { margin-bottom: 8px; display: block; }
+  .pitch p { font-family: "Fraunces", serif; font-size: 12.4pt; line-height: 1.5; margin: 0; }
+  .pitch p em { color: var(--gold); font-style: italic; }
+
+  /* Callout */
+  .note {
+    border: 1px solid var(--hair); background: var(--paper);
+    padding: 0.14in 0.18in; margin: 0.1in 0 0.14in; break-inside: avoid;
+  }
+  .note .eyebrow { color: var(--rust); display: block; margin-bottom: 4px; }
+  .note.wine { background: var(--wine); color: #F1E7DA; border: none; }
+  .note.wine .eyebrow { color: var(--gold); }
+  .note.wine b { color: #fff; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 0.06in 0 0.14in; font-size: 8.7pt; break-inside: auto; }
+  thead th {
+    text-align: left; font-weight: 700; font-size: 6.8pt; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold); background: var(--wine); padding: 6px 8px;
+  }
+  tbody td { padding: 5px 8px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: rgba(255,255,255,0.45); }
+  tr { break-inside: avoid; }
+  td.k { font-family: "Fraunces", serif; font-weight: 600; color: var(--wine); width: 26%; }
+
+  /* Three-column cards like the deck */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.12in; margin: 0.08in 0 0.16in; break-inside: avoid; }
+  .card { padding: 0.14in 0.14in 0.16in; color: #fff; }
+  .card:nth-child(1) { background: var(--wine); }
+  .card:nth-child(2) { background: var(--rust); }
+  .card:nth-child(3) { background: var(--gold); color: var(--ink); }
+  .card .eyebrow { color: inherit; opacity: 0.85; display: block; margin-bottom: 6px; }
+  .card h4 { font-family: "Fraunces", serif; font-size: 13pt; margin: 0 0 6px; font-weight: 600; }
+  .card ul { padding-left: 0.14in; margin: 0; font-size: 8.4pt; }
+  .card li::marker { color: inherit; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.22in; }
+  .tag {
+    display: inline-block; font-size: 6.4pt; letter-spacing: 0.2em; text-transform: uppercase;
+    border: 1px solid var(--rust); color: var(--rust); padding: 1px 6px; margin-left: 4px; vertical-align: 1px;
+  }
+  .tag.done { border-color: #5E7A55; color: #5E7A55; }
+  .sign { margin-top: 0.3in; font-family: "Fraunces", serif; font-style: italic; font-size: 13pt; color: var(--wine); }
+  .closing { break-inside: avoid; border-top: 3px solid var(--gold); padding-top: 0.18in; margin-top: 0.22in; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section class="cover">
+  <div class="left">
+    <span class="stamp">Patent Pending</span>
+    <div class="tagline">Art · History ·<br>Authentication</div>
+  </div>
+  <div class="bar"></div>
+  <div class="right">
+    <div class="eyebrow">Team Response &nbsp;·&nbsp; October 2026</div>
+    <div class="rule-gold"></div>
+    <h1>PROVENANCE</h1>
+    <div class="sub">Our response to the October 21 recap &amp; next steps</div>
+    <div class="rule-gold"></div>
+    <div class="meta">
+      <b>To:</b> Kay<br>
+      <b>From:</b> Justin Parr, Bryson Brooks &amp; Tim Lefkowitz<br>
+      <b>Re:</b> Product positioning, investor readiness, validation, roadmap, launch &amp; working rhythm
+    </div>
+    <div class="foot">Confidential — prepared for the Provenance working group. Not an offer of securities.</div>
+  </div>
+</section>
+
+<!-- ============ PAGE: Intro + Positioning ============ -->
+<section class="page">
+
+  <div class="section">
+    <div class="eyebrow">Where we stand</div>
+    <h2>Thank you, Kay. We're in.</h2>
+    <div class="rule-gold"></div>
+    <p class="lede">Your recap put words to something we've felt for a while: the product is well ahead of the story we tell about it. This response is our side of the work — what Provenance is today, answers to your questions, and what the three of us will own.</p>
+    <p>Before writing this, we went back through the full codebase and our planning documents so that every claim here matches what is actually built and live. Where something is still a gap, we say so. Investors will find the gaps anyway; we'd rather name them first and show the plan to close them.</p>
+    <div class="note">
+      <span class="eyebrow">In one paragraph</span>
+      Provenance is live on the web (provenance.guru) and on the iOS App Store. It already does far more than certificates: cataloguing, a tamper-evident history for each work, exhibitions and open calls, gallery operations (shipping, insurance, consignments, condition reports, invoices), a studio CRM, public artist and gallery websites, and AI tools for grants and imports. What we don't have yet is <b>outside proof</b>: a paying customer outside our own circle, real testimonials, and measured usage numbers. Most of this plan is about getting that proof.
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="num">01</span><span class="eyebrow">Product Positioning &amp; Messaging</span>
+    <h2>The registrar for every collection</h2>
+    <div class="rule-gold"></div>
+    <p>We love your "registrar" framing and want to adopt it. A registrar is the person at a museum who keeps the official record of every object: what it is, where it is, who owned it, where it has been shown. Most galleries, artists and private collectors don't have one. They have spreadsheets, PDFs and email. Provenance gives them one.</p>
+
+    <h3>Draft 30-second overview (for the team to refine together)</h3>
+    <div class="pitch">
+      <span class="eyebrow">Elevator pitch · v1</span>
+      <p>Provenance is <em>the registrar for your collection</em> — whether you're an artist, a gallery or a private collector. You catalog your works once, issue a certificate with a scannable QR code, and every sale, loan and exhibition is added to a history that can't be quietly rewritten. It replaces the spreadsheets, PDFs and email threads that the art world runs on today with one trusted record that travels with the artwork.</p>
+    </div>
+    <p class="small muted">Shorter version for a conversation at a gallery opening: <i>"We're the registrar for your collection. Every work gets a verified record and a history that follows it from studio to sale."</i></p>
+  </div>
+</section>
+
+<!-- ============ PAGE: Questions answered ============ -->
+<section class="page cont">
+
+  <h3>Your questions, answered as we see them today</h3>
+  <table>
+    <thead><tr><th>Question</th><th>Our answer</th></tr></thead>
+    <tbody>
+      <tr><td class="k">What problem does Provenance solve, and for whom?</td>
+        <td>An artwork's value depends on its documented history: who made it, who owned it, where it was shown. That history usually lives in scattered files and in people's memories, so it gets lost, disputed or faked. Provenance keeps it in one place for <b>galleries</b> (inventory, shows, sales), <b>artists</b> (proof of authorship and career record) and <b>collectors</b> (proof of ownership).</td></tr>
+      <tr><td class="k">Why choose Provenance over what they use today?</td>
+        <td>Today's options are either a spreadsheet, a general inventory tool (ArtLogic, Artwork Archive, Arternal) or a certificate-only product (Verisart and others). We combine both: the day-to-day inventory and operations a gallery needs, <i>plus</i> certificates that the artist, gallery and collector each confirm. One tool instead of three, and the record can be shown to a buyer, insurer or museum.</td></tr>
+      <tr><td class="k">What makes it distinct or hard to copy?</td>
+        <td><ul>
+          <li><b>Patent pending</b> on our certificate model, where artist, gallery and collector each confirm their part of the record (a provisional application is on file).</li>
+          <li><b>History you can defend.</b> Changes are recorded as events, and third parties propose corrections that the owner approves rather than editing silently.</li>
+          <li><b>Network effect.</b> Every certificate links an artist, a gallery and a collector. Each new gallery brings its artists and buyers onto the platform.</li>
+          <li><b>Breadth already built:</b> native iOS app, QR scanning, find-an-artwork-by-photo, 20+ website templates, operations and CRM. That's ten months and nearly 800 product updates a competitor would have to repeat.</li>
+        </ul></td></tr>
+      <tr><td class="k">What is our strongest initial market?</td>
+        <td><b>Galleries</b> — especially established independent galleries — with museums and institutions next. Galleries feel the pain every day, they pay for software already, and each one brings its artists and collectors with it. Tim's own gallery (25 years in operation) is our first real-world test site. Artists stay free or low-cost: they are the supply side and a big part of our mission, but not where most revenue comes from.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Should the message vary by audience? Yes — one promise, four angles</h3>
+  <table>
+    <thead><tr><th>Audience</th><th>What they hear first</th><th>Lead features</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Galleries</td><td>"Your inventory, shows and sales in one place — with certificates your collectors will trust."</td><td>Inventory &amp; operations, exhibitions, open calls, certificates of show, wall labels with QR codes, team accounts, CRM</td></tr>
+      <tr><td class="k">Artists</td><td>"Prove it's yours, and build a career record that follows every work."</td><td>Certificates of authenticity, free portfolio website, grants &amp; open calls, studio CRM</td></tr>
+      <tr><td class="k">Collectors</td><td>"Ownership you can show. History you can defend."</td><td>Certificates of ownership, private collection records, insurance &amp; condition reports, transfers on sale</td></tr>
+      <tr><td class="k">Museums &amp; institutions</td><td>"A modern registrar's office for loans, accessions and public trust."</td><td>Accessioning, loan agreements, traceable event log, team roles, partner API (in progress)</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">We already have a landing page per audience (provenance.guru/lp/gallery, /artist, /collector, /institution). Once the team agrees on the wording, we'll update those pages so the website, the deck and the pitch all say the same thing.</p>
+</section>
+
+<!-- ============ PAGE: Investor readiness ============ -->
+<section class="page">
+
+  <div class="section">
+    <span class="num">02</span><span class="eyebrow">Investor Readiness &amp; Pitch Development</span>
+    <h2>What we'll hand Kay for the deck and the model</h2>
+    <div class="rule-gold"></div>
+    <p>Kay owns the deck outline and the financial model. Our job is to feed both with accurate numbers and a clear product story. Here is what we'll deliver and what needs fixing in the existing materials first.</p>
+
+    <h3>Inputs from us</h3>
+    <ul>
+      <li><b>Product facts sheet</b> — what's live today, with screenshots and a two-minute demo video (web + iPhone).</li>
+      <li><b>Usage numbers</b> pulled from our admin dashboard: accounts, artworks registered, certificates issued, galleries, app downloads, paid subscribers. We haven't put a verified figure in any investor material yet; we'll do that before the deck circulates.</li>
+      <li><b>Current pricing and cost base</b> (below), including what Apple keeps on in-app purchases.</li>
+      <li><b>Roadmap with milestones</b> (Section 04) showing what money speeds up.</li>
+      <li><b>Patent and IP summary</b> for the conversation with David Jones: the provisional filing, its diagrams, and the deadline to file the full application.</li>
+    </ul>
+
+    <h3>Current pricing (live on web and iOS)</h3>
+    <table>
+      <thead><tr><th>Plan</th><th>Monthly</th><th>Yearly</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Free</td><td>$0</td><td>$0</td><td>Available for artists, collectors and galleries</td></tr>
+        <tr><td class="k">Artist</td><td>$9.99</td><td>$99.99</td><td>Prices match Apple's tiers so web and iPhone charge the same</td></tr>
+        <tr><td class="k">Collector</td><td>$29.99</td><td>$299.99</td><td></td></tr>
+        <tr><td class="k">Gallery</td><td>$99.99</td><td>$990</td><td>Today's highest price — our ceiling</td></tr>
+        <tr><td class="k">Institution / enterprise</td><td colspan="2">Not yet priced</td><td>Invoiced contract tier planned once an outside gallery signs a paid pilot</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note wine">
+    <span class="eyebrow">Fix before any investor sees the old materials</span>
+    <ul style="margin:0">
+      <li>The one-pager and memo still list a <b>real estate portal</b>. We decided on Oct 19 to cut it and stay focused on art. It should come out.</li>
+      <li>They list prices as $10 / $30 / $100. Live prices are <b>$9.99 / $29.99 / $99.99</b>.</li>
+      <li>The revenue projections are mostly about individual subscribers. Our strategy is now <b>galleries and institutions first</b>. Kay's model should be built around that: number of galleries × price, plus a handful of institutional contracts.</li>
+      <li>The landing pages show <b>placeholder testimonials</b>. They need to be replaced with real quotes from the validation work, or removed.</li>
+    </ul>
+  </div>
+
+  <h3>A starting frame for the revenue model</h3>
+  <p>For Kay to adjust: <b>(1)</b> gallery subscriptions at $990/yr today, moving to a higher gallery and institution tier; <b>(2)</b> institutional contracts (our earlier memo assumed $25K–$75K/yr each — to be tested with real conversations); <b>(3)</b> artist and collector plans as a smaller, steady base; <b>(4)</b> partner API access later. Current software costs run about $188/month (hosting, database, email, workspace, tools). The main cost after a raise is salaries.</p>
+</section>
+
+<!-- ============ PAGE: Validation ============ -->
+<section class="page">
+
+  <div class="section">
+    <span class="num">03</span><span class="eyebrow">Early Market Validation &amp; User Adoption</span>
+    <h2>Getting outside proof</h2>
+    <div class="rule-gold"></div>
+    <p class="lede">This is the section that matters most. We have a strong product and no outside evidence yet. The next 60 days should change that.</p>
+
+    <h3>A "Founding Gallery" program</h3>
+    <p>We suggest a simple early-adopter offer that works for the Wimberley visits and beyond:</p>
+    <ul>
+      <li><b>Offer:</b> six months of the Gallery plan free, with hands-on setup — we import their existing inventory for them.</li>
+      <li><b>In return:</b> a 30-minute feedback call each month, and permission to name them as a Founding Gallery (logo and a quote).</li>
+      <li><b>Then:</b> a paid pilot at a price above today's $990/yr. One signed outside pilot is the milestone that unlocks our institution pricing — and the strongest single slide in the deck.</li>
+      <li><b>Target:</b> 5–10 Founding Galleries, at least one of them outside Wimberley and outside our personal network.</li>
+    </ul>
+
+    <h3>Demo kit for Kay's Wimberley gallery visits</h3>
+    <div class="cards">
+      <div class="card">
+        <span class="eyebrow">Show</span>
+        <h4>A live demo</h4>
+        <ul>
+          <li>A demo gallery account with real-looking inventory</li>
+          <li>A printed wall label whose QR code opens the certificate</li>
+          <li>The iPhone app: scan, photo lookup, add a work</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Leave</span>
+        <h4>A one-page leave-behind</h4>
+        <ul>
+          <li>The 30-second pitch and Founding Gallery offer</li>
+          <li>QR code to provenance.guru/lp/gallery</li>
+          <li>Contact info for follow-up and setup</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Capture</span>
+        <h4>A feedback sheet</h4>
+        <ul>
+          <li>A shared Google Sheet with your six questions as columns</li>
+          <li>Filled in the same day as each visit</li>
+          <li>We'll review it every week</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>How we'll document what we hear</h3>
+    <p>We'll set up one shared feedback log in the Drive with a column for each item on your list: most valuable features, current challenges, missing functionality, willingness to adopt and pay, common questions and objections, and referral or partnership leads. Every conversation — Kay's visits, our demos, people we meet at events — goes in the same sheet. The app also has a built-in feedback form and a contacts CRM; anything that comes in there we'll copy into the log too.</p>
+    <p>Each week we'll tag the log into three piles: <b>build it</b> (goes onto the roadmap), <b>message it</b> (we have it, but people don't realize), and <b>park it</b>. That gives us both product priorities and the validation story for investors.</p>
+
+    <h3>Who we'll approach first</h3>
+    <ul>
+      <li><b>Galleries:</b> Wimberley galleries (Kay), Tim's gallery network, and the galleries and artists who already said yes to our Instagram spotlight series.</li>
+      <li><b>Artists:</b> the artists those galleries represent. Each gallery brings 10–30.</li>
+      <li><b>Institutions:</b> one or two local museums or university collections for exploratory conversations only — we'll design the museum loan and donation tools together with the first one that's serious.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ PAGE: Roadmap ============ -->
+<section class="page">
+
+  <div class="section">
+    <span class="num">04</span><span class="eyebrow">Product Development Roadmap</span>
+    <h2>Today, next, and with investment</h2>
+    <div class="rule-gold"></div>
+    <p>Justin, Bryson and Tim own the roadmap. On October 19 we did a full review and deliberately narrowed it: fewer new features, more depth for galleries and institutions. Here's how it looks.</p>
+
+    <h3>What Provenance does today <span class="tag done">Live</span></h3>
+    <table>
+      <thead><tr><th>Area</th><th>What's built</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Records &amp; certificates</td><td>Artwork catalog with full provenance fields; certificates of authenticity (artist), ownership (collector) and show (gallery); QR codes; transfers when a work is sold; correction requests the owner approves</td></tr>
+        <tr><td class="k">Galleries</td><td>Team accounts with roles; exhibitions; open calls with submissions, review and reminders; wall labels; bulk spreadsheet-style editing; import an exhibition checklist from a photo or PDF</td></tr>
+        <tr><td class="k">Operations</td><td>Inventory, consignments, shipping, insurance, acquisitions, vendors, condition reports, loan agreements, invoices</td></tr>
+        <tr><td class="k">Relationships &amp; sales</td><td>Contacts CRM, sales and leads tracking, collection value charts</td></tr>
+        <tr><td class="k">Artist career</td><td>Free public website (20+ design templates), AI-assisted grant matching from a CV, open-call discovery</td></tr>
+        <tr><td class="k">Platform</td><td>iOS app on the App Store (push notifications, QR scanner, camera, Face ID lock, Apple sign-in, in-app subscriptions); passkeys; Stripe billing; privacy consent for AI features; content reporting</td></tr>
+        <tr><td class="k">In final testing</td><td>Find an artwork by taking a photo of it (visual matching)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="page cont">
+
+  <h3>Next 90 days — make it ready for real galleries <span class="tag">Committed</span></h3>
+  <ol style="padding-left:0.22in">
+    <li><b>Inventory import.</b> Upload a spreadsheet, PDF or photo of an existing inventory list and get draft records to review — no emails or notifications sent during import. First run: Tim's gallery's 25-year archive. This is what makes Founding Gallery onboarding take an afternoon instead of weeks.</li>
+    <li><b>Tamper-proof history.</b> Every change to a work's record is logged permanently, even if the work is later deleted. Owners can choose whether the history is public.</li>
+    <li><b>Reliability.</b> Automatic alerts when payments, certificate emails or imports fail; automated tests on every change.</li>
+    <li><b>Privacy &amp; trust paperwork.</b> A list of the services we share data with, a standard data agreement, and a per-gallery switch to turn AI features off.</li>
+    <li><b>Accessibility review</b> of the certificate, collection and import screens, plus the accessibility statement museums ask for.</li>
+  </ol>
+
+  <h3>After the first paid outside pilot <span class="tag">Gated</span></h3>
+  <ul>
+    <li>Gallery and institution pricing above $990/yr, with invoicing.</li>
+    <li>Museum loan and donation workflows — designed with the first museum that's in active conversation.</li>
+    <li>Partner verification API for insurers, auction houses and marketplaces (keys and permissions already exist; the public endpoints come next).</li>
+    <li>Procurement basics institutions ask for: single sign-on, security questionnaire, uptime commitment.</li>
+  </ul>
+
+  <h3>Parked on purpose</h3>
+  <p class="small">Real estate and other non-art verticals (cut), AI research into unknown artworks, insurance and appraisal partnerships, expanded grants. Each has a clear trigger for coming back — for example, a paying institution asking for it.</p>
+
+  <div class="note">
+    <span class="eyebrow">How investment speeds this up</span>
+    Today the three founders build Provenance on about $188/month of infrastructure, with no salaries. Funding would let us <b>(1)</b> hire engineers so the institution features ship in months, not quarters; <b>(2)</b> do hands-on onboarding for every Founding Gallery; <b>(3)</b> attend art fairs and art weeks with a demo and a target number of meetings and pilots; <b>(4)</b> finish the patent and legal groundwork.
+  </div>
+
+  <h3>Keeping the list current</h3>
+  <p>We'll keep a running list in the Drive of feature requests (from the feedback log), improvements and known limitations, each scored on customer value, demand, effort and strategic fit. We'll review it at every team meeting so Kay always has an up-to-date version for investor conversations.</p>
+</section>
+
+<!-- ============ PAGE: Launch + Collaboration ============ -->
+<section class="page cont" style="margin-top:0.3in">
+
+  <div class="section">
+    <span class="num">05</span><span class="eyebrow">App Launch &amp; Community Engagement</span>
+    <h2>Start intimate and curated</h2>
+    <div class="rule-gold"></div>
+    <p>Our recommendation: one <b>intimate, curated launch evening</b> (roughly 40–80 guests) rather than a large public event. Our audience — galleries, serious collectors, investors — is small and relationship-driven. A room where every guest matters will do more than a crowd.</p>
+    <table>
+      <thead><tr><th>Your question</th><th>Our thinking</th></tr></thead>
+      <tbody>
+        <tr><td class="k">What should it accomplish?</td><td>Sign up Founding Galleries on the night; give investors a chance to see the product used by real people; create photos and video for social media and the deck.</td></tr>
+        <tr><td class="k">Intimate or large?</td><td>Intimate first. A larger public moment can come later — for example tied to an art week or SXSW — once we have customers to show.</td></tr>
+        <tr><td class="k">Showcase real collections?</td><td>Yes, and it's the best demo we have. Hang a small show where every work has a wall label with a QR code. Guests scan it with the app and see the certificate and history. We can run it as an open call on Provenance, so the exhibition itself is built and managed in the product.</td></tr>
+        <tr><td class="k">How do we build relationships?</td><td>Personal invitations; a short founder talk (the 30-second pitch, then a story); Kay hosts investor introductions; a sign-up desk for the Founding Gallery offer; a follow-up note to every guest within 48 hours.</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">Venue ideas: a Wimberley gallery through Kay's network, or Tim's gallery. We'll start the invite list in the Drive: artists from our spotlight series, galleries from the validation list, collectors, and potential investors.</p>
+  </div>
+
+  <div class="section" style="break-inside: avoid;">
+    <span class="num">06</span><span class="eyebrow">Collaboration &amp; Working Rhythm</span>
+    <h2>Shared Drive and a weekly hour</h2>
+    <div class="rule-gold"></div>
+    <div class="two">
+      <div>
+        <h3>Shared workspace</h3>
+        <p>We'll set up the Google Drive this week with one folder for each area in your list, plus three working files on day one:</p>
+        <ul>
+          <li>Feedback log</li>
+          <li>Early-adopter &amp; launch contact list</li>
+          <li>Feature request &amp; roadmap list</li>
+        </ul>
+        <p>We'll also move this response, the product facts sheet and the existing investor drafts into the Drive.</p>
+      </div>
+      <div>
+        <h3>Meeting cadence</h3>
+        <p>We suggest <b>one hour a week</b>, never on a Wednesday. Proposed options for the group:</p>
+        <ul>
+          <li>Monday or Tuesday, late morning</li>
+          <li>Thursday, afternoon</li>
+        </ul>
+        <p class="small muted">Justin and Bryson to confirm their availability; Tim is flexible on these. Quick decisions between meetings can happen in a group thread.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE: Action tracker + closing ============ -->
+<section class="page cont" style="margin-top:0.2in">
+
+  <span class="num">07</span><span class="eyebrow">Action Tracker — Updated</span>
+  <h2>Who does what, and by when</h2>
+  <div class="rule-gold"></div>
+  <p class="small muted">Your tracker, with the work we're taking on and suggested target dates. All dates are proposals for the team to confirm.</p>
+  <table>
+    <thead><tr><th style="width:44%">Action</th><th>Owner</th><th style="width:16%">Target</th></tr></thead>
+    <tbody>
+      <tr><td>Set up shared Google Drive with working files</td><td>Tim</td><td>Nov 2</td></tr>
+      <tr><td>Agree on weekly meeting time (not Wednesdays)</td><td>Team</td><td>Nov 2</td></tr>
+      <tr><td>Agree on the 30-second overview (draft in Section 01)</td><td>Team</td><td>First meeting</td></tr>
+      <tr><td>Product facts sheet, screenshots and 2-min demo video</td><td>Justin, Bryson, Tim</td><td>Nov 9</td></tr>
+      <tr><td>Verified usage numbers from the admin dashboard</td><td>Tim</td><td>Nov 9</td></tr>
+      <tr><td>Wimberley demo kit: demo account, sample wall label, leave-behind</td><td>Justin, Bryson, Tim</td><td>Nov 9</td></tr>
+      <tr><td>Develop investor deck outline</td><td>Kay</td><td>Nov 16</td></tr>
+      <tr><td>Build initial revenue model and forecast</td><td>Kay, with our inputs</td><td>Nov 23</td></tr>
+      <tr><td>Correct investor one-pager &amp; memo (real estate, prices, gallery-first)</td><td>Tim, with Kay</td><td>Nov 16</td></tr>
+      <tr><td>Wimberley gallery visits and product testing</td><td>Kay</td><td>November</td></tr>
+      <tr><td>Meet Kristen and Mark about potential investment</td><td>Kay</td><td>Kay to set</td></tr>
+      <tr><td>IP review with David Jones (patent filing timeline)</td><td>Kay, with Tim</td><td>Kay to set</td></tr>
+      <tr><td>Founding Gallery list and outreach (target 5–10)</td><td>Team</td><td>List Nov 16; ongoing</td></tr>
+      <tr><td>Collect and log target-user feedback</td><td>Everyone</td><td>Ongoing, reviewed weekly</td></tr>
+      <tr><td>Inventory import, tested on Tim's gallery archive</td><td>Justin, Bryson, Tim</td><td>December</td></tr>
+      <tr><td>Product roadmap &amp; timeline for the pitch</td><td>Justin, Bryson, Tim</td><td>Nov 23; updated monthly</td></tr>
+      <tr><td>Launch event: decide format, venue and invite list</td><td>Team; Kay to explore network</td><td>Decide by Dec 7</td></tr>
+      <tr><td>Develop full investor pitch</td><td>Team, Kay supporting</td><td>After first feedback round</td></tr>
+      <tr><td>First outside paid pilot signed</td><td>Team</td><td>Q1 2027 goal</td></tr>
+    </tbody>
+  </table>
+
+  <div class="closing">
+    <span class="num">08</span><span class="eyebrow">Looking Ahead</span>
+    <div class="two" style="margin-top:0.1in">
+      <div>
+        <p><b>A compelling story.</b> Art's value depends on its history, and that history is still kept on paper and in people's memories. Provenance gives every collection a registrar.</p>
+        <p><b>Evidence of opportunity.</b> Founding Galleries, a feedback log full of real quotes, verified usage numbers, and one outside paid pilot.</p>
+      </div>
+      <div>
+        <p><b>A clear path forward.</b> A working product on web and iPhone today, a focused 90-day plan, and a clear explanation of what funding speeds up.</p>
+        <p>Thank you for the structure, Kay. We're excited to put this in front of the world together.</p>
+      </div>
+    </div>
+    <div class="sign">— Justin, Bryson &amp; Tim</div>
+  </div>
+</section>
+
+</body>
+</html>

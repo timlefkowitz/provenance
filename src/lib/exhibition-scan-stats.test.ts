@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_WORK_SCAN_STATS,
   computeExhibitionWorkScanStats,
+  computePosterScanStats,
   exhibitionScanWindow,
   inScanWindow,
   scanPlaceLabel,
@@ -86,5 +87,20 @@ describe('exhibitionScanWindow', () => {
       from: '2026-10-20T00:00:00Z',
       to: null,
     });
+  });
+});
+
+describe('computePosterScanStats', () => {
+  it('counts scans and distinct people, with unknown visitors counted once each', () => {
+    const stats = computePosterScanStats([
+      { scanned_at: '2026-11-02T10:00:00Z', visitor: 'aaaaaaaaaaaaaaaa' },
+      { scanned_at: '2026-11-03T10:00:00Z', visitor: 'aaaaaaaaaaaaaaaa' },
+      { scanned_at: '2026-11-01T10:00:00Z', visitor: null },
+    ]);
+    expect(stats).toEqual({ total: 3, people: 2, lastScannedAt: '2026-11-03T10:00:00Z' });
+  });
+
+  it('is empty with no scans', () => {
+    expect(computePosterScanStats([])).toEqual({ total: 0, people: 0, lastScannedAt: null });
   });
 });
