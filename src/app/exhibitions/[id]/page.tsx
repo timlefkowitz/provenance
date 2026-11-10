@@ -10,7 +10,7 @@ import { getExhibitionMemories } from '../_actions/exhibition-memories';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
-import { ArrowLeft, Calendar, MapPin, User, Edit, LayoutList, Phone, ScanLine } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, MapPin, User, Edit, LayoutList, Phone, ScanLine } from 'lucide-react';
 import { hasOwnWorkInExhibition } from '../_helpers/exhibition-scans';
 import { formatPhone, phoneHref } from '~/lib/phone';
 import {
@@ -374,12 +374,28 @@ export default async function ExhibitionPage({
               <Calendar className="h-3.5 w-3.5 text-wine/40" />
               {formatRange(exhibition.start_date, exhibition.end_date ?? null)}
             </span>
-            {exhibition.location && (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-wine/40" />
-                {exhibition.location}
-              </span>
+            {exhibition.venue && (
+              <Link
+                href={`/artists/${exhibition.venue.userId}?role=${exhibition.venue.role}&profileId=${exhibition.venue.id}`}
+                className="flex items-center gap-1.5 hover:text-wine transition-colors"
+              >
+                <Building2 className="h-3.5 w-3.5 text-wine/40" />
+                At {exhibition.venue.name}
+              </Link>
             )}
+            {(() => {
+              // The venue's address stands in when the show has no location of its own.
+              const place =
+                exhibition.location && exhibition.location !== exhibition.venue?.name
+                  ? exhibition.location
+                  : exhibition.venue?.address;
+              return place ? (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-wine/40" />
+                  {place}
+                </span>
+              ) : null;
+            })()}
             {contactPhone && (
               <a
                 href={phoneHref(contactPhone)}

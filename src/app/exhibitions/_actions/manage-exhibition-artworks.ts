@@ -27,7 +27,7 @@ export async function addArtworkToExhibition(exhibitionId: string, artworkId: st
   // Owner or gallery team member (e.g. the registrar)
   const { data: exhibition } = await asUntyped(client)
     .from('exhibitions')
-    .select('id, title, gallery_id, owner_role')
+    .select('id, title, gallery_id, owner_role, gallery_profile_id')
     .eq('id', exhibitionId)
     .single();
 
@@ -133,7 +133,7 @@ export async function issueMissingCertificatesOfShow(
   const db = asUntyped(adminClient);
   const { data: exhibition } = await db
     .from('exhibitions')
-    .select('id, title, gallery_id, owner_role')
+    .select('id, title, gallery_id, owner_role, gallery_profile_id')
     .eq('id', exhibitionId)
     .maybeSingle();
   if (!exhibition || !(await canManageExhibition(user.id, exhibition.gallery_id))) {

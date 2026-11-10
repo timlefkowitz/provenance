@@ -55,6 +55,11 @@ const TOOLS: {
     desc: 'Access & subscriptions.',
   },
   {
+    href: '/admin/institutions',
+    title: 'institutions',
+    desc: 'Invite museum teams, free trial.',
+  },
+  {
     href: '/admin/leads',
     title: 'leads',
     desc: 'Apify growth / prospect rows.',

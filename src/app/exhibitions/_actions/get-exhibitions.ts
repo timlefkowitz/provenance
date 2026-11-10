@@ -17,12 +17,26 @@ export type Exhibition = {
   location: string | null;
   image_url: string | null;
   owner_role: 'artist' | 'collector' | 'gallery' | 'institution' | null;
+  /** Gallery/institution profile the show is at (null = owner's default gallery). */
+  gallery_profile_id?: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
+export type ExhibitionVenue = {
+  id: string;
+  name: string;
+  role: string;
+  userId: string;
+  address: string | null;
+};
+
 export type ExhibitionWithDetails = Exhibition & {
+  /** The gallery the show is at, when one was picked. */
+  venue: ExhibitionVenue | null;
+  /** Venue name for the edit form (kept even if the editor isn't on its team). */
+  venue_name: string | null;
   artists: Array<{
     id: string;
     name: string;
@@ -81,6 +95,53 @@ export async function getExhibitionsForGallery(
   }
 
   return data || [];
+}
+
+/**
+ * Shows listed on one gallery / institution profile page: every show held at
+ * it (exhibitions.gallery_profile_id), plus — on the account's default
+ * profile only — the account's own gallery shows that never picked a venue.
+ */
+export async function getExhibitionsForGalleryProfile(
+  galleryProfileId: string,
+  options: {
+    accountId: string;
+    isDefaultProfile: boolean;
+    ownerRoles: Exhibition['owner_role'][];
+    publishedOnly?: boolean;
+  },
+): Promise<Exhibition[]> {
+  const client = asUntyped(getSupabaseServerClient());
+
+  let atVenue = client
+    .from('exhibitions')
+    .select('*')
+    .eq('gallery_profile_id', galleryProfileId);
+  if (options.publishedOnly) atVenue = atVenue.not('published_at', 'is', null);
+  const { data: venueShows, error: venueErr } = await atVenue;
+  if (venueErr) {
+    console.error('[Exhibitions] getExhibitionsForGalleryProfile venue query failed', venueErr);
+  }
+
+  let legacy: Exhibition[] = [];
+  if (options.isDefaultProfile) {
+    let q = client
+      .from('exhibitions')
+      .select('*')
+      .eq('gallery_id', options.accountId)
+      .is('gallery_profile_id', null)
+      .in('owner_role', options.ownerRoles);
+    if (options.publishedOnly) q = q.not('published_at', 'is', null);
+    const { data, error } = await q;
+    if (error) {
+      console.error('[Exhibitions] getExhibitionsForGalleryProfile legacy query failed', error);
+    }
+    legacy = (data ?? []) as Exhibition[];
+  }
+
+  const byId = new Map<string, Exhibition>();
+  for (const ex of [...((venueShows ?? []) as Exhibition[]), ...legacy]) byId.set(ex.id, ex);
+  return [...byId.values()].sort((a, b) => (b.start_date ?? '').localeCompare(a.start_date ?? ''));
 }
 
 /**
@@ -489,8 +550,31 @@ export async function getExhibitionWithDetails(
     })),
   );
 
+  let venue: ExhibitionVenue | null = null;
+  if (exhibition.gallery_profile_id) {
+    const { data: venueRow, error: venueErr } = await asUntyped(client)
+      .from('user_profiles')
+      .select('id, name, role, user_id, address, is_active')
+      .eq('id', exhibition.gallery_profile_id)
+      .maybeSingle();
+    if (venueErr) {
+      console.error('[Exhibitions] getExhibitionWithDetails: venue lookup failed', venueErr);
+    }
+    if (venueRow?.is_active) {
+      venue = {
+        id: venueRow.id as string,
+        name: venueRow.name as string,
+        role: venueRow.role as string,
+        userId: venueRow.user_id as string,
+        address: (venueRow.address as string | null) ?? null,
+      };
+    }
+  }
+
   return {
     ...exhibition,
+    venue,
+    venue_name: venue?.name ?? null,
     artists: creditedArtists,
     artworks: filteredArtworks,
     showArtists,

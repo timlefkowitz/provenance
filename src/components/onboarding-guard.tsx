@@ -18,6 +18,8 @@ export async function OnboardingGuard({ children }: { children: React.ReactNode 
     if (
       pathname.startsWith('/onboarding') ||
       pathname.startsWith('/auth') ||
+      // Institution invitees accept straight into institution mode; skip role selection.
+      pathname.startsWith('/institution-invite') ||
       pathname.startsWith('/about') || // Public about page
       pathname.startsWith('/artists') || // Public artist profiles
       pathname.startsWith('/registry') || // Public directory (includes /artists index redirect target)

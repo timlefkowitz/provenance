@@ -13,6 +13,7 @@ import { ArtworkCard } from '../../artworks/_components/artwork-card';
 import { getUserRole, isValidRole, getRoleLabel, isTeamProfileRole, USER_ROLES, GALLERY_REGISTRY_THUMBNAIL_CERT_TYPES } from '~/lib/user-roles';
 import {
   getExhibitionsForGallery,
+  getExhibitionsForGalleryProfile,
   getExhibitionsForArtistAccount,
 } from '../../exhibitions/_actions/get-exhibitions';
 import { getArtworksFromGalleryExhibitions } from '../../exhibitions/_actions/get-exhibition-artworks';
@@ -408,7 +409,19 @@ export default async function ArtistProfilePage({
   const publishedSiteUrl = await getPublishedSiteUrl(client as any, roleProfile?.id ?? null);
 
   let allExhibitions: Awaited<ReturnType<typeof getExhibitionsForGallery>> = [];
-  if (isGallery) {
+  if (isGallery && roleProfile?.id) {
+    const defaultProfileId = await loadDefaultTeamProfileId(
+      client as never,
+      account.id,
+      isInstitutionProfile ? USER_ROLES.INSTITUTION : USER_ROLES.GALLERY,
+    );
+    allExhibitions = await getExhibitionsForGalleryProfile(roleProfile.id, {
+      accountId: account.id,
+      isDefaultProfile: defaultProfileId === roleProfile.id,
+      ownerRoles: isInstitutionProfile ? ['institution'] : ['gallery', 'institution'],
+      publishedOnly: true,
+    });
+  } else if (isGallery) {
     allExhibitions = await getExhibitionsForGallery(account.id, {
       ownerRoles: isInstitutionProfile ? ['institution'] : ['gallery', 'institution'],
       publishedOnly: true,

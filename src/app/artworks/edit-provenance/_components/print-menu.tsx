@@ -488,6 +488,7 @@ export function PrintMenu({
         hasPrices={catalogOpen && catalogItems().some((i) => i.price)}
         hasProvenance
         priceHint="Values marked public"
+        ownerName={galleryName}
         onPrint={handlePrintCatalog}
       />
 

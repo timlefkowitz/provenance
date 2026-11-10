@@ -7,6 +7,7 @@ import {
   getExhibitionOwnerRoleOptions,
 } from '../_helpers/exhibition-owner-roles';
 import { isInstitutionAccount } from '~/lib/institution-account';
+import { listVenueGalleriesForUser } from '~/lib/exhibitions/exhibition-venue';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { EditorialPageHeader } from '~/components/editorial-form';
@@ -39,6 +40,7 @@ export default async function NewExhibitionPage({
 
   const userRole = getUserRole(account.public_data as Record<string, unknown>);
   const institutionLocked = isInstitutionAccount(account.public_data as Record<string, unknown>);
+  const venues = await listVenueGalleriesForUser(client, user.id);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -51,6 +53,7 @@ export default async function NewExhibitionPage({
       <ExhibitionForm
         ownerRoleOptions={getExhibitionOwnerRoleOptions(userRole, institutionLocked)}
         defaultOwnerRole={defaultExhibitionOwnerRole(userRole, requestedOwnerRole, institutionLocked)}
+        venueOptions={venues.map(({ id, name }) => ({ id, name }))}
       />
     </div>
   );

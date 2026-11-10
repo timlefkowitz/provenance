@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { ConsignmentRow, LoanAgreementRow } from '../page';
+import { ReportsCard } from './reports-card';
 
 type Props = {
   loans: LoanAgreementRow[];
@@ -38,6 +39,7 @@ export function OperationsSummaryDashboard({ loans, consignments }: Props) {
   const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
   return (
+    <>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
       <div className="rounded-md border border-wine/15 bg-parchment/50 p-4">
         <p className="font-display text-wine text-sm">Active loans</p>
@@ -93,5 +95,7 @@ export function OperationsSummaryDashboard({ loans, consignments }: Props) {
         </p>
       </div>
     </div>
+    <ReportsCard />
+    </>
   );
 }

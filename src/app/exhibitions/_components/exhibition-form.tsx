@@ -40,15 +40,20 @@ const OWNER_ROLE_HINTS: Partial<Record<ExhibitionOwnerRole, string>> = {
   artist: 'A show you curate, listed on your artist profile and separate from any gallery you run. Invited artists keep their own Certificates of Authenticity.',
 };
 
+export type ExhibitionVenueOption = { id: string; name: string };
+
 export function ExhibitionForm({
   exhibition,
   ownerRoleOptions = [],
   defaultOwnerRole,
+  venueOptions = [],
 }: {
   exhibition?: any;
   /** Modes the new exhibition can be created under; ignored when editing. */
   ownerRoleOptions?: ExhibitionOwnerRole[];
   defaultOwnerRole?: ExhibitionOwnerRole;
+  /** Galleries the user runs or is on the team of, offered as the show's venue. */
+  venueOptions?: ExhibitionVenueOption[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -61,6 +66,24 @@ export function ExhibitionForm({
   const [selectedInvites, setSelectedInvites] = useState<ExhibitionArtistInvite[]>([]);
   const [checklistRows, setChecklistRows] = useState<ChecklistRow[]>([]);
   const [ownerRole, setOwnerRole] = useState<ExhibitionOwnerRole | undefined>(defaultOwnerRole);
+  // '' = not at one of the user's galleries. A new gallery-mode show starts at
+  // the user's first gallery; a curator picks where their show is.
+  const [venueId, setVenueId] = useState<string>(
+    exhibition
+      ? (exhibition.gallery_profile_id ?? '')
+      : defaultOwnerRole === 'gallery' || defaultOwnerRole === 'institution'
+        ? (venueOptions[0]?.id ?? '')
+        : '',
+  );
+  const [venueTouched, setVenueTouched] = useState(false);
+  // Keep the current venue selectable on edit even if this user isn't on its team.
+  const venueChoices =
+    exhibition?.gallery_profile_id && !venueOptions.some((v) => v.id === exhibition.gallery_profile_id)
+      ? [
+          ...venueOptions,
+          { id: exhibition.gallery_profile_id as string, name: exhibition.venue_name ?? 'Current gallery' },
+        ]
+      : venueOptions;
 
   const [formData, setFormData] = useState({
     title: exhibition?.title || '',
@@ -114,6 +137,11 @@ export function ExhibitionForm({
         formDataObj.append('maxArtworksPerArtist', formData.maxArtworksPerArtist);
         if (!exhibition && ownerRole) {
           formDataObj.append('ownerRole', ownerRole);
+        }
+        // On edit only send the venue when it changed, so a team member saving
+        // other fields can't trip the "gallery you run" check.
+        if (venueChoices.length > 0 && (!exhibition || venueTouched)) {
+          formDataObj.append('galleryProfileId', venueId);
         }
         // Append artist IDs as JSON array
         formDataObj.append('artistIds', JSON.stringify(selectedArtists.map(a => a.id)));
@@ -194,7 +222,14 @@ export function ExhibitionForm({
                 key={role}
                 type="button"
                 aria-pressed={role === ownerRole}
-                onClick={() => setOwnerRole(role)}
+                onClick={() => {
+                  setOwnerRole(role);
+                  if (!venueTouched) {
+                    setVenueId(
+                      role === 'gallery' || role === 'institution' ? (venueOptions[0]?.id ?? '') : '',
+                    );
+                  }
+                }}
                 className={cn(
                   'rounded-none px-4 py-1.5 transition-colors',
                   role === ownerRole ? 'bg-editorial-ink text-bone' : 'text-editorial-ink/60 hover:text-editorial-ink',
@@ -208,6 +243,37 @@ export function ExhibitionForm({
             <p className={FIELD_HINT}>{OWNER_ROLE_HINTS[ownerRole]}</p>
           )}
         </fieldset>
+      )}
+
+      {venueChoices.length > 0 && ownerRole !== 'collector' && (
+        <div className="space-y-2">
+          <Label htmlFor="venue" className={FIELD_LABEL}>Which gallery is this show at?</Label>
+          <select
+            id="venue"
+            value={venueId}
+            onChange={(e) => {
+              const next = e.target.value;
+              setVenueId(next);
+              setVenueTouched(true);
+              const venue = venueChoices.find((v) => v.id === next);
+              if (venue && !formData.location.trim()) {
+                setFormData((prev) => ({ ...prev, location: venue.name }));
+              }
+            }}
+            className={cn(FIELD_INPUT, 'flex w-full sm:w-80 focus-visible:outline-none')}
+          >
+            <option value="">Not at one of my galleries</option>
+            {venueChoices.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+          <p className={FIELD_HINT}>
+            The show is listed on that gallery&apos;s page and its Certificates of Show are filed
+            under it. Showing somewhere else? Leave this and fill in Location.
+          </p>
+        </div>
       )}
 
       {!exhibition && (

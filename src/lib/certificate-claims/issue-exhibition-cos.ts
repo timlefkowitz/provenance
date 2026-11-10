@@ -12,6 +12,8 @@ type ExhibitionForCos = {
   title: string;
   gallery_id: string;
   owner_role: string | null;
+  /** The gallery the show is at; wins over the owner's default profile. */
+  gallery_profile_id?: string | null;
 };
 
 /**
@@ -23,6 +25,7 @@ async function loadIssuingProfileId(
   adminClient: SupabaseClient,
   exhibition: ExhibitionForCos,
 ): Promise<string | null> {
+  if (exhibition.gallery_profile_id) return exhibition.gallery_profile_id;
   const role =
     exhibition.owner_role === USER_ROLES.INSTITUTION
       ? USER_ROLES.INSTITUTION

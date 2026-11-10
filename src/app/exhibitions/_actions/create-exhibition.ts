@@ -18,6 +18,7 @@ import {
 } from './manage-exhibition-invites';
 import { exhibitionHasEnded, parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
 import { normalizePhoneInput } from '~/lib/phone';
+import { canUseVenueGallery } from '~/lib/exhibitions/exhibition-venue';
 
 export async function createExhibition(formData: FormData) {
   console.log('[Exhibitions] createExhibition started');
@@ -62,6 +63,7 @@ export async function createExhibition(formData: FormData) {
   const artistInvitesJson = formData.get('artistInvites') as string | null;
   const maxArtworksPerArtist = parseMaxArtworksPerArtist(formData.get('maxArtworksPerArtist'));
   const ownerRoleInput = (formData.get('ownerRole') as string | null) || userRole;
+  const galleryProfileId = ((formData.get('galleryProfileId') as string | null) ?? '').trim() || null;
 
   // An account can own exhibitions as an artist or as a gallery/institution
   // independently of its current mode (e.g. an artist who also runs a gallery
@@ -81,6 +83,11 @@ export async function createExhibition(formData: FormData) {
   }
   if (containsObjectionableText(title, description, location, curator, theme)) {
     throw new Error(OBJECTIONABLE_TEXT_MESSAGE);
+  }
+
+  if (galleryProfileId && !(await canUseVenueGallery(client, user.id, galleryProfileId))) {
+    console.error('[Exhibitions] createExhibition venue gallery rejected', { galleryProfileId });
+    throw new Error('You can only hold a show at a gallery you run or are on the team of');
   }
 
   // Parse artist IDs
@@ -113,6 +120,7 @@ export async function createExhibition(formData: FormData) {
     .insert({
       gallery_id: user.id,
       owner_role: ownerRole,
+      ...(galleryProfileId ? { gallery_profile_id: galleryProfileId } : {}),
       title: title.trim(),
       description: description?.trim() || null,
       start_date: startDate,

@@ -62,8 +62,12 @@ export type CatalogMeta = {
   label: string;
 };
 
+/** The name above the title: the owner's (gallery, institution) or ours. */
+export type CatalogCoverName = 'owner' | 'provenance';
+
 export type CatalogOptions = {
   style: CatalogStyle;
+  coverName: CatalogCoverName;
   /** Price list at the end (and the price under each work in editorial). */
   prices: boolean;
   priceSymbol: boolean;
@@ -78,6 +82,7 @@ export type CatalogOptions = {
 
 export const DEFAULT_CATALOG_OPTIONS: CatalogOptions = {
   style: 'standard',
+  coverName: 'owner',
   prices: true,
   priceSymbol: true,
   descriptions: true,
@@ -625,6 +630,10 @@ export function buildCatalogHtml(
   /** Printed when options.artistBios is on. */
   artists: CatalogArtist[] = [],
 ): string {
+  if (options.coverName === 'provenance') {
+    // Editorial already carries the "Provenance." wordmark beside this name.
+    meta = { ...meta, kicker: options.style === 'editorial' ? '' : 'Provenance' };
+  }
   const works = prepare(items, options, qrSvgs);
   const bios = options.artistBios ? artists.filter((a) => a.bio.trim()) : [];
   switch (options.style) {

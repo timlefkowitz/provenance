@@ -35,7 +35,7 @@ export async function getExhibitionShareMeta(
   const { data: exhibition, error } = await admin
     .from('exhibitions')
     .select(
-      'title, description, location, start_date, end_date, image_url, gallery_id, owner_role, published_at',
+      'title, description, location, start_date, end_date, image_url, gallery_id, owner_role, published_at, gallery_profile_id',
     )
     .eq('id', exhibitionId)
     .maybeSingle();
@@ -50,7 +50,18 @@ export async function getExhibitionShareMeta(
 
   let ownerName: string | null = null;
 
-  if (exhibition.gallery_id) {
+  // A show held at a chosen gallery is named after that gallery.
+  if (exhibition.gallery_profile_id) {
+    const { data: venue } = await admin
+      .from('user_profiles')
+      .select('name')
+      .eq('id', exhibition.gallery_profile_id)
+      .eq('is_active', true)
+      .maybeSingle();
+    ownerName = venue?.name ?? null;
+  }
+
+  if (!ownerName && exhibition.gallery_id) {
     try {
       const { data: account } = await admin
         .from('accounts')

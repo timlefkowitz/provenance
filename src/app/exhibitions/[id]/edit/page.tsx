@@ -18,6 +18,7 @@ import { ExhibitionSubmissionsPanel } from '../../_components/exhibition-submiss
 import { ownerReceivesCertificateOfShow } from '../../_helpers/exhibition-owner-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { listVenueGalleriesForUser } from '~/lib/exhibitions/exhibition-venue';
 import { EditorialPageHeader, Eyebrow } from '~/components/editorial-form';
 export const metadata = {
   title: 'Edit Exhibition | Provenance',
@@ -54,18 +55,22 @@ export default async function EditExhibitionPage({
     redirect('/exhibitions');
   }
 
-  const [invites, uninvitedArtists, openCall, submissions] = await Promise.all([
+  const [invites, uninvitedArtists, openCall, submissions, venues] = await Promise.all([
     getExhibitionInvites(id),
     getUninvitedCreditedArtists(id),
     getExhibitionOpenCall(id),
     getExhibitionSubmissions(id),
+    listVenueGalleriesForUser(client, user.id),
   ]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <EditorialPageHeader eyebrow="Exhibitions" title="Edit exhibition" description="Update exhibition details" />
 
-      <ExhibitionForm exhibition={exhibition} />
+      <ExhibitionForm
+        exhibition={exhibition}
+        venueOptions={venues.map(({ id: venueId, name }) => ({ id: venueId, name }))}
+      />
 
       <ExhibitionHeaderImagePanel
         exhibitionId={id}

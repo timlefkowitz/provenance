@@ -467,6 +467,7 @@ export function ExhibitionPrintMenu({
         hasPrices={hasPrices}
         hasProvenance={false}
         priceHint="Exhibition list prices"
+        ownerName={ownerName}
         onPrint={handleCatalog}
       />
     </>

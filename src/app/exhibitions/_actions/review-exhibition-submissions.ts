@@ -51,7 +51,7 @@ async function loadManagedExhibition(
 
   const { data: exhibition, error } = await client
     .from('exhibitions')
-    .select('id, gallery_id, title, owner_role')
+    .select('id, gallery_id, title, owner_role, gallery_profile_id')
     .eq('id', exhibitionId)
     .maybeSingle();
   if (error || !exhibition) return { error: 'Exhibition not found' };

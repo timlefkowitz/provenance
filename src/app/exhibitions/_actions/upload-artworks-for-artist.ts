@@ -146,7 +146,7 @@ export async function uploadArtworksForArtist(
     const adminClient = asUntyped(getSupabaseServerAdminClient());
     const { data: exhibition, error: exhibitionError } = await adminClient
       .from('exhibitions')
-      .select('id, gallery_id, title, owner_role')
+      .select('id, gallery_id, title, owner_role, gallery_profile_id')
       .eq('id', exhibitionId)
       .maybeSingle();
     if (exhibitionError || !exhibition) {
@@ -191,15 +191,17 @@ export async function uploadArtworksForArtist(
       exhibition.owner_role === USER_ROLES.INSTITUTION
         ? USER_ROLES.INSTITUTION
         : USER_ROLES.GALLERY;
-    const { data: galleryProfile } = await adminClient
-      .from('user_profiles')
-      .select('id, name')
-      .eq('user_id', exhibition.gallery_id)
-      .eq('role', galleryRole)
-      .eq('is_active', true)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // The gallery the show is at, else the owner's first gallery profile.
+    const venueQuery = adminClient.from('user_profiles').select('id, name');
+    const { data: galleryProfile } = exhibition.gallery_profile_id
+      ? await venueQuery.eq('id', exhibition.gallery_profile_id).maybeSingle()
+      : await venueQuery
+          .eq('user_id', exhibition.gallery_id)
+          .eq('role', galleryRole)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
 
     const createdIds: string[] = [];
 
@@ -350,7 +352,7 @@ export async function notifyArtistOfUploadedArtworks(
     const adminClient = asUntyped(getSupabaseServerAdminClient());
     const { data: exhibition } = await adminClient
       .from('exhibitions')
-      .select('id, gallery_id, title, owner_role')
+      .select('id, gallery_id, title, owner_role, gallery_profile_id')
       .eq('id', exhibitionId)
       .maybeSingle();
     if (!exhibition || !(await canManageExhibition(user.id, exhibition.gallery_id))) {

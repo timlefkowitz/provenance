@@ -13,6 +13,7 @@ import {
 } from './manage-exhibition-invites';
 import { exhibitionHasEnded, parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
 import { normalizePhoneInput } from '~/lib/phone';
+import { canUseVenueGallery } from '~/lib/exhibitions/exhibition-venue';
 
 export async function updateExhibition(exhibitionId: string, formData: FormData) {
   const client = asUntyped(getSupabaseServerClient());
@@ -72,6 +73,14 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   const artistIdsJson = formData.get('artistIds') as string | null;
   const artistInvitesJson = formData.get('artistInvites') as string | null;
   const maxArtworksPerArtist = parseMaxArtworksPerArtist(formData.get('maxArtworksPerArtist'));
+  // Only present when the form offered a venue picker; absent leaves it unchanged.
+  const galleryProfileField = formData.get('galleryProfileId') as string | null;
+  const galleryProfileId =
+    galleryProfileField === null ? undefined : galleryProfileField.trim() || null;
+
+  if (galleryProfileId && !(await canUseVenueGallery(client, user.id, galleryProfileId))) {
+    throw new Error('You can only hold a show at a gallery you run or are on the team of');
+  }
 
   if (!title || !startDate) {
     throw new Error('Title and start date are required');
@@ -122,6 +131,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
       end_date: endDate || null,
       location: location?.trim() || null,
       metadata: Object.keys(metadata).length > 0 ? metadata : null,
+      ...(galleryProfileId !== undefined ? { gallery_profile_id: galleryProfileId } : {}),
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })

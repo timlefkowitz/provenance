@@ -17,7 +17,7 @@ import {
   type CatalogStyle,
 } from '../_helpers/catalog-print-html';
 
-type ToggleKey = Exclude<keyof CatalogOptions, 'style'>;
+type ToggleKey = Exclude<keyof CatalogOptions, 'style' | 'coverName'>;
 
 const TOGGLES: Array<{ key: ToggleKey; label: string; hint?: string; requires?: ToggleKey }> = [
   { key: 'descriptions', label: 'Descriptions' },
@@ -139,6 +139,7 @@ export function CatalogDialog({
   hasPrices,
   hasProvenance,
   priceHint,
+  ownerName,
   onPrint,
 }: {
   open: boolean;
@@ -154,6 +155,8 @@ export function CatalogDialog({
   /** Whether provenance fields exist for these works (collection works). */
   hasProvenance: boolean;
   priceHint?: string;
+  /** The gallery, institution or owner name printed above the title. */
+  ownerName?: string | null;
   onPrint: (options: CatalogOptions, artists: CatalogArtist[]) => void;
 }) {
   const [options, setOptions] = useState<CatalogOptions>(DEFAULT_CATALOG_OPTIONS);
@@ -203,7 +206,7 @@ export function CatalogDialog({
           .map((a) => ({ name: a.name, bio: (edits[a.key] ?? a.bio).trim() }))
           .filter((a) => a.bio)
       : [];
-    console.log('[Catalog] Print', { style: options.style, count, artists: artists.length });
+    console.log('[Catalog] Print', { style: options.style, coverName: options.coverName, count, artists: artists.length });
     onPrint(
       { ...options, prices: options.prices && hasPrices, provenance: options.provenance && hasProvenance },
       artists,
@@ -242,6 +245,35 @@ export function CatalogDialog({
                     {s.label}
                     <span className="block text-[11px] leading-tight text-ink/45">{s.hint}</span>
                   </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 font-serif text-[10px] uppercase tracking-widest text-ink/40">Name on cover</p>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Name on cover">
+            {(
+              [
+                { value: 'owner', label: ownerName?.trim() || 'Your name', hint: 'Gallery or owner' },
+                { value: 'provenance', label: 'Provenance', hint: 'Our brand' },
+              ] as const
+            ).map((c) => {
+              const on = options.coverName === c.value;
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setOptions((o) => ({ ...o, coverName: c.value }))}
+                  className={`border p-2 text-left font-serif text-sm transition-colors ${
+                    on ? 'border-wine bg-wine/10 text-wine' : 'border-wine/20 text-ink hover:border-wine/40'
+                  }`}
+                >
+                  <span className="block truncate">{c.label}</span>
+                  <span className="block text-[11px] leading-tight text-ink/45">{c.hint}</span>
                 </button>
               );
             })}

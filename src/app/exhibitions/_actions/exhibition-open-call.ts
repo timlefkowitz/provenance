@@ -55,7 +55,7 @@ async function requireManager(exhibitionId: string) {
   const adminClient = asUntyped(getSupabaseServerAdminClient());
   const { data: exhibition, error } = await adminClient
     .from('exhibitions')
-    .select('id, gallery_id, title, owner_role, end_date')
+    .select('id, gallery_id, title, owner_role, end_date, gallery_profile_id')
     .eq('id', exhibitionId)
     .single();
   if (error || !exhibition) throw new Error('Exhibition not found');
@@ -228,6 +228,7 @@ export async function openExhibitionOpenCall(
       .eq('user_id', exhibition.gallery_id);
     const profileList = (profiles ?? []) as Array<{ id: string; role: string; is_active: boolean }>;
     const profile =
+      (exhibition.gallery_profile_id ? { id: exhibition.gallery_profile_id as string } : null) ??
       profileList.find((p) => p.role === exhibition.owner_role && p.is_active) ??
       profileList.find((p) => p.is_active) ??
       profileList[0];
