@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { headers } from 'next/headers';
 
@@ -12,6 +12,13 @@ import { checkRateLimit } from '~/lib/rate-limit';
 import { asUntyped } from '~/lib/supabase-untyped';
 
 const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+
+/**
+ * How long the scan may embed windows before it returns its best matches so far. The route
+ * that calls this (api/exhibitions/wall-scan) allows 120 s; the rest covers a cold start
+ * (model download + session) and the response.
+ */
+const SCAN_BUDGET_MS = 75_000;
 
 export type ScanExhibitionWallResult =
   | {
@@ -33,6 +40,10 @@ export type ScanExhibitionWallResult =
  * caller is printing, so duplicates hidden on the page (see prefer-artist-coa) never match.
  * Ids are intersected with the exhibition's own works, and embeddings are read with the
  * caller's client, so RLS decides what can be matched.
+ *
+ * Not a server action on purpose: a server action gets the page's time limit (60 s on the
+ * exhibition page), and a wall scan on a function's CPU can need more than that. It's called
+ * from the api/exhibitions/wall-scan route, which has its own limit.
  */
 export async function scanExhibitionWall(formData: FormData): Promise<ScanExhibitionWallResult> {
   const image = formData.get('image');
@@ -99,7 +110,9 @@ export async function scanExhibitionWall(formData: FormData): Promise<ScanExhibi
 
   const started = Date.now();
   try {
-    const result = await scanWall(Buffer.from(await image.arrayBuffer()), references);
+    const result = await scanWall(Buffer.from(await image.arrayBuffer()), references, {
+      deadline: started + SCAN_BUDGET_MS,
+    });
     console.log('[WallScan] done', {
       userId: user.id,
       exhibitionId,
@@ -108,6 +121,7 @@ export async function scanExhibitionWall(formData: FormData): Promise<ScanExhibi
       found: result.placements.length,
       confidences: result.placements.map((p) => p.confidence),
       windows: result.windowsScanned,
+      truncated: result.truncated,
       ms: Date.now() - started,
     });
     return {

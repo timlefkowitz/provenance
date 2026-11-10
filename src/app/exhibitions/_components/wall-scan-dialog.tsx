@@ -16,7 +16,7 @@ import type { MatchConfidence } from '~/lib/image-fingerprint/similarity';
 import type { WallBox } from '~/lib/image-fingerprint/wall-scan';
 import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 
-import { scanExhibitionWall } from '../_actions/scan-exhibition-wall';
+import type { ScanExhibitionWallResult } from '../_actions/scan-exhibition-wall';
 import { DEFAULT_WALL_GROUP_LABEL_OPTIONS, type WallGroupLabelOptions } from '../_helpers/exhibition-print-html';
 
 const OPTIONS_KEY = 'provenance.exhibition.wallGroupLabelOptions';
@@ -140,7 +140,16 @@ export function WallScanDialog({
       fd.set('image', prepared);
       fd.set('exhibitionId', exhibitionId);
       fd.set('artworkIds', JSON.stringify(artworks.map((a) => a.id)));
-      const result = await scanExhibitionWall(fd);
+      const res = await fetch('/api/exhibitions/wall-scan', { method: 'POST', body: fd });
+      if (!res.ok && res.status !== 400) {
+        setError(
+          res.status === 504
+            ? 'That scan took too long. Try a photo of fewer works, or try again.'
+            : 'Scan failed. Check your connection and try again.',
+        );
+        return;
+      }
+      const result = (await res.json()) as ScanExhibitionWallResult;
       if (!result.success) {
         setError(result.error);
         return;
@@ -306,7 +315,7 @@ export function WallScanDialog({
               >
                 <span className="inline-flex items-center gap-2 rounded-full bg-parchment px-3 py-1.5 text-xs font-serif text-ink/70 shadow-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Looking for {artworks.length} {artworks.length === 1 ? 'work' : 'works'}… about 10 seconds
+                  Looking for {artworks.length} {artworks.length === 1 ? 'work' : 'works'}… this can take up to a minute
                 </span>
               </div>
             )}
