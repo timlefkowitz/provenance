@@ -99,7 +99,7 @@ export async function loadAccountSales(admin: UntypedSupabaseClient, accountId: 
   const [chainLedger, allSoldRows, exhibitionCountByWork, named] = await Promise.all([
     loadLedgerSales(admin, chain.ids),
     loadSoldRows(admin, chain.ids),
-    loadExhibitionCounts(admin, chain.ids, workKeys),
+    loadExhibitionCounts(admin, chain.ids, workKeys, chain.rows),
     inChunks(chain.ids, async (ids) => {
       const { data } = await admin.from('artworks').select('id, artist_name').in('id', ids).not('artist_name', 'is', null);
       return (data ?? []) as Array<{ id: string; artist_name: string | null }>;

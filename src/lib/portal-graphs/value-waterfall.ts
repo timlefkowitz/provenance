@@ -1,6 +1,8 @@
 /**
  * Per-artwork value waterfall:
  *  1. Latest artwork_valuations.estimated_value_cents with generated_at <= t
+ *  1b. Else the work's Provenance Value (chain-wide price + exhibition,
+ *      publication and sale premiums), wherever step 2 or 3 has a value at t
  *  2. Else artworks.sold_price_cents (if sold_at <= t)
  *  3. Else parseInt(artworks.value) * 100 (declared free-text value)
  *  4. Else 0
@@ -12,6 +14,8 @@ export interface ArtworkValueRow {
   sold_at: string | null;
   /** Free-text declared value from the artwork record */
   value: string | null;
+  /** Chain-wide Provenance Value (loadChainProvenanceValueCents); replaces steps 2–3 when higher. */
+  provenance_value_cents?: number | null;
 }
 
 export interface ValuationRow {
@@ -22,7 +26,7 @@ export interface ValuationRow {
   confidence_high_cents: number | null;
 }
 
-export type ValueSource = 'formal_valuation' | 'sale_price' | 'declared_value' | 'unknown';
+export type ValueSource = 'formal_valuation' | 'provenance_value' | 'sale_price' | 'declared_value' | 'unknown';
 
 export interface ValueResult {
   value_cents: number;
@@ -76,6 +80,25 @@ function formatMoneyCents(cents: number): string {
 export function valueAt(
   artwork: ArtworkValueRow,
   /** All valuation rows for this artwork (any order), will be filtered by `t` */
+  valuations: ValuationRow[],
+  t: Date,
+): ValueResult {
+  const base = baseValueAt(artwork, valuations, t);
+  const pv = artwork.provenance_value_cents ?? 0;
+  if (base.source === 'formal_valuation' || base.source === 'unknown' || pv <= base.value_cents) return base;
+  return {
+    value_cents: pv,
+    low_cents: pv,
+    high_cents: pv,
+    fromValuation: false,
+    source: 'provenance_value',
+    reasoning: `Provenance Value — ${base.reasoning.charAt(0).toLowerCase()}${base.reasoning.slice(1)}, plus premiums for its shows, publications and sales`,
+    details: base.details,
+  };
+}
+
+function baseValueAt(
+  artwork: ArtworkValueRow,
   valuations: ValuationRow[],
   t: Date,
 ): ValueResult {

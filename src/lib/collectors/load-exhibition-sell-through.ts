@@ -71,7 +71,7 @@ export async function loadExhibitionSellThrough(
     ),
     chain: chain.rows,
     workKeys: chain.workKeys,
-    exhibitionCountByWork: await loadExhibitionCounts(admin, chain.ids, chain.workKeys),
+    exhibitionCountByWork: await loadExhibitionCounts(admin, chain.ids, chain.workKeys, chain.rows),
   });
 
   const [result] = computeSellThrough({

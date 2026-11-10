@@ -37,6 +37,7 @@ export default defineConfig({
       'src/lib/artwork-lists.test.ts',
       'src/lib/provenance/**/*.test.ts',
       'src/lib/valuation/provenance-value.test.ts',
+      'src/lib/valuation/load-chain-provenance-values.test.ts',
     ],
   },
   resolve: {

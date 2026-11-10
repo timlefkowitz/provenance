@@ -36,7 +36,7 @@ import { UploadAttachmentsDialog, type ArtworkAttachmentRow } from './upload-att
 import { ArtworkPublications } from './artwork-publications';
 import { ProvenanceValueLine } from './provenance-value-line';
 import { SoldDot } from '~/components/sold-dot';
-import { computeProvenanceValue, type ArtworkPublication } from '~/lib/valuation/provenance-value';
+import type { ArtworkPublication, ProvenanceValue } from '~/lib/valuation/provenance-value';
 import { setValueCents } from '~/lib/sales/sale-money';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
@@ -303,7 +303,7 @@ export function CertificateOfAuthenticity({
   valuation = null,
   publications = [],
   scanStats = EMPTY_SCAN_STATS,
-  saleCount = 0,
+  provenanceValue = null,
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -344,20 +344,11 @@ export function CertificateOfAuthenticity({
   publications?: ArtworkPublication[];
   /** Public scan counts; per-scan details only reach the owner and admins. */
   scanStats?: ScanStats;
-  /** Distinct sales of this work across its linked certificates. */
-  saleCount?: number;
+  /** Chain-wide Provenance Value (loadChainProvenanceValues): same on every linked certificate. */
+  provenanceValue?: ProvenanceValue | null;
 }) {
   const exhibitionList = exhibitions ?? (exhibition?.title ? [exhibition] : []);
   const isSold = !!(artwork.is_sold || artwork.sold_at);
-  const provenanceValue = computeProvenanceValue({
-    value: artwork.value,
-    exhibitionCount: exhibitionList.length,
-    publicationCount: publications.length,
-    sale: isSold
-      ? { priceCents: artwork.sold_price_cents ?? null, currency: artwork.sold_currency ?? null }
-      : null,
-    saleCount,
-  });
 
   // Log when component mounts to confirm we reached this point
   useEffect(() => {
@@ -1423,7 +1414,7 @@ export function CertificateOfAuthenticity({
                   />
                 </div>
               )}
-              {provenanceValue && artwork.value && (artwork.value_is_public || isOwner) && (
+              {provenanceValue && (artwork.value_is_public || isOwner) && (
                 <ProvenanceValueLine value={provenanceValue} isPrivate={!artwork.value_is_public} />
               )}
 
@@ -1486,7 +1477,7 @@ export function CertificateOfAuthenticity({
           {/* Provenance Information - Show if ANY provenance data exists */}
           {(artwork.former_owners || artwork.auction_history || artwork.exhibition_history || 
             artwork.historic_context || artwork.celebrity_notes ||
-            artwork.value || artwork.owned_by || artwork.sold_by ||
+            artwork.value || provenanceValue || artwork.owned_by || artwork.sold_by ||
             scanStats.total > 0 ||
             (canViewScanMap && scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
@@ -1528,7 +1519,7 @@ export function CertificateOfAuthenticity({
                   />
                 </div>
               )}
-              {provenanceValue && artwork.value && (artwork.value_is_public || isOwner) && (
+              {provenanceValue && (artwork.value_is_public || isOwner) && (
                 <ProvenanceValueLine value={provenanceValue} isPrivate={!artwork.value_is_public} variant="section" />
               )}
 

@@ -10,6 +10,7 @@ import type { ValueSource } from '~/lib/portal-graphs/value-waterfall';
 
 const SOURCE_LABEL: Record<ValueSource, string> = {
   formal_valuation: 'Formal valuation',
+  provenance_value: 'Provenance Value',
   sale_price: 'Sale price',
   declared_value: 'Declared value',
   unknown: 'No value',
@@ -17,6 +18,7 @@ const SOURCE_LABEL: Record<ValueSource, string> = {
 
 const SOURCE_STYLES: Record<ValueSource, string> = {
   formal_valuation: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  provenance_value: 'bg-rose-50 text-rose-800 border-rose-200',
   sale_price: 'bg-blue-50 text-blue-800 border-blue-200',
   declared_value: 'bg-amber-50 text-amber-800 border-amber-200',
   unknown: 'bg-ink/5 text-ink/50 border-ink/10',

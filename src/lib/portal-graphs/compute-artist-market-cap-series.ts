@@ -1,4 +1,5 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { attachProvenanceValues } from '~/lib/valuation/load-chain-provenance-values';
 
 import type { PortfolioSeries, PortfolioPoint } from './types';
 import { valueAt, type ArtworkValueRow, type ValuationRow } from './value-waterfall';
@@ -53,6 +54,8 @@ export async function computeArtistMarketCapSeries(
       ArtworkValueRow & { created_at: string; is_sold: boolean; sold_to_account_id: string | null }
     >;
 
+    // Chain-wide Provenance Value (shows, publications, sales) lifts declared/sale values.
+    await attachProvenanceValues(admin, artworks);
     const artworkIds = artworks.map((a) => a.id);
     const valuationsByArtwork = new Map<string, ValuationRow[]>();
 

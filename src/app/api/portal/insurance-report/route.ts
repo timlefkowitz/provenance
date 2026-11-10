@@ -24,6 +24,8 @@ function basisLabel(value: ValueResult): string {
       const when = formatShortDate(value.details.valuationGeneratedAt);
       return when ? `Formal valuation, ${when}` : 'Formal valuation';
     }
+    case 'provenance_value':
+      return 'Provenance Value (price + exhibition, publication and sale premiums)';
     case 'sale_price': {
       const when = formatShortDate(value.details.saleDate);
       return when ? `Sale price, ${when}` : 'Sale price';

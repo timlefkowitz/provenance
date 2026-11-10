@@ -1,4 +1,5 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { attachProvenanceValues } from '~/lib/valuation/load-chain-provenance-values';
 
 import { loadGalleryRosterIds } from './load-gallery-roster-ids';
 import { valueAt, type ArtworkValueRow, type ValuationRow, type ValueResult } from './value-waterfall';
@@ -162,6 +163,7 @@ export async function loadCollectionBreakdown(userId: string): Promise<Breakdown
     const [valuationMap, paidMap] = await Promise.all([
       fetchValuationMap(admin, ownedNow.map((a) => a.id)),
       fetchPaidMap(admin, userId, ownedNow),
+      attachProvenanceValues(admin, ownedNow),
     ]);
 
     const rows = ownedNow
@@ -199,7 +201,10 @@ export async function loadGalleryBreakdown(galleryProfileIds: string[]): Promise
     if (error) console.error('[PortalGraphs] loadGalleryBreakdown fetch failed', error);
 
     const artworks = (data ?? []) as RawArtworkRow[];
-    const valuationMap = await fetchValuationMap(admin, artworks.map((a) => a.id));
+    const [valuationMap] = await Promise.all([
+      fetchValuationMap(admin, artworks.map((a) => a.id)),
+      attachProvenanceValues(admin, artworks),
+    ]);
 
     const rows = artworks
       .map((a) => toBreakdownRow(a, valuationMap.get(a.id) ?? []))
@@ -237,7 +242,10 @@ export async function loadArtistBreakdown(artistAccountId: string): Promise<Brea
     }
 
     const allWorks = Array.from(artworkMap.values());
-    const valuationMap = await fetchValuationMap(admin, allWorks.map((a) => a.id));
+    const [valuationMap] = await Promise.all([
+      fetchValuationMap(admin, allWorks.map((a) => a.id)),
+      attachProvenanceValues(admin, allWorks),
+    ]);
 
     const rows = allWorks
       .map((a) => toBreakdownRow(a, valuationMap.get(a.id) ?? []))

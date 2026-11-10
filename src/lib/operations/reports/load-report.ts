@@ -1,4 +1,5 @@
 import type { UntypedSupabaseClient } from '~/lib/supabase-untyped';
+import { attachProvenanceValues } from '~/lib/valuation/load-chain-provenance-values';
 
 import { collectorKey } from '~/lib/collectors/group-collectors';
 import { valueAt, type ArtworkValueRow, type ValuationRow } from '~/lib/portal-graphs/value-waterfall';
@@ -65,7 +66,7 @@ async function loadInsurance(admin: UntypedSupabaseClient, accountId: string, na
     ),
   ]);
   // Works the account holds; an artist's issued CoAs and a gallery's show copies count, sold-on CoOs don't exist here.
-  const held = works;
+  const held = await attachProvenanceValues(admin, works);
   const valuations = await inChunks(
     held.map((w) => w.id),
     async (ids) => {

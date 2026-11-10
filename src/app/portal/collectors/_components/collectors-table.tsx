@@ -88,7 +88,7 @@ export function CollectorsTable({ collectors, exhibitions }: CollectorsTableProp
         </table>
       </div>
       <p className="text-[11px] font-serif text-ink/45">
-        Value now uses the latest formal valuation, else the sale price. Works you resold count for the latest buyer.
+        Value now uses the latest formal valuation, else the Provenance Value (price plus exhibition, publication and sale premiums). Works you resold count for the latest buyer.
       </p>
     </div>
   );

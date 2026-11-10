@@ -1,5 +1,7 @@
 import type { UntypedSupabaseClient } from '~/lib/supabase-untyped';
 
+import { isShownInExhibition } from '~/app/exhibitions/_helpers/exhibition-submission-status';
+
 import { loadAncestorIds } from '~/lib/collectors/certificate-chain';
 import { buildWorkKeys, type SaleRow } from '~/lib/collectors/group-collectors';
 import {
@@ -26,9 +28,14 @@ export interface ChainArtwork {
   metadata: unknown;
   sold_price_cents: number | null;
   publications: unknown;
+  /** 'ownership' for a buyer's CoO, whose value is the owner's own figure. */
+  certificate_type?: string | null;
+  is_sold?: boolean | null;
+  sold_at?: string | null;
 }
 
-const CHAIN_COLS = 'id, source_artwork_id, account_id, value, metadata, sold_price_cents, publications';
+const CHAIN_COLS =
+  'id, source_artwork_id, account_id, value, metadata, sold_price_cents, publications, certificate_type, is_sold, sold_at';
 const MAX_DEPTH = 5;
 const CHUNK = 200;
 
@@ -121,8 +128,11 @@ export function priceSales(params: {
       ...rows.filter((r) => r.id === key && r.id !== sale.artwork_id),
       ...rows.filter((r) => r.id !== key && r.id !== sale.artwork_id),
     ];
-    const setValue = ordered.map((r) => setValueCents(r)).find((v) => v !== null) ?? null;
-    const valueText = ordered.map((r) => listPriceOf(r)).find(Boolean) ?? null;
+    // A buyer's CoO value is what the owner typed in after the sale, not the
+    // seller's price, so it never stands in for the sale amount.
+    const priceSources = ordered.filter((r) => r.certificate_type !== 'ownership');
+    const setValue = priceSources.map((r) => setValueCents(r)).find((v) => v !== null) ?? null;
+    const valueText = priceSources.map((r) => listPriceOf(r)).find(Boolean) ?? null;
     const chainSold = Math.max(0, ...rows.map((r) => r.sold_price_cents ?? 0)) || null;
     const publicationCount = Math.max(0, ...rows.map((r) => (Array.isArray(r.publications) ? r.publications.length : 0)));
     const money = resolveSaleMoney({ priceCents: sale.price_cents, chainSoldPriceCents: chainSold, setValueCents: setValue });
@@ -141,24 +151,50 @@ export function priceSales(params: {
   });
 }
 
-/** Distinct exhibitions each work (by key) was shown in. */
+/**
+ * Distinct exhibitions each work (by key) was shown in: selected
+ * exhibition_artworks rows on any certificate of the work, plus the show a
+ * Certificate of Show was issued for. A work with a CoS counts as exhibited
+ * even when no exhibition row links it (a CoS accepted from an invite).
+ */
 export async function loadExhibitionCounts(
   admin: UntypedSupabaseClient,
   chainIds: string[],
   workKeys: Map<string, string>,
+  rows: ChainArtwork[] = [],
 ): Promise<Map<string, number>> {
-  const links = await selectIn<{ exhibition_id: string; artwork_id: string }>(
+  const links = await selectIn<{ exhibition_id: string; artwork_id: string; status: string | null }>(
     admin,
     'exhibition_artworks',
-    'exhibition_id, artwork_id',
+    'exhibition_id, artwork_id, status',
     'artwork_id',
     chainIds,
   );
+  return countExhibitionsByWork(links, rows, workKeys);
+}
+
+/** Pure part of loadExhibitionCounts — exported for tests. */
+export function countExhibitionsByWork(
+  links: Array<{ exhibition_id: string; artwork_id: string; status?: string | null }>,
+  rows: ChainArtwork[],
+  workKeys: Map<string, string>,
+): Map<string, number> {
   const sets = new Map<string, Set<string>>();
-  for (const l of links) {
-    const key = workKeys.get(l.artwork_id) ?? l.artwork_id;
+  const add = (key: string, exhibitionId: string) => {
     if (!sets.has(key)) sets.set(key, new Set());
-    sets.get(key)!.add(l.exhibition_id);
+    sets.get(key)!.add(exhibitionId);
+  };
+  for (const l of links) {
+    if (!isShownInExhibition(l.status)) continue;
+    add(workKeys.get(l.artwork_id) ?? l.artwork_id, l.exhibition_id);
+  }
+  for (const r of rows) {
+    if (r.certificate_type !== 'show') continue;
+    const key = workKeys.get(r.id) ?? r.id;
+    const meta = (r.metadata ?? {}) as Record<string, unknown>;
+    const exhibitionId = typeof meta.exhibition_id === 'string' && meta.exhibition_id ? meta.exhibition_id : null;
+    if (exhibitionId) add(key, exhibitionId);
+    else if (!sets.get(key)?.size) add(key, `cos:${r.id}`);
   }
   return new Map(Array.from(sets, ([k, v]) => [k, v.size]));
 }

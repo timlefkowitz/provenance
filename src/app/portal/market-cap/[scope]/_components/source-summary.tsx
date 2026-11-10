@@ -3,6 +3,7 @@ import type { ValueSource } from '~/lib/portal-graphs/value-waterfall';
 
 const SOURCE_LABELS: Record<ValueSource, string> = {
   formal_valuation: 'Formal valuation',
+  provenance_value: 'Provenance Value',
   sale_price: 'Sale price',
   declared_value: 'Declared value',
   unknown: 'No value',
@@ -10,6 +11,7 @@ const SOURCE_LABELS: Record<ValueSource, string> = {
 
 const SOURCE_STYLES: Record<ValueSource, { bg: string; text: string; dot: string }> = {
   formal_valuation: { bg: 'bg-emerald-50', text: 'text-emerald-800', dot: 'bg-emerald-500' },
+  provenance_value: { bg: 'bg-rose-50', text: 'text-rose-800', dot: 'bg-rose-500' },
   sale_price: { bg: 'bg-blue-50', text: 'text-blue-800', dot: 'bg-blue-500' },
   declared_value: { bg: 'bg-amber-50', text: 'text-amber-800', dot: 'bg-amber-500' },
   unknown: { bg: 'bg-ink/5', text: 'text-ink/60', dot: 'bg-ink/25' },
@@ -22,6 +24,7 @@ interface SourceSummaryProps {
 export function SourceSummary({ rows }: SourceSummaryProps) {
   const counts: Record<ValueSource, number> = {
     formal_valuation: 0,
+    provenance_value: 0,
     sale_price: 0,
     declared_value: 0,
     unknown: 0,

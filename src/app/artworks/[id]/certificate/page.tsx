@@ -13,7 +13,8 @@ import { collectionOwnerName } from '~/lib/managed-collections';
 import { getArtworkExhibitions } from './_actions/get-artwork-exhibition';
 import { canSellArtwork } from '~/lib/sales/can-sell-artwork';
 import { sanitizePublications } from '~/lib/valuation/provenance-value';
-import { countChainSales } from '~/lib/sales/count-chain-sales';
+import { getChainArtworkIds } from '~/lib/provenance/chain';
+import { loadChainProvenanceValues } from '~/lib/valuation/load-chain-provenance-values';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
 import appConfig from '~/config/app.config';
@@ -462,8 +463,27 @@ export default async function CertificatePage({
     console.error('[Certificate] artwork_valuations fetch exception', err);
   }
 
-  // Each sale of the work, on any of its certificates, adds to Provenance Value.
-  const saleCount = await countChainSales(getSupabaseServerAdminClient(), artwork.id);
+  // Provenance Value is one figure per work: every certificate in the chain
+  // (CoA, CoS, CoO) shares its shows, publications and sales.
+  const chainAdmin = getSupabaseServerAdminClient();
+  const [provenanceValues, chainShows] = await Promise.all([
+    loadChainProvenanceValues(asUntyped(chainAdmin), [artwork.id]),
+    getChainArtworkIds(chainAdmin, artwork.id)
+      .then(({ ids }) =>
+        Promise.all(ids.filter((id) => id !== artwork.id).map((id) => getArtworkExhibitions(id))),
+      )
+      .catch((err) => {
+        console.error('[Certificate] chain exhibitions fetch failed', err);
+        return [] as Awaited<ReturnType<typeof getArtworkExhibitions>>[];
+      }),
+  ]);
+  const provenanceValue = provenanceValues.get(artwork.id) ?? null;
+  // The shows of every linked certificate, so a CoO lists where the work hung.
+  const chainExhibitions = [...exhibitions];
+  for (const ex of chainShows.flat()) {
+    if (!chainExhibitions.some((e) => e.id === ex.id)) chainExhibitions.push(ex);
+  }
+  chainExhibitions.sort((a, b) => (b.start_date || '').localeCompare(a.start_date || ''));
 
   const pageUrl = new URL(`/artworks/${artwork.id}/certificate`, appConfig.url).href;
   const artworkJsonLd = {
@@ -511,14 +531,14 @@ export default async function CertificatePage({
         isAdmin={userIsAdmin}
         creatorInfo={creatorInfo}
         exhibition={exhibition}
-        exhibitions={exhibitions}
+        exhibitions={chainExhibitions}
         showVerifyCta={showVerifyCta}
         certificateStatus={artwork.certificate_status ?? null}
         certificateType={certificateType}
         attachments={attachments}
         valuation={latestValuation}
         publications={publications}
-        saleCount={saleCount}
+        provenanceValue={provenanceValue}
       />
       {/* Viral acquisition surface: shown only to unauthenticated visitors */}
       {!user && artwork.status === 'verified' && (

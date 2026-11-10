@@ -1,4 +1,5 @@
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { attachProvenanceValues } from '~/lib/valuation/load-chain-provenance-values';
 import { asUntyped } from '~/lib/supabase-untyped';
 
 import { isShownInExhibition } from '~/app/exhibitions/_helpers/exhibition-submission-status';
@@ -141,7 +142,7 @@ export async function loadGalleryCollectorData(
       ),
       chain: chain.rows,
       workKeys,
-      exhibitionCountByWork: await loadExhibitionCounts(admin, chain.ids, workKeys),
+      exhibitionCountByWork: await loadExhibitionCounts(admin, chain.ids, workKeys, chain.rows),
     });
 
     const soldArtworkIds = Array.from(new Set(sales.map((s) => s.artwork_id)));
@@ -163,11 +164,18 @@ export async function loadGalleryCollectorData(
       const { data } = await admin.from('artworks').select(ARTWORK_COLS).in('id', ids);
       return (data ?? []) as ArtworkRow[];
     });
+    await attachProvenanceValues(admin, artworks);
     const now = new Date();
     const currentValueCents = new Map<string, number>();
     for (const a of artworks) {
       if (!soldArtworkIds.includes(a.id)) continue;
-      currentValueCents.set(a.id, valueAt(a, valuationsByArtwork.get(a.id) ?? [], now).value_cents);
+      // A formal valuation, else the work's chain-wide Provenance Value (the
+      // figure every certificate shows). A buyer's own CoO figure or a bare
+      // declared value never counts; groupCollectors then falls back to the price.
+      const v = valueAt(a, valuationsByArtwork.get(a.id) ?? [], now);
+      if ((v.source === 'formal_valuation' || v.source === 'provenance_value') && v.value_cents > 0) {
+        currentValueCents.set(a.id, v.value_cents);
+      }
     }
 
     const collectors = groupCollectors({ sales, workKeys, shownLinks, currentValueCents });

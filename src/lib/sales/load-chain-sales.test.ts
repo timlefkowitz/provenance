@@ -56,6 +56,13 @@ describe('priceSales', () => {
     expect(out[0]!.money).toEqual({ cents: 40000, basis: 'recorded', estimated: false });
   });
 
+  it("ignores the value a buyer set on their own CoO", () => {
+    const withCoo = [art('coa', null), art('coo', 'coa', { value: '1,000,000', certificate_type: 'ownership' })];
+    const [s] = priceSales({ sales: [sale('x', 'coa', '2026-04-24', null)], chain: withCoo, workKeys: buildWorkKeys(withCoo) });
+    expect(s!.money).toEqual({ cents: 0, basis: 'none', estimated: false });
+    expect(s!.provenance_value_cents).toBeNull();
+  });
+
   it('uses a price recorded on a linked certificate', () => {
     const priced = [art('coa', null, { sold_price_cents: 90000 }), art('cos', 'coa')];
     const [s] = priceSales({ sales: [sale('x', 'cos', '2026-01-01', null)], chain: priced, workKeys: buildWorkKeys(priced) });
