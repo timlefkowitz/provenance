@@ -8,6 +8,7 @@ import type { NewsPublicationInput } from '~/lib/news-publications';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
+import { parseJsonLoose } from '~/lib/ai/parse-json-loose';
 export type PressArticleSuggestion = NewsPublicationInput;
 
 /** Chat Completions web-search model (see OpenAI web search docs; Responses API uses different model IDs). */
@@ -19,46 +20,6 @@ type RawArticle = {
   publication_name?: string;
   date?: string;
 };
-
-/**
- * Parse JSON from an LLM response that may include markdown code fences,
- * leading/trailing prose, or citations. Returns null if no JSON object can
- * be extracted.
- */
-function parseJsonLoose(raw: string): unknown {
-  const trimmed = raw.trim();
-
-  // Direct parse first (happy path).
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    // fall through
-  }
-
-  // Strip ```json ... ``` or ``` ... ``` fences if present.
-  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenceMatch?.[1]) {
-    try {
-      return JSON.parse(fenceMatch[1].trim());
-    } catch {
-      // fall through
-    }
-  }
-
-  // Fallback: extract the first balanced {...} block.
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start !== -1 && end !== -1 && end > start) {
-    const candidate = trimmed.slice(start, end + 1);
-    try {
-      return JSON.parse(candidate);
-    } catch {
-      // fall through
-    }
-  }
-
-  return null;
-}
 
 export async function findPressArticles(profileId: string): Promise<{
   articles: PressArticleSuggestion[];

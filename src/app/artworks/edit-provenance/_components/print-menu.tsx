@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
-import { BookOpen, ChevronDown, Grid3x3, List, Printer, Tag } from 'lucide-react';
+import { BookOpen, ChevronDown, Grid3x3, List, Printer, Scissors, Tag } from 'lucide-react';
 import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import {
   buildArtworkQrSheetHtml,
@@ -30,12 +30,15 @@ import {
   type CatalogItem,
   type CatalogOptions,
 } from '~/app/exhibitions/_helpers/catalog-print-html';
+import { ZineDialog } from '~/app/exhibitions/_components/zine-dialog';
+import { buildZineHtml, type ZineOptions } from '~/app/exhibitions/_helpers/zine-print-html';
 import { getArtworkArtistBios } from '../_actions/get-artwork-artist-bios';
 import { loadCollectionQrStyle, QrSheetDialog, saveCollectionQrStyle } from './qr-sheet-dialog';
 
 const LABEL_OPTIONS_KEY = 'provenance.collection.wallLabelOptions';
 const BIO_EDITS_KEY = 'provenance.collection.artistBios';
 const CATALOG_OPTIONS_KEY = 'provenance.collection.catalogOptions';
+const ZINE_OPTIONS_KEY = 'provenance.collection.zineOptions';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -255,6 +258,7 @@ export function PrintMenu({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [zineOpen, setZineOpen] = useState(false);
   const [qrStyle, setQrStyle] = useState<QrStyleSettings | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
 
@@ -358,6 +362,28 @@ export function PrintMenu({
     );
   };
 
+  // Zine
+  const handlePrintZine = (options: ZineOptions) => {
+    if (disabled) return;
+    console.log('[Collection] PrintMenu: Zine', { count: selectedArtworks.length, style: options.style, layout: options.layout });
+    setPriceSymbol(options.priceSymbol);
+    openPrintWindow(
+      buildZineHtml(
+        {
+          kicker: galleryName,
+          title: 'Selected Works',
+          subtitle: `${selectedArtworks.length} ${selectedArtworks.length === 1 ? 'Work' : 'Works'}`,
+          printDate: printDate(),
+          label: 'Collection zine',
+        },
+        catalogItems(),
+        options,
+      ),
+      1100,
+      820,
+    );
+  };
+
   // Checklist
   const handlePrintChecklist = () => {
     if (disabled) return;
@@ -441,6 +467,14 @@ export function PrintMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
+            onSelect={() => setZineOpen(true)}
+            className="text-xs font-serif cursor-pointer"
+          >
+            <Scissors className="h-3.5 w-3.5 mr-2 opacity-60" />
+            Zine…
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onSelect={handlePrintChecklist}
             className="text-xs font-serif cursor-pointer"
           >
@@ -490,6 +524,17 @@ export function PrintMenu({
         priceHint="Values marked public"
         ownerName={galleryName}
         onPrint={handlePrintCatalog}
+      />
+
+      <ZineDialog
+        open={zineOpen}
+        onOpenChange={setZineOpen}
+        count={selectedArtworks.length}
+        optionsStorageKey={ZINE_OPTIONS_KEY}
+        hasPrices={zineOpen && catalogItems().some((i) => i.price)}
+        hasIntro={false}
+        ownerName={galleryName}
+        onPrint={handlePrintZine}
       />
 
       {qrStyle && (

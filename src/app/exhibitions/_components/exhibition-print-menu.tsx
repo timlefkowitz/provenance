@@ -2,7 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BookOpen, Camera, ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
+import { BookOpen, Camera, Scissors, ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Dialog } from '@kit/ui/dialog';
 import {
@@ -18,6 +18,7 @@ import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import { openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { getExhibitionArtistBios } from '../_actions/get-exhibition-artist-bios';
+import { saveExhibitionArtistDetails } from '../_actions/exhibition-artist-details';
 import {
   buildArtworkQrSheetHtml,
   buildChecklistHtml,
@@ -46,12 +47,16 @@ import {
   buildCatalogHtml,
   type CatalogArtist,
   type CatalogItem,
+  type CatalogMeta,
   type CatalogOptions,
 } from '../_helpers/catalog-print-html';
+import { buildZineHtml, type ZineOptions } from '../_helpers/zine-print-html';
+import { ZineDialog } from './zine-dialog';
 import { stripMarkdown } from '~/lib/strip-markdown';
 
 const LABEL_OPTIONS_KEY = 'provenance.exhibition.wallLabelOptions';
 const CATALOG_OPTIONS_KEY = 'provenance.exhibition.catalogOptions';
+const ZINE_OPTIONS_KEY = 'provenance.exhibition.zineOptions';
 /** Per-exhibition bio edits on this device, keyed by ArtistBio.key. */
 const bioEditsKey = (exhibitionId: string) => `provenance.exhibition.artistBios.${exhibitionId}`;
 
@@ -80,6 +85,7 @@ export function ExhibitionPrintMenu({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [zineOpen, setZineOpen] = useState(false);
   const [wallScanOpen, setWallScanOpen] = useState(false);
   /** Hanging order from a wall scan; while set, wall labels print just these works in this order. */
   const [wallOrder, setWallOrder] = useState<string[] | null>(null);
@@ -209,14 +215,8 @@ export function ExhibitionPrintMenu({
     );
   };
 
-  const handleCatalog = (options: CatalogOptions, artists: CatalogArtist[]) => {
-    console.log('[Exhibitions] Print catalog', {
-      exhibitionId: exhibition.id,
-      count: printArtworks.length,
-      style: options.style,
-    });
-    setPriceSymbol(options.priceSymbol);
-    const items: CatalogItem[] = printArtworks.map((a) => ({
+  const printItems = (): CatalogItem[] =>
+    printArtworks.map((a) => ({
       id: a.id,
       title: a.title,
       artist_name: a.artist_name,
@@ -229,27 +229,39 @@ export function ExhibitionPrintMenu({
       image_url: a.image_url,
       price: a.listPriceDisplay ?? null,
     }));
-    const subtitle = [posterDefaults(exhibition, ownerName, exhibitionUrl).dates, exhibition.location]
+
+  const printMeta = (label: string): CatalogMeta => ({
+    kicker: ownerName ?? '',
+    title: exhibition.title,
+    subtitle: [posterDefaults(exhibition, ownerName, exhibitionUrl).dates, exhibition.location]
       .filter(Boolean)
-      .join(' · ');
+      .join(' · '),
+    introduction: exhibition.description ? stripMarkdown(exhibition.description) : null,
+    printDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    qrSvg: readStyled('exhibition'),
+    label,
+  });
+
+  const handleCatalog = (options: CatalogOptions, artists: CatalogArtist[]) => {
+    console.log('[Exhibitions] Print catalog', {
+      exhibitionId: exhibition.id,
+      count: printArtworks.length,
+      style: options.style,
+    });
+    setPriceSymbol(options.priceSymbol);
     const qrSvgs = new Map(printArtworks.map((a) => [a.id, readStyled(`sheet-${a.id}`)]));
-    openPrintWindow(
-      buildCatalogHtml(
-        {
-          kicker: ownerName ?? '',
-          title: exhibition.title,
-          subtitle,
-          introduction: exhibition.description ? stripMarkdown(exhibition.description) : null,
-          printDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-          qrSvg: readStyled('exhibition'),
-          label: 'Exhibition catalogue',
-        },
-        items,
-        options,
-        qrSvgs,
-        artists,
-      ),
-    );
+    openPrintWindow(buildCatalogHtml(printMeta('Exhibition catalogue'), printItems(), options, qrSvgs, artists));
+  };
+
+  const handleZine = (options: ZineOptions) => {
+    console.log('[Exhibitions] Print zine', {
+      exhibitionId: exhibition.id,
+      count: printArtworks.length,
+      style: options.style,
+      layout: options.layout,
+    });
+    setPriceSymbol(options.priceSymbol);
+    openPrintWindow(buildZineHtml(printMeta('Exhibition zine'), printItems(), options), 1100, 820);
   };
 
   return (
@@ -323,8 +335,8 @@ export function ExhibitionPrintMenu({
             disabled={!origin}
             title={
               selectedArtworkIds
-                ? `Wall labels, catalog, QR codes and checklist for ${printArtworks.length} selected ${printArtworks.length === 1 ? 'work' : 'works'}, or the show's QR poster`
-                : 'Print the exhibition QR code, wall labels, catalog, artwork QR codes or checklist'
+                ? `Wall labels, catalog, zine, QR codes and checklist for ${printArtworks.length} selected ${printArtworks.length === 1 ? 'work' : 'works'}, or the show's QR poster`
+                : 'Print the exhibition QR code, wall labels, catalog, zine, artwork QR codes or checklist'
             }
           >
             <Printer className="h-3.5 w-3.5" />
@@ -364,6 +376,14 @@ export function ExhibitionPrintMenu({
           >
             <BookOpen className="h-3.5 w-3.5 mr-2 opacity-60" />
             Catalog…
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => setZineOpen(true)}
+            disabled={!hasWorks}
+            className="font-serif text-xs cursor-pointer"
+          >
+            <Scissors className="h-3.5 w-3.5 mr-2 opacity-60" />
+            Zine…
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={handleArtworkQrSheet}
@@ -447,6 +467,9 @@ export function ExhibitionPrintMenu({
         }
         bioEditsStorageKey={bioEditsKey(exhibition.id)}
         loadBios={() => getExhibitionArtistBios(exhibition.id)}
+        saveBio={(artistKey, bio) =>
+          saveExhibitionArtistDetails({ exhibitionId: exhibition.id, artistKey, fields: { bio } })
+        }
         hints={{ price: 'Exhibition list price', creditLine: 'Only when marked public' }}
         onPrint={handleWallLabels}
       />
@@ -469,6 +492,17 @@ export function ExhibitionPrintMenu({
         priceHint="Exhibition list prices"
         ownerName={ownerName}
         onPrint={handleCatalog}
+      />
+
+      <ZineDialog
+        open={zineOpen}
+        onOpenChange={setZineOpen}
+        count={printArtworks.length}
+        optionsStorageKey={ZINE_OPTIONS_KEY}
+        hasPrices={hasPrices}
+        hasIntro={!!exhibition.description?.trim()}
+        ownerName={ownerName}
+        onPrint={handleZine}
       />
     </>
   );

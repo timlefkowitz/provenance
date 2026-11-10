@@ -45,6 +45,10 @@ export interface ArtistTemplateProps {
   }>;
   /** Public Q&A from the profile questionnaire */
   questionnaire?: QuestionnaireEntry[];
+  /** Artist statement, in the artist's words */
+  statement?: string | null;
+  /** Museum label line, e.g. "Nigerian, b. 1984, Lagos" */
+  tombstone?: string | null;
   links: string[];
   website: string | null;
   /** Public phone, only set when the owner opted in */
@@ -63,6 +67,32 @@ export interface ArtistTemplateProps {
 }
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
+
+/** Statement and label line, styled neutrally so it fits every template. */
+function ArtistStatement({ statement, tombstone }: { statement?: string | null; tombstone?: string | null }) {
+  if (!statement?.trim() && !tombstone?.trim()) return null;
+  return (
+    <section className="mx-auto max-w-3xl px-6 py-12">
+      {tombstone?.trim() && <p className="font-serif text-sm italic opacity-60">{tombstone}</p>}
+      {statement?.trim() && (
+        <>
+          <p className="mt-6 mb-3 font-serif text-[10px] uppercase tracking-widest opacity-50">Artist statement</p>
+          <div className="space-y-3 font-serif text-base leading-relaxed opacity-80">
+            {statement
+              .split(/\n\s*\n/)
+              .map((para) => para.trim())
+              .filter(Boolean)
+              .map((para, i) => (
+                <p key={i} className="whitespace-pre-line">
+                  {para}
+                </p>
+              ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
 
 function formatYear(iso: string) {
   return new Date(iso).getFullYear();
@@ -483,6 +513,8 @@ export function ManifestoTemplate(props: ArtistTemplateProps) {
           </section>
         )}
 
+        <ArtistStatement statement={props.statement} tombstone={props.tombstone} />
+
         {(props.questionnaire?.length ?? 0) > 0 && (
           <section className="py-12 border-b border-wine/10 max-w-3xl">
             <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-6">Q&amp;A</p>
@@ -644,6 +676,8 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
         </section>
       )}
 
+      <ArtistStatement statement={props.statement} tombstone={props.tombstone} />
+
       {(props.questionnaire?.length ?? 0) > 0 && (
         <section className="px-6 py-16 border-t border-[#8B1A1A]/15 max-w-3xl mx-auto">
           <p className="text-[10px] uppercase tracking-widest text-[#8B1A1A] font-serif mb-6">Q&amp;A</p>
@@ -792,6 +826,8 @@ export function ArchiveTemplate(props: ArtistTemplateProps) {
             </div>
           </section>
         )}
+
+        <ArtistStatement statement={props.statement} tombstone={props.tombstone} />
 
         {(props.questionnaire?.length ?? 0) > 0 && (
           <section className="mt-16 border-t border-ink/15 pt-12">
@@ -966,6 +1002,8 @@ export function KineticTemplate(props: ArtistTemplateProps) {
         </section>
       )}
 
+      <ArtistStatement statement={props.statement} tombstone={props.tombstone} />
+
       {(props.questionnaire?.length ?? 0) > 0 && (
         <section className="px-6 py-16 max-w-2xl mx-auto border-t border-wine/10">
           <ProfileQuestionnaire
@@ -1110,6 +1148,8 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
             ))}
           </div>
         )}
+
+        <ArtistStatement statement={props.statement} tombstone={props.tombstone} />
 
         {(props.questionnaire?.length ?? 0) > 0 && (
           <div className="break-inside-avoid">
@@ -1263,6 +1303,8 @@ export function VoidTemplate(props: ArtistTemplateProps) {
             )}
           </FadeSection>
         )}
+
+        <ArtistStatement statement={props.statement} tombstone={props.tombstone} />
 
         {(props.questionnaire?.length ?? 0) > 0 && (
           <FadeSection className="my-24 max-w-xl mx-auto text-center">

@@ -7,6 +7,9 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 import { loadCuratorWorks } from '../../_helpers/load-curator-works';
 import { CuratorWorksList } from './_components/curator-works-list';
+import { CuratorArtistsPanel } from './_components/curator-artists-panel';
+import { CurateTabs } from './_components/curate-tabs';
+import { getExhibitionArtistDetails } from '../../_actions/exhibition-artist-details';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,10 +26,13 @@ export const metadata = {
  */
 export default async function CurateExhibitionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const client = asUntyped(getSupabaseServerClient());
   const {
     data: { user },
@@ -37,6 +43,8 @@ export default async function CurateExhibitionPage({
   const show = await loadCuratorWorks(user.id, id);
   if (!show) notFound();
   const { exhibition, works, awaitingCosCount } = show;
+  const artistsResult = await getExhibitionArtistDetails(id);
+  const artists = artistsResult.success ? artistsResult.artists : [];
 
   const galleryCount = works.filter((w) => w.editable).length;
   const otherCount = works.length - galleryCount;
@@ -71,7 +79,19 @@ export default async function CurateExhibitionPage({
         </div>
       </div>
       <div className="container mx-auto max-w-6xl px-4 py-10 pb-16">
-        <CuratorWorksList works={works} exhibitionId={id} awaitingCosCount={awaitingCosCount} />
+        <CurateTabs
+          defaultTab={tab === 'artists' ? 'artists' : 'works'}
+          workCount={works.length}
+          artistCount={artists.length}
+          works={<CuratorWorksList works={works} exhibitionId={id} awaitingCosCount={awaitingCosCount} />}
+          artists={
+            <CuratorArtistsPanel
+              exhibitionId={id}
+              artists={artists}
+              error={artistsResult.success ? null : artistsResult.error}
+            />
+          }
+        />
       </div>
     </div>
   );

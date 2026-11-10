@@ -7,6 +7,7 @@ import { safeJsonLd } from '~/lib/safe-json-ld';
 import { getExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { getExhibitionShareMeta } from '../_actions/get-exhibition-share-meta';
 import { getExhibitionMemories } from '../_actions/exhibition-memories';
+import { getPublicExhibitionArtists } from '../_actions/exhibition-artist-details';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { Button } from '@kit/ui/button';
@@ -167,7 +168,10 @@ export default async function ExhibitionPage({
     return <BlockedContentNotice ownerId={exhibition.gallery_id} />;
   }
 
-  const memories = await getExhibitionMemories(id);
+  const [memories, artistDetails] = await Promise.all([
+    getExhibitionMemories(id),
+    getPublicExhibitionArtists(id),
+  ]);
   const printOwnerName = isOwner ? ((await getExhibitionShareMeta(id))?.ownerName ?? null) : null;
 
   // Owner's public profile phone, if they opted in, is the fallback contact
@@ -511,6 +515,7 @@ export default async function ExhibitionPage({
           canPost={!!user}
           currentUserId={user?.id ?? null}
           reserve={reserve}
+          artistDetails={artistDetails}
         />
       </div>
     </div>

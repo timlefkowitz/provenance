@@ -23,7 +23,7 @@ const TOGGLES: Array<{ key: ToggleKey; label: string; hint?: string; requires?: 
   { key: 'descriptions', label: 'Descriptions' },
   { key: 'provenance', label: 'Provenance', hint: 'Owners, auctions, exhibitions' },
   { key: 'qrCodes', label: 'QR codes', hint: 'Each work’s certificate' },
-  { key: 'artistBios', label: 'Artist bios', hint: 'From their profiles' },
+  { key: 'artistBios', label: 'Artist bios', hint: 'Bio, details and statement' },
   { key: 'checklist', label: 'Checklist', hint: 'Every work in a table' },
   { key: 'prices', label: 'Price list' },
   { key: 'priceSymbol', label: 'Dollar sign', hint: 'Show $ before prices', requires: 'prices' },
@@ -203,8 +203,16 @@ export function CatalogDialog({
     const edits = options.artistBios ? loadBioEdits(bioEditsStorageKey) : {};
     const artists: CatalogArtist[] = options.artistBios
       ? (bios ?? [])
-          .map((a) => ({ name: a.name, bio: (edits[a.key] ?? a.bio).trim() }))
-          .filter((a) => a.bio)
+          .map((a) => {
+            const extra = a as ArtistBio & { tombstone?: string; artistStatement?: string };
+            return {
+              name: a.name,
+              bio: (edits[a.key] ?? a.bio).trim(),
+              tombstone: extra.tombstone,
+              statement: extra.artistStatement?.trim(),
+            };
+          })
+          .filter((a) => a.bio || a.statement)
       : [];
     console.log('[Catalog] Print', { style: options.style, coverName: options.coverName, count, artists: artists.length });
     onPrint(

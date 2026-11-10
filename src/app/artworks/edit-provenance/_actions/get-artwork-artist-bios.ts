@@ -37,5 +37,7 @@ export async function getArtworkArtistBios(artworkIds: string[]): Promise<Artist
 
   const artworks = (data || []) as ArtistBioArtworkRow[];
   console.log('[Collection] getArtworkArtistBios', { requested: ids.length, works: artworks.length });
-  return resolveArtistBios(asUntyped(getSupabaseServerAdminClient()), artworks, '[Collection]');
+  const bios = await resolveArtistBios(asUntyped(getSupabaseServerAdminClient()), artworks, '[Collection]');
+  // Wall labels only need the name and bio; keep the full profile on the server.
+  return bios.map(({ profile: _profile, ...bio }) => bio);
 }

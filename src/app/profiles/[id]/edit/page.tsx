@@ -5,6 +5,8 @@ import { getUserProfileById } from '../../_actions/get-user-profiles';
 import { GalleryMembersManager } from '../../_components/gallery-members-manager';
 import { DeleteProfileButton } from '../../_components/delete-profile-button';
 import { isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
+import Link from 'next/link';
+import { getMyProfileSuggestions } from '../../_actions/profile-suggestions';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
@@ -49,8 +51,22 @@ export default async function EditProfilePage({
     redirect('/profiles');
   }
 
+  const pendingSuggestions =
+    isOwner && profile.role === USER_ROLES.ARTIST
+      ? (await getMyProfileSuggestions()).filter((s) => s.profileId === profile.id).length
+      : 0;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {pendingSuggestions > 0 && (
+        <Link
+          href="/profiles/suggestions"
+          className="mb-6 block rounded-xl border border-wine/25 bg-wine/5 px-4 py-3 font-serif text-sm text-wine hover:bg-wine/10"
+        >
+          A curator suggested {pendingSuggestions === 1 ? 'updates' : `${pendingSuggestions} sets of updates`} to
+          this profile. Review them →
+        </Link>
+      )}
       <div className="mb-8">
         <h1 className="text-4xl font-display font-bold text-wine mb-2">
           Edit Profile

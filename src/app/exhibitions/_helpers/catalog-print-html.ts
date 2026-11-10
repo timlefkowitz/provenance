@@ -93,11 +93,26 @@ export const DEFAULT_CATALOG_OPTIONS: CatalogOptions = {
 };
 
 /** An artist and their bio, for the "About the artists" pages. */
-export type CatalogArtist = { name: string; bio: string };
+export type CatalogArtist = {
+  name: string;
+  bio: string;
+  /** Museum line, e.g. "Nigerian, b. 1984, Lagos". */
+  tombstone?: string;
+  statement?: string;
+};
+
+/** One artist's block: name, tombstone line, bio and statement. */
+function artistBlock(a: CatalogArtist): string {
+  const tomb = a.tombstone?.trim() ? `<div class="bio-tomb">${esc(a.tombstone.trim())}</div>` : '';
+  const statement = a.statement?.trim()
+    ? `<div class="bio-statement"><div class="bio-label">Artist statement</div>${paragraphs(a.statement)}</div>`
+    : '';
+  return `<div class="bio"><div class="bio-name">${esc(a.name)}</div>${tomb}${a.bio.trim() ? paragraphs(a.bio) : ''}${statement}</div>`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function esc(str: string | null | undefined): string {
+export function esc(str: string | null | undefined): string {
   return (str ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -105,13 +120,13 @@ function esc(str: string | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
-function getYear(iso: string | null | undefined): string {
+export function getYear(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = parseDateOnly(iso);
   return isNaN(d.getTime()) ? iso.slice(0, 4) : String(d.getFullYear());
 }
 
-function paragraphs(text: string | null | undefined): string {
+export function paragraphs(text: string | null | undefined): string {
   return (text ?? '')
     .split(/\n+/)
     .map((p) => p.trim())
@@ -186,7 +201,7 @@ function imageTag(url: string | null, cls = ''): string {
 }
 
 /** Waits for images and web fonts (up to a few seconds) before printing. */
-const PRINT_WHEN_READY = `<script>
+export const PRINT_WHEN_READY = `<script>
 (function () {
   var printed = false;
   function go() { if (printed) return; printed = true; setTimeout(function () { window.print(); }, 200); }
@@ -286,7 +301,7 @@ function buildStandard(meta: CatalogMeta, works: Work[], options: CatalogOptions
 
   const bios = artists.length
     ? `<div class="section-header"><div class="section-label">Biographies</div><div class="section-title">About the Artists</div></div>
-       ${artists.map((a) => `<div class="bio"><div class="bio-name">${esc(a.name)}</div>${paragraphs(a.bio)}</div>`).join('')}`
+       ${artists.map(artistBlock).join('')}`
     : '';
 
   const checklist = options.checklist
@@ -338,6 +353,9 @@ function buildStandard(meta: CatalogMeta, works: Work[], options: CatalogOptions
   .bio { break-inside: avoid; margin-bottom: 0.3in; font-size: 9.5pt; line-height: 1.65; color: #333; }
   .bio-name { font-size: 11.5pt; font-weight: bold; color: #0e0b07; margin-bottom: 0.05in; }
   .bio p + p { margin-top: 0.08in; }
+  .bio-tomb { font-style: italic; opacity: 0.7; margin-bottom: 0.06in; }
+  .bio-statement { margin-top: 0.1in; }
+  .bio-label { font-size: 0.8em; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.04in; }
   table.list { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
   table.list thead tr { border-bottom: 0.75pt solid #0e0b07; }
   table.list th { font-family: ${sans}; font-size: 7pt; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: #999; text-align: left; padding: 0 0.08in 0.06in 0; }
@@ -427,7 +445,7 @@ function buildEditorial(meta: CatalogMeta, works: Work[], options: CatalogOption
 
   const bios = artists.length
     ? `<section class="page flow">${bar('Works', 'Artists')}${eyebrow('About the artists')}<div class="bios">${artists
-        .map((a) => `<div class="bio"><div class="bio-name">${esc(a.name)}</div>${paragraphs(a.bio)}</div>`)
+        .map(artistBlock)
         .join('')}</div></section>`
     : '';
 
@@ -495,6 +513,9 @@ function buildEditorial(meta: CatalogMeta, works: Work[], options: CatalogOption
   .bio { break-inside: avoid; margin-bottom: 0.25in; font-size: 9pt; line-height: 1.6; }
   .bio-name { font-family: ${mono}; font-size: 7.5pt; letter-spacing: 0.16em; text-transform: uppercase; color: ${ED.vermillion}; margin-bottom: 0.05in; }
   .bio p + p { margin-top: 0.06in; }
+  .bio-tomb { font-style: italic; opacity: 0.7; margin-bottom: 0.06in; }
+  .bio-statement { margin-top: 0.1in; }
+  .bio-label { font-size: 0.8em; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.04in; }
   table.list { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
   table.list thead tr { border-bottom: 0.75pt solid ${ED.rule}; }
   table.list th { font-family: ${mono}; font-size: 6.5pt; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: ${ED.muted}; text-align: left; padding: 0 0.08in 0.07in 0; }
@@ -547,7 +568,7 @@ function buildMonograph(meta: CatalogMeta, works: Work[], options: CatalogOption
 
   const bios = artists.length
     ? `<section class="page text flow"><div class="kicker">The artists</div>${artists
-        .map((a) => `<div class="bio"><div class="bio-name">${esc(a.name)}</div>${paragraphs(a.bio)}</div>`)
+        .map(artistBlock)
         .join('')}</section>`
     : '';
 
@@ -603,6 +624,9 @@ function buildMonograph(meta: CatalogMeta, works: Work[], options: CatalogOption
   .text .intro p + p { margin-top: 0.14in; text-indent: 0.3in; }
   .bio { break-inside: avoid; margin-bottom: 0.3in; max-width: 5.6in; font-size: 11.5pt; line-height: 1.55; }
   .bio-name { font-family: ${sans}; font-size: 7.5pt; letter-spacing: 0.28em; text-transform: uppercase; color: #555; margin-bottom: 0.06in; }
+  .bio-tomb { font-style: italic; opacity: 0.7; margin-bottom: 0.06in; }
+  .bio-statement { margin-top: 0.1in; }
+  .bio-label { font-size: 0.8em; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.04in; }
   table.list { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
   table.list thead tr { border-bottom: 0.5pt solid #141414; }
   table.list th { font-family: ${sans}; font-size: 6.5pt; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: #888; text-align: left; padding: 0 0.1in 0.08in 0; }
@@ -635,7 +659,7 @@ export function buildCatalogHtml(
     meta = { ...meta, kicker: options.style === 'editorial' ? '' : 'Provenance' };
   }
   const works = prepare(items, options, qrSvgs);
-  const bios = options.artistBios ? artists.filter((a) => a.bio.trim()) : [];
+  const bios = options.artistBios ? artists.filter((a) => a.bio.trim() || a.statement?.trim()) : [];
   switch (options.style) {
     case 'editorial':
       return buildEditorial(meta, works, options, bios);

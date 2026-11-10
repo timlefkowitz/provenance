@@ -84,6 +84,8 @@ function loadQrStyle(key: string): QrStyleSettings {
 
 const inches = (n: number) => `${n}`.replace(/\.0+$/, '');
 
+type BioWithProfile = ArtistBio & { profileBio?: string };
+
 function loadBioEdits(key: string): Record<string, string> {
   try {
     const raw = window.localStorage.getItem(key);
@@ -109,6 +111,7 @@ export function WallLabelsDialog({
   qrStyleStorageKey,
   sampleQrUrl,
   loadBios,
+  saveBio,
   hints,
   onPrint,
 }: {
@@ -126,7 +129,13 @@ export function WallLabelsDialog({
   qrStyleStorageKey: string;
   /** One work's certificate URL, for the style preview. */
   sampleQrUrl: string;
-  loadBios: () => Promise<ArtistBio[]>;
+  loadBios: () => Promise<BioWithProfile[]>;
+  /**
+   * Save a bio for the show (exhibitions). When set, edits are stored on the
+   * server as the curator's show copy instead of on this device; null resets
+   * to the profile bio.
+   */
+  saveBio?: (artistKey: string, bio: string | null) => Promise<{ success: boolean; error?: string }>;
   /** Per-toggle hint text, e.g. where the price comes from. */
   hints?: Partial<Record<WallLabelToggleKey, string>>;
   /** Artwork id → bio text for the works whose artist has one. */
@@ -139,7 +148,8 @@ export function WallLabelsDialog({
   ) => void;
 }) {
   const [options, setOptions] = useState<WallLabelOptions>(DEFAULT_LABEL_OPTIONS);
-  const [artistBios, setArtistBios] = useState<ArtistBio[] | null>(null);
+  const [artistBios, setArtistBios] = useState<BioWithProfile[] | null>(null);
+  const [savingBioKey, setSavingBioKey] = useState<string | null>(null);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState<string | null>(null);
   const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
@@ -158,8 +168,27 @@ export function WallLabelsDialog({
     setBiosLoading(true);
     setBiosError(null);
     try {
-      setArtistBios(await loadBios());
-      setBioEdits(loadBioEdits(bioEditsStorageKey));
+      const loaded = await loadBios();
+      const localEdits = loadBioEdits(bioEditsStorageKey);
+      if (saveBio) {
+        // One-time move of edits made on this device into the show copy.
+        const pending = loaded.filter((a) => localEdits[a.key] !== undefined && localEdits[a.key] !== a.bio);
+        for (const a of pending) {
+          const res = await saveBio(a.key, localEdits[a.key]?.trim() ? localEdits[a.key]! : null);
+          if (res.success) a.bio = localEdits[a.key] ?? '';
+        }
+        if (pending.length) console.log('[Print] Moved device bio edits to the show', { count: pending.length });
+        try {
+          window.localStorage.removeItem(bioEditsStorageKey);
+        } catch {
+          // ignore
+        }
+        setArtistBios(loaded);
+        setBioEdits({});
+      } else {
+        setArtistBios(loaded);
+        setBioEdits(localEdits);
+      }
     } catch (err) {
       console.error('[Print] Load artist bios failed', err);
       setBiosError(err instanceof Error ? err.message : 'Could not load artist bios.');
@@ -188,7 +217,26 @@ export function WallLabelsDialog({
   const changeBioEdits = (update: (prev: Record<string, string>) => Record<string, string>) => {
     setBioEdits((prev) => {
       const next = update(prev);
-      saveJson(bioEditsStorageKey, next);
+      if (!saveBio) saveJson(bioEditsStorageKey, next);
+      return next;
+    });
+  };
+
+  /** Server mode: store the bio as the show copy (null = back to profile). */
+  const commitBio = async (artist: BioWithProfile, value: string | null) => {
+    if (!saveBio) return;
+    setSavingBioKey(artist.key);
+    const res = await saveBio(artist.key, value?.trim() ? value : null);
+    setSavingBioKey(null);
+    if (!res.success) {
+      setBiosError(res.error || 'Could not save the bio.');
+      return;
+    }
+    const saved = value?.trim() ? value : artist.profileBio ?? '';
+    setArtistBios((prev) => (prev ?? []).map((a) => (a.key === artist.key ? { ...a, bio: saved } : a)));
+    setBioEdits((prev) => {
+      const next = { ...prev };
+      delete next[artist.key];
       return next;
     });
   };
@@ -285,11 +333,28 @@ export function WallLabelsDialog({
                       id={`wl-bio-${artist.key}`}
                       value={bioText(artist)}
                       onChange={(e) => changeBioEdits((prev) => ({ ...prev, [artist.key]: e.target.value }))}
+                      onBlur={() => {
+                        if (saveBio && bioEdits[artist.key] !== undefined && bioEdits[artist.key] !== artist.bio) {
+                          void commitBio(artist, bioEdits[artist.key] ?? null);
+                        }
+                      }}
                       placeholder="No bio on their profile. Type one for these labels, or leave blank."
                       rows={3}
                       className="font-serif text-sm"
                     />
-                    {bioEdits[artist.key] !== undefined && bioEdits[artist.key] !== artist.bio && (
+                    {saveBio && savingBioKey === artist.key && (
+                      <p className="text-[11px] font-serif text-ink/40">Saving…</p>
+                    )}
+                    {saveBio && savingBioKey !== artist.key && artist.profileBio !== undefined && bioText(artist) !== artist.profileBio && (
+                      <button
+                        type="button"
+                        className="text-[11px] font-serif text-ink/40 underline hover:text-ink"
+                        onClick={() => void commitBio(artist, null)}
+                      >
+                        {artist.profileBio ? 'Reset to profile bio' : 'Clear'}
+                      </button>
+                    )}
+                    {!saveBio && bioEdits[artist.key] !== undefined && bioEdits[artist.key] !== artist.bio && (
                       <button
                         type="button"
                         className="text-[11px] font-serif text-ink/40 underline hover:text-ink"
@@ -309,8 +374,9 @@ export function WallLabelsDialog({
               </div>
             )}
             <p className="mt-2 text-[11px] font-serif text-ink/40">
-              Edits are for printing only and are remembered on this device. They don&apos;t change
-              anyone&apos;s profile.
+              {saveBio
+                ? "Edits are saved for this show and used on labels, the catalog and the show's Artists tab. They don't change the artist's profile; send them to the artist from the Curator view."
+                : "Edits are for printing only and are remembered on this device. They don't change anyone's profile."}
             </p>
           </div>
         )}

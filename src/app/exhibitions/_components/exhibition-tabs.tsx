@@ -7,6 +7,7 @@ import { ExhibitionArtistsMedia } from './exhibition-artists-media';
 import { ExhibitionMemories } from './exhibition-memories';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import type { ExhibitionMemory } from '../_actions/exhibition-memories';
+import type { PublicExhibitionArtist } from '../_actions/exhibition-artist-details';
 
 export function ExhibitionTabs({
   exhibition,
@@ -15,6 +16,7 @@ export function ExhibitionTabs({
   canPost,
   currentUserId,
   reserve,
+  artistDetails,
 }: {
   exhibition: ExhibitionWithDetails;
   isOwner: boolean;
@@ -22,6 +24,7 @@ export function ExhibitionTabs({
   canPost: boolean;
   currentUserId: string | null;
   reserve?: ReserveOptions | null;
+  artistDetails?: PublicExhibitionArtist[];
 }) {
   const workCount = exhibition.artworks.length;
   const memoryCount = memories.length;
@@ -62,7 +65,7 @@ export function ExhibitionTabs({
       </TabsContent>
 
       <TabsContent value="artists" className="outline-none">
-        <ExhibitionArtistsMedia exhibition={exhibition} />
+        <ExhibitionArtistsMedia exhibition={exhibition} artistDetails={artistDetails} />
       </TabsContent>
 
       <TabsContent value="memories" className="outline-none">

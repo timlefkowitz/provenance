@@ -7,6 +7,28 @@ export type ArtistBio = {
   /** Bio from the artist's profile, or '' when there is none. */
   bio: string;
   artworkIds: string[];
+  /** The artist's profile row when one was found (full details for the curator). */
+  profile?: ArtistBioProfile;
+};
+
+export type ArtistBioProfile = {
+  id: string;
+  user_id: string | null;
+  name: string | null;
+  bio: string | null;
+  picture_url: string | null;
+  website: string | null;
+  artist_statement: string | null;
+  birth_year: number | null;
+  birth_place: string | null;
+  nationality: string | null;
+  death_year: number | null;
+  is_claimed: boolean | null;
+  created_by_gallery_id: string | null;
+  artist_cv_json: unknown;
+  news_publications: unknown;
+  medium: string | null;
+  location: string | null;
 };
 
 export type ArtistBioArtworkRow = {
@@ -16,7 +38,24 @@ export type ArtistBioArtworkRow = {
   artist_profile_id: string | null;
 };
 
-type ProfileRow = { id: string; user_id: string | null; name: string | null; bio: string | null };
+type ProfileRow = ArtistBioProfile;
+
+// Statement/tombstone columns arrive with migration 20261112000000; fall back
+// to the base columns if they're not there yet.
+const PROFILE_COLUMNS_FULL =
+  'id, user_id, name, bio, picture_url, website, artist_statement, birth_year, birth_place, nationality, death_year, is_claimed, created_by_gallery_id, artist_cv_json, news_publications, medium, location';
+const PROFILE_COLUMNS_BASE =
+  'id, user_id, name, bio, picture_url, website, is_claimed, created_by_gallery_id, artist_cv_json, news_publications, medium, location';
+
+async function selectProfiles(
+  run: (columns: string) => PromiseLike<{ data: unknown; error: { message?: string } | null }>,
+): Promise<{ data: ProfileRow[]; error: { message?: string } | null }> {
+  const full = await run(PROFILE_COLUMNS_FULL);
+  if (!full.error) return { data: (full.data || []) as ProfileRow[], error: null };
+  if (!/column/i.test(full.error.message ?? '')) return { data: [], error: full.error };
+  const base = await run(PROFILE_COLUMNS_BASE);
+  return { data: (base.data || []) as ProfileRow[], error: base.error };
+}
 
 /**
  * Groups works by artist and attaches each artist's profile bio, for printing
@@ -39,23 +78,18 @@ export async function resolveArtistBios(
   const byAccountId = new Map<string, ProfileRow>();
 
   if (profileIds.length > 0) {
-    const { data, error } = await admin
-      .from('user_profiles')
-      .select('id, user_id, name, bio')
-      .in('id', profileIds)
-      .eq('is_active', true);
+    const { data, error } = await selectProfiles((cols) =>
+      admin.from('user_profiles').select(cols).in('id', profileIds).eq('is_active', true),
+    );
     if (error) console.error(`${logTag} artist bios: profile bios failed`, error);
-    for (const row of (data || []) as ProfileRow[]) byProfileId.set(row.id, row);
+    for (const row of data) byProfileId.set(row.id, row);
   }
   if (accountIds.length > 0) {
-    const { data, error } = await admin
-      .from('user_profiles')
-      .select('id, user_id, name, bio')
-      .in('user_id', accountIds)
-      .eq('role', 'artist')
-      .eq('is_active', true);
+    const { data, error } = await selectProfiles((cols) =>
+      admin.from('user_profiles').select(cols).in('user_id', accountIds).eq('role', 'artist').eq('is_active', true),
+    );
     if (error) console.error(`${logTag} artist bios: account bios failed`, error);
-    for (const row of (data || []) as ProfileRow[]) if (row.user_id) byAccountId.set(row.user_id, row);
+    for (const row of data) if (row.user_id) byAccountId.set(row.user_id, row);
   }
 
   const artists = new Map<string, ArtistBio>();
@@ -75,8 +109,14 @@ export async function resolveArtistBios(
           : null;
     if (!key) continue;
 
-    const entry = artists.get(key) ?? { key, name: name || 'Unknown artist', bio: profile?.bio?.trim() ?? '', artworkIds: [] };
-    entry.artworkIds.push(a.id);
+    const entry = artists.get(key) ?? {
+      key,
+      name: name || 'Unknown artist',
+      bio: profile?.bio?.trim() ?? '',
+      artworkIds: [],
+      ...(profile ? { profile } : {}),
+    };
+    if (a.id) entry.artworkIds.push(a.id);
     artists.set(key, entry);
   }
 

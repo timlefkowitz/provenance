@@ -9,6 +9,7 @@ import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 import { sanitizeQuestionnaire, supportsQuestionnaire, type QuestionnaireEntry } from '~/lib/profile-questionnaire';
 import { normalizePhoneInput } from '~/lib/phone';
+import { normalizeYear } from '~/lib/artist-details/fields';
 
 export interface UpdateProfileInput {
   profileId: string;
@@ -30,6 +31,12 @@ export interface UpdateProfileInput {
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[];
   /** Artist / gallery / institution only: public Q&A shown on the profile and website */
   questionnaire?: QuestionnaireEntry[];
+  /** Artist only: statement and museum-label details */
+  artist_statement?: string;
+  birth_year?: number | null;
+  birth_place?: string;
+  nationality?: string;
+  death_year?: number | null;
 }
 
 /**
@@ -75,6 +82,9 @@ export async function updateProfile(input: UpdateProfileInput) {
         input.bio,
         input.medium,
         input.location,
+        input.artist_statement,
+        input.birth_place,
+        input.nationality,
         ...(questionnaire ?? []).flatMap((e) => [e.question, e.answer]),
       )
     ) {
@@ -110,6 +120,14 @@ export async function updateProfile(input: UpdateProfileInput) {
     }
 
     if (questionnaire !== undefined) updateData.questionnaire = questionnaire;
+
+    if (profile.role === USER_ROLES.ARTIST) {
+      if (input.artist_statement !== undefined) updateData.artist_statement = input.artist_statement?.trim() || null;
+      if (input.birth_year !== undefined) updateData.birth_year = normalizeYear(input.birth_year);
+      if (input.death_year !== undefined) updateData.death_year = normalizeYear(input.death_year);
+      if (input.birth_place !== undefined) updateData.birth_place = input.birth_place?.trim() || null;
+      if (input.nationality !== undefined) updateData.nationality = input.nationality?.trim() || null;
+    }
 
     if (input.slug !== undefined && profile.role === USER_ROLES.GALLERY) {
       const validated = validateGalleryPublicSlug(input.slug);

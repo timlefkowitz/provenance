@@ -46,6 +46,11 @@ export function ProfileForm({
     phone: profile?.phone || '',
     show_phone: profile?.show_phone === true,
     established_year: profile?.established_year?.toString() || '',
+    artist_statement: profile?.artist_statement || '',
+    birth_year: profile?.birth_year?.toString() || '',
+    birth_place: profile?.birth_place || '',
+    nationality: profile?.nationality || '',
+    death_year: profile?.death_year?.toString() || '',
   });
   const [newsPublications, setNewsPublications] = useState<NewsPublication[]>(
     (profile?.news_publications && Array.isArray(profile.news_publications)
@@ -155,6 +160,15 @@ export function ProfileForm({
             ...(profile.role === USER_ROLES.GALLERY ? { slug: publicSlug } : {}),
             news_publications: newsPublications.filter((p) => p.title.trim() && p.url.trim()),
             ...(showQuestionnaire ? { questionnaire } : {}),
+            ...(profile.role === USER_ROLES.ARTIST
+              ? {
+                  artist_statement: formData.artist_statement,
+                  birth_year: formData.birth_year ? parseInt(formData.birth_year, 10) : null,
+                  birth_place: formData.birth_place,
+                  nationality: formData.nationality,
+                  death_year: formData.death_year ? parseInt(formData.death_year, 10) : null,
+                }
+              : {}),
           });
 
           if (result.error) {
@@ -313,6 +327,69 @@ export function ProfileForm({
               rows={4}
             />
           </div>
+
+          {/* Statement and museum-label details (artists, existing profiles) */}
+          {profile?.role === 'artist' && (
+            <>
+              <div>
+                <Label htmlFor="artist_statement" className="font-serif">
+                  Artist statement
+                </Label>
+                <Textarea
+                  id="artist_statement"
+                  value={formData.artist_statement}
+                  onChange={(e) => setFormData({ ...formData, artist_statement: e.target.value })}
+                  className="font-serif"
+                  placeholder="What your work is about, in your own words"
+                  rows={5}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div>
+                  <Label htmlFor="birth_year" className="font-serif">Born (year)</Label>
+                  <Input
+                    id="birth_year"
+                    inputMode="numeric"
+                    value={formData.birth_year}
+                    onChange={(e) => setFormData({ ...formData, birth_year: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                    className="font-serif mt-1"
+                    placeholder="1984"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="birth_place" className="font-serif">Birthplace</Label>
+                  <Input
+                    id="birth_place"
+                    value={formData.birth_place}
+                    onChange={(e) => setFormData({ ...formData, birth_place: e.target.value })}
+                    className="font-serif mt-1"
+                    placeholder="Lagos, Nigeria"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nationality" className="font-serif">Nationality</Label>
+                  <Input
+                    id="nationality"
+                    value={formData.nationality}
+                    onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                    className="font-serif mt-1"
+                    placeholder="Nigerian"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="death_year" className="font-serif">Died (year)</Label>
+                  <Input
+                    id="death_year"
+                    inputMode="numeric"
+                    value={formData.death_year}
+                    onChange={(e) => setFormData({ ...formData, death_year: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                    className="font-serif mt-1"
+                    placeholder="Leave blank if living"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Medium (for artists) */}
           {(role === 'artist' || profile?.role === 'artist') && (

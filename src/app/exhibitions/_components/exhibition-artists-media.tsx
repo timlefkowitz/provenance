@@ -1,6 +1,42 @@
 import Link from 'next/link';
 import { Image as ImageIcon, User } from 'lucide-react';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
+import type { PublicExhibitionArtist } from '../_actions/exhibition-artist-details';
+
+/** Match a show-artists key (a:/p:/n:) to the curator's artist details. */
+function findDetails(
+  key: string,
+  name: string,
+  details: PublicExhibitionArtist[],
+): PublicExhibitionArtist | undefined {
+  if (key.startsWith('a:')) {
+    const id = key.slice(2);
+    const hit = details.find((d) => d.accountId === id);
+    if (hit) return hit;
+  } else if (key.startsWith('p:')) {
+    const id = key.slice(2);
+    const hit = details.find((d) => d.profileId === id);
+    if (hit) return hit;
+  }
+  const n = name.trim().toLowerCase();
+  return details.find((d) => d.name.trim().toLowerCase() === n);
+}
+
+function Paragraphs({ text }: { text: string }) {
+  return (
+    <>
+      {text
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p, i) => (
+          <p key={i} className="whitespace-pre-line">
+            {p}
+          </p>
+        ))}
+    </>
+  );
+}
 
 function initials(name: string): string {
   if (!name.trim()) return '?';
@@ -14,10 +50,15 @@ function initials(name: string): string {
 
 export function ExhibitionArtistsMedia({
   exhibition,
+  artistDetails = [],
 }: {
   exhibition: ExhibitionWithDetails;
+  /** Bios, statements and photos (curator's show copy over profiles). */
+  artistDetails?: PublicExhibitionArtist[];
 }) {
   const { showArtists: artists, artworks } = exhibition;
+  const withDetails = artists.map((a) => ({ artist: a, details: findDetails(a.key, a.name, artistDetails) }));
+  const about = withDetails.filter(({ details: d }) => d && (d.bio || d.artist_statement || d.tombstone));
   const hasArtists = artists.length > 0;
 
   if (!hasArtists && artworks.length === 0) {
@@ -42,13 +83,14 @@ export function ExhibitionArtistsMedia({
             Artists · {artists.length}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {artists.map((artist) => {
+            {withDetails.map(({ artist, details }) => {
+              const picture = details?.picture_url || artist.picture_url;
               const body = (
                 <>
-                  {artist.picture_url ? (
+                  {picture ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={artist.picture_url}
+                      src={picture}
                       alt=""
                       className="h-10 w-10 rounded-full object-cover shrink-0"
                     />
@@ -61,6 +103,11 @@ export function ExhibitionArtistsMedia({
                     <p className="font-serif text-sm text-ink/80 leading-tight truncate group-hover:text-wine transition-colors">
                       {artist.name}
                     </p>
+                    {details?.tombstone ? (
+                      <p className="font-serif text-[11px] text-ink/45 leading-tight mt-0.5 truncate">
+                        {details.tombstone}
+                      </p>
+                    ) : null}
                     {artist.workCount > 0 && (
                       <p className="font-serif text-[11px] text-ink/40 leading-tight mt-0.5">
                         {artist.workCount} work{artist.workCount === 1 ? '' : 's'}
@@ -84,6 +131,60 @@ export function ExhibitionArtistsMedia({
                 >
                   {body}
                 </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── ABOUT THE ARTISTS ───────────────────────────────────── */}
+      {about.length > 0 && (
+        <section>
+          <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-5">
+            About the artists
+          </p>
+          <div className="space-y-8">
+            {about.map(({ artist, details }) => {
+              const d = details!;
+              const picture = d.picture_url || artist.picture_url;
+              return (
+                <article key={artist.key} className="flex gap-4 sm:gap-6">
+                  {picture ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={picture} alt="" className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <span className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-wine/12 font-serif font-semibold text-wine shrink-0">
+                      {initials(artist.name)}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div>
+                      {artist.href ? (
+                        <Link href={artist.href} className="font-display text-lg font-semibold text-ink hover:text-wine">
+                          {artist.name}
+                        </Link>
+                      ) : (
+                        <p className="font-display text-lg font-semibold text-ink">{artist.name}</p>
+                      )}
+                      {d.tombstone && <p className="font-serif text-xs italic text-ink/50">{d.tombstone}</p>}
+                    </div>
+                    {d.bio && (
+                      <div className="space-y-2 font-serif text-sm leading-relaxed text-ink/75">
+                        <Paragraphs text={d.bio} />
+                      </div>
+                    )}
+                    {d.artist_statement && (
+                      <details className="group rounded-lg border border-wine/12 bg-parchment/40 px-3 py-2">
+                        <summary className="cursor-pointer font-serif text-xs uppercase tracking-widest text-wine/70">
+                          Artist statement
+                        </summary>
+                        <div className="mt-2 space-y-2 font-serif text-sm leading-relaxed text-ink/75">
+                          <Paragraphs text={d.artist_statement} />
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                </article>
               );
             })}
           </div>
