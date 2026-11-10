@@ -6,7 +6,17 @@ import { loadGalleryRosterIds } from '~/lib/portal-graphs/load-gallery-roster-id
 import { valueAt, type ArtworkValueRow, type ValuationRow } from '~/lib/portal-graphs/value-waterfall';
 
 import {
-  buildWorkKeys,
+  artworkOnlySales,
+  expandChain,
+  inChunks,
+  LEDGER_SALE_COLS,
+  loadExhibitionCounts,
+  loadLedgerSales,
+  loadSoldRows,
+  priceSales,
+} from '~/lib/sales/load-chain-sales';
+
+import {
   computeSellThrough,
   fillMissingBuyers,
   groupCollectors,
@@ -49,7 +59,9 @@ const ARTWORK_COLS =
  * shows they came from, and per-exhibition sell-through.
  *
  * Sales = sales_ledger rows sold by the gallery's owner account(s) or recorded
- * on a roster / exhibition work, plus older sales only stored on the artwork row.
+ * on any certificate of a roster / exhibition work (CoA, CoS or CoO), plus older
+ * sales only stored on a certificate row. Unpriced sales count at the work's
+ * set value, flagged estimated.
  */
 export async function loadGalleryCollectorData(
   galleryProfileIds: string[],
@@ -98,69 +110,59 @@ export async function loadGalleryCollectorData(
 
     const galleryArtworkIds = Array.from(new Set([...rosterIds, ...shownLinks.map((l) => l.artwork_id)]));
 
-    const ledgerCols =
-      'id, artwork_id, sold_to_account_id, sold_to_email, sold_to_name, price_cents, sold_at';
-    const [bySeller, byArtwork] = await Promise.all([
-      ownerIds.length
-        ? admin.from('sales_ledger').select(ledgerCols).in('sold_by_account_id', ownerIds)
-        : { data: [] },
-      galleryArtworkIds.length
-        ? admin.from('sales_ledger').select(ledgerCols).in('artwork_id', galleryArtworkIds)
-        : { data: [] },
+    const { data: ownerSales } = ownerIds.length
+      ? await admin.from('sales_ledger').select(LEDGER_SALE_COLS).in('sold_by_account_id', ownerIds)
+      : { data: [] };
+
+    // Every certificate of every gallery work: a sale may be recorded on the
+    // artist's CoA, the show's CoS or the buyer's CoO.
+    const chain = await expandChain(admin, [
+      ...galleryArtworkIds,
+      ...((ownerSales ?? []) as SaleRow[]).map((s) => s.artwork_id),
     ]);
+    const workKeys = chain.workKeys;
+
     const ledgerById = new Map<string, SaleRow>();
-    for (const row of [...(bySeller.data ?? []), ...(byArtwork.data ?? [])] as SaleRow[]) {
+    for (const row of [...(await loadLedgerSales(admin, chain.ids)), ...((ownerSales ?? []) as SaleRow[])]) {
       ledgerById.set(row.id, row);
     }
     const ledgerSales = Array.from(ledgerById.values());
 
-    const artworkIds = Array.from(new Set([...galleryArtworkIds, ...ledgerSales.map((s) => s.artwork_id)]));
-    const { data: artworkRows, error: artErr } = artworkIds.length
-      ? await admin.from('artworks').select(ARTWORK_COLS).in('id', artworkIds)
-      : { data: [], error: null };
-    if (artErr) console.error('[Collectors] artworks fetch failed', artErr);
-    const artworks = (artworkRows ?? []) as ArtworkRow[];
-    const workKeys = buildWorkKeys(artworks);
-
-    // Older sales were only stored on the artwork row; include those for works
-    // with no ledger entry on any of their certificates.
-    const worksWithLedgerSale = new Set(ledgerSales.map((s) => workKeys.get(s.artwork_id) ?? s.artwork_id));
-    const galleryArtworkSet = new Set(galleryArtworkIds);
-    const artworkOnlySales: SaleRow[] = artworks
-      .filter(
-        (a) =>
-          galleryArtworkSet.has(a.id) &&
-          a.is_sold &&
-          a.sold_at &&
-          !worksWithLedgerSale.has(workKeys.get(a.id) ?? a.id),
-      )
-      .map((a) => ({
-        id: `artwork:${a.id}`,
-        artwork_id: a.id,
-        sold_to_account_id: a.sold_to_account_id,
-        sold_to_email: a.sold_to_email,
-        sold_to_name: a.sold_to_name,
-        price_cents: a.sold_price_cents,
-        sold_at: a.sold_at!,
-      }));
-    const sales = fillMissingBuyers(
-      [...ledgerSales, ...artworkOnlySales],
-      await loadOwnershipHolders(admin, artworkIds),
-      workKeys,
+    const galleryWorkKeys = new Set(galleryArtworkIds.map((id) => workKeys.get(id) ?? id));
+    const soldRows = (await loadSoldRows(admin, chain.ids)).filter((r) =>
+      galleryWorkKeys.has(workKeys.get(r.id) ?? r.id),
     );
+
+    const sales = priceSales({
+      sales: fillMissingBuyers(
+        [...ledgerSales, ...artworkOnlySales(soldRows, ledgerSales, workKeys)],
+        await inChunks(chain.ids, (ids) => loadOwnershipHolders(admin, ids)),
+        workKeys,
+      ),
+      chain: chain.rows,
+      workKeys,
+      exhibitionCountByWork: await loadExhibitionCounts(admin, chain.ids, workKeys),
+    });
 
     const soldArtworkIds = Array.from(new Set(sales.map((s) => s.artwork_id)));
     const valuationsByArtwork = new Map<string, ValuationRow[]>();
     if (soldArtworkIds.length) {
-      const { data: valRows } = await admin
-        .from('artwork_valuations')
-        .select('artwork_id, generated_at, estimated_value_cents, confidence_low_cents, confidence_high_cents')
-        .in('artwork_id', soldArtworkIds);
-      for (const v of (valRows ?? []) as ValuationRow[]) {
+      const valRows = await inChunks(soldArtworkIds, async (ids) => {
+        const { data } = await admin
+          .from('artwork_valuations')
+          .select('artwork_id, generated_at, estimated_value_cents, confidence_low_cents, confidence_high_cents')
+          .in('artwork_id', ids);
+        return (data ?? []) as ValuationRow[];
+      });
+      for (const v of valRows) {
         if (!valuationsByArtwork.has(v.artwork_id)) valuationsByArtwork.set(v.artwork_id, []);
         valuationsByArtwork.get(v.artwork_id)!.push(v);
       }
     }
+    const artworks = await inChunks(soldArtworkIds, async (ids) => {
+      const { data } = await admin.from('artworks').select(ARTWORK_COLS).in('id', ids);
+      return (data ?? []) as ArtworkRow[];
+    });
     const now = new Date();
     const currentValueCents = new Map<string, number>();
     for (const a of artworks) {

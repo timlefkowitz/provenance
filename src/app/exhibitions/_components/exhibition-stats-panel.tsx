@@ -39,16 +39,27 @@ export async function ExhibitionStatsPanel({
   inquiries: ExhibitionInquiry[];
   reservations: ReservationRequest[];
 }) {
-  const [scans, sales] = await Promise.all([
+  const [scans, salesResult] = await Promise.all([
     getExhibitionScans(userId, exhibitionId).catch((err) => {
       console.error('[Exhibitions] Stats: scans failed', { exhibitionId, err });
       return null;
     }),
     loadExhibitionSellThrough(exhibitionId, galleryOwnerId).catch((err) => {
       console.error('[Exhibitions] Stats: sell-through failed', { exhibitionId, err });
-      return null;
+      return 'failed' as const;
     }),
   ]);
+
+  const salesFailed = salesResult === 'failed';
+  const sales = salesFailed ? null : salesResult;
+  // Recorded prices, plus unpriced sales at the work's set value (est.), plus Provenance Value.
+  const money = sales
+    ? [
+        sales.recordedCents > 0 ? `${formatMoney(sales.recordedCents)} recorded` : '',
+        sales.estimatedCents > 0 ? `${formatMoney(sales.estimatedCents)} est. at set value` : '',
+        sales.provenanceValueCents > 0 ? `${formatMoney(sales.provenanceValueCents)} Provenance Value` : '',
+      ].filter(Boolean)
+    : [];
 
   const works = scans?.works ?? [];
   const scanCount = works.reduce((sum, w) => sum + w.stats.duringShow, 0);
@@ -111,14 +122,13 @@ export async function ExhibitionStatsPanel({
     {
       label: 'Sold',
       value: sales && sales.shownCount > 0 ? `${n(sales.soldCount)} of ${n(sales.shownCount)}` : '0',
-      detail:
-        sales && sales.soldCount > 0
+      detail: salesFailed
+        ? "Couldn't load sales right now"
+        : sales && sales.soldCount > 0
           ? [
-              sales.salesCents > 0 ? `${formatMoney(sales.salesCents)}` : '',
+              ...money,
               `${plural(sales.collectorKeys.length, 'collector')}${sales.newCollectorKeys.length ? ` (${n(sales.newCollectorKeys.length)} new)` : ''}`,
-            ]
-              .filter(Boolean)
-              .join(' · ')
+            ].join(' · ')
           : sales && sales.shownCount > 0
             ? `${sales.sellThroughPct}% sell-through`
             : 'Nothing sold yet',

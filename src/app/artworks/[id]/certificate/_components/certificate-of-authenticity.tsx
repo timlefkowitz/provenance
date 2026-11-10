@@ -37,6 +37,7 @@ import { ArtworkPublications } from './artwork-publications';
 import { ProvenanceValueLine } from './provenance-value-line';
 import { SoldDot } from '~/components/sold-dot';
 import { computeProvenanceValue, type ArtworkPublication } from '~/lib/valuation/provenance-value';
+import { setValueCents } from '~/lib/sales/sale-money';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { EMPTY_SCAN_STATS, formatScanStats, type ScanStats } from '~/lib/scan-stats';
@@ -289,6 +290,7 @@ export function CertificateOfAuthenticity({
   artwork, 
   isOwner = false,
   canEditCertificate = false,
+  canSell = false,
   canRequestProvenance = false,
   isAdmin = false,
   creatorInfo = null,
@@ -307,6 +309,8 @@ export function CertificateOfAuthenticity({
   isOwner?: boolean;
   /** Owner or gallery team member who can edit artwork / uploads */
   canEditCertificate?: boolean;
+  /** May record a sale / issue a Certificate of Ownership (holder, team, or a manager of a show that hung it). */
+  canSell?: boolean;
   canRequestProvenance?: boolean;
   isAdmin?: boolean;
   creatorInfo?: { name: string; role: string | null; profileId?: string; slug?: string; accountId?: string } | null;
@@ -367,6 +371,12 @@ export function CertificateOfAuthenticity({
   }, [artwork.id, artwork.title, isOwner, certificateType, certificateStatus]);
 
   const router = useRouter();
+  // A Certificate of Ownership is issued from the artist's CoA or the show's CoS,
+  // by the holder, their team, or a manager of a show that hung the work.
+  const canIssueOwnership =
+    (isOwner || canEditCertificate || canSell) &&
+    (certificateType === CERTIFICATE_TYPES.AUTHENTICITY || certificateType === CERTIFICATE_TYPES.SHOW);
+  const [issueCooOpen, setIssueCooOpen] = useState(false);
   const user = useCurrentUser();
   const [pending, startTransition] = useTransition();
   const [verifying, setVerifying] = useState(false);
@@ -966,6 +976,19 @@ export function CertificateOfAuthenticity({
             <SendCertificateDialog
               artworkId={artwork.id}
               artworkTitle={artwork.title || 'Untitled'}
+              onIssueOwnership={canIssueOwnership ? () => setIssueCooOpen(true) : undefined}
+            />
+          )}
+          {canIssueOwnership && (
+            <InviteCooFromCoaDialog
+              artworkId={artwork.id}
+              artworkTitle={artwork.title || 'Untitled'}
+              isShowCertificate={certificateType === CERTIFICATE_TYPES.SHOW}
+              defaultPriceCents={setValueCents(artwork)}
+              open={issueCooOpen}
+              onOpenChange={setIssueCooOpen}
+              // Curators without "Send certificate" get the button directly.
+              hideTrigger={canEditCertificate}
             />
           )}
 
@@ -1797,27 +1820,31 @@ export function CertificateOfAuthenticity({
             </div>
           )}
 
-          {/* Edit Button (for owners) */}
-          {isOwner && user.data && (
+          {/* Owner / team actions: issue a Certificate of Ownership, edit */}
+          {(isOwner || canIssueOwnership) && user.data && (
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
               <div className="flex flex-wrap gap-2 justify-center">
-                {certificateType === CERTIFICATE_TYPES.AUTHENTICITY && (
-                  <InviteCooFromCoaDialog
-                    artworkId={artwork.id}
-                    artworkTitle={artwork.title || 'Untitled'}
+                {canIssueOwnership && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="font-serif border-wine/30 hover:bg-wine/10"
+                    onClick={() => setIssueCooOpen(true)}
+                  >
+                    Issue Certificate of Ownership
+                  </Button>
+                )}
+                {isOwner && (
+                  <EditArtworkDialog
+                    artwork={artwork}
+                    isCreator={true}
+                    exhibition={exhibition}
+                    creatorInfo={creatorInfo}
+                    certificateType={certificateType}
                   />
                 )}
-                <EditArtworkDialog 
-                  artwork={artwork} 
-                  isCreator={true}
-                  exhibition={exhibition}
-                  creatorInfo={creatorInfo}
-                  certificateType={certificateType}
-                />
               </div>
-              {certificateType === CERTIFICATE_TYPES.AUTHENTICITY && (
-                <PendingCooInviteStatus artworkId={artwork.id} />
-              )}
+              {canIssueOwnership && <PendingCooInviteStatus artworkId={artwork.id} />}
             </div>
           )}
 

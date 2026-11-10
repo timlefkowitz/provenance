@@ -18,6 +18,7 @@ import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
 import { SellWorkDialog } from './sell-work-dialog';
 import { SoldDot } from '~/components/sold-dot';
+import { setValueCents } from '~/lib/sales/sale-money';
 
 export type CuratorWork = {
   artwork: Artwork;
@@ -133,6 +134,7 @@ export function CuratorWorksList({
                 exhibitionId={exhibitionId}
                 artworkId={w.artwork.id}
                 artworkTitle={w.artwork.title}
+                defaultPriceCents={setValueCents(w.artwork)}
               />
             )}
             {w.approverName ? (

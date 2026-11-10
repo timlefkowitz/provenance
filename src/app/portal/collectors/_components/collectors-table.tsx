@@ -68,6 +68,7 @@ export function CollectorsTable({ collectors, exhibitions }: CollectorsTableProp
                 <td className="py-2 px-3 text-right tabular-nums">{c.purchaseCount}</td>
                 <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">
                   {c.totalSpentCents ? formatMoney(c.totalSpentCents) : '—'}
+                  {c.estimatedSpentCents > 0 && <p className="text-[11px] text-ink/45">incl. est.</p>}
                 </td>
                 <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">
                   {c.currentValueCents ? formatMoney(c.currentValueCents) : '—'}

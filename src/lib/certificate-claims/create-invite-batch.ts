@@ -1,4 +1,5 @@
 import { asUntyped, UntypedSupabaseClient } from '~/lib/supabase-untyped';
+import { canSellArtwork } from '~/lib/sales/can-sell-artwork';
 import { randomUUID } from 'crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -332,7 +333,7 @@ export async function buildArtistInviteRows(
 }
 
 /**
- * Build owner (collector COO) invite rows; each source must be an authenticity cert.
+ * Build owner (collector COO) invite rows; each source is a CoA or a show's CoS.
  */
 export async function buildOwnerInviteRows(
   client: UntypedSupabaseClient,
@@ -353,7 +354,7 @@ export async function buildOwnerInviteRows(
   for (const artworkId of artworkIds) {
     const { data: artwork, error: artError } = await asUntyped(adminClient)
       .from('artworks')
-      .select('id, account_id, title, certificate_type')
+      .select('id, account_id, gallery_profile_id, title, certificate_type')
       .eq('id', artworkId)
       .single();
 
@@ -362,8 +363,9 @@ export async function buildOwnerInviteRows(
       continue;
     }
 
-    if (artwork.account_id !== userId) {
-      errors.push(`"${artwork.title}": not owned by you`);
+    // The holder, their gallery / institution team, or a manager of a show that hung it.
+    if (!(await canSellArtwork(userId, artwork))) {
+      errors.push(`"${artwork.title}": not held by you or your team`);
       continue;
     }
 

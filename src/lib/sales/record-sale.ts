@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { refreshEntityStatsForAccounts } from '~/lib/stats/refresh-entity-stats';
 import {
+  getChainArtworkIds,
   syncProvenanceAcrossChain,
   transferOwnershipAcrossChain,
   type ProvenanceSyncMethod,
@@ -125,7 +126,11 @@ export async function recordSale(
       });
     }
     await recordSaleInProvenance(admin, input.artworkId, soldAt, input.recordedBy);
-    await refreshStatsQuietly([sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null]);
+    await refreshStatsQuietly(
+    [sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null],
+    admin,
+    input.artworkId,
+  );
     return { success: true, saleId: existing.id, sellerAccountId, buyerAccountId, buyerEmail, buyerName };
   }
 
@@ -186,7 +191,11 @@ export async function recordSale(
 
   await recordSaleInProvenance(admin, input.artworkId, soldAt, input.recordedBy);
 
-  await refreshStatsQuietly([sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null]);
+  await refreshStatsQuietly(
+    [sellerAccountId, buyerAccountId, artwork.artist_account_id as string | null],
+    admin,
+    input.artworkId,
+  );
 
   // Only a new sale reaches the artist; a same-day repeat (above) is the same sale.
   if (input.notifyArtist !== false) {
@@ -428,6 +437,8 @@ export async function ensureSaleForSentOwnershipInvite(
     buyerEmail: string;
     buyerName?: string | null;
     recordedBy: string;
+    /** Sale price, when the sender entered one. */
+    priceCents?: number | null;
   },
 ): Promise<{ created: boolean }> {
   const db = asUntyped(admin);
@@ -458,8 +469,17 @@ export async function ensureSaleForSentOwnershipInvite(
     .order('sold_at', { ascending: false })
     .limit(1);
   const latest = ledgerRows?.[0];
+  const price = params.priceCents && params.priceCents > 0 ? Math.round(params.priceCents) : null;
 
   if (latest) {
+    if (price) {
+      await db.from('sales_ledger').update({ price_cents: price }).eq('id', latest.id).is('price_cents', null);
+      await db
+        .from('artworks')
+        .update({ sold_price_cents: price })
+        .eq('id', params.sourceArtworkId)
+        .is('sold_price_cents', null);
+    }
     if (!latest.sold_to_account_id && !latest.sold_to_email && !latest.sold_to_name) {
       await db
         .from('sales_ledger')
@@ -481,7 +501,7 @@ export async function ensureSaleForSentOwnershipInvite(
       email: (source.sold_to_email as string | null) ?? email,
       name: (source.sold_to_name as string | null) ?? name,
     },
-    priceCents: source.sold_price_cents as number | null,
+    priceCents: price ?? (source.sold_price_cents as number | null),
     currency: source.sold_currency as string | null,
     soldAt: source.is_sold ? (source.sold_at as string | null) : null,
     recordedBy: params.recordedBy,
@@ -490,8 +510,33 @@ export async function ensureSaleForSentOwnershipInvite(
   return { created: res.success };
 }
 
-async function refreshStatsQuietly(ids: Array<string | null | undefined>): Promise<void> {
-  const unique = [...new Set(ids.filter((v): v is string => typeof v === 'string' && v.length > 0))];
+/** Accounts that organised a show hanging any certificate of this work. */
+async function showOrganisers(admin: SupabaseClient, artworkId: string): Promise<string[]> {
+  try {
+    const { ids } = await getChainArtworkIds(admin, artworkId);
+    const db = asUntyped(admin);
+    const { data: links } = await db.from('exhibition_artworks').select('exhibition_id').in('artwork_id', ids);
+    const exIds = [...new Set(((links ?? []) as Array<{ exhibition_id: string }>).map((l) => l.exhibition_id))];
+    if (!exIds.length) return [];
+    const { data: shows } = await db.from('exhibitions').select('gallery_id').in('id', exIds);
+    return ((shows ?? []) as Array<{ gallery_id: string | null }>)
+      .map((x) => x.gallery_id)
+      .filter((v): v is string => !!v);
+  } catch (err) {
+    logger.error('record_sale_show_organisers_failed', { artworkId, error: err });
+    return [];
+  }
+}
+
+async function refreshStatsQuietly(
+  ids: Array<string | null | undefined>,
+  admin?: SupabaseClient,
+  artworkId?: string,
+): Promise<void> {
+  const organisers = admin && artworkId ? await showOrganisers(admin, artworkId) : [];
+  const unique = [
+    ...new Set([...ids, ...organisers].filter((v): v is string => typeof v === 'string' && v.length > 0)),
+  ];
   if (!unique.length) return;
   try {
     await refreshEntityStatsForAccounts(unique);

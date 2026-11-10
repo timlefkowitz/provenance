@@ -33,16 +33,20 @@ export function SellWorkDialog({
   exhibitionId,
   artworkId,
   artworkTitle,
+  defaultPriceCents = null,
 }: {
   exhibitionId: string;
   artworkId: string;
   artworkTitle: string;
+  /** The work's set value, prefilled as the sale price. */
+  defaultPriceCents?: number | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
+  const initialPrice = defaultPriceCents ? String(defaultPriceCents / 100) : '';
+  const [price, setPrice] = useState(initialPrice);
   const [soldOn, setSoldOn] = useState(today);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -78,16 +82,17 @@ export function SellWorkDialog({
           `Marked sold. ${email.trim()} was sent their Certificate of Ownership to claim.`,
         );
       } else {
-        toast.warning('Marked sold, but the certificate email was not sent.', {
+        toast.warning('Marked sold, but the Certificate of Ownership was not sent.', {
           description:
-            'An open invite may already exist for this email. You can resend it from the certificate page.',
+            result.inviteError ??
+            'An open invite may already exist for this email. You can issue it from the certificate page.',
           duration: 10000,
         });
       }
       setOpen(false);
       setEmail('');
       setName('');
-      setPrice('');
+      setPrice(initialPrice);
       router.refresh();
     });
   };

@@ -4,6 +4,8 @@
  * can be unit tested without a database.
  */
 
+import type { SaleMoney } from '~/lib/sales/sale-money';
+
 export interface SaleRow {
   /** Ledger id, or `artwork:<id>` for a sale only recorded on the artwork row. */
   id: string;
@@ -13,6 +15,19 @@ export interface SaleRow {
   sold_to_name: string | null;
   price_cents: number | null;
   sold_at: string;
+  /** Set by priceSales: recorded price, else the work's set value (estimated). */
+  money?: SaleMoney;
+  /** Set by priceSales: the work's Provenance Value at the time of reporting. */
+  provenance_value_cents?: number | null;
+}
+
+/** What a sale counts for in money totals. */
+export function saleAmountCents(sale: Pick<SaleRow, 'money' | 'price_cents'>): number {
+  return sale.money ? sale.money.cents : (sale.price_cents ?? 0);
+}
+
+function isEstimated(sale: Pick<SaleRow, 'money'>): boolean {
+  return sale.money?.estimated ?? false;
 }
 
 export interface ArtworkLinkRow {
@@ -31,7 +46,10 @@ export interface CollectorSummary {
   email: string | null;
   name: string | null;
   purchaseCount: number;
+  /** Recorded prices plus set values for unpriced sales. */
   totalSpentCents: number;
+  /** The part of totalSpentCents that is set value, not a recorded price. */
+  estimatedSpentCents: number;
   currentValueCents: number;
   firstPurchaseAt: string;
   lastPurchaseAt: string;
@@ -46,7 +64,14 @@ export interface ExhibitionSellThrough {
   soldCount: number;
   /** 0–100, rounded; 0 when nothing was shown. */
   sellThroughPct: number;
+  /** recordedCents + estimatedCents. */
   salesCents: number;
+  /** Sales with a recorded price. */
+  recordedCents: number;
+  /** Unpriced sales counted at the work's set value. */
+  estimatedCents: number;
+  /** Provenance Value of the works sold. */
+  provenanceValueCents: number;
   /** Buyers whose first purchase from the gallery came from this exhibition. */
   newCollectorKeys: string[];
   /** Every buyer of a work from this exhibition, new or returning. */
@@ -184,6 +209,7 @@ export function groupCollectors(params: {
         name: sale.sold_to_name,
         purchaseCount: 0,
         totalSpentCents: 0,
+        estimatedSpentCents: 0,
         currentValueCents: 0,
         firstPurchaseAt: sale.sold_at,
         lastPurchaseAt: sale.sold_at,
@@ -197,8 +223,11 @@ export function groupCollectors(params: {
     summary.email ??= sale.sold_to_email;
     summary.name ??= sale.sold_to_name;
     summary.purchaseCount += 1;
-    summary.totalSpentCents += sale.price_cents ?? 0;
-    summary.currentValueCents += currentValueCents.get(sale.artwork_id) ?? sale.price_cents ?? 0;
+    const amount = saleAmountCents(sale);
+    summary.totalSpentCents += amount;
+    if (isEstimated(sale)) summary.estimatedSpentCents += amount;
+    summary.currentValueCents +=
+      currentValueCents.get(sale.artwork_id) || sale.provenance_value_cents || amount;
     if (sale.sold_at < summary.firstPurchaseAt) summary.firstPurchaseAt = sale.sold_at;
     if (sale.sold_at > summary.lastPurchaseAt) summary.lastPurchaseAt = sale.sold_at;
     summary.artworkIds.push(sale.artwork_id);
@@ -251,7 +280,9 @@ export function computeSellThrough(params: {
   return params.exhibitionIds.map((exhibitionId) => {
     const works = worksByExhibition.get(exhibitionId) ?? new Set<string>();
     let soldCount = 0;
-    let salesCents = 0;
+    let recordedCents = 0;
+    let estimatedCents = 0;
+    let provenanceValueCents = 0;
     const newCollectorKeys: string[] = [];
     const collectorKeys: string[] = [];
 
@@ -259,7 +290,10 @@ export function computeSellThrough(params: {
       const sale = firstSaleByWork.get(work);
       if (!sale) continue;
       soldCount += 1;
-      salesCents += sale.price_cents ?? 0;
+      const amount = saleAmountCents(sale);
+      if (isEstimated(sale)) estimatedCents += amount;
+      else recordedCents += amount;
+      provenanceValueCents += sale.provenance_value_cents ?? amount;
       const key = collectorKey(sale);
       if (key && !collectorKeys.includes(key)) collectorKeys.push(key);
       if (key && firstPurchaseByCollector.get(key) === sale && !newCollectorKeys.includes(key)) {
@@ -272,7 +306,10 @@ export function computeSellThrough(params: {
       shownCount: works.size,
       soldCount,
       sellThroughPct: works.size ? Math.round((soldCount / works.size) * 100) : 0,
-      salesCents,
+      salesCents: recordedCents + estimatedCents,
+      recordedCents,
+      estimatedCents,
+      provenanceValueCents,
       newCollectorKeys,
       collectorKeys,
     };

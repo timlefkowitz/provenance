@@ -23,7 +23,7 @@ export interface SellExhibitionWorkInput {
 }
 
 export type SellExhibitionWorkResult =
-  | { success: true; certificateSent: boolean }
+  | { success: true; certificateSent: boolean; inviteError?: string }
   | { success: false; error: string };
 
 /**
@@ -114,7 +114,11 @@ export async function sellExhibitionWork(
     revalidatePath(`/exhibitions/${input.exhibitionId}/curate`);
     revalidatePath(`/exhibitions/${input.exhibitionId}`);
 
-    return { success: true, certificateSent: Boolean(result.inviteToken) };
+    return {
+      success: true,
+      certificateSent: Boolean(result.inviteToken),
+      inviteError: result.inviteErrors?.[0],
+    };
   } catch (err) {
     logger.error('sell_exhibition_work_failed', {
       exhibitionId: input.exhibitionId,

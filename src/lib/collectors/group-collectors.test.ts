@@ -136,6 +136,9 @@ describe('computeSellThrough', () => {
       soldCount: 1,
       sellThroughPct: 50,
       salesCents: 200_000,
+      recordedCents: 200_000,
+      estimatedCents: 0,
+      provenanceValueCents: 200_000,
       newCollectorKeys: ['name:ann'],
       collectorKeys: ['name:ann'],
     });
@@ -187,5 +190,37 @@ describe('computeSellThrough collectorKeys', () => {
     });
     expect(s!.collectorKeys.sort()).toEqual(['email:new@x.com', 'email:repeat@x.com']);
     expect(s!.newCollectorKeys).toEqual(['email:new@x.com']);
+  });
+});
+
+describe('computeSellThrough money', () => {
+  it('splits recorded prices from set-value estimates and totals Provenance Value', () => {
+    const [r] = computeSellThrough({
+      exhibitionIds: ['ex'],
+      shownLinks: [
+        { exhibition_id: 'ex', artwork_id: 'w1' },
+        { exhibition_id: 'ex', artwork_id: 'w2' },
+      ],
+      workKeys: new Map(),
+      sales: [
+        {
+          id: 's1', artwork_id: 'w1', sold_to_account_id: null, sold_to_email: 'a@x.com', sold_to_name: null,
+          price_cents: 100_000, sold_at: '2026-01-01T00:00:00Z',
+          money: { cents: 100_000, basis: 'recorded', estimated: false }, provenance_value_cents: 115_000,
+        },
+        {
+          id: 's2', artwork_id: 'w2', sold_to_account_id: null, sold_to_email: 'b@x.com', sold_to_name: null,
+          price_cents: null, sold_at: '2026-01-02T00:00:00Z',
+          money: { cents: 45_000, basis: 'value', estimated: true }, provenance_value_cents: 51_750,
+        },
+      ],
+    });
+    expect(r).toMatchObject({
+      soldCount: 2,
+      recordedCents: 100_000,
+      estimatedCents: 45_000,
+      salesCents: 145_000,
+      provenanceValueCents: 166_750,
+    });
   });
 });

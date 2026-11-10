@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
-import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
+import { canSellArtwork } from '~/lib/sales/can-sell-artwork';
 import { createArtworkTransferInvite } from '~/lib/sales/create-transfer-invite';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import { recordSale } from '~/lib/sales/record-sale';
@@ -32,6 +32,8 @@ export interface MarkArtworkSoldResult {
   error?: string;
   saleId?: string;
   inviteToken?: string | null;
+  /** Why the Certificate of Ownership wasn't sent (rate limit, open invite...). */
+  inviteErrors?: string[];
 }
 
 export async function markArtworkSold(
@@ -53,7 +55,9 @@ export async function markArtworkSold(
       return { success: false, error: 'You must be signed in to mark an artwork as sold' };
     }
 
-    const { data: artwork, error: fetchError } = await asUntyped(client)
+    const admin = getSupabaseServerAdminClient();
+    // Admin read: RLS hides gallery-held certificates from team members.
+    const { data: artwork, error: fetchError } = await asUntyped(admin)
       .from('artworks')
       .select('id, account_id, gallery_profile_id, title')
       .eq('id', input.artworkId)
@@ -63,15 +67,11 @@ export async function markArtworkSold(
       return { success: false, error: 'Artwork not found' };
     }
 
-    const canEdit = await canEditGalleryArtworks(user.id, {
-      account_id: artwork.account_id,
-      gallery_profile_id: artwork.gallery_profile_id ?? undefined,
-    });
-    if (!canEdit) {
+    // Holder, their gallery / institution team, or a manager of a show that hung the work.
+    if (!(await canSellArtwork(user.id, artwork))) {
       return { success: false, error: 'You do not have permission to mark this artwork as sold' };
     }
 
-    const admin = getSupabaseServerAdminClient();
 
     const sale = await recordSale(admin, {
       artworkId: input.artworkId,
@@ -95,6 +95,7 @@ export async function markArtworkSold(
     const buyerName = sale.buyerName ?? null;
 
     let inviteToken: string | null = null;
+    let inviteErrors: string[] = [];
     if (buyerAccountId || buyerEmail) {
       try {
         const inviteResult = await createArtworkTransferInvite({
@@ -107,6 +108,7 @@ export async function markArtworkSold(
           workTitle: (artwork.title as string) || 'Untitled',
         });
         inviteToken = inviteResult.token ?? null;
+        inviteErrors = inviteResult.errors;
       } catch (inviteErr) {
         console.error('[Sales] markArtworkSold createArtworkTransferInvite failed', inviteErr);
         logger.error('mark_artwork_sold_invite_failed', {
@@ -141,7 +143,7 @@ export async function markArtworkSold(
       inviteSent: !!inviteToken,
     });
 
-    return { success: true, saleId, inviteToken };
+    return { success: true, saleId, inviteToken, inviteErrors };
   } catch (error) {
     console.error('[Sales] markArtworkSold failed', error);
     logger.error('mark_artwork_sold_failed', {

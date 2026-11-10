@@ -4,23 +4,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getChainArtworkIds } from '~/lib/provenance/chain';
 import { logger } from '~/lib/logger';
 
-type SaleDateRow = { sold_at: string | null };
+import { countDistinctSales, type SaleDateRow } from '~/lib/sales/sale-money';
 
-/**
- * Distinct sales of one work. Rows on the same day are one sale (a sale
- * recorded on both the CoA and the show's CoS, or saved twice). Pure —
- * exported for tests.
- */
-export function countDistinctSales(ledger: SaleDateRow[], soldCertificates: SaleDateRow[]): number {
-  const days = new Set<string>();
-  for (const row of ledger) days.add(row.sold_at ? row.sold_at.slice(0, 10) : 'undated');
-  for (const row of soldCertificates) {
-    const day = row.sold_at ? row.sold_at.slice(0, 10) : null;
-    // A certificate marked sold with no ledger row on that day is a sale too.
-    if (day ? !days.has(day) : days.size === 0) days.add(day ?? 'undated');
-  }
-  return days.size;
-}
+export { countDistinctSales };
 
 /**
  * How many times this work has sold, across every certificate of it

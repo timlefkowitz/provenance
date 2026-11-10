@@ -11,6 +11,7 @@ import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, isTeamProfileR
 import { collectionOwnerName } from '~/lib/managed-collections';
 
 import { getArtworkExhibitions } from './_actions/get-artwork-exhibition';
+import { canSellArtwork } from '~/lib/sales/can-sell-artwork';
 import { sanitizePublications } from '~/lib/valuation/provenance-value';
 import { countChainSales } from '~/lib/sales/count-chain-sales';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
@@ -216,6 +217,17 @@ export default async function CertificatePage({
       });
     } catch (e) {
       console.error('[Certificate] canEditGalleryArtworks failed', e);
+    }
+  }
+
+  // Same rule the sale / Certificate of Ownership actions enforce: holder, their
+  // team, or a manager of a show that hung any certificate of this work.
+  let canSell = isOwner || canEditCertificate;
+  if (user && !canSell) {
+    try {
+      canSell = await canSellArtwork(user.id, artwork);
+    } catch (e) {
+      console.error('[Certificate] canSellArtwork failed', e);
     }
   }
 
@@ -494,6 +506,7 @@ export default async function CertificatePage({
         scanStats={computeScanStats(artwork.metadata)}
         isOwner={isOwner} 
         canEditCertificate={canEditCertificate}
+        canSell={canSell}
         canRequestProvenance={canRequestProvenance}
         isAdmin={userIsAdmin}
         creatorInfo={creatorInfo}

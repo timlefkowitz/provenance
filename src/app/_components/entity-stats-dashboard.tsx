@@ -3,6 +3,10 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
 import { getRoleLabel, type UserRole, USER_ROLES } from '~/lib/user-roles';
+import { loadAccountSales, type CreditedSale } from '~/lib/sales/load-account-sales';
+import { buildSalesBreakdown, type SalesBreakdown } from '~/lib/portal-graphs/sales-breakdown';
+
+import { SalesBreakdownSection } from './sales-breakdown-section';
 
 type EntityRole = 'gallery' | 'artist' | 'institution' | 'collector';
 
@@ -27,17 +31,6 @@ export interface EntityStatsRow {
   updated_at: string | null;
 }
 
-export interface RecentSaleRow {
-  id: string;
-  artwork_id: string;
-  sold_at: string;
-  price_cents: number | null;
-  currency: string;
-  sold_to_account_id: string | null;
-  sold_to_email: string | null;
-  sold_to_name: string | null;
-  notes: string | null;
-}
 
 interface EntityStatsDashboardProps {
   accountId: string;
@@ -103,25 +96,22 @@ async function loadStats(
   }
 }
 
-async function loadRecentSales(accountId: string): Promise<RecentSaleRow[]> {
-  const admin = getSupabaseServerAdminClient();
+async function loadSalesView(
+  accountId: string,
+): Promise<{ breakdown: SalesBreakdown; recent: CreditedSale[]; titles: Map<string, string> } | null> {
+  const admin = asUntyped(getSupabaseServerAdminClient());
   try {
-    const { data, error } = await asUntyped(admin)
-      .from('sales_ledger')
-      .select(
-        'id, artwork_id, sold_at, price_cents, currency, sold_to_account_id, sold_to_email, sold_to_name, notes',
-      )
-      .eq('sold_by_account_id', accountId)
-      .order('sold_at', { ascending: false })
-      .limit(25);
-    if (error) {
-      console.error('[Stats] loadRecentSales failed', error);
-      return [];
-    }
-    return (data as RecentSaleRow[]) ?? [];
+    const data = await loadAccountSales(admin, accountId);
+    const breakdown = buildSalesBreakdown(data);
+    const recent = [...data.sales].sort((a, b) => b.sold_at.localeCompare(a.sold_at)).slice(0, 25);
+    const { data: rows } = recent.length
+      ? await admin.from('artworks').select('id, title').in('id', recent.map((s) => s.artwork_id))
+      : { data: [] };
+    const titles = new Map(((rows ?? []) as Array<{ id: string; title: string | null }>).map((r) => [r.id, r.title ?? '']));
+    return { breakdown, recent, titles };
   } catch (err) {
-    console.error('[Stats] loadRecentSales exception', err);
-    return [];
+    console.error('[Stats] loadSalesView failed', err);
+    return null;
   }
 }
 
@@ -133,7 +123,7 @@ export async function EntityStatsDashboard({
 }: EntityStatsDashboardProps) {
   const entityRole = mapUserRoleToEntityRole(role);
   const stats = await loadStats(accountId, entityRole);
-  const recentSales = includeSales ? await loadRecentSales(accountId) : [];
+  const salesView = includeSales ? await loadSalesView(accountId) : null;
 
   const tiles = [
     {
@@ -141,7 +131,7 @@ export async function EntityStatsDashboard({
       value: String(stats?.total_sales_count ?? 0),
     },
     {
-      label: 'Total volume',
+      label: 'Recorded volume',
       value: formatMoney(stats?.total_sales_cents ?? 0),
     },
     {
@@ -153,7 +143,7 @@ export async function EntityStatsDashboard({
       value: formatDate(stats?.last_sale_at ?? null),
     },
     {
-      label: 'Market cap (3y)',
+      label: 'Recorded volume (3y)',
       value: formatMoney(stats?.market_cap_cents ?? 0),
     },
     {
@@ -224,58 +214,17 @@ export async function EntityStatsDashboard({
       </Card>
 
       {includeSales ? (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">
-              Recent sales ledger
-            </CardTitle>
-            <p className="text-xs text-ink/60 font-serif">
-              Who you sold to, when, and for how much.
-            </p>
-          </CardHeader>
-          <CardContent>
-            {recentSales.length === 0 ? (
-              <p className="text-sm text-ink/60 font-serif">
-                No recorded sales yet. Mark an artwork as sold from the collection editor to add entries here.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm font-serif">
-                  <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-wide text-ink/50">
-                      <th className="py-2 pr-3">Date</th>
-                      <th className="py-2 pr-3">Buyer</th>
-                      <th className="py-2 pr-3">Price</th>
-                      <th className="py-2 pr-3">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentSales.map((row) => (
-                      <tr key={row.id} className="border-t border-wine/10 align-top">
-                        <td className="py-2 pr-3 whitespace-nowrap">
-                          {formatDate(row.sold_at)}
-                        </td>
-                        <td className="py-2 pr-3">
-                          {row.sold_to_name ||
-                            row.sold_to_email ||
-                            (row.sold_to_account_id ? 'Platform account' : 'Unknown')}
-                        </td>
-                        <td className="py-2 pr-3 whitespace-nowrap">
-                          {row.price_cents
-                            ? formatMoney(row.price_cents, row.currency || 'USD')
-                            : '—'}
-                        </td>
-                        <td className="py-2 pr-3 text-ink/70">
-                          {row.notes || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="mt-6">
+          {salesView ? (
+            <SalesBreakdownSection
+              breakdown={salesView.breakdown}
+              recent={salesView.recent}
+              titles={salesView.titles}
+            />
+          ) : (
+            <p className="text-sm text-ink/60 font-serif">Couldn&apos;t load sales right now.</p>
+          )}
+        </div>
       ) : null}
     </section>
   );

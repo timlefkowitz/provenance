@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('~/lib/stats/refresh-entity-stats', () => ({ refreshEntityStatsForAccounts: vi.fn() }));
 vi.mock('~/lib/provenance/chain', () => ({
+  getChainArtworkIds: vi.fn(),
   syncProvenanceAcrossChain: vi.fn(),
   transferOwnershipAcrossChain: vi.fn(),
 }));

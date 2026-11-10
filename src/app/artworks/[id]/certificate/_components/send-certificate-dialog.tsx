@@ -28,9 +28,12 @@ const ROLE_OPTIONS: { value: CertificateRecipientRole; label: string; placeholde
 export function SendCertificateDialog({
   artworkId,
   artworkTitle,
+  onIssueOwnership,
 }: {
   artworkId: string;
   artworkTitle: string;
+  /** When set, a collector send offers "Issue Certificate of Ownership" instead. */
+  onIssueOwnership?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<CertificateRecipientRole>('collector');
@@ -115,6 +118,25 @@ export function SendCertificateDialog({
               ))}
             </div>
           </div>
+
+          {role === 'collector' && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-ink/80">
+              This only emails a link to view the certificate. It doesn&apos;t record a sale or give the
+              collector a Certificate of Ownership.
+              {onIssueOwnership && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onIssueOwnership();
+                  }}
+                  className="mt-2 block font-semibold text-wine underline underline-offset-2"
+                >
+                  Sold it? Issue a Certificate of Ownership instead
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1">
             <Label htmlFor="send-cert-email">{roleOption.label} email</Label>

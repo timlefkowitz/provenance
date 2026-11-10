@@ -32,6 +32,7 @@ export function SellThroughTable({ exhibitions, sellThrough }: SellThroughTableP
                 <th className="py-2 px-3 text-right whitespace-nowrap">Sold / shown</th>
                 <th className="py-2 px-3 text-right">Sell-through</th>
                 <th className="py-2 px-3 text-right">Sales</th>
+                <th className="py-2 px-3 text-right whitespace-nowrap">Provenance Value</th>
                 <th className="py-2 px-3 text-right whitespace-nowrap">New collectors</th>
               </tr>
             </thead>
@@ -52,6 +53,14 @@ export function SellThroughTable({ exhibitions, sellThrough }: SellThroughTableP
                     <td className="py-2 px-3 text-right tabular-nums">{s.sellThroughPct}%</td>
                     <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">
                       {s.salesCents ? formatMoney(s.salesCents) : '—'}
+                      {s.estimatedCents > 0 && (
+                        <p className="text-[11px] text-ink/45">
+                          {s.recordedCents > 0 ? `${formatMoney(s.estimatedCents)} ` : ''}est. at set value
+                        </p>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">
+                      {s.provenanceValueCents ? formatMoney(s.provenanceValueCents) : '—'}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums">{s.newCollectorKeys.length}</td>
                   </tr>

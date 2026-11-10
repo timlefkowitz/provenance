@@ -3,6 +3,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { getUserRole, type UserRole, USER_ROLES } from '~/lib/user-roles';
 import { logger } from '~/lib/logger';
+import { loadAccountSales } from '~/lib/sales/load-account-sales';
 import { after } from 'next/server';
 
 type EntityRole = 'gallery' | 'artist' | 'institution' | 'collector';
@@ -74,28 +75,26 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
   try {
     const role = await resolveEntityRole(accountId);
 
-    const { data: soldBy } = await asUntyped(admin)
-      .from('sales_ledger')
-      .select('price_cents, sold_at')
-      .eq('sold_by_account_id', accountId);
+    // Sales credited to this account across every certificate of a work
+    // (CoA, CoS, CoO) and every show it organised; same-day duplicates are one
+    // sale. Revenue figures use recorded prices only; set-value estimates are
+    // added when the dashboard loads.
+    const { sales } = await loadAccountSales(admin, accountId);
 
     const { data: boughtBy } = await asUntyped(admin)
       .from('sales_ledger')
       .select('price_cents, sold_at')
       .eq('sold_to_account_id', accountId);
+    const purchases = Array.isArray(boughtBy) ? (boughtBy as Array<{ sold_at: string | null }>) : [];
 
-    const sales = Array.isArray(soldBy) ? (soldBy as Array<any>) : [];
-    const purchases = Array.isArray(boughtBy) ? (boughtBy as Array<any>) : [];
-
-    const prices = sales
-      .map((s) => (typeof s.price_cents === 'number' ? (s.price_cents as number) : 0))
-      .filter((n) => n > 0);
+    const recorded = sales.filter((s) => s.money && !s.money.estimated && s.money.cents > 0);
+    const prices = recorded.map((s) => s.money!.cents);
     const totalSalesCents = prices.reduce((a, b) => a + b, 0);
     const totalSalesCount = sales.length;
     const averageSaleCents = prices.length ? Math.round(totalSalesCents / prices.length) : 0;
     const lastSaleAt = [...sales, ...purchases]
-      .map((s) => (s.sold_at as string) || null)
-      .filter((v): v is string => !!v)
+      .map((s) => s.sold_at || null)
+      .filter((v): v is string => !!v && !v.startsWith('1970'))
       .sort()
       .reverse()[0] ?? null;
 
@@ -105,12 +104,9 @@ export async function refreshEntityStatsForAccount(accountId: string): Promise<v
 
     const threeYearsAgo = new Date();
     threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-    const marketCapCents = sales
-      .filter((s) => {
-        const t = s.sold_at ? new Date(s.sold_at as string).getTime() : 0;
-        return t >= threeYearsAgo.getTime();
-      })
-      .reduce((acc, s) => acc + (typeof s.price_cents === 'number' ? s.price_cents : 0), 0);
+    const marketCapCents = recorded
+      .filter((s) => new Date(s.sold_at).getTime() >= threeYearsAgo.getTime())
+      .reduce((acc, s) => acc + s.money!.cents, 0);
 
     const { count: representedCount } = await asUntyped(admin)
       .from('artworks')
@@ -225,7 +221,7 @@ export async function refreshAllEntityStats(): Promise<{
       .from('sales_ledger')
       .select('sold_by_account_id, sold_to_account_id');
     if (Array.isArray(sellers)) {
-      for (const row of sellers as Array<any>) {
+      for (const row of sellers as Array<{ sold_by_account_id: string | null; sold_to_account_id: string | null }>) {
         if (row.sold_by_account_id) ids.add(row.sold_by_account_id as string);
         if (row.sold_to_account_id) ids.add(row.sold_to_account_id as string);
       }
@@ -235,7 +231,7 @@ export async function refreshAllEntityStats(): Promise<{
       .from('artworks')
       .select('account_id, artist_account_id');
     if (Array.isArray(artworks)) {
-      for (const row of artworks as Array<any>) {
+      for (const row of artworks as Array<{ account_id: string | null; artist_account_id: string | null }>) {
         if (row.account_id) ids.add(row.account_id as string);
         if (row.artist_account_id) ids.add(row.artist_account_id as string);
       }

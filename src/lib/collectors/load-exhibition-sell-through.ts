@@ -2,9 +2,18 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { asUntyped } from '~/lib/supabase-untyped';
 
 import { isShownInExhibition } from '~/app/exhibitions/_helpers/exhibition-submission-status';
+import {
+  artworkOnlySales,
+  expandChain,
+  inChunks,
+  LEDGER_SALE_COLS,
+  loadExhibitionCounts,
+  loadLedgerSales,
+  loadSoldRows,
+  priceSales,
+} from '~/lib/sales/load-chain-sales';
 
 import {
-  buildWorkKeys,
   computeSellThrough,
   fillMissingBuyers,
   type ExhibitionSellThrough,
@@ -13,11 +22,12 @@ import {
 } from './group-collectors';
 import { loadOwnershipHolders } from './load-ownership-holders';
 
-const LEDGER_COLS = 'id, artwork_id, sold_to_account_id, sold_to_email, sold_to_name, price_cents, sold_at';
-
 /**
- * Sell-through for one exhibition, for its organiser. The owner's other sales
- * are loaded too so "new collectors" means first purchase from this gallery.
+ * Sell-through for one exhibition, for its organiser. A sale counts wherever
+ * it was recorded: the show's CoS, the artist's CoA, or the buyer's CoO.
+ * Unpriced sales count at the work's set value (flagged estimated). The
+ * owner's other sales are loaded too so "new collectors" means first purchase
+ * from this gallery. Returns null when nothing was shown; throws on failure.
  */
 export async function loadExhibitionSellThrough(
   exhibitionId: string,
@@ -25,81 +35,50 @@ export async function loadExhibitionSellThrough(
 ): Promise<ExhibitionSellThrough | null> {
   const admin = asUntyped(getSupabaseServerAdminClient());
 
-  try {
-    const { data: linkRows } = await admin
-      .from('exhibition_artworks')
-      .select('exhibition_id, artwork_id, status')
-      .eq('exhibition_id', exhibitionId);
-    const shownLinks: ShownLink[] = ((linkRows ?? []) as Array<ShownLink & { status: string | null }>)
-      .filter((l) => isShownInExhibition(l.status))
-      .map(({ exhibition_id, artwork_id }) => ({ exhibition_id, artwork_id }));
-    if (!shownLinks.length) return null;
+  const { data: linkRows, error: linkErr } = await admin
+    .from('exhibition_artworks')
+    .select('exhibition_id, artwork_id, status')
+    .eq('exhibition_id', exhibitionId);
+  if (linkErr) throw linkErr;
+  const shownLinks: ShownLink[] = ((linkRows ?? []) as Array<ShownLink & { status: string | null }>)
+    .filter((l) => isShownInExhibition(l.status))
+    .map(({ exhibition_id, artwork_id }) => ({ exhibition_id, artwork_id }));
+  if (!shownLinks.length) return null;
 
-    const linkedIds = Array.from(new Set(shownLinks.map((l) => l.artwork_id)));
-    const ARTWORK_COLS =
-      'id, source_artwork_id, is_sold, sold_at, sold_price_cents, sold_to_account_id, sold_to_email, sold_to_name';
-    const linkedRes = await admin.from('artworks').select(ARTWORK_COLS).in('id', linkedIds);
-    // A show's CoS copy points at the artist's CoA; a sale the artist recorded
-    // there is a sale of the shown work too.
-    const sourceIds = Array.from(
-      new Set(
-        ((linkedRes.data ?? []) as Array<{ source_artwork_id: string | null }>)
-          .map((a) => a.source_artwork_id)
-          .filter((id): id is string => !!id && !linkedIds.includes(id)),
-      ),
-    );
-    const [byArtwork, bySeller, sourceRes] = await Promise.all([
-      admin.from('sales_ledger').select(LEDGER_COLS).in('artwork_id', [...linkedIds, ...sourceIds]),
-      admin.from('sales_ledger').select(LEDGER_COLS).eq('sold_by_account_id', galleryOwnerId),
-      sourceIds.length
-        ? admin.from('artworks').select(ARTWORK_COLS).in('id', sourceIds)
-        : Promise.resolve({ data: [] }),
-    ]);
-    const artworkRes = { data: [...(linkedRes.data ?? []), ...(sourceRes.data ?? [])] };
+  const { data: ownerSales } = await admin
+    .from('sales_ledger')
+    .select(LEDGER_SALE_COLS)
+    .eq('sold_by_account_id', galleryOwnerId);
 
-    const ledgerById = new Map<string, SaleRow>();
-    for (const row of [...(byArtwork.data ?? []), ...(bySeller.data ?? [])] as SaleRow[]) {
-      ledgerById.set(row.id, row);
-    }
-    const ledgerSales = Array.from(ledgerById.values());
+  const chain = await expandChain(admin, [
+    ...shownLinks.map((l) => l.artwork_id),
+    ...((ownerSales ?? []) as SaleRow[]).map((s) => s.artwork_id),
+  ]);
 
-    const artworks = (artworkRes.data ?? []) as Array<{
-      id: string;
-      source_artwork_id: string | null;
-      is_sold: boolean | null;
-      sold_at: string | null;
-      sold_price_cents: number | null;
-      sold_to_account_id: string | null;
-      sold_to_email: string | null;
-      sold_to_name: string | null;
-    }>;
-    const workKeys = buildWorkKeys(artworks);
-    const worksWithLedgerSale = new Set(ledgerSales.map((s) => workKeys.get(s.artwork_id) ?? s.artwork_id));
-    const artworkOnlySales: SaleRow[] = artworks
-      .filter((a) => a.is_sold && a.sold_at && !worksWithLedgerSale.has(workKeys.get(a.id) ?? a.id))
-      .map((a) => ({
-        id: `artwork:${a.id}`,
-        artwork_id: a.id,
-        sold_to_account_id: a.sold_to_account_id,
-        sold_to_email: a.sold_to_email,
-        sold_to_name: a.sold_to_name,
-        price_cents: a.sold_price_cents,
-        sold_at: a.sold_at!,
-      }));
-
-    const [result] = computeSellThrough({
-      exhibitionIds: [exhibitionId],
-      sales: fillMissingBuyers(
-        [...ledgerSales, ...artworkOnlySales],
-        await loadOwnershipHolders(admin, linkedIds),
-        workKeys,
-      ),
-      workKeys,
-      shownLinks,
-    });
-    return result ?? null;
-  } catch (err) {
-    console.error('[Collectors] loadExhibitionSellThrough failed', err);
-    return null;
+  const ledgerById = new Map<string, SaleRow>();
+  for (const row of [...(await loadLedgerSales(admin, chain.ids)), ...((ownerSales ?? []) as SaleRow[])]) {
+    ledgerById.set(row.id, row);
   }
+  const ledger = Array.from(ledgerById.values());
+
+  const soldRows = await loadSoldRows(admin, chain.ids);
+
+  const sales = priceSales({
+    sales: fillMissingBuyers(
+      [...ledger, ...artworkOnlySales(soldRows, ledger, chain.workKeys)],
+      await inChunks(chain.ids, (ids) => loadOwnershipHolders(admin, ids)),
+      chain.workKeys,
+    ),
+    chain: chain.rows,
+    workKeys: chain.workKeys,
+    exhibitionCountByWork: await loadExhibitionCounts(admin, chain.ids, chain.workKeys),
+  });
+
+  const [result] = computeSellThrough({
+    exhibitionIds: [exhibitionId],
+    sales,
+    workKeys: chain.workKeys,
+    shownLinks,
+  });
+  return result ?? null;
 }
