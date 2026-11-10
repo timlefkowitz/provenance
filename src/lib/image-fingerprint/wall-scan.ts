@@ -80,7 +80,17 @@ export type WallScanResult = {
   width: number;
   height: number;
   windowsScanned: number;
+  /** True when the time budget ran out and the scan returned what it had found so far. */
+  truncated: boolean;
 };
+
+export type WallScanOptions = {
+  /** Epoch ms. Past it, no more windows are embedded and the best matches so far are returned. */
+  deadline?: number;
+};
+
+/** Windows are cropped and embedded this many at a time, so memory stays flat and the deadline is checked often. */
+const SCORE_CHUNK = 32;
 
 type Raw = { data: Buffer; width: number; height: number };
 
@@ -268,11 +278,21 @@ function dotAll(vec: number[], refs: number[][]): Float32Array {
 
 const boxKey = (b: WallBox) => [b.x, b.y, b.w, b.h].map((v) => v.toFixed(3)).join(',');
 
-export async function scanWall(photo: Buffer | Uint8Array, references: WallReference[]): Promise<WallScanResult> {
+export async function scanWall(
+  photo: Buffer | Uint8Array,
+  references: WallReference[],
+  { deadline = Infinity }: WallScanOptions = {},
+): Promise<WallScanResult> {
   const raw = await decode(photo);
   if (!references.length) {
-    return { placements: [], width: raw.originalWidth, height: raw.originalHeight, windowsScanned: 0 };
+    return { placements: [], width: raw.originalWidth, height: raw.originalHeight, windowsScanned: 0, truncated: false };
   }
+  let truncated = false;
+  const outOfTime = () => {
+    if (Date.now() < deadline) return false;
+    truncated = true;
+    return true;
+  };
   const refs = references.map((r) => r.embedding);
   const ids = references.map((r) => r.artworkId);
   const seen = new Map<string, Scored>();
@@ -285,22 +305,27 @@ export async function scanWall(photo: Buffer | Uint8Array, references: WallRefer
       keys.add(key);
       return true;
     });
-    const crops = (await Promise.all(fresh.map(async (box) => ({ box, ...(await windowPixels(raw, box)) })))).filter(
-      (c) => {
-        if (c.contrast >= MIN_WINDOW_CONTRAST) return true;
-        seen.set(boxKey(c.box), { box: c.box, sims: new Float32Array(refs.length) }); // bare wall
-        return false;
-      },
-    );
-    const vecs = await embedPixelBatch(crops.map((c) => c.pixels));
-    crops.forEach((c, i) => seen.set(boxKey(c.box), { box: c.box, sims: dotAll(vecs[i]!, refs) }));
+    for (let start = 0; start < fresh.length; start += SCORE_CHUNK) {
+      if (outOfTime()) return;
+      const chunk = fresh.slice(start, start + SCORE_CHUNK);
+      const crops = (await Promise.all(chunk.map(async (box) => ({ box, ...(await windowPixels(raw, box)) })))).filter(
+        (c) => {
+          if (c.contrast >= MIN_WINDOW_CONTRAST) return true;
+          seen.set(boxKey(c.box), { box: c.box, sims: new Float32Array(refs.length) }); // bare wall
+          return false;
+        },
+      );
+      if (!crops.length) continue;
+      const vecs = await embedPixelBatch(crops.map((c) => c.pixels));
+      crops.forEach((c, i) => seen.set(boxKey(c.box), { box: c.box, sims: dotAll(vecs[i]!, refs) }));
+    }
   };
 
   await score(coarseWindows(raw.width / raw.height));
 
   // Refine around each artwork's best windows, a few rounds at a shrinking step.
   let step = 0.2;
-  for (let round = 0; round < REFINE_ROUNDS; round++) {
+  for (let round = 0; round < REFINE_ROUNDS && !outOfTime(); round++) {
     const seeds = new Map<number, Scored>(); // artwork index → its best window so far
     for (const scored of seen.values()) {
       let top = 0;
@@ -325,5 +350,6 @@ export async function scanWall(photo: Buffer | Uint8Array, references: WallRefer
     width: raw.originalWidth,
     height: raw.originalHeight,
     windowsScanned: seen.size,
+    truncated,
   };
 }
