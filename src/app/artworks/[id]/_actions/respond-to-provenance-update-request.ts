@@ -187,7 +187,11 @@ export async function respondToProvenanceUpdateRequest(
         if (request.update_fields.image_url !== undefined) {
           const { error: imageUpdateError } = await db
             .from('artworks')
-            .update({ image_url: request.update_fields.image_url })
+            .update({
+              image_url: request.update_fields.image_url,
+              // A request without original_image_url is a new photo: it is its own original.
+              original_image_url: request.update_fields.original_image_url ?? null,
+            })
             .eq('id', request.artworks.id);
 
           if (imageUpdateError) {

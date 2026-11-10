@@ -29,6 +29,8 @@ export type ProvenanceUpdateFields = {
   owned_by?: string;
   sold_by?: string;
   image_url?: string;
+  /** Kept original behind image_url when it is an edited photo; null when it is the original. */
+  original_image_url?: string | null;
   created_at?: string;
   exhibitionId?: string | null;
 };

@@ -17,10 +17,10 @@ import { toast } from '@kit/ui/sonner';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useQuery } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-import { editArtwork } from '../_actions/edit-artwork';
+import { editArtwork, uploadArtworkOriginalPhoto } from '../_actions/edit-artwork';
 import type { Artwork } from './certificate-of-authenticity';
 import Image from 'next/image';
-import { X, Upload, ArrowRight, Crop } from 'lucide-react';
+import { X, Upload, ArrowRight, Crop, History } from 'lucide-react';
 import { ImageCropDialog, type CropSource } from '~/components/image-crop-dialog';
 import { cn } from '@kit/ui/utils';
 import { sendArtistClaimInvite } from '../_actions/send-artist-claim-invite';
@@ -74,8 +74,17 @@ export function EditArtworkDialog({
   const user = useCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(artwork.image_url || null);
+  /** What will be saved as the photo: a newly picked photo, or an edit. */
   const [imageFile, setImageFile] = useState<File | null>(null);
+  /** A photo picked in this visit, untouched; edits always start from it. */
+  const [pickedFile, setPickedFile] = useState<File | null>(null);
+  /** imageFile is an edit (crop/rotate) rather than a plain new photo. */
+  const [imageEdited, setImageEdited] = useState(false);
+  const [restoreOriginal, setRestoreOriginal] = useState(false);
   const [cropSource, setCropSource] = useState<CropSource | null>(null);
+  // Edits always start from the untouched photo, never from an earlier crop.
+  const editSource: CropSource | null =
+    pickedFile ?? artwork.original_image_url ?? artwork.image_url ?? null;
   const [formData, setFormData] = useState({
     title: artwork.title || '',
     artist_name: artwork.artist_name || '',
@@ -177,6 +186,9 @@ export function EditArtworkDialog({
       return;
     }
 
+    setPickedFile(file);
+    setImageEdited(false);
+    setRestoreOriginal(false);
     setNewImage(file);
   };
 
@@ -192,19 +204,33 @@ export function EditArtworkDialog({
   const handleCropped = async (cropped: File) => {
     const file = await prepareImageForUpload(cropped);
     if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
-      toast.error('Cropped photo is too large to upload. Try a smaller crop.');
+      toast.error('Edited photo is too large to upload. Try a smaller crop.');
       return;
     }
+    setImageEdited(true);
+    setRestoreOriginal(false);
     setNewImage(file);
     setCropSource(null);
   };
 
   const removeImage = () => {
     setImageFile(null);
+    setPickedFile(null);
+    setImageEdited(false);
+    setRestoreOriginal(false);
     setImagePreview(artwork.image_url || null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const chooseRestoreOriginal = () => {
+    if (!artwork.original_image_url) return;
+    setImageFile(null);
+    setPickedFile(null);
+    setImageEdited(false);
+    setRestoreOriginal(true);
+    setImagePreview(artwork.original_image_url);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -231,6 +257,23 @@ export function EditArtworkDialog({
         
         if (imageFile) {
           formDataToSend.append('image', imageFile);
+          if (imageEdited) {
+            formDataToSend.append('image_edit', 'edited');
+            // Edited a photo picked just now: keep that upload as the original.
+            // Sent separately so each request stays under the body size limit.
+            if (pickedFile) {
+              const originalForm = new FormData();
+              originalForm.append('image', pickedFile);
+              const original = await uploadArtworkOriginalPhoto(originalForm);
+              if (!original.success || !original.url) {
+                toast.error(original.error || 'Could not save the original photo');
+                return;
+              }
+              formDataToSend.append('original_image_url', original.url);
+            }
+          }
+        } else if (restoreOriginal) {
+          formDataToSend.append('image_edit', 'restore');
         }
 
         if (!isCreator) {
@@ -269,8 +312,7 @@ export function EditArtworkDialog({
             exhibitionGalleryId: exhibition?.gallery?.id || '',
             request_message: '',
           });
-          setImageFile(null);
-          setImagePreview(artwork.image_url || null);
+          removeImage();
           setGallerySearchQuery('');
           // Refresh the page to show updated data
           window.location.reload();
@@ -396,17 +438,37 @@ export function EditArtworkDialog({
                       unoptimized
                     />
                     <figcaption className="mt-3 flex items-center justify-between border-t border-editorial-border/15 pt-2.5 font-jetbrains text-[9px] uppercase tracking-[0.18em] text-editorial-ink/50">
-                      <span>{imageFile ? 'New image' : 'Current image'}</span>
+                      <span>
+                        {restoreOriginal
+                          ? 'Original — restored on save'
+                          : imageEdited
+                            ? 'Edited image'
+                            : imageFile
+                              ? 'New image'
+                              : artwork.original_image_url
+                                ? 'Current image (edited)'
+                                : 'Current image'}
+                      </span>
                       <span className="flex items-center gap-4">
                         <button
                           type="button"
-                          onClick={() => setCropSource(imageFile ?? artwork.image_url ?? null)}
+                          onClick={() => setCropSource(editSource)}
                           className="inline-flex items-center gap-1 text-editorial-ink/70 hover:text-editorial-ink transition-colors"
                         >
                           <Crop className="h-3 w-3" />
-                          Crop
+                          Crop &amp; rotate
                         </button>
-                        {imageFile && (
+                        {artwork.original_image_url && !imageFile && !restoreOriginal && (
+                          <button
+                            type="button"
+                            onClick={chooseRestoreOriginal}
+                            className="inline-flex items-center gap-1 text-editorial-ink/70 hover:text-editorial-ink transition-colors"
+                          >
+                            <History className="h-3 w-3" />
+                            Restore original
+                          </button>
+                        )}
+                        {(imageFile || restoreOriginal) && (
                           <button
                             type="button"
                             onClick={removeImage}
@@ -421,6 +483,7 @@ export function EditArtworkDialog({
                   </figure>
                 )}
                 <ImageCropDialog
+                  description="Crop, rotate or straighten. Edits start from the original photo, which is always kept."
                   source={cropSource}
                   onCancel={() => setCropSource(null)}
                   onCropped={handleCropped}
@@ -709,8 +772,7 @@ export function EditArtworkDialog({
                   request_message: '',
                 });
                 setGallerySearchQuery('');
-                setImageFile(null);
-                setImagePreview(artwork.image_url || null);
+                removeImage();
               }}
               disabled={pending}
               className={BUTTON_SECONDARY}

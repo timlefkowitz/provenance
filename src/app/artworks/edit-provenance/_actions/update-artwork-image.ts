@@ -80,7 +80,7 @@ export async function updateArtworkImage(
 
     const { error: updateError } = await asUntyped(client)
       .from('artworks')
-      .update({ image_url: imageUrl })
+      .update({ image_url: imageUrl, original_image_url: null })
       .eq('id', artworkId);
 
     if (updateError) {

@@ -104,6 +104,8 @@ export type Artwork = {
   medium: string | null;
   dimensions: string | null;
   image_url: string | null;
+  /** Untouched upload behind an edited image_url; null when image_url is the original. */
+  original_image_url?: string | null;
   certificate_number: string;
   created_at: string;
   former_owners: string | null;

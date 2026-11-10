@@ -7,7 +7,12 @@ import { revalidatePath } from 'next/cache';
 import { scheduleArtworkFingerprints } from '~/lib/image-fingerprint/schedule';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { updateProvenance } from '../../edit/_actions/update-provenance';
-import { artworkImageUploader } from '~/lib/artwork-storage';
+import { artworkImageUploader, getArtworkImagePublicUrl } from '~/lib/artwork-storage';
+import {
+  nextArtworkImageColumns,
+  type ArtworkImageChange,
+  type ArtworkImageColumns,
+} from '~/lib/artwork-image-edit';
 import { canEditGalleryArtworks, canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
 import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
@@ -15,10 +20,40 @@ import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
 export type EditArtworkFields = {
   title?: string | null;
   artist_name?: string | null;
-  image_url?: string;
+  image?: ArtworkImageColumns;
   created_at?: string;
   exhibitionId?: string | null;
 };
+
+/** True when `url` is a photo this user uploaded to the artworks bucket. */
+function isOwnArtworkUpload(url: string, userId: string): boolean {
+  return url.startsWith(getArtworkImagePublicUrl(`${userId}/`));
+}
+
+/**
+ * Upload the untouched photo behind an edit made before saving (a photo picked
+ * and then cropped in the same visit). Sent on its own so the edit form stays
+ * under the server action body limit; editArtwork receives its URL.
+ */
+export async function uploadArtworkOriginalPhoto(
+  formData: FormData,
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const client = asUntyped(getSupabaseServerClient());
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return { success: false, error: 'You must be signed in to upload a photo' };
+
+    const file = formData.get('image') as File | null;
+    if (!file || file.size === 0) return { success: false, error: 'No photo received' };
+
+    const url = await artworkImageUploader.upload(client, getSupabaseServerAdminClient(), file, user.id);
+    logger.info('artwork_original_photo_uploaded', { userId: user.id, bytes: file.size });
+    return { success: true, url };
+  } catch (error) {
+    logger.error('artwork_original_photo_upload_failed', { error });
+    return { success: false, error: `Photo upload failed: ${(error as Error)?.message ?? 'Unknown error'}` };
+  }
+}
 
 export async function editArtwork(
   artworkId: string,
@@ -36,7 +71,7 @@ export async function editArtwork(
     // Verify artwork exists and get owner
     const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
-      .select('id, account_id, title, artist_name, created_at, gallery_profile_id, certificate_type, artist_account_id')
+      .select('id, account_id, title, artist_name, created_at, gallery_profile_id, certificate_type, artist_account_id, image_url, original_image_url')
       .eq('id', artworkId)
       .single();
 
@@ -66,6 +101,20 @@ export async function editArtwork(
       updateFields.artist_name = artistName || null;
     }
 
+    // Photo changes are non-destructive: an edited photo keeps the untouched
+    // upload in original_image_url (see ~/lib/artwork-image-edit).
+    const imageEdit = formData.get('image_edit')?.toString();
+    const uploadedOriginalUrl = formData.get('original_image_url')?.toString() || null;
+    if (uploadedOriginalUrl && !isOwnArtworkUpload(uploadedOriginalUrl, user.id)) {
+      return { success: false, error: 'Original photo not recognised. Please pick the photo again.' };
+    }
+    const currentImage: ArtworkImageColumns = {
+      image_url: artwork.image_url ?? null,
+      original_image_url: artwork.original_image_url ?? null,
+    };
+    let imageChange: ArtworkImageChange | null =
+      imageEdit === 'restore' ? { kind: 'restore' } : null;
+
     // Handle image upload
     const imageFile = formData.get('image') as File | null;
     if (imageFile && imageFile.size > 0) {
@@ -79,7 +128,10 @@ export async function editArtwork(
         const adminClient = getSupabaseServerAdminClient();
         const imageUrl = await artworkImageUploader.upload(client, adminClient, imageFile, user.id);
         if (imageUrl) {
-          updateFields.image_url = imageUrl;
+          imageChange =
+            imageEdit === 'edited'
+              ? { kind: 'edit', imageUrl, uploadedOriginalUrl }
+              : { kind: 'replace', imageUrl };
         }
       } catch (imageError: any) {
         logger.error('edit_artwork_image_upload_failed', {
@@ -90,6 +142,16 @@ export async function editArtwork(
         });
         return { success: false, error: `Image upload failed: ${imageError?.message ?? 'Unknown error'}` };
       }
+    }
+
+    if (imageChange) {
+      const nextImage = nextArtworkImageColumns(currentImage, imageChange);
+      if (nextImage) updateFields.image = nextImage;
+      logger.info('edit_artwork_image_change', {
+        artworkId,
+        kind: imageChange.kind,
+        keepsOriginal: Boolean(nextImage?.original_image_url),
+      });
     }
 
     // Handle created_at (Date Certified)
@@ -115,12 +177,15 @@ export async function editArtwork(
     let pendingApproval = false;
     const approvingArtist = isCreator ? cosApprovingArtistId(artwork) : null;
     if (approvingArtist && approvingArtist !== user.id) {
-      const requestFields: Record<string, string> = {};
+      const requestFields: Record<string, string | null> = {};
       if (updateFields.title !== undefined) requestFields.title = updateFields.title ?? '';
       if (updateFields.artist_name !== undefined && updateFields.artist_name !== (artwork.artist_name ?? null)) {
         requestFields.artist_name = updateFields.artist_name ?? '';
       }
-      if (updateFields.image_url) requestFields.image_url = updateFields.image_url;
+      if (updateFields.image?.image_url) {
+        requestFields.image_url = updateFields.image.image_url;
+        requestFields.original_image_url = updateFields.image.original_image_url;
+      }
       if (
         updateFields.created_at &&
         updateFields.created_at.slice(0, 10) !== String(artwork.created_at ?? '').slice(0, 10)
@@ -134,7 +199,7 @@ export async function editArtwork(
       }
       delete updateFields.title;
       delete updateFields.artist_name;
-      delete updateFields.image_url;
+      delete updateFields.image;
       delete updateFields.created_at;
     }
 
@@ -152,11 +217,11 @@ export async function editArtwork(
         provenanceUpdate.exhibitionId = updateFields.exhibitionId;
       }
 
-      // Update image_url directly if provided
-      if (updateFields.image_url) {
+      // Update the photo (and its kept original) directly if provided
+      if (updateFields.image) {
         const { error: imageUpdateError } = await asUntyped(client)
           .from('artworks')
-          .update({ image_url: updateFields.image_url })
+          .update(updateFields.image)
           .eq('id', artworkId);
 
         if (imageUpdateError) {
@@ -269,8 +334,9 @@ export async function editArtwork(
       if (updateFields.artist_name !== undefined) {
         provenanceUpdateFields.artist_name = updateFields.artist_name;
       }
-      if (updateFields.image_url) {
-        provenanceUpdateFields.image_url = updateFields.image_url;
+      if (updateFields.image?.image_url) {
+        provenanceUpdateFields.image_url = updateFields.image.image_url;
+        provenanceUpdateFields.original_image_url = updateFields.image.original_image_url;
       }
       if (updateFields.created_at) {
         provenanceUpdateFields.created_at = updateFields.created_at;
