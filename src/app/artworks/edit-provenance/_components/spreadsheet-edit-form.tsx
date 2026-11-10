@@ -21,6 +21,7 @@ import { PrintMenu } from './print-menu';
 import { ExhibitionPrintMenu } from '~/app/exhibitions/_components/exhibition-print-menu';
 import type { ExhibitionWithDetails } from '~/app/exhibitions/_actions/get-exhibitions';
 import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
+import { AuctionWorksMenu } from '~/app/auctions/_components/auction-works-menu';
 import { SendMenu } from './send-menu';
 import { RegistryPhotoToggle } from '~/app/artworks/my/_components/registry-photo-toggle';
 import { getSelectedProfileId } from '~/components/profile-switcher';
@@ -1623,6 +1624,7 @@ export function SpreadsheetEditForm({
               />
             )}
             <AddToListButton artworkIds={Array.from(visibleArtworkIds)} showQuickAdd={false} />
+            <AuctionWorksMenu artworkIds={Array.from(visibleArtworkIds)} />
             <SendMenu
               selectedArtworkIds={visibleArtworkIds}
               senderRole={senderRole}

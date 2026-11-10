@@ -13,6 +13,7 @@ import {
   ScrollText,
   Users,
   GalleryVerticalEnd,
+  Gavel,
   Heart,
   X,
 } from 'lucide-react';
@@ -157,6 +158,13 @@ export function NotificationsList({
         return <GalleryVerticalEnd className="h-5 w-5" />;
       case 'artwork_inquiry':
         return <MessageSquare className="h-5 w-5" />;
+      case 'auction_outbid':
+      case 'auction_won':
+      case 'auction_lot_sold':
+      case 'auction_lot_passed':
+      case 'auction_consignment_submitted':
+      case 'auction_consignment_reviewed':
+        return <Gavel className="h-5 w-5" />;
       case 'new_work_by_followed_artist':
         return <Heart className="h-5 w-5" />;
       case 'message':
@@ -180,7 +188,12 @@ export function NotificationsList({
       case 'artist_artwork_exhibited':
       case 'owned_artwork_exhibited':
       case 'artwork_reservation_response':
+      case 'auction_won':
+      case 'auction_lot_sold':
         return 'text-notify-success';
+      case 'auction_outbid':
+      case 'auction_consignment_submitted':
+        return 'text-wine';
       case 'artwork_reservation_request':
       case 'artwork_inquiry':
         return 'text-wine';
@@ -556,6 +569,29 @@ export function NotificationsList({
                           {notification.type === 'artwork_reservation_request'
                             ? 'Review request'
                             : 'View exhibition'}
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type.startsWith('auction_') &&
+                      typeof notification.metadata?.auction_id === 'string' && (
+                      <Link
+                        href={
+                          notification.type === 'auction_consignment_submitted'
+                            ? `/auctions/${notification.metadata.auction_id}/manage`
+                            : `/auctions/${notification.metadata.auction_id}`
+                        }
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          {notification.type === 'auction_outbid'
+                            ? 'Bid again'
+                            : notification.type === 'auction_consignment_submitted'
+                              ? 'Review consignment'
+                              : 'View auction'}
                         </Button>
                       </Link>
                     )}

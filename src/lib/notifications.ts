@@ -65,7 +65,13 @@ export type NotificationType =
   | 'new_work_by_followed_artist'
   | 'artwork_reservation_request'
   | 'artwork_reservation_response'
-  | 'artwork_inquiry';
+  | 'artwork_inquiry'
+  | 'auction_outbid'
+  | 'auction_won'
+  | 'auction_lot_sold'
+  | 'auction_lot_passed'
+  | 'auction_consignment_submitted'
+  | 'auction_consignment_reviewed';
 
 export interface CreateNotificationParams {
   userId: string;

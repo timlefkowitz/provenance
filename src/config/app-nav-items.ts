@@ -11,6 +11,7 @@ import {
   ClipboardList,
   FileText,
   GalleryVerticalEnd,
+  Gavel,
   Globe,
   Mail,
   Newspaper,
@@ -60,6 +61,12 @@ export const TOOLBOX_ITEMS: ToolboxItem[] = [
     label: 'Exhibitions',
     description: 'Plan and showcase your shows',
     icon: GalleryVerticalEnd,
+  },
+  {
+    href: '/auctions',
+    label: 'Auctions',
+    description: 'Run an auction or bid on works',
+    icon: Gavel,
   },
   {
     href: '/grants',

@@ -25,6 +25,9 @@ import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banne
 import { ExhibitionStatsPanel } from '../_components/exhibition-stats-panel';
 import { PosterScanRecorder } from '../_components/poster-scan-recorder';
 import { ExhibitionPrintMenu } from '../_components/exhibition-print-menu';
+import { RunAsAuctionButton } from '~/app/auctions/_components/run-as-auction-button';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { asUntyped } from '~/lib/supabase-untyped';
 import { ExhibitionPrivateNotice } from '../_components/exhibition-private-notice';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
@@ -220,6 +223,17 @@ export default async function ExhibitionPage({
     isOwner ? getExhibitionReservationRequests(id) : Promise.resolve([]),
     isOwner ? getExhibitionInquiries(id) : Promise.resolve([]),
   ]);
+  // The show's auction, if it has one (drafts only matter to its managers).
+  const { data: auctionRow } = await asUntyped(getSupabaseServerAdminClient())
+    .from('auctions')
+    .select('id, status, published_at')
+    .eq('exhibition_id', id)
+    .maybeSingle();
+  const showAuction =
+    auctionRow && (isOwner || (auctionRow.published_at && auctionRow.status !== 'draft' && auctionRow.status !== 'cancelled'))
+      ? { id: auctionRow.id as string, status: auctionRow.status as string }
+      : null;
+
   const reserve =
     status === 'past'
       ? null
@@ -298,6 +312,7 @@ export default async function ExhibitionPage({
             {isOwner && (
               <div className="flex items-center gap-1">
               <ExhibitionPrintMenu exhibition={exhibition} ownerName={printOwnerName} />
+              <RunAsAuctionButton exhibitionId={id} auctionId={showAuction?.id ?? null} />
               <Button
                 asChild
                 variant="ghost"
@@ -366,6 +381,15 @@ export default async function ExhibitionPage({
             <EditorialMarkdown className="mb-8 max-w-2xl text-base text-ink/60 md:text-lg">
               {exhibition.description}
             </EditorialMarkdown>
+          )}
+
+          {showAuction && showAuction.status !== 'draft' && (
+            <Link
+              href={`/auctions/${showAuction.id}`}
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-wine/30 px-4 py-1.5 font-serif text-sm text-wine hover:bg-wine/5"
+            >
+              {showAuction.status === 'closed' ? 'See auction results' : 'This exhibition is being auctioned — view lots and bid'}
+            </Link>
           )}
 
           {/* Meta pills row */}
