@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
-import { Badge } from '@kit/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -22,17 +21,23 @@ import { Plus } from 'lucide-react';
 
 import { createManagedCollection } from '../_actions/create-managed-collection';
 import type { UserProfile } from '../_actions/get-user-profiles';
+import type { OpenHandoffInvite } from '~/lib/profile-handoff/handoff';
+import { HandOffDialog } from './hand-off-dialog';
+import { HandoffStatus } from './handoff-status';
 
 /**
  * Collections the user is building on someone else's behalf, plus a dialog to start one.
- * Handing a collection off to its owner comes in a later phase.
+ * "Hand over" emails the owner a link to accept the collection into their own account.
  */
 export function ManagedCollectionsSection({
   collections,
   canCreate,
+  openInvites = {},
 }: {
   collections: UserProfile[];
   canCreate: boolean;
+  /** Live handoff invites by profile id */
+  openInvites?: Record<string, OpenHandoffInvite>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -64,8 +69,9 @@ export function ManagedCollectionsSection({
           Collections you manage for others
         </CardTitle>
         <CardDescription className="font-serif">
-          Catalogue a collection for a client or family member. Certificates carry the owner&apos;s
-          name, and you can hand the collection over to them when it&apos;s ready.
+          Draft a collection for a client or family member, whether they&apos;re on Provenance or
+          not. Certificates carry the owner&apos;s name. When it&apos;s ready, hand it to them by
+          searching their name or entering their email, and they accept or decline it.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -82,13 +88,22 @@ export function ManagedCollectionsSection({
                     {collection.managed_for_email || 'No owner email yet'}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-serif text-xs">
-                    Not yet handed off
-                  </Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <HandoffStatus
+                    profileId={collection.id}
+                    invite={openInvites[collection.id]}
+                    draftLabel="Draft"
+                  />
                   <Button asChild variant="outline" size="sm" className="font-serif border-wine/30">
                     <Link href={`/artworks/add?collection=${collection.id}`}>Add works</Link>
                   </Button>
+                  <HandOffDialog
+                    profileId={collection.id}
+                    name={collection.managed_for_name || collection.name}
+                    defaultEmail={openInvites[collection.id]?.email ?? collection.managed_for_email}
+                    kind="collection"
+                    resend={openInvites[collection.id]?.status === 'sent'}
+                  />
                 </div>
               </li>
             ))}

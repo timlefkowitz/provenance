@@ -142,6 +142,9 @@ export function NotificationsList({
       case 'artist_profile_claim_request':
       case 'artist_profile_claim_approved':
       case 'artist_profile_claim_rejected':
+      case 'artist_profile_suggestion':
+      case 'artist_profile_suggestion_approved':
+      case 'artist_profile_suggestion_denied':
         return <UserPlus className="h-5 w-5" />;
       case 'gallery_team_invite':
         return <Users className="h-5 w-5" />;
@@ -202,10 +205,12 @@ export function NotificationsList({
       case 'certificate_claimed':
         return 'text-notify-info';
       case 'certificate_claim_request':
+      case 'profile_handoff_received':
       case 'artist_profile_claim_request':
       case 'artist_claim_request':
         return 'text-wine';
       case 'artist_profile_claim_rejected':
+      case 'profile_handoff_declined':
       case 'artist_claim_denied':
       case 'invite_email_failed':
         return 'text-notify-error';
@@ -552,6 +557,55 @@ export function NotificationsList({
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
                           View inquiry
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'profile_handoff_received' && (
+                      <Link href="/profiles#incoming">
+                        <Button
+                          size="sm"
+                          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                        >
+                          Review
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'profile_handoff_declined' && (
+                      <Link href="/profiles">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View profiles
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'artist_profile_suggestion' && (
+                      <Link href="/profiles/suggestions">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          Review changes
+                        </Button>
+                      </Link>
+                    )}
+
+                    {(notification.type === 'artist_profile_suggestion_approved' ||
+                      notification.type === 'artist_profile_suggestion_denied') &&
+                      typeof notification.metadata?.exhibition_id === 'string' && (
+                      <Link href={`/exhibitions/${notification.metadata.exhibition_id}/curate?tab=artists`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View artists
                         </Button>
                       </Link>
                     )}

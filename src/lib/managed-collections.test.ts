@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { collectionOwnerName, isManagedCollectionOf } from './managed-collections';
+import {
+  canHandOffProfile,
+  collectionOwnerName,
+  isManagedArtistOf,
+  isManagedCollectionOf,
+} from './managed-collections';
 
 const CREATOR = 'user-creator';
 
@@ -48,5 +53,38 @@ describe('collectionOwnerName', () => {
   it('returns null when there is no name', () => {
     expect(collectionOwnerName(null)).toBeNull();
     expect(collectionOwnerName({ name: '' })).toBeNull();
+  });
+});
+
+describe('isManagedArtistOf', () => {
+  const managed = {
+    user_id: null,
+    role: 'artist',
+    is_claimed: false,
+    is_active: true,
+    created_by_gallery_id: CREATOR,
+    managed_for_name: 'Ana Ruiz',
+  };
+
+  it('accepts an unclaimed artist profile the user manages', () => {
+    expect(isManagedArtistOf(managed, CREATOR)).toBe(true);
+    expect(canHandOffProfile(managed, CREATOR)).toBe(true);
+  });
+
+  it('rejects another user', () => {
+    expect(isManagedArtistOf(managed, 'someone-else')).toBe(false);
+  });
+
+  it('rejects placeholder artist profiles a gallery created without managing them', () => {
+    expect(isManagedArtistOf({ ...managed, managed_for_name: null }, CREATOR)).toBe(false);
+  });
+
+  it('rejects claimed or owned profiles', () => {
+    expect(isManagedArtistOf({ ...managed, is_claimed: true }, CREATOR)).toBe(false);
+    expect(isManagedArtistOf({ ...managed, user_id: 'artist-user' }, CREATOR)).toBe(false);
+  });
+
+  it('rejects collector profiles', () => {
+    expect(isManagedArtistOf({ ...managed, role: 'collector' }, CREATOR)).toBe(false);
   });
 });

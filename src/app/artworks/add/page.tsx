@@ -6,7 +6,7 @@ import { getUserExhibitions } from './_actions/get-user-exhibitions';
 import { getPastArtists } from './_actions/get-past-artists';
 import { ensureArtistsInRegistry } from './_actions/ensure-artists-in-registry';
 import { getUserGalleryProfiles } from './_actions/get-user-gallery-profiles';
-import { getManagedCollections } from '~/app/profiles/_actions/get-user-profiles';
+import { getManagedArtists, getManagedCollections } from '~/app/profiles/_actions/get-user-profiles';
 import { getActiveSubscription } from '~/lib/subscription';
 import { isSellingEnabled } from '~/lib/stripe-connect';
 import { isInstitutionAccount } from '~/lib/institution-account';
@@ -19,9 +19,9 @@ export const metadata = {
 export default async function AddArtworkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ collection?: string }>;
+  searchParams: Promise<{ collection?: string; artist?: string }>;
 }) {
-  const { collection: requestedCollectionId } = await searchParams;
+  const { collection: requestedCollectionId, artist: requestedArtistId } = await searchParams;
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
@@ -48,10 +48,14 @@ export default async function AddArtworkPage({
 
   // Get gallery profiles for all users (they might switch to gallery mode even if their primary role isn't gallery)
   // This allows users to post as a gallery profile even if their account role is artist/collector
-  const [galleryProfiles, managedCollections] = await Promise.all([
+  const [galleryProfiles, managedCollections, managedArtists] = await Promise.all([
     getUserGalleryProfiles(user.id, TEAM_PROFILE_ROLES),
     getManagedCollections(user.id),
+    getManagedArtists(user.id),
   ]);
+  const initialManagedArtistId = managedArtists.some((a) => a.id === requestedArtistId)
+    ? requestedArtistId
+    : undefined;
   const initialCollectionId = managedCollections.some((c) => c.id === requestedCollectionId)
     ? requestedCollectionId
     : undefined;
@@ -99,6 +103,8 @@ export default async function AddArtworkPage({
         galleryProfiles={galleryProfiles}
         managedCollections={managedCollections}
         initialCollectionId={initialCollectionId}
+        managedArtists={managedArtists}
+        initialManagedArtistId={initialManagedArtistId}
         hasExistingArtworks={hasExistingArtworks}
         hasPaidPlan={hasPaidPlan}
         sellingEnabled={sellingEnabled}

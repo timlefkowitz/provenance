@@ -1,10 +1,13 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
-import { getManagedCollections, getUserProfiles } from './_actions/get-user-profiles';
+import { getManagedArtists, getManagedCollections, getUserProfiles } from './_actions/get-user-profiles';
 import { ProfilesList } from './_components/profiles-list';
 import { CreateProfileButton } from './_components/create-profile-button';
 import { ManagedCollectionsSection } from './_components/managed-collections-section';
+import { ManagedArtistsSection } from './_components/managed-artists-section';
+import { getIncomingHandoffInvites, getOpenHandoffInvites } from '~/lib/profile-handoff/handoff';
+import { IncomingHandoffsSection } from './_components/incoming-handoffs-section';
 import { isInstitutionAccount } from '~/lib/institution-account';
 import { USER_ROLES } from '~/lib/user-roles';
 import { asUntyped } from '~/lib/supabase-untyped';
@@ -20,10 +23,15 @@ export default async function ProfilesPage() {
     redirect('/auth/sign-in');
   }
 
-  const [profiles, managedCollections, { data: account }] = await Promise.all([
+  const [profiles, managedCollections, managedArtists, { data: account }] = await Promise.all([
     getUserProfiles(user.id),
     getManagedCollections(user.id),
+    getManagedArtists(user.id),
     asUntyped(client).from('accounts').select('public_data').eq('id', user.id).single(),
+  ]);
+  const [openHandoffInvites, incomingHandoffs] = await Promise.all([
+    getOpenHandoffInvites([...managedCollections, ...managedArtists].map((p) => p.id)),
+    getIncomingHandoffInvites({ id: user.id, email: user.email }),
   ]);
   const institutionLocked = isInstitutionAccount(account?.public_data as Record<string, unknown>);
 
@@ -47,6 +55,8 @@ export default async function ProfilesPage() {
           Create and manage separate profiles for each role (Artist, Collector, Gallery)
         </p>
       </div>
+
+      <IncomingHandoffsSection invites={incomingHandoffs} />
 
       {/* Create New Profile Section */}
       {availableRoles.length > 0 && (
@@ -76,9 +86,16 @@ export default async function ProfilesPage() {
         </Card>
       )}
 
+      <ManagedArtistsSection
+        artists={managedArtists}
+        canCreate={!institutionLocked}
+        openInvites={openHandoffInvites}
+      />
+
       <ManagedCollectionsSection
         collections={managedCollections}
         canCreate={!institutionLocked}
+        openInvites={openHandoffInvites}
       />
 
       {/* Existing Profiles */}

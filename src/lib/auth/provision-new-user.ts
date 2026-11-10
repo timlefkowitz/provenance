@@ -2,6 +2,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { sendWelcomeEmail } from '~/lib/email';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { asUntyped } from '~/lib/supabase-untyped';
+import { attachPendingHandoffsToUser } from '~/lib/profile-handoff/handoff';
 
 export type ProvisionResult = {
   /** True when the account was created within the last 2 minutes. */
@@ -111,6 +112,17 @@ export async function provisionNewUser(
       }
     } catch (emailErr) {
       console.error('[Auth/Provision] new-user check failed', emailErr);
+    }
+
+    // Collections or certificates someone handed to this email before they signed up —————
+    // Pin them to the account so they show in the in-app inbox even without the email link.
+    try {
+      if (account.email) {
+        const attached = await attachPendingHandoffsToUser({ id: userId, email: account.email as string });
+        if (attached > 0) console.log('[Auth/Provision] attached pending handoffs', { userId, attached });
+      }
+    } catch (handoffErr) {
+      console.error('[Auth/Provision] attach handoffs failed', handoffErr);
     }
   } catch (err) {
     console.error('[Auth/Provision] unexpected error', err);

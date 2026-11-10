@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { loadDefaultTeamProfileId } from '~/lib/exhibitions/exhibition-venue';
 import { Button } from '@kit/ui/button';
 import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
@@ -42,6 +43,7 @@ import { PhoneLink } from './_components/phone-link';
 import { SocialLinkItem } from './_components/social-link-item';
 import { ProfileQuestionnaire } from '~/components/profile-questionnaire';
 import { sanitizeQuestionnaire } from '~/lib/profile-questionnaire';
+import { formatTombstone } from '~/lib/artist-details/fields';
 import { getUserStreak } from '~/app/profile/_actions/get-user-streak';
 import { getCommitHistory } from '~/app/profile/_actions/get-commit-history';
 import { StreakStar } from '~/components/streak-star';
@@ -219,7 +221,7 @@ export default async function ArtistProfilePage({
     const { data: profileRow } = await sb
       .from('user_profiles')
       .select(
-        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active, artist_cv_json',
+        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active, artist_cv_json, created_by_gallery_id, managed_for_name',
       )
       .eq('id', id)
       .eq('role', USER_ROLES.ARTIST)
@@ -235,6 +237,18 @@ export default async function ArtistProfilePage({
     }
 
     const profile = profileRow as UnclaimedArtistProfileRow;
+
+    // Someone else added this artist's work; the artist can say "This is me" and claim it.
+    let addedByName: string | null = null;
+    if (profileRow.created_by_gallery_id) {
+      const { data: creator } = await asUntyped(getSupabaseServerAdminClient())
+        .from('accounts')
+        .select('name')
+        .eq('id', profileRow.created_by_gallery_id)
+        .maybeSingle();
+      addedByName = (creator?.name as string | undefined) ?? null;
+    }
+    const claimable = Boolean(profileRow.created_by_gallery_id) && profileRow.created_by_gallery_id !== user?.id;
 
     let profileArtworksQuery = sb
       .from('artworks')
@@ -306,6 +320,7 @@ export default async function ArtistProfilePage({
           artworks={profileArtworks || []}
           exhibitions={exhibitions}
           currentUserId={user?.id}
+          claim={claimable ? { addedByName, signedIn: Boolean(user) } : null}
         />
       </>
     );
@@ -786,6 +801,13 @@ export default async function ArtistProfilePage({
         })),
         press: newsPublications,
         questionnaire,
+        statement: roleProfile?.artist_statement ?? null,
+        tombstone: formatTombstone({
+          birth_year: roleProfile?.birth_year ?? null,
+          birth_place: roleProfile?.birth_place ?? null,
+          nationality: roleProfile?.nationality ?? null,
+          death_year: roleProfile?.death_year ?? null,
+        }) || null,
         links,
         website: website || null,
         phone: publicPhone,

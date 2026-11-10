@@ -4,6 +4,8 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
+import { isManagedArtistOf } from '~/lib/managed-collections';
+import { transferManagedProfile, type HandoffProfile } from '~/lib/profile-handoff/handoff';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 /**
@@ -66,6 +68,46 @@ export async function approveArtistProfileClaim(
 
     // Use admin client to update the claim and profile
     const adminClient = getSupabaseServerAdminClient();
+
+    // Works someone added for this artist move to the claimant (merging into their artist
+    // profile if they have one), the same way accepting a handoff invite does.
+    const { data: fullProfile } = await asUntyped(adminClient)
+      .from('user_profiles')
+      .select('id, user_id, role, name, is_claimed, is_active, created_by_gallery_id, managed_for_name, managed_for_email')
+      .eq('id', claim.profile_id)
+      .maybeSingle();
+
+    if (approved && fullProfile && isManagedArtistOf(fullProfile, user.id)) {
+      const transfer = await transferManagedProfile(fullProfile as HandoffProfile, user.id, {
+        id: claim.artist_user_id,
+      });
+      if (!transfer.success) {
+        return { error: transfer.error };
+      }
+      const now = new Date().toISOString();
+      await adminClient
+        .from('artist_profile_claims')
+        .update({ status: 'approved', gallery_response: galleryResponse?.trim() || null, updated_at: now })
+        .eq('id', claimId);
+      // Other open claims and invites for this profile are settled now.
+      await adminClient
+        .from('artist_profile_claims')
+        .update({ status: 'rejected', gallery_response: 'Another claim was approved', updated_at: now })
+        .eq('profile_id', claim.profile_id)
+        .eq('status', 'pending');
+      await asUntyped(adminClient)
+        .from('profile_handoff_invites')
+        .update({ status: 'cancelled' })
+        .eq('profile_id', claim.profile_id)
+        .eq('status', 'sent');
+      console.log('[Claims] approved managed artist claim', { claimId, works: transfer.works });
+
+      revalidatePath('/registry');
+      revalidatePath('/profiles');
+      revalidatePath('/profiles/claims');
+      revalidatePath('/notifications');
+      return { success: true };
+    }
 
     if (approved) {
       // Check if profile is still unclaimed

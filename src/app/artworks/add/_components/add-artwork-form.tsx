@@ -47,6 +47,9 @@ import { createArtworksBatch } from '../_actions/create-artworks-batch';
 import type { PastArtist } from '../_actions/get-past-artists';
 import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import { CreateExhibitionDialog } from './create-exhibition-dialog';
+import { ForArtistPicker, type PendingArtistHandoff } from './for-artist-picker';
+import { sendProfileHandoff } from '~/app/profiles/_actions/send-profile-handoff';
+import { toast } from '@kit/ui/sonner';
 
 type ImagePreview = {
   id?: string;
@@ -326,6 +329,8 @@ export function AddArtworkForm({
   galleryProfiles = [],
   managedCollections = [],
   initialCollectionId,
+  managedArtists = [],
+  initialManagedArtistId,
   hasExistingArtworks = false,
   hasPaidPlan = false,
   sellingEnabled = false,
@@ -341,6 +346,9 @@ export function AddArtworkForm({
   /** Collector profiles the user manages for someone else */
   managedCollections?: UserProfile[];
   initialCollectionId?: string;
+  /** Artist profiles the user manages for artists not on Provenance */
+  managedArtists?: UserProfile[];
+  initialManagedArtistId?: string;
   hasExistingArtworks?: boolean;
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
@@ -361,6 +369,10 @@ export function AddArtworkForm({
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [localExhibitions, setLocalExhibitions] =
     useState<UserExhibition[]>(exhibitions);
+  // Artists the user is adding work for; grows when they add one from the picker.
+  const [artistsForPicker, setArtistsForPicker] = useState<UserProfile[]>(managedArtists);
+  // Who to send the certificates to after upload (artist picked by search, or an email).
+  const [pendingArtistHandoff, setPendingArtistHandoff] = useState<PendingArtistHandoff | null>(null);
 
   const defaultIsPublicForRole = (role: UserRole | null | undefined) =>
     role !== USER_ROLES.COLLECTOR;
@@ -373,6 +385,8 @@ export function AddArtworkForm({
     isPublic: defaultIsPublicForRole(userRole),
     exhibitionId: '',
     galleryProfileId: '',
+    // Managed artist profile when posting Certificates of Authenticity for an artist
+    managedArtistId: '',
     // Provenance (mirrors the fields available on the edit provenance page)
     dimensions: '',
     formerOwners: '',
@@ -466,6 +480,37 @@ export function AddArtworkForm({
     appliedInitialCollectionRef.current = true;
     setFormData((prev) => ({ ...prev, galleryProfileId: initialCollectionId }));
   }, [initialCollectionId, userRole]);
+
+  // Preselect the artist from ?artist= (any mode)
+  const appliedInitialArtistRef = useRef(false);
+  useEffect(() => {
+    if (appliedInitialArtistRef.current || !initialManagedArtistId) {
+      return;
+    }
+    const artist = managedArtists.find((a) => a.id === initialManagedArtistId);
+    if (!artist) return;
+    appliedInitialArtistRef.current = true;
+    setFormData((prev) => ({
+      ...prev,
+      managedArtistId: artist.id,
+      artistName: artist.managed_for_name || artist.name,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- managedArtists is static page data
+  }, [initialManagedArtistId]);
+
+  // Posting Certificates of Authenticity for an artist the user is adding work for
+  const selectedManagedArtist =
+    artistsForPicker.find((a) => a.id === formData.managedArtistId) ?? null;
+
+  const handleForArtistSelect = (artist: UserProfile | null, handoff: PendingArtistHandoff | null) => {
+    setPendingArtistHandoff(artist ? handoff : null);
+    setFormData((prev) => ({
+      ...prev,
+      managedArtistId: artist ? artist.id : '',
+      artistName: artist ? artist.managed_for_name || artist.name : defaultArtistName,
+      sourceCoaCertificateNumber: artist ? '' : prev.sourceCoaCertificateNumber,
+    }));
+  };
 
   // Initialize primaryTitle when first image is added (one-time)
   useEffect(() => {
@@ -636,6 +681,7 @@ export function AddArtworkForm({
 
     // Validate profile selection if the gallery/institution mode has multiple profiles
     if (
+      !selectedManagedArtist &&
       isTeamProfileRole(userRole) &&
       postingProfiles.length > 1 &&
       !formData.galleryProfileId
@@ -773,14 +819,17 @@ export function AddArtworkForm({
               JSON.stringify(selectedTags.map((t) => t.id)),
             );
           }
-          if (formData.galleryProfileId)
+          if (selectedManagedArtist) {
+            formDataToSend.append('managedArtistId', selectedManagedArtist.id);
+          } else if (formData.galleryProfileId) {
             formDataToSend.append(
               'galleryProfileId',
               formData.galleryProfileId,
             );
+          }
           // Explicitly tell the server which perspective the user is posting from
           formDataToSend.append('posterRole', userRole ?? '');
-          if (formData.sourceCoaCertificateNumber.trim()) {
+          if (!selectedManagedArtist && formData.sourceCoaCertificateNumber.trim()) {
             formDataToSend.append(
               'sourceCoaCertificateNumber',
               formData.sourceCoaCertificateNumber.trim(),
@@ -821,6 +870,21 @@ export function AddArtworkForm({
           });
         }
         gtmService.trackArtworkCreated(!hasExistingArtworks);
+        if (selectedManagedArtist && pendingArtistHandoff && allArtworkIds.length > 0) {
+          const sent = await sendProfileHandoff(selectedManagedArtist.id, pendingArtistHandoff);
+          if (sent.success) {
+            toast.success(
+              `Sent to ${sent.recipientName ?? sent.email ?? 'the artist'} to accept`,
+            );
+            setPendingArtistHandoff(null);
+          } else {
+            toast.error(
+              `Works uploaded, but the invite didn't send: ${sent.error} You can send it from Profiles.`,
+            );
+          }
+          router.push('/profiles');
+          return;
+        }
         if (allArtworkIds.length === 1) {
           router.push(`/artworks/${allArtworkIds[0]}/certificate`);
         } else {
@@ -1083,6 +1147,24 @@ export function AddArtworkForm({
         </div>
       </div>
 
+      <ForArtistPicker
+        ownLabel={
+          userRole === USER_ROLES.ARTIST
+            ? 'My own work'
+            : userRole === USER_ROLES.COLLECTOR
+              ? 'A work I own'
+              : userRole === USER_ROLES.INSTITUTION
+                ? 'Posting for my institution'
+                : userRole === USER_ROLES.GALLERY
+                  ? 'Posting for my gallery'
+                  : 'My own posting'
+        }
+        artists={artistsForPicker}
+        value={formData.managedArtistId}
+        onSelect={handleForArtistSelect}
+        onArtistAdded={(artist) => setArtistsForPicker((prev) => [...prev, artist])}
+      />
+
       {/* Basic Information */}
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
@@ -1144,6 +1226,7 @@ export function AddArtworkForm({
               onChange={(e) =>
                 setFormData({ ...formData, artistName: e.target.value })
               }
+              readOnly={Boolean(selectedManagedArtist)}
               placeholder="Artist or creator name"
               className="font-serif"
             />
@@ -1527,7 +1610,7 @@ export function AddArtworkForm({
         </AccordionItem>
       </Accordion>
 
-      {isTeamProfileRole(userRole) && (
+      {!selectedManagedArtist && isTeamProfileRole(userRole) && (
         <div className="space-y-2">
           <Label htmlFor="sourceCoaCertificateNumber">
             Link to Certificate of Authenticity (optional)
@@ -1552,7 +1635,7 @@ export function AddArtworkForm({
       )}
 
       {/* Gallery / Institution Profile Selection (when the mode has multiple profiles) */}
-      {isTeamProfileRole(userRole) && postingProfiles.length > 1 && (
+      {!selectedManagedArtist && isTeamProfileRole(userRole) && postingProfiles.length > 1 && (
         <div className="space-y-2">
           <Label htmlFor="galleryProfileId">
             Post as {userRole === USER_ROLES.INSTITUTION ? 'Institution' : 'Gallery'} *
@@ -1594,7 +1677,7 @@ export function AddArtworkForm({
       )}
 
       {/* Collection selection (collector mode, when managing collections for others) */}
-      {userRole === USER_ROLES.COLLECTOR && managedCollections.length > 0 && (
+      {!selectedManagedArtist && userRole === USER_ROLES.COLLECTOR && managedCollections.length > 0 && (
         <div className="space-y-2">
           <Label htmlFor="managedCollectionId">Add to collection</Label>
           <Select

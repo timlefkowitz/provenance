@@ -34,6 +34,12 @@ export type UserProfile = {
   news_publications?: NewsPublication[];
   /** Public Q&A: [{ question, answer }] (artist / gallery / institution) */
   questionnaire?: QuestionnaireEntry[];
+  /** Artist statement and museum-label details (artist only) */
+  artist_statement?: string | null;
+  birth_year?: number | null;
+  birth_place?: string | null;
+  nationality?: string | null;
+  death_year?: number | null;
   // Artist CV (grants feature)
   artist_cv_json?: unknown;
   artist_cv_file_url?: string | null;
@@ -123,6 +129,32 @@ export async function getManagedCollections(userId: string): Promise<UserProfile
 
   if (error) {
     console.error('[Profiles] getManagedCollections failed', error);
+    return [];
+  }
+
+  return (data || []) as UserProfile[];
+}
+
+/**
+ * Artist profiles this user manages for artists who aren't on Provenance yet
+ * (user_id null, created_by_gallery_id = this user, managed_for_name set).
+ */
+export async function getManagedArtists(userId: string): Promise<UserProfile[]> {
+  const client = asUntyped(getSupabaseServerClient());
+
+  const { data, error } = await client
+    .from('user_profiles')
+    .select('*')
+    .is('user_id', null)
+    .eq('created_by_gallery_id', userId)
+    .eq('role', USER_ROLES.ARTIST)
+    .eq('is_claimed', false)
+    .eq('is_active', true)
+    .not('managed_for_name', 'is', null)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[Profiles] getManagedArtists failed', error);
     return [];
   }
 

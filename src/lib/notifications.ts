@@ -57,6 +57,9 @@ export type NotificationType =
   | 'exhibition_artwork_sold'
   | 'artist_artwork_sold'
   | 'artist_artwork_exhibited'
+  | 'artist_profile_suggestion'
+  | 'artist_profile_suggestion_approved'
+  | 'artist_profile_suggestion_denied'
   | 'exhibition_invite'
   | 'open_call_submission_reminder'
   | 'av_scan_outage'
@@ -71,7 +74,12 @@ export type NotificationType =
   | 'auction_lot_sold'
   | 'auction_lot_passed'
   | 'auction_consignment_submitted'
-  | 'auction_consignment_reviewed';
+  | 'auction_consignment_reviewed'
+  | 'profile_handoff_received'
+  | 'profile_handoff_declined'
+  | 'artist_profile_claim_request'
+  | 'artist_profile_claim_approved'
+  | 'artist_profile_claim_rejected';
 
 export interface CreateNotificationParams {
   userId: string;

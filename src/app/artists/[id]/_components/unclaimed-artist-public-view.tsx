@@ -6,6 +6,7 @@ import {
 import { Calendar, MapPin, Newspaper, FileText } from 'lucide-react';
 import { SocialLinkItem } from './social-link-item';
 import { TacoAvatar } from '~/components/taco-avatar';
+import { ThisIsMeButton } from './this-is-me-button';
 
 export type UnclaimedArtistProfileRow = {
   id: string;
@@ -35,11 +36,14 @@ export function UnclaimedArtistPublicView({
   artworks,
   exhibitions,
   currentUserId,
+  claim = null,
 }: {
   profile: UnclaimedArtistProfileRow;
   artworks: ArtworkCardArtwork[];
   exhibitions: ExhibitionSummary[];
   currentUserId?: string;
+  /** Set when the artist can claim this profile ("This is me") */
+  claim?: { addedByName: string | null; signedIn: boolean } | null;
 }) {
   const displayName = profile.name;
   const pictureUrl = profile.picture_url;
@@ -86,9 +90,18 @@ export function UnclaimedArtistPublicView({
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1.5 text-xs text-ink/35 border border-wine/15 rounded-full px-2.5 py-0.5">
-                  Registry profile
+                  {claim ? 'Unclaimed' : 'Registry profile'}
                 </span>
               </div>
+              {claim && (
+                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-wine/15 bg-wine/5 px-4 py-3">
+                  <p className="font-serif text-sm text-ink/70">
+                    {claim.addedByName ? `Added by ${claim.addedByName}. ` : ''}
+                    Are you {displayName}? Claim this profile and its certificates.
+                  </p>
+                  <ThisIsMeButton profileId={profile.id} artistName={displayName} signedIn={claim.signedIn} />
+                </div>
+              )}
               {(links.length > 0 || website) && (
                 <div className="flex flex-wrap gap-4 mt-4">
                   {website && <SocialLinkItem url={website} />}

@@ -15,6 +15,7 @@ export default defineConfig({
       'src/lib/user-roles.test.ts',
       'src/lib/institution-account.test.ts',
       'src/lib/managed-collections.test.ts',
+      'src/lib/profile-handoff/**/*.test.ts',
       'src/lib/profile-questionnaire.test.ts',
       'src/app/mailing-list/**/*.test.ts',
       'src/lib/crm/**/*.test.ts',
@@ -39,6 +40,8 @@ export default defineConfig({
       'src/lib/provenance/**/*.test.ts',
       'src/lib/valuation/provenance-value.test.ts',
       'src/lib/valuation/load-chain-provenance-values.test.ts',
+      'src/lib/artist-details/**/*.test.ts',
+      'src/lib/artist-research/**/*.test.ts',
     ],
   },
   resolve: {

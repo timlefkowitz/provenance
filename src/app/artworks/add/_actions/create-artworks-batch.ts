@@ -23,7 +23,7 @@ import { logger } from '~/lib/logger';
 import { trackUserStreakActivity } from '~/lib/streak-service';
 import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
 import { getInstitutionLockError } from '~/lib/institution-account-guard';
-import { isManagedCollectionOf } from '~/lib/managed-collections';
+import { isManagedArtistOf, isManagedCollectionOf } from '~/lib/managed-collections';
 import { createArtworkStripeListing } from './create-artwork-stripe-listing';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 
@@ -46,6 +46,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
     const galleryProfileId = formData.get('galleryProfileId') as string || null;
+    // Posting Certificates of Authenticity on an artist's behalf, from any role.
+    const managedArtistIdField = formData.get('managedArtistId') as string || null;
     const tagIdsRaw = formData.get('tagIds') as string || '';
     const tagIds = tagIdsRaw ? (JSON.parse(tagIdsRaw) as string[]) : [];
     const posterRoleRaw = (formData.get('posterRole') as string | null) ?? null;
@@ -159,7 +161,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       });
     }
 
-    const effectiveRole: UserRole | null = posterRole ?? accountRole;
+    let effectiveRole: UserRole | null = posterRole ?? accountRole;
 
     const lockError = await getInstitutionLockError(userId, effectiveRole);
     if (lockError) {
@@ -180,6 +182,35 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       }
       managedCollectionId = galleryProfileId;
       console.log('[Collections] createArtworksBatch posting into managed collection', { managedCollectionId });
+    }
+
+    // Posting Certificates of Authenticity for an artist the poster manages (an artist manager,
+    // a collector or fan helping an artist onto Provenance). The certificates wait for the artist
+    // to accept the profile handoff or claim the profile. Works from any role: the works are
+    // issued as Certificates of Authenticity, so the rest of this action treats it as an artist post.
+    // `galleryProfileId` in Artist mode is the older way the form sent this.
+    const managedArtistId =
+      managedArtistIdField || (galleryProfileId && effectiveRole === USER_ROLES.ARTIST ? galleryProfileId : null);
+    let managedArtist: { id: string; name: string } | null = null;
+    if (managedArtistId) {
+      const { data: artistProfile } = await asUntyped(getSupabaseServerAdminClient())
+        .from('user_profiles')
+        .select('id, user_id, role, is_claimed, is_active, created_by_gallery_id, managed_for_name, name')
+        .eq('id', managedArtistId)
+        .maybeSingle();
+      if (!artistProfile || !isManagedArtistOf(artistProfile, userId)) {
+        return { error: 'You can only post works for artists you added.' };
+      }
+      managedArtist = {
+        id: artistProfile.id as string,
+        name: ((artistProfile.managed_for_name as string) || (artistProfile.name as string)).trim(),
+      };
+      effectiveRole = USER_ROLES.ARTIST;
+      managedCollectionId = null;
+      console.log('[Certificates] createArtworksBatch posting for managed artist', {
+        managedArtistId: managedArtist.id,
+        posterRole: posterRole ?? accountRole,
+      });
     }
 
     let sourceCoaRow: Record<string, unknown> | null = null;
@@ -252,7 +283,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
 
         // Certificate type by poster: gallery/institution → Certificate of Show, collector → Certificate of Ownership, artist → Certificate of Authenticity
         const certificateType = getCertificateTypeForRole(effectiveRole);
-        const certificateStatus = getInitialCertificateStatus(effectiveRole);
+        const certificateStatus = managedArtist
+          ? 'pending_artist_claim'
+          : getInitialCertificateStatus(effectiveRole);
         let artistAccountId: string | null = null;
         let artistProfileId: string | null = null;
 
@@ -295,6 +328,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               });
             }
           }
+        } else if (managedArtist) {
+          // Issued by the artist's manager: credit the managed profile, not the poster.
+          artistProfileId = managedArtist.id;
         } else if (effectiveRole === USER_ROLES.ARTIST) {
           artistAccountId = userId;
           try {
@@ -316,7 +352,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           account_id: userId,
           title: title.trim(),
           description,
-          artist_name: artistName,
+          artist_name: managedArtist ? managedArtist.name : artistName,
           medium,
           creation_date: creationDate || null,
           image_url: imageUrl,
@@ -347,7 +383,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
         };
 
         // Try to include is_public, but handle case where migration hasn't been run yet
-        insertData.is_public = isPublic;
+        // Works posted for an artist stay private until the artist accepts them, so nobody can
+        // publish work under an artist's name without their say. Accepting makes them public.
+        insertData.is_public = managedArtist ? false : isPublic;
 
         // Sales & Inquiries
         insertData.inquire_enabled = inquireEnabled;

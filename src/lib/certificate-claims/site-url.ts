@@ -20,3 +20,9 @@ export function getExhibitionSubmitUrl(token: string): string {
   const params = new URLSearchParams({ token });
   return `${base}/exhibitions/submit?${params.toString()}`;
 }
+
+export function getProfileHandoffUrl(token: string): string {
+  const base = getSiteUrl();
+  const params = new URLSearchParams({ token });
+  return `${base}/claim/profile?${params.toString()}`;
+}

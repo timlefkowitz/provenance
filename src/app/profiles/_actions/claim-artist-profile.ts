@@ -4,6 +4,8 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
 import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { createNotification } from '~/lib/notifications';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { isManagedArtistOf } from '~/lib/managed-collections';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 /**
@@ -30,15 +32,10 @@ export async function claimArtistProfile(profileId: string, message?: string) {
       return { error: 'Account not found' };
     }
 
-    const userRole = getUserRole(account.public_data as Record<string, unknown>);
-    if (userRole !== USER_ROLES.ARTIST) {
-      return { error: 'Only artists can claim artist profiles' };
-    }
-
     // Check if profile exists and is unclaimed
-    const { data: profile, error: profileError } = await client
+    const { data: profile, error: profileError } = await asUntyped(getSupabaseServerAdminClient())
       .from('user_profiles')
-      .select('id, name, is_claimed, user_id, created_by_gallery_id')
+      .select('id, name, is_claimed, is_active, user_id, role, created_by_gallery_id, managed_for_name')
       .eq('id', profileId)
       .eq('role', 'artist')
       .single();
@@ -55,6 +52,22 @@ export async function claimArtistProfile(profileId: string, message?: string) {
       return { error: 'This profile cannot be claimed (no creator account on file)' };
     }
 
+    if (profile.created_by_gallery_id === user.id) {
+      return { error: 'You added this artist, so you cannot claim it' };
+    }
+
+    // Someone added this artist's work for them (a fan, collector or manager). Anyone can say
+    // "this is me"; the person who added it approves, and the works then move to the artist,
+    // merging into their artist profile if they already have one.
+    const isManaged = isManagedArtistOf(profile, profile.created_by_gallery_id as string);
+
+    if (!isManaged) {
+      const userRole = getUserRole(account.public_data as Record<string, unknown>);
+      if (userRole !== USER_ROLES.ARTIST) {
+        return { error: 'Only artists can claim artist profiles' };
+      }
+    }
+
     // Check if user already has an artist profile
     const { data: existingProfile } = await client
       .from('user_profiles')
@@ -63,7 +76,7 @@ export async function claimArtistProfile(profileId: string, message?: string) {
       .eq('role', 'artist')
       .single();
 
-    if (existingProfile) {
+    if (existingProfile && !isManaged) {
       return { error: 'You already have an artist profile. You can only claim if you don\'t have one yet.' };
     }
 
@@ -107,7 +120,7 @@ export async function claimArtistProfile(profileId: string, message?: string) {
     try {
       await createNotification({
         userId: profile.created_by_gallery_id,
-          type: 'artist_claim_request',
+        type: isManaged ? 'artist_profile_claim_request' : 'artist_claim_request',
         title: `Artist Profile Claim Request: ${profile.name}`,
         message: `${account.name || 'An artist'} is requesting to claim the artist profile "${profile.name}". Please review and approve or reject the claim.`,
         relatedUserId: user.id,
