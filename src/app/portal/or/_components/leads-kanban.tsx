@@ -7,6 +7,7 @@ import Link from 'next/link';
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -16,6 +17,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -102,6 +104,7 @@ import {
 import { CrmDealIntelFields } from './crm-deal-intel-fields';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { buildLeadKanbanAccessibility } from '~/lib/crm/lead-kanban-accessibility';
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function fmt(value: number) {
@@ -737,7 +740,19 @@ export function LeadsKanban({
   const [invitePending, setInvitePending] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const accessibility = useMemo(
+    () =>
+      buildLeadKanbanAccessibility(
+        leads.map((l) => ({ id: l.id, name: l.contact_name?.trim() || l.contact_email || 'No name', stage: l.stage })),
+        resolvedLabels,
+      ),
+    [leads, resolvedLabels],
+  );
 
   // Pipeline stats
   const totalValue = leads.reduce((s, l) => s + (l.estimated_value ?? 0), 0);
@@ -1011,6 +1026,7 @@ export function LeadsKanban({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           modifiers={[restrictToHorizontalAxis]}
+          accessibility={accessibility}
         >
           <div className="flex gap-4 overflow-x-auto pb-4">
             {LEAD_STAGES.map((stage) => (
