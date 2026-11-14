@@ -113,8 +113,10 @@ export function formatProvenanceAmount(
   amount: number,
   currency: ProvenanceValue['currency'],
 ): string {
+  const cents = !Number.isInteger(amount);
   const n = amount.toLocaleString('en-US', {
-    maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    minimumFractionDigits: cents ? 2 : 0,
+    maximumFractionDigits: cents ? 2 : 0,
   });
   if (currency.symbol) return `${currency.symbol}${n}${currency.code ? ` ${currency.code}` : ''}`;
   if (currency.code) return `${n} ${currency.code}`;

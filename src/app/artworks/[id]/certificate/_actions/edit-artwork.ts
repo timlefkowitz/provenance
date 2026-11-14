@@ -16,6 +16,7 @@ import {
 import { canEditGalleryArtworks, canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
 import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
+import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
 export type EditArtworkFields = {
   title?: string | null;
@@ -24,6 +25,31 @@ export type EditArtworkFields = {
   created_at?: string;
   exhibitionId?: string | null;
 };
+
+/** The artist's Certificate of Authenticity a Certificate of Show was issued from. */
+async function findSourceCoaId(artworkId: string): Promise<string | null> {
+  const admin = asUntyped(getSupabaseServerAdminClient());
+  let current: string | null = artworkId;
+  for (let i = 0; i < 16 && current; i++) {
+    const { data }: { data: { source_artwork_id: string | null } | null } = await admin
+      .from('artworks')
+      .select('source_artwork_id')
+      .eq('id', current)
+      .maybeSingle();
+    const parentId: string | null = data?.source_artwork_id ?? null;
+    if (!parentId) return null;
+    const { data: parent }: { data: { certificate_type: string | null } | null } = await admin
+      .from('artworks')
+      .select('certificate_type')
+      .eq('id', parentId)
+      .maybeSingle();
+    if ((parent?.certificate_type ?? CERTIFICATE_TYPES.AUTHENTICITY) === CERTIFICATE_TYPES.AUTHENTICITY) {
+      return parentId;
+    }
+    current = parentId;
+  }
+  return null;
+}
 
 /** True when `url` is a photo this user uploaded to the artworks bucket. */
 function isOwnArtworkUpload(url: string, userId: string): boolean {
@@ -172,19 +198,31 @@ export async function editArtwork(
     }
 
     // A Certificate of Show issued from an artist's CoA: the certificate's
-    // content (title, artist, photo, date) goes to the artist to approve as one
-    // request; the exhibition link and details below still apply directly.
+    // content (title, artist, date) goes to the artist to approve as one
+    // request. The photo is the show's own and applies directly; the holder can
+    // also propose it for the artist's CoA, which the artist approves there.
+    // The exhibition link and details below still apply directly.
     let pendingApproval = false;
     const approvingArtist = isCreator ? cosApprovingArtistId(artwork) : null;
     if (approvingArtist && approvingArtist !== user.id) {
+      if (updateFields.image?.image_url && formData.get('propose_image_to_coa') === 'true') {
+        const coaId = await findSourceCoaId(artworkId);
+        if (coaId) {
+          const coaResult = await createProvenanceUpdateRequest(coaId, {
+            image_url: updateFields.image.image_url,
+            original_image_url: updateFields.image.original_image_url,
+          });
+          if (!coaResult.success) return coaResult;
+          pendingApproval = true;
+        } else {
+          logger.warn('edit_artwork_cos_source_coa_missing', { artworkId });
+        }
+      }
+
       const requestFields: Record<string, string | null> = {};
       if (updateFields.title !== undefined) requestFields.title = updateFields.title ?? '';
       if (updateFields.artist_name !== undefined && updateFields.artist_name !== (artwork.artist_name ?? null)) {
         requestFields.artist_name = updateFields.artist_name ?? '';
-      }
-      if (updateFields.image?.image_url) {
-        requestFields.image_url = updateFields.image.image_url;
-        requestFields.original_image_url = updateFields.image.original_image_url;
       }
       if (
         updateFields.created_at &&
@@ -199,7 +237,6 @@ export async function editArtwork(
       }
       delete updateFields.title;
       delete updateFields.artist_name;
-      delete updateFields.image;
       delete updateFields.created_at;
     }
 

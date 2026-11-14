@@ -13,6 +13,7 @@ import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
+import { Checkbox } from '@kit/ui/checkbox';
 import { toast } from '@kit/ui/sonner';
 import { useCurrentUser } from '~/hooks/use-current-user';
 import { useQuery } from '@tanstack/react-query';
@@ -81,6 +82,8 @@ export function EditArtworkDialog({
   /** imageFile is an edit (crop/rotate) rather than a plain new photo. */
   const [imageEdited, setImageEdited] = useState(false);
   const [restoreOriginal, setRestoreOriginal] = useState(false);
+  /** Certificate of Show: also send the new photo to the artist for their CoA. */
+  const [proposeImageToCoa, setProposeImageToCoa] = useState(false);
   const [cropSource, setCropSource] = useState<CropSource | null>(null);
   // Edits always start from the untouched photo, never from an earlier crop.
   const editSource: CropSource | null =
@@ -275,6 +278,9 @@ export function EditArtworkDialog({
         } else if (restoreOriginal) {
           formDataToSend.append('image_edit', 'restore');
         }
+        if (canProposeImageToCoa && proposeImageToCoa && (imageFile || restoreOriginal)) {
+          formDataToSend.append('propose_image_to_coa', 'true');
+        }
 
         if (!isCreator) {
           formDataToSend.append('request_message', formData.request_message);
@@ -292,7 +298,7 @@ export function EditArtworkDialog({
             }
             toast.success(
               result.pendingApproval
-                ? "Changes sent to the artist to approve. They'll apply once approved."
+                ? "Saved. Changes for the artist's certificate were sent to them to approve."
                 : 'Artwork updated successfully',
             );
           } else {
@@ -323,6 +329,14 @@ export function EditArtworkDialog({
       }
     });
   };
+
+  // A Certificate of Show issued from someone else's CoA: its photo changes
+  // apply here directly, and can also be proposed to the artist for the CoA.
+  const canProposeImageToCoa =
+    isCreator &&
+    certificateType === CERTIFICATE_TYPES.SHOW &&
+    Boolean(artwork.artist_account_id) &&
+    artwork.artist_account_id !== user.data?.id;
 
   const canInviteArtistFromThisCertificate =
     certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP;
@@ -505,6 +519,21 @@ export function EditArtworkDialog({
                   <Upload className="mr-2 h-3.5 w-3.5" />
                   {imagePreview ? 'Replace image' : 'Upload image'}
                 </Button>
+                {canProposeImageToCoa && (imageFile || restoreOriginal) && (
+                  <label className="flex items-start gap-2.5 pt-1 font-serif text-sm leading-snug text-editorial-ink/70">
+                    <Checkbox
+                      checked={proposeImageToCoa}
+                      onCheckedChange={(checked) => setProposeImageToCoa(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Also update the artist&apos;s Certificate of Authenticity
+                      <span className="block text-xs text-editorial-ink/50">
+                        This certificate updates now. The artist approves the change to theirs.
+                      </span>
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
