@@ -15,6 +15,7 @@ import { getArtworkExhibitions } from './_actions/get-artwork-exhibition';
 import { canSellArtwork } from '~/lib/sales/can-sell-artwork';
 import { sanitizePublications } from '~/lib/valuation/provenance-value';
 import { getChainArtworkIds } from '~/lib/provenance/chain';
+import { loadChainCertificates } from '~/lib/provenance/load-chain-certificates';
 import { loadChainProvenanceValues } from '~/lib/valuation/load-chain-provenance-values';
 import type { ArtworkAttachmentRow } from './_components/upload-attachments-dialog';
 import type { ProvenanceValuation } from './_components/provenance-valuation-block';
@@ -484,16 +485,24 @@ export default async function CertificatePage({
   // Provenance Value is one figure per work: every certificate in the chain
   // (CoA, CoS, CoO) shares its shows, publications and sales.
   const chainAdmin = getSupabaseServerAdminClient();
-  const [provenanceValues, chainShows] = await Promise.all([
+  const chainIds = getChainArtworkIds(chainAdmin, artwork.id)
+    .then(({ ids }) => ids)
+    .catch((err) => {
+      console.error('[Certificate] chain ids fetch failed', err);
+      return [artwork.id];
+    });
+  const [provenanceValues, chainShows, linkedCertificates] = await Promise.all([
     loadChainProvenanceValues(asUntyped(chainAdmin), [artwork.id]),
-    getChainArtworkIds(chainAdmin, artwork.id)
-      .then(({ ids }) =>
+    chainIds
+      .then((ids) =>
         Promise.all(ids.filter((id) => id !== artwork.id).map((id) => getArtworkExhibitions(id))),
       )
       .catch((err) => {
         console.error('[Certificate] chain exhibitions fetch failed', err);
         return [] as Awaited<ReturnType<typeof getArtworkExhibitions>>[];
       }),
+    // Every CoA / CoS / CoO issued for this work, listed in each one's Provenance.
+    chainIds.then((ids) => loadChainCertificates(chainAdmin, ids, artwork.id)),
   ]);
   const provenanceValue = provenanceValues.get(artwork.id) ?? null;
   // The shows of every linked certificate, so a CoO lists where the work hung.
@@ -557,6 +566,7 @@ export default async function CertificatePage({
         valuation={latestValuation}
         publications={publications}
         provenanceValue={provenanceValue}
+        linkedCertificates={linkedCertificates}
         voided={
           artwork.status === 'voided'
             ? { at: artwork.voided_at ?? null, reason: artwork.void_reason ?? null }

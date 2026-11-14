@@ -37,6 +37,7 @@ import { ArtworkPublications } from './artwork-publications';
 import { ProvenanceValueLine } from './provenance-value-line';
 import { SoldDot } from '~/components/sold-dot';
 import type { ArtworkPublication, ProvenanceValue } from '~/lib/valuation/provenance-value';
+import type { ChainCertificate } from '~/lib/provenance/load-chain-certificates';
 import { setValueCents } from '~/lib/sales/sale-money';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
@@ -315,8 +316,9 @@ export function CertificateOfAuthenticity({
   publications = [],
   scanStats = EMPTY_SCAN_STATS,
   provenanceValue = null,
+  linkedCertificates = [],
   voided = null,
-}: { 
+}: {
   artwork: Artwork;
   isOwner?: boolean;
   /** Owner or gallery team member who can edit artwork / uploads */
@@ -358,6 +360,8 @@ export function CertificateOfAuthenticity({
   scanStats?: ScanStats;
   /** Chain-wide Provenance Value (loadChainProvenanceValues): same on every linked certificate. */
   provenanceValue?: ProvenanceValue | null;
+  /** Every CoA / CoS / CoO issued for this work (loadChainCertificates), this one included. */
+  linkedCertificates?: ChainCertificate[];
   /** Set when the certificate is void (in the holder's Archive). */
   voided?: { at: string | null; reason: string | null } | null;
 }) {
@@ -1516,13 +1520,60 @@ export function CertificateOfAuthenticity({
           {(artwork.former_owners || artwork.auction_history || artwork.exhibition_history || 
             artwork.historic_context || artwork.celebrity_notes ||
             artwork.value || provenanceValue || artwork.owned_by || artwork.sold_by ||
+            linkedCertificates.length > 1 ||
             scanStats.total > 0 ||
             (canViewScanMap && scanLocations && scanLocations.length > 0)) && (
             <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
                 Provenance
               </h2>
-              
+
+              {/* Certificates: every CoA / CoS / CoO issued for this work */}
+              {linkedCertificates.length > 1 && (
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Certificates</p>
+                  <ul className="space-y-1">
+                    {linkedCertificates.map((cert) => {
+                      const label = (
+                        <>
+                          {getCertificateTypeLabel(cert.certificateType)}
+                          {cert.certificateNumber && <span className="text-ink/60"> {cert.certificateNumber}</span>}
+                        </>
+                      );
+                      const issued = cert.issuedAt
+                        ? new Date(cert.issuedAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            timeZone: 'UTC',
+                          })
+                        : null;
+                      return (
+                        <li key={cert.id} className="text-sm sm:text-base font-serif text-ink break-words">
+                          <span className="mr-2 inline-block rounded border border-wine/30 px-1.5 text-[10px] font-sans uppercase tracking-wide text-wine align-middle">
+                            {SYNC_CERT_LABEL[cert.certificateType] ?? 'Cert'}
+                          </span>
+                          {cert.isCurrent ? (
+                            label
+                          ) : (
+                            <Link href={`/artworks/${cert.id}/certificate`} className="underline decoration-wine/40 underline-offset-2 hover:text-wine">
+                              {label}
+                            </Link>
+                          )}
+                          {(cert.issuerName || issued) && (
+                            <span className="text-ink/60">
+                              {' · '}
+                              {[cert.issuerName, issued].filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                          {cert.isCurrent && <span className="ml-1 text-xs italic text-ink/50">(this certificate)</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
               {/* Former Owners */}
               {artwork.former_owners && (
                 <div className="mb-3 sm:mb-4">
