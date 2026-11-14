@@ -51,6 +51,7 @@ import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { SendCertificateDialog } from './send-certificate-dialog';
 import { PendingCooInviteStatus } from './pending-coo-invite-status';
+import { VoidCertificateButton, VoidedCertificateBanner } from './void-certificate-controls';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
 import { buildWallLabelsHtml, openPrintWindow } from '~/app/artworks/edit-provenance/_components/print-menu';
 import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
@@ -314,6 +315,7 @@ export function CertificateOfAuthenticity({
   publications = [],
   scanStats = EMPTY_SCAN_STATS,
   provenanceValue = null,
+  voided = null,
 }: { 
   artwork: Artwork;
   isOwner?: boolean;
@@ -356,6 +358,8 @@ export function CertificateOfAuthenticity({
   scanStats?: ScanStats;
   /** Chain-wide Provenance Value (loadChainProvenanceValues): same on every linked certificate. */
   provenanceValue?: ProvenanceValue | null;
+  /** Set when the certificate is void (in the holder's Archive). */
+  voided?: { at: string | null; reason: string | null } | null;
 }) {
   const exhibitionList = exhibitions ?? (exhibition?.title ? [exhibition] : []);
   const isSold = !!(artwork.is_sold || artwork.sold_at);
@@ -993,6 +997,11 @@ export function CertificateOfAuthenticity({
             />
           )}
 
+          {/* Void into the Archive (holder or gallery team) */}
+          {canEditCertificate && !voided && (
+            <VoidCertificateButton artworkId={artwork.id} artworkTitle={artwork.title || 'Untitled'} />
+          )}
+
           {/* Share dropdown — visible to everyone */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1099,9 +1108,28 @@ export function CertificateOfAuthenticity({
         </div>
       )}
 
+      {voided && (
+        <VoidedCertificateBanner
+          artworkId={artwork.id}
+          voidedAt={voided.at}
+          reason={voided.reason}
+          canRestore={canEditCertificate}
+        />
+      )}
+
       {/* Certificate */}
       <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-12 max-w-4xl">
-        <div className="bg-white border-double-box p-4 sm:p-6 md:p-12 shadow-lg print:shadow-none">
+        <div className="relative bg-white border-double-box p-4 sm:p-6 md:p-12 shadow-lg print:shadow-none">
+          {voided && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden"
+            >
+              <span className="-rotate-[24deg] select-none rounded-md border-[6px] border-red-700/35 px-8 py-2 font-display text-7xl sm:text-8xl font-bold tracking-[0.3em] text-red-700/35">
+                VOID
+              </span>
+            </div>
+          )}
           {/* Header */}
           <div className="text-center mb-6 sm:mb-8 border-b-2 border-wine pb-4 sm:pb-6">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-wine mb-2 tracking-widest">

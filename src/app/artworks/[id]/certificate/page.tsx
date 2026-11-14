@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { CertificateOfAuthenticity } from './_components/certificate-of-authenticity';
 import { CertificateViralCta } from '~/components/certificate-viral-cta';
+import { VoidedCertificateNotice } from './_components/voided-certificate-notice';
 import { getUserProfileByRole } from '~/app/profiles/_actions/get-user-profiles';
 import { canEditGalleryArtworks, canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { CERTIFICATE_TYPES, getCertificateTypeLabel, getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
@@ -137,6 +138,8 @@ export default async function CertificatePage({
         metadata,
         status,
         certificate_status,
+        voided_at,
+        void_reason,
         certificate_type,
         gallery_profile_id,
         provenance_history
@@ -187,6 +190,8 @@ export default async function CertificatePage({
         metadata,
         status,
         certificate_status,
+        voided_at,
+        void_reason,
         certificate_type,
         gallery_profile_id,
         provenance_history
@@ -200,6 +205,17 @@ export default async function CertificatePage({
   }
 
   if (error || !artwork) {
+    // A voided certificate still answers its QR code: say it is void rather
+    // than bouncing the visitor, so an old printout can't pass as current.
+    const { data: voided } = await asUntyped(getSupabaseServerAdminClient())
+      .from('artworks')
+      .select('title, artist_name, certificate_number, certificate_type, voided_at')
+      .eq('id', id)
+      .eq('status', 'voided')
+      .maybeSingle();
+    if (voided) {
+      return <VoidedCertificateNotice certificate={voided} />;
+    }
     console.log('[v0] [Certificate] Redirecting to /artworks - error:', error?.message || 'No error', '| artwork found:', !!artwork);
     if (error) {
       console.log('[v0] [Certificate] Full error:', JSON.stringify(error, null, 2));
@@ -541,6 +557,11 @@ export default async function CertificatePage({
         valuation={latestValuation}
         publications={publications}
         provenanceValue={provenanceValue}
+        voided={
+          artwork.status === 'voided'
+            ? { at: artwork.voided_at ?? null, reason: artwork.void_reason ?? null }
+            : null
+        }
       />
       {/* Viral acquisition surface: shown only to unauthenticated visitors */}
       {!user && artwork.status === 'verified' && (

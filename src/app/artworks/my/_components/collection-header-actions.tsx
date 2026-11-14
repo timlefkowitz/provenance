@@ -7,7 +7,7 @@ import { getPerspective } from '~/components/perspective-switcher';
 import { Button } from '@kit/ui/button';
 import { cn } from '@kit/ui/utils';
 import Link from 'next/link';
-import { LayoutGrid, ListChecks } from 'lucide-react';
+import { Archive, LayoutGrid, ListChecks } from 'lucide-react';
 import { NewExhibitionDialog } from './new-exhibition-dialog';
 
 /** Public exhibitions index — www in prod when env uses apex (matches sitemap canonical host). */
@@ -148,6 +148,16 @@ export function CollectionHeaderActions({
           <Link href="/artworks/lists">
             <ListChecks className="h-4 w-4 mr-1.5" aria-hidden />
             Lists
+          </Link>
+        </Button>
+        <Button
+          variant="outline"
+          asChild
+          className="h-10 px-4 font-serif text-sm border-wine/30 bg-parchment/40 text-ink hover:bg-wine/10 hover:text-ink"
+        >
+          <Link href="/artworks/archive">
+            <Archive className="h-4 w-4 mr-1.5" aria-hidden />
+            Archive
           </Link>
         </Button>
         <Button
