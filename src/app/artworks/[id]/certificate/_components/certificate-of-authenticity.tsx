@@ -174,7 +174,15 @@ const SYNC_METHOD_LABEL: Record<string, string> = {
 
 /** "via CoO · ownership accepted" */
 function formatExhibitionDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  // Date-only values ("2026-11-05") parse as UTC midnight; format in UTC so
+  // US viewers don't see the day before.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    ...(dateOnly ? { timeZone: 'UTC' } : {}),
+  });
 }
 
 function syncTagLabel(tag: ProvenanceSyncTag): string {

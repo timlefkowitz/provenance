@@ -2,7 +2,7 @@
  * Gallery profiles shown in the public directory (/registry).
  * Only these are listed until more galleries are verified for the directory.
  */
-const LISTED_SLUGS = new Set(['flight']);
+const LISTED_SLUGS = new Set(['flight', 'provenance']);
 
 function normalizeGalleryBrand(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');

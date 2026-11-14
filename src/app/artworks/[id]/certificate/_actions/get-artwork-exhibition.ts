@@ -44,6 +44,8 @@ type ExhibitionRow = {
   end_date: string | null;
   location: string | null;
   gallery_id: string | null;
+  /** Venue profile the show is at; wins over the owner account's default profile. */
+  gallery_profile_id: string | null;
   owner_role: string | null;
   metadata: Record<string, unknown> | null;
 };
@@ -66,6 +68,7 @@ export async function getArtworkExhibitions(artworkId: string): Promise<ArtworkE
         end_date,
         location,
         gallery_id,
+        gallery_profile_id,
         owner_role,
         metadata
       )
@@ -101,8 +104,25 @@ async function withGallery(
   const curatorRaw = exhibition.metadata?.curator;
   const curator = typeof curatorRaw === 'string' && curatorRaw.trim() ? curatorRaw.trim() : null;
 
-  // Fetch gallery information if gallery_id exists
-  if (exhibition.gallery_id) {
+  // A show held at a specific gallery/institution profile names that venue.
+  if (exhibition.gallery_profile_id) {
+    const { data: venue } = await client
+      .from('user_profiles')
+      .select('id, name, slug, user_id')
+      .eq('id', exhibition.gallery_profile_id)
+      .maybeSingle();
+    if (venue?.name) {
+      galleryInfo = {
+        id: (venue.user_id as string) ?? exhibition.gallery_id ?? '',
+        name: venue.name as string,
+        profileId: venue.id as string,
+        slug: (venue.slug as string | null) || undefined,
+      };
+    }
+  }
+
+  // Otherwise fall back to the owner account's profile for its owner mode.
+  if (!galleryInfo && exhibition.gallery_id) {
     try {
       // Get gallery account
       const { data: galleryAccount } = await client
