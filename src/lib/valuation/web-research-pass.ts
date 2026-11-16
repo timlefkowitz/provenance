@@ -3,9 +3,7 @@ import { z } from 'zod';
 
 import { logger } from '~/lib/logger';
 import { parseJsonLoose } from '~/lib/ai/parse-json-loose';
-
-/** Chat Completions web-search model (same pattern as find-press-articles). */
-const WEB_SEARCH_MODEL = 'gpt-4o-search-preview';
+import { WEB_SEARCH_MODEL, webSearchText } from '~/lib/ai/web-search';
 
 const WebResearchArticleSchema = z.object({
   title: z.string(),
@@ -118,19 +116,11 @@ export async function runWebResearchPass(
 
   try {
     const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-      model: WEB_SEARCH_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are an art-market research assistant. Search the web and return ONLY a single valid JSON object matching the user instructions. Never include markdown, code fences, or commentary.',
-        },
-        { role: 'user', content: buildSearchPrompt(params) },
-      ],
+    const content = await webSearchText(openai, {
+      instructions:
+        'You are an art-market research assistant. Search the web and return ONLY a single valid JSON object matching the user instructions. Never include markdown, code fences, or commentary.',
+      input: buildSearchPrompt(params),
     });
-
-    const content = completion.choices[0]?.message?.content;
     if (!content?.trim()) {
       console.log('[Valuation] runWebResearchPass empty response');
       return { ...emptyResult('Empty response from web search'), model: WEB_SEARCH_MODEL };

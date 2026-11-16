@@ -18,6 +18,7 @@ import {
 import { SITE_TEMPLATES, SITE_ACCENTS, SITE_FONT_PAIRINGS, SITE_SURFACES, DEFAULT_THEME, DEFAULT_SECTIONS, DEFAULT_SURFACE } from '~/app/_sites/types';
 import { upsertSiteAction } from '~/app/profile/site/_actions/upsert-site';
 import { publishSiteAction } from '~/app/profile/site/_actions/publish-site';
+import { webSearchText } from '~/lib/ai/web-search';
 
 /* -------------------------------------------------------------------------- */
 /*  search_artworks                                                           */
@@ -603,8 +604,6 @@ export async function handleUpdateArtistBio(
 /*  search_press                                                              */
 /* -------------------------------------------------------------------------- */
 
-const WEB_SEARCH_MODEL = 'gpt-4o-search-preview';
-
 export async function handleSearchPress(
   args: { artist_name?: string },
   userId: string,
@@ -649,18 +648,12 @@ Return up to 10 real items with actual URLs. Only include genuine press coverage
 
   try {
     const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-      model: WEB_SEARCH_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an art press research assistant. Search the web and return ONLY a valid JSON object. No markdown, no commentary.',
-        },
-        { role: 'user', content: prompt },
-      ],
-    });
-
-    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
+    const raw = (
+      await webSearchText(openai, {
+        instructions: 'You are an art press research assistant. Search the web and return ONLY a valid JSON object. No markdown, no commentary.',
+        input: prompt,
+      })
+    ).trim();
     let parsed: { items?: unknown[] } = { items: [] };
     try {
       const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);

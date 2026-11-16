@@ -9,10 +9,8 @@ import { asUntyped } from '~/lib/supabase-untyped';
 import { AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
 import { parseJsonLoose } from '~/lib/ai/parse-json-loose';
+import { WEB_SEARCH_MODEL, webSearchText } from '~/lib/ai/web-search';
 export type PressArticleSuggestion = NewsPublicationInput;
-
-/** Chat Completions web-search model (see OpenAI web search docs; Responses API uses different model IDs). */
-const PRESS_SEARCH_MODEL = 'gpt-4o-search-preview';
 
 type RawArticle = {
   title: string;
@@ -80,28 +78,15 @@ Respond with ONE JSON object and nothing else. Do not include prose, commentary,
 Only include real, verifiable articles with actual URLs you found via web search. If you find none, return {"articles": []}.`;
 
   try {
-    console.log('[Press] Calling OpenAI Chat Completions (web search model)', {
-      model: PRESS_SEARCH_MODEL,
-      name,
-      role,
-    });
+    console.log('[Press] Calling OpenAI web search', { model: WEB_SEARCH_MODEL, name, role });
     const openai = new OpenAI({ apiKey });
 
-    // NOTE: gpt-4o-search-preview does NOT support response_format: json_object.
-    // We instruct the model to emit pure JSON via the prompt and parse defensively.
-    const completion = await openai.chat.completions.create({
-      model: PRESS_SEARCH_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a research assistant that searches the web and returns ONLY a single valid JSON object matching the user instructions. Never include markdown, code fences, prose, or trailing commentary — output must be parseable by JSON.parse.',
-        },
-        { role: 'user', content: userPrompt },
-      ],
+    // The prompt asks for pure JSON; parse defensively.
+    const content = await webSearchText(openai, {
+      instructions:
+        'You are a research assistant that searches the web and returns ONLY a single valid JSON object matching the user instructions. Never include markdown, code fences, prose, or trailing commentary — output must be parseable by JSON.parse.',
+      input: userPrompt,
     });
-
-    const content = completion.choices[0]?.message?.content;
     if (!content?.trim()) {
       console.log('[Press] Empty completion from OpenAI');
       return { articles: [], error: null };

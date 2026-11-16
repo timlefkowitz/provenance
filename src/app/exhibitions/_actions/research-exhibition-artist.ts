@@ -15,9 +15,7 @@ import {
 import { applyFindingsToShowCopy } from '~/lib/artist-research/apply-findings';
 import { requireExhibitionManager } from '../_helpers/require-exhibition-manager';
 import { loadExhibitionArtists } from '../_helpers/load-exhibition-artists';
-
-/** Chat Completions web-search model (same as find-press-articles). */
-const ARTIST_RESEARCH_MODEL = 'gpt-4o-search-preview';
+import { WEB_SEARCH_MODEL, webSearchText } from '~/lib/ai/web-search';
 
 export type StoredFinding = {
   id: string;
@@ -98,21 +96,14 @@ export async function researchExhibitionArtist(input: {
 
   let content = '';
   try {
-    console.log('[ArtistResearch] searching', { exhibitionId: input.exhibitionId, artistKey: input.artistKey, model: ARTIST_RESEARCH_MODEL });
+    console.log('[ArtistResearch] searching', { exhibitionId: input.exhibitionId, artistKey: input.artistKey, model: WEB_SEARCH_MODEL });
     const openai = new OpenAI({ apiKey });
-    // gpt-4o-search-preview doesn't support JSON mode; parse defensively.
-    const completion = await openai.chat.completions.create({
-      model: ARTIST_RESEARCH_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are an art-historical research assistant. You search the web and return ONLY a single valid JSON object matching the instructions. Never include markdown, code fences, prose, or commentary.',
-        },
-        { role: 'user', content: prompt },
-      ],
+    // The prompt asks for pure JSON; parse defensively.
+    content = await webSearchText(openai, {
+      instructions:
+        'You are an art-historical research assistant. You search the web and return ONLY a single valid JSON object matching the instructions. Never include markdown, code fences, prose, or commentary.',
+      input: prompt,
     });
-    content = completion.choices[0]?.message?.content ?? '';
   } catch (e) {
     console.error('[ArtistResearch] search failed', e);
     return { success: false, error: 'The search failed. Try again in a moment.' };
@@ -149,7 +140,7 @@ export async function researchExhibitionArtist(input: {
         payload: f.payload,
         source_url: f.source_url,
         source_title: f.source_title,
-        model: ARTIST_RESEARCH_MODEL,
+        model: WEB_SEARCH_MODEL,
         requested_by: userId,
       })),
     );
