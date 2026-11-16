@@ -8,6 +8,8 @@ import {
   isAllowedTrialDays,
   parseInviteEmails,
   shouldLockAccountToInstitution,
+  institutionTrialSubscriptionId,
+  isInstitutionTrialSubscriptionId,
 } from './institution-invites';
 
 describe('parseInviteEmails', () => {
@@ -90,5 +92,14 @@ describe('shouldLockAccountToInstitution', () => {
   it('never locks someone who already has other profiles', () => {
     expect(shouldLockAccountToInstitution(['artist'])).toBe(false);
     expect(shouldLockAccountToInstitution(['institution', 'collector'])).toBe(false);
+  });
+});
+
+describe('isInstitutionTrialSubscriptionId', () => {
+  it('recognises institution trial rows and nothing else', () => {
+    expect(isInstitutionTrialSubscriptionId(institutionTrialSubscriptionId('abc'))).toBe(true);
+    expect(isInstitutionTrialSubscriptionId('trial_user-1')).toBe(false);
+    expect(isInstitutionTrialSubscriptionId('sub_123')).toBe(false);
+    expect(isInstitutionTrialSubscriptionId(null)).toBe(false);
   });
 });

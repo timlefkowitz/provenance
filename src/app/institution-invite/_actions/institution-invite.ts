@@ -13,6 +13,7 @@ import {
   type InstitutionInviteStatus,
   type InstitutionTeamRole,
 } from '~/lib/institutions/institution-invites';
+import { institutionSetupPath } from '~/lib/institutions/institution-setup';
 import { createNotification } from '~/lib/notifications';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { USER_ROLES } from '~/lib/user-roles';
@@ -238,6 +239,8 @@ export async function acceptInstitutionInvite(token: string): Promise<AcceptInst
   return {
     ok: true,
     becameOwner,
-    redirectTo: becameOwner ? `/profiles/${profile.id}/edit` : '/exhibitions',
+    // Everyone lands on setup: the first person fills it in, later colleagues
+    // see the answers already there (and owners/admins can change them).
+    redirectTo: `${institutionSetupPath(profile.id)}?welcome=1`,
   };
 }

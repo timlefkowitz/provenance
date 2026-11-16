@@ -72,9 +72,16 @@ export function institutionInvitePath(token: string): string {
   return `${INSTITUTION_INVITE_PATH}?token=${encodeURIComponent(token)}`;
 }
 
+export const INSTITUTION_TRIAL_SUBSCRIPTION_PREFIX = 'institution_trial_';
+
 /** Subscription row id for an invite's trial, so accepting twice grants once. */
 export function institutionTrialSubscriptionId(inviteId: string): string {
-  return `institution_trial_${inviteId}`;
+  return `${INSTITUTION_TRIAL_SUBSCRIPTION_PREFIX}${inviteId}`;
+}
+
+/** Whether a subscription row is a complimentary institution trial. */
+export function isInstitutionTrialSubscriptionId(id: string | null | undefined): boolean {
+  return Boolean(id?.startsWith(INSTITUTION_TRIAL_SUBSCRIPTION_PREFIX));
 }
 
 export function formatTrialLength(days: number): string {

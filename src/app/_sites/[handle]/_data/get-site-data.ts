@@ -68,6 +68,12 @@ export async function getSiteData(handle: string): Promise<SiteData | null> {
     return null;
   }
 
+  // A private institution/gallery has no public website.
+  if (await isPrivateProfile(sb, profile.id as string)) {
+    console.log('[Sites] getSiteData hidden: profile is private', { profileId: profile.id });
+    return null;
+  }
+
   const isWhiteLabel = await hasWhiteLabelWebsiteAccess(profile.user_id);
 
   const sections: SiteSections = {
@@ -250,4 +256,22 @@ export async function getSiteDataByProfileId(profileId: string): Promise<SiteDat
   if (!siteRow) return null;
 
   return getSiteData(siteRow.handle);
+}
+
+/**
+ * Whether a profile chose to be private. Read separately (and tolerant of the
+ * column not existing yet) so the main profile query never breaks on it.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- user_profiles not in generated types
+async function isPrivateProfile(sb: any, profileId: string): Promise<boolean> {
+  const { data, error } = await sb
+    .from('user_profiles')
+    .select('is_private')
+    .eq('id', profileId)
+    .maybeSingle();
+  if (error) {
+    console.warn('[Sites] is_private lookup failed; treating as public', error.message);
+    return false;
+  }
+  return data?.is_private === true;
 }

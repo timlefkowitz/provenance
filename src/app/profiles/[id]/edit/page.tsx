@@ -8,6 +8,7 @@ import { ProfileTemplatePicker } from '../../_components/profile-template-picker
 import { isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import Link from 'next/link';
 import { getMyProfileSuggestions } from '../../_actions/profile-suggestions';
+import { institutionSetupPath } from '~/lib/institutions/institution-setup';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 export const metadata = {
@@ -78,6 +79,16 @@ export default async function EditProfilePage({
       </div>
 
       <div className="space-y-6">
+        {profile.role === USER_ROLES.INSTITUTION && (
+          <Link
+            href={institutionSetupPath(profile.id)}
+            className="block rounded-xl border border-wine/25 bg-wine/5 px-4 py-3 font-serif text-sm text-wine hover:bg-wine/10"
+          >
+            {profile.setup_completed_at
+              ? `Institution setup and privacy: ${profile.is_private ? 'private institution' : 'public institution'}, ${profile.artworks_private_by_default ? 'works private' : 'works public'}. Review →`
+              : 'Finish institution setup: statement, logo, banner and privacy →'}
+          </Link>
+        )}
         <ProfileForm profile={profile} />
 
         {(profile.role === USER_ROLES.ARTIST || isTeamProfileRole(profile.role)) && (

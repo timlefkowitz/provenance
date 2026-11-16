@@ -61,6 +61,8 @@ import { GalleryWorksGrid } from './_components/gallery-works-grid';
 import { TemplateWorksPager } from './_components/template-works-pager';
 import { GALLERY_WORKS_PAGE_SIZE } from './_components/gallery-works-page-size';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
+import { isHiddenFromPublic } from '~/lib/institutions/institution-setup';
+import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 
 export async function generateMetadata({
@@ -99,12 +101,16 @@ export async function generateMetadata({
       // Fetch role profile for bio
       const { data: roleProfile } = await admin
         .from('user_profiles')
-        .select('name, bio, picture_url')
+        .select('*')
         .eq('user_id', id)
         .eq('role', role ?? primaryRole ?? 'artist')
         .eq('is_active', true)
         .eq('is_claimed', true)
         .maybeSingle();
+
+      if (roleProfile && isHiddenFromPublic(roleProfile)) {
+        return { title: 'Private profile | Provenance', robots: { index: false, follow: false } };
+      }
 
       if (roleProfile) {
         displayName = roleProfile.name || displayName;
@@ -402,6 +408,24 @@ export default async function ArtistProfilePage({
     } else {
       // For other roles or profiles without profileId, get by role
       roleProfile = await getUserProfileByRole(account.id, userRole as any);
+    }
+  }
+
+  // A private institution/gallery shows only to its own team.
+  if (roleProfile && isTeamProfileRole(userRole) && isHiddenFromPublic(roleProfile)) {
+    const isTeam =
+      !!user &&
+      (roleProfile.user_id === user.id || (await isGalleryMember(user.id, roleProfile.id)));
+    if (!isTeam) {
+      console.log('[ArtistProfile] private team profile hidden from viewer', { profileId: roleProfile.id });
+      return (
+        <div className="mx-auto w-full max-w-lg px-4 py-16 font-serif">
+          <div className="rounded-xl border border-wine/20 bg-parchment/60 p-6 sm:p-8">
+            <h1 className="mb-2 font-display text-2xl text-wine">This profile is private</h1>
+            <p className="text-ink/80">Only its team can see this page.</p>
+          </div>
+        </div>
+      );
     }
   }
   

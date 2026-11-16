@@ -16,6 +16,12 @@ export type UserProfile = {
   header_image_url?: string | null;
   /** Public profile page template id; null = default layout */
   template?: string | null;
+  /** Team profiles: hide the public page and site from anyone outside the team */
+  is_private?: boolean;
+  /** Team profiles: new works filed under this profile start private */
+  artworks_private_by_default?: boolean;
+  /** When the institution setup step was first saved */
+  setup_completed_at?: string | null;
   bio: string | null;
   medium: string | null;
   location: string | null;

@@ -12,6 +12,7 @@ import type { EmailTheme } from '~/lib/email-layout';
 import { getResolvedEmailTheme } from '~/lib/email-templates-store';
 
 import { digestUnsubscribeUrls, getDigestOptOuts } from '~/lib/email-preferences';
+import { isInstitutionTrialSubscriptionId } from '~/lib/institutions/institution-invites';
 import { constantTimeEquals } from '~/lib/security/constant-time';
 import { asUntyped } from '~/lib/supabase-untyped';
 import { getAiConsentedUserIds } from '~/lib/ai-consent';
@@ -77,7 +78,7 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
 
   const { data: trials, error } = await admin
     .from('subscriptions')
-    .select('id, user_id, trial_end, metadata')
+    .select('id, user_id, trial_end, metadata, stripe_subscription_id')
     .eq('status', 'trialing')
     .gte('trial_end', windowStart)
     .lte('trial_end', windowEnd);
@@ -111,11 +112,16 @@ async function sendTrialNudges(): Promise<{ sent: number; skipped: number }> {
     const trialEnd = new Date(sub.trial_end);
     const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    const html = buildTrialNudgeHtml(name, daysLeft, theme);
+    const isInstitution = isInstitutionTrialSubscriptionId(sub.stripe_subscription_id);
+    const html = isInstitution
+      ? buildInstitutionTrialNudgeHtml(name, daysLeft, theme)
+      : buildTrialNudgeHtml(name, daysLeft, theme);
 
     await sendEmail({
       to: account.email,
-      subject: `Your Provenance trial ends in ${daysLeft} days`,
+      subject: isInstitution
+        ? `Your Provenance institution trial ends in ${daysLeft} days`
+        : `Your Provenance trial ends in ${daysLeft} days`,
       html,
     });
 
@@ -162,6 +168,27 @@ ${buildBulletproofButtonTable(`${SITE_URL}/subscription`, 'Upgrade Now', theme)}
 <p style="margin:16px 0 0;font-family:${fontFamily};font-size:13px;line-height:1.6;color:${inkMuted};">Plans start at $10/month. Annual plans save ~2 months.</p>`;
 
   return buildEmailHtml(`Your Provenance trial ends in ${daysLeft} ${dayWord}`, `<div>${innerHtml}</div>`, theme);
+}
+
+/**
+ * Day-7 nudge for a complimentary institution trial. There's no self-serve
+ * institution plan yet, so it asks them to get in touch rather than upgrade.
+ */
+function buildInstitutionTrialNudgeHtml(name: string, daysLeft: number, theme: EmailTheme): string {
+  const { ink, inkMuted, fontFamily, fontFamilyHeading } = theme;
+  const safeName = escapeHtml(name);
+  const dayWord = daysLeft === 1 ? 'day' : 'days';
+  const contactEmail = 'hello@provenance.guru';
+
+  const innerHtml = `
+<h1 style="margin:0 0 8px;font-family:${fontFamilyHeading};font-size:26px;font-weight:700;color:${ink};line-height:1.25;">Your institution trial ends in ${daysLeft} ${dayWord}</h1>
+<p style="margin:0 0 24px;font-family:${fontFamily};font-size:16px;line-height:1.75;color:${ink};">
+  Hi ${safeName}, your team's complimentary Provenance trial is winding down. To keep your collection, exhibitions, loans and certificates in place for the whole team, get in touch and we'll set up your institution's plan.
+</p>
+${buildBulletproofButtonTable(`mailto:${contactEmail}?subject=${encodeURIComponent('Continuing our Provenance institution plan')}`, 'Contact us', theme)}
+<p style="margin:16px 0 0;font-family:${fontFamily};font-size:13px;line-height:1.6;color:${inkMuted};">Or reply to ${contactEmail}. Everything your team has added stays saved.</p>`;
+
+  return buildEmailHtml(`Your Provenance institution trial ends in ${daysLeft} ${dayWord}`, `<div>${innerHtml}</div>`, theme);
 }
 
 // ─── Weekly digest ────────────────────────────────────────────────────────────

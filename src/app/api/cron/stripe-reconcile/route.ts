@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { isInstitutionTrialSubscriptionId } from '~/lib/institutions/institution-invites';
 import { constantTimeEquals } from '~/lib/security/constant-time';
 
 /**
@@ -22,7 +23,7 @@ import { constantTimeEquals } from '~/lib/security/constant-time';
  *    webhook miss so paying customers don't get locked out incorrectly.
  *
  * 2. TRIAL WARNINGS: For every local trial row (stripe_subscription_id LIKE
- *    'trial_%') still trialing, emit in-app notifications at T-3 / T-1 / T-0
+ *    'trial_%' or 'institution_trial_%') still trialing, emit in-app notifications at T-3 / T-1 / T-0
  *    days before trial expiry. Deduped per (subscription, day-bucket) via
  *    metadata so we don't spam.
  *
@@ -238,6 +239,7 @@ async function run(request: NextRequest) {
       .select('id, stripe_subscription_id, status, current_period_end')
       .not('stripe_subscription_id', 'is', null)
       .not('stripe_subscription_id', 'like', 'trial_%')
+      .not('stripe_subscription_id', 'like', 'institution_trial_%')
       .not('stripe_subscription_id', 'like', 'free_%')
       .or(
         `current_period_end.lte.${in48h.toISOString()},status.in.(past_due,unpaid,incomplete,paused)`,
@@ -306,7 +308,9 @@ async function run(request: NextRequest) {
     .from('subscriptions')
     .select('id, user_id, stripe_subscription_id, current_period_end, status')
     .eq('status', 'trialing')
-    .like('stripe_subscription_id', 'trial_%');
+    // App trials (trial_{userId}) and complimentary institution trials
+    // (institution_trial_{inviteId}) are both local rows with no Stripe sub.
+    .or('stripe_subscription_id.like.trial_%,stripe_subscription_id.like.institution_trial_%');
 
   if (trialErr) {
     console.error('[CRON/stripe-reconcile] trial subs load failed', trialErr);
@@ -338,8 +342,13 @@ async function run(request: NextRequest) {
         continue;
       }
 
-      const message =
-        bucket === '0'
+      const message = isInstitutionTrialSubscriptionId(row.stripe_subscription_id)
+        ? bucket === '0'
+          ? 'Your institution trial ends today. Email hello@provenance.guru to keep your team’s access.'
+          : bucket === '1'
+            ? 'Your institution trial ends tomorrow. Email hello@provenance.guru to keep your team’s access.'
+            : `Your institution trial ends in ${daysUntil} days. Email hello@provenance.guru to keep your team’s access.`
+        : bucket === '0'
           ? 'Your trial ends today. Subscribe now to keep your access.'
           : bucket === '1'
             ? 'Your trial ends tomorrow. Subscribe now to keep your access.'
