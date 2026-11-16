@@ -53,8 +53,14 @@ export interface ArtistTemplateProps {
   website: string | null;
   /** Public phone, only set when the owner opted in */
   phone?: string | null;
+  /** Total works this profile has; `artworks` may be just the first page */
+  artworksTotal?: number;
+  /** Rendered after the works list, e.g. a "See more" control that pages in more works */
+  worksFooter?: ReactNode;
   isOwner: boolean;
   profileId?: string;
+  /** Which kind of profile this is; galleries and institutions reuse the artist templates */
+  kind?: 'artist' | 'gallery' | 'institution';
   publishedSiteUrl: string | null;
   hasCv: boolean;
   cvHref: string;
@@ -67,6 +73,10 @@ export interface ArtistTemplateProps {
 }
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
+
+function kindLabel(kind: ArtistTemplateProps['kind']) {
+  return kind === 'gallery' ? 'Gallery' : kind === 'institution' ? 'Institution' : 'Artist';
+}
 
 /** Statement and label line, styled neutrally so it fits every template. */
 function ArtistStatement({ statement, tombstone }: { statement?: string | null; tombstone?: string | null }) {
@@ -121,16 +131,18 @@ function OwnerActions({
   publishedSiteUrl,
   hasCv,
   cvHref,
+  kind = 'artist',
 }: Pick<
   ArtistTemplateProps,
-  'isOwner' | 'profileId' | 'publishedSiteUrl' | 'hasCv' | 'cvHref'
+  'isOwner' | 'profileId' | 'publishedSiteUrl' | 'hasCv' | 'cvHref' | 'kind'
 >) {
   if (!isOwner) return null;
   const siteHref = profileId ? `/profile/site?profileId=${profileId}` : '/profile/site';
+  const editHref = profileId ? `/profiles/${profileId}/edit` : '/profile';
   return (
     <div className="flex flex-wrap gap-2">
       <Button asChild size="sm" className="bg-wine text-parchment hover:bg-wine/90 font-serif">
-        <Link href="/profile">Edit Profile</Link>
+        <Link href={editHref}>Edit Profile</Link>
       </Button>
       <Button
         asChild
@@ -142,17 +154,19 @@ function OwnerActions({
           {publishedSiteUrl ? 'Manage Website' : 'Create Website'}
         </Link>
       </Button>
-      <Button
-        asChild
-        variant="outline"
-        size="sm"
-        className="font-serif border-wine/30 hover:bg-wine/10"
-      >
-        <Link href={cvHref}>
-          <FileText className="h-3.5 w-3.5 mr-1.5" />
-          {hasCv ? 'View CV' : 'Upload CV'}
-        </Link>
-      </Button>
+      {kind === 'artist' && (
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="font-serif border-wine/30 hover:bg-wine/10"
+        >
+          <Link href={cvHref}>
+            <FileText className="h-3.5 w-3.5 mr-1.5" />
+            {hasCv ? 'View CV' : 'Upload CV'}
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }
@@ -353,7 +367,7 @@ export function ManifestoTemplate(props: ArtistTemplateProps) {
         </div>
         <div className="container mx-auto px-4 max-w-[90rem] py-16 md:py-24 pr-0 md:pr-[30vw]">
           <p className="text-[10px] uppercase tracking-[0.4em] text-wine/50 font-serif mb-6">
-            {medium || 'Artist'}
+            {medium || kindLabel(props.kind)}
           </p>
           <h1 className="font-display font-bold uppercase leading-[0.88] tracking-tight text-[clamp(3rem,12vw,9rem)] break-words max-w-[80vw]">
             {displayName}
@@ -464,6 +478,8 @@ export function ManifestoTemplate(props: ArtistTemplateProps) {
           );
         })}
 
+        {props.worksFooter}
+
         {artworks.length === 0 && (
           <p className="py-24 text-center font-serif text-ink/50">No works published yet.</p>
         )}
@@ -548,7 +564,7 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0F0F12]/40 via-transparent to-[#0F0F12]" />
         <div className="relative z-10 text-center px-6 max-w-3xl">
           <p className="text-[10px] uppercase tracking-[0.35em] text-[#F0EBE0]/40 font-serif mb-4">
-            {medium || 'Artist'}
+            {medium || kindLabel(props.kind)}
           </p>
           <h1 className="font-display text-5xl md:text-7xl font-bold tracking-tight">{displayName}</h1>
           {location && (
@@ -614,6 +630,7 @@ export function DarkroomTemplate(props: ArtistTemplateProps) {
               </div>
             ))}
           </div>
+          {props.worksFooter}
         </section>
       ) : (
         <p className="py-20 text-center font-serif text-[#F0EBE0]/40">No works in the darkroom yet.</p>
@@ -710,7 +727,7 @@ export function ArchiveTemplate(props: ArtistTemplateProps) {
     ...actions
   } = props;
 
-  const indexNum = String(artworks.length).padStart(3, '0');
+  const indexNum = String(props.artworksTotal ?? artworks.length).padStart(3, '0');
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -780,6 +797,8 @@ export function ArchiveTemplate(props: ArtistTemplateProps) {
             </p>
           )}
         </div>
+
+        {props.worksFooter}
 
         {exhibitions.length > 0 && (
           <section className="mt-20 border-t border-ink/15 pt-12">
@@ -947,6 +966,8 @@ export function KineticTemplate(props: ArtistTemplateProps) {
         </section>
       ))}
 
+      {props.worksFooter}
+
       {bioWords.length > 0 && (
         <section className="max-w-3xl mx-auto px-6 py-32 font-serif text-xl leading-relaxed">
           {bioWords.map((word, i) => (
@@ -1049,7 +1070,7 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
       <header className="border-b-2 border-ink px-4 md:px-8 py-4 max-w-6xl mx-auto">
         <div className="flex justify-between items-baseline text-[10px] font-serif uppercase tracking-widest text-ink/50">
           <span>Provenance</span>
-          <span>Artist Profile</span>
+          <span>{kindLabel(props.kind)} Profile</span>
           <span className="hidden sm:inline">{today}</span>
         </div>
         <hr className="my-3 border-ink" />
@@ -1168,6 +1189,8 @@ export function BroadsheetTemplate(props: ArtistTemplateProps) {
         </div>
       </article>
 
+      {props.worksFooter}
+
       {artworks.length === 0 && (
         <p className="text-center py-20 font-serif text-ink/50">No works filed.</p>
       )}
@@ -1247,6 +1270,8 @@ export function VoidTemplate(props: ArtistTemplateProps) {
             </p>
           </FadeSection>
         ))}
+
+        {props.worksFooter}
 
         {artworks.length === 0 && (
           <p className="text-center font-serif text-ink/30 py-40">—</p>

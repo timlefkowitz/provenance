@@ -58,7 +58,10 @@ export default async function ProfilePage() {
   const isFoundingArtist = !!foundingBadge.data;
 
   const roleProfiles = (await getUserProfiles(user.id)).filter(
-    (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
+    (p) =>
+      p.role === USER_ROLES.GALLERY ||
+      p.role === USER_ROLES.ARTIST ||
+      p.role === USER_ROLES.INSTITUTION,
   );
 
   // Fetch artworks this user owns. Must filter by account_id — the artworks
@@ -98,9 +101,9 @@ export default async function ProfilePage() {
                 className="w-16 h-16 rounded-full border-2 border-wine/30"
               />
               <div>
-                <CardTitle>Your Profile Photo</CardTitle>
+                <CardTitle>Your Account Photo</CardTitle>
                 <CardDescription>
-                  This photo appears on your artist profile and in the registry.
+                  Your personal photo. Each gallery, institution and artist profile below has its own photo and header image.
                 </CardDescription>
               </div>
             </div>
@@ -121,7 +124,7 @@ export default async function ProfilePage() {
                 Gallery &amp; artist profiles
               </CardTitle>
               <CardDescription className="font-serif">
-                Bio, location, and <strong className="font-medium text-ink">News &amp; Publications</strong> (including the <strong className="font-medium text-ink">Find articles</strong> tool) are edited per role profile—not on this page.
+                Each profile has its own photo, header image and page template. Bio, location, and <strong className="font-medium text-ink">News &amp; Publications</strong> (including the <strong className="font-medium text-ink">Find articles</strong> tool) are edited per role profile—not on this page.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -130,11 +133,20 @@ export default async function ProfilePage() {
                   key={p.id}
                   className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border border-wine/15 bg-parchment/50 px-4 py-3"
                 >
-                  <div>
-                    <p className="font-serif font-medium text-ink">{p.name}</p>
-                    <p className="text-xs text-ink/60 font-serif">
-                      {getRoleLabel(p.role)}
-                    </p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TacoAvatar
+                      pictureUrl={p.picture_url}
+                      displayName={p.name}
+                      className={`w-12 h-12 shrink-0 border border-wine/20 ${
+                        p.role === USER_ROLES.ARTIST ? 'rounded-full' : 'rounded-lg'
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-serif font-medium text-ink truncate">{p.name}</p>
+                      <p className="text-xs text-ink/60 font-serif">
+                        {getRoleLabel(p.role)}
+                      </p>
+                    </div>
                   </div>
                   <Button
                     asChild
@@ -143,7 +155,7 @@ export default async function ProfilePage() {
                     className="font-serif border-wine/30 shrink-0"
                   >
                     <Link href={`/profiles/${p.id}/edit`}>
-                      Edit profile &amp; press articles
+                      Edit photo, header &amp; profile
                     </Link>
                   </Button>
                 </div>

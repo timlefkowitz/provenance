@@ -7,13 +7,15 @@ import {
   TEMPLATE_OPTIONS,
   type TemplateId,
 } from './template-registry';
-import { updateArtistTemplate } from '../_actions/update-template';
+import { updateProfileTemplate } from '../_actions/update-template';
 
 type TemplateSwitcherProps = {
+  /** The role profile (artist, gallery, institution) whose template this changes */
+  profileId: string;
   current: TemplateId | null;
 };
 
-export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
+export function TemplateSwitcher({ profileId, current }: TemplateSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,7 +32,7 @@ export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
       const qs = params.toString();
 
       startTransition(async () => {
-        const result = await updateArtistTemplate(templateId);
+        const result = await updateProfileTemplate(profileId, templateId);
         if (result?.error) {
           console.error(result.error);
           return;
@@ -39,7 +41,7 @@ export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
         router.refresh();
       });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, profileId],
   );
 
   return (
@@ -76,7 +78,7 @@ export function TemplateSwitcher({ current }: TemplateSwitcherProps) {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-full border border-parchment/20 bg-ink/85 text-parchment backdrop-blur-md px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider shadow-lg hover:bg-ink transition-colors"
         aria-expanded={open}
-        aria-label="Switch artist profile template"
+        aria-label="Switch profile template"
       >
         {open ? <X className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
         <span>{current ? TEMPLATE_OPTIONS.find((t) => t.id === current)?.label : 'Templates'}</span>

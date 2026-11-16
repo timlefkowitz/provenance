@@ -4,6 +4,7 @@ import { ProfileForm } from '../../_components/profile-form';
 import { getUserProfileById } from '../../_actions/get-user-profiles';
 import { GalleryMembersManager } from '../../_components/gallery-members-manager';
 import { DeleteProfileButton } from '../../_components/delete-profile-button';
+import { ProfileTemplatePicker } from '../../_components/profile-template-picker';
 import { isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import Link from 'next/link';
 import { getMyProfileSuggestions } from '../../_actions/profile-suggestions';
@@ -78,6 +79,14 @@ export default async function EditProfilePage({
 
       <div className="space-y-6">
         <ProfileForm profile={profile} />
+
+        {(profile.role === USER_ROLES.ARTIST || isTeamProfileRole(profile.role)) && (
+          <ProfileTemplatePicker
+            profileId={profile.id}
+            current={profile.template}
+            publicHref={`/artists/${profile.user_id}?role=${profile.role}&profileId=${profile.id}`}
+          />
+        )}
 
         {/* Gallery / Institution Team Members Section */}
         {isTeamProfileRole(profile.role) && (

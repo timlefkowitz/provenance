@@ -2,7 +2,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { revalidatePath } from 'next/cache';
-import { USER_ROLES } from '~/lib/user-roles';
+import { USER_ROLES, isTeamProfileRole } from '~/lib/user-roles';
 import { dedupeNewsPublications } from '~/lib/news-publications';
 import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 import { validateGalleryPublicSlug } from '~/lib/gallery-public-slug';
@@ -15,6 +15,8 @@ export interface UpdateProfileInput {
   profileId: string;
   name?: string;
   picture_url?: string;
+  /** Wide banner across the top of the public profile page ('' clears it) */
+  header_image_url?: string;
   bio?: string;
   medium?: string;
   location?: string;
@@ -66,7 +68,7 @@ export async function updateProfile(input: UpdateProfileInput) {
 
     const isOwner = profile.user_id === user.id;
     const isGalleryTeamMember =
-      profile.role === USER_ROLES.GALLERY &&
+      isTeamProfileRole(profile.role) &&
       (await isGalleryMember(user.id, input.profileId));
 
     if (!isOwner && !isGalleryTeamMember) {
@@ -95,6 +97,7 @@ export async function updateProfile(input: UpdateProfileInput) {
     const updateData: Record<string, unknown> = {};
     if (input.name !== undefined) updateData.name = input.name.trim();
     if (input.picture_url !== undefined) updateData.picture_url = input.picture_url || null;
+    if (input.header_image_url !== undefined) updateData.header_image_url = input.header_image_url || null;
     if (input.bio !== undefined) updateData.bio = input.bio?.trim() || null;
     if (input.medium !== undefined) updateData.medium = input.medium?.trim() || null;
     if (input.location !== undefined) updateData.location = input.location?.trim() || null;

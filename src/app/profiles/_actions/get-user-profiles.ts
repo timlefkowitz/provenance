@@ -12,6 +12,10 @@ export type UserProfile = {
   name: string;
   slug: string | null;
   picture_url: string | null;
+  /** Wide banner on the public profile page */
+  header_image_url?: string | null;
+  /** Public profile page template id; null = default layout */
+  template?: string | null;
   bio: string | null;
   medium: string | null;
   location: string | null;

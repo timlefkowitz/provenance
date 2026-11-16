@@ -29,6 +29,9 @@ export function ProfileForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const headerInputRef = useRef<HTMLInputElement>(null);
+  const [headerImageUrl, setHeaderImageUrl] = useState(profile?.header_image_url || '');
+  const [uploadingHeader, setUploadingHeader] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(profile?.picture_url || null);
@@ -117,6 +120,37 @@ export function ProfileForm({
     }
   };
 
+  const handleHeaderSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (headerInputRef.current) headerInputRef.current.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+    setUploadingHeader(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      const result = await uploadProfilePicture(uploadFormData);
+      if (result.url) {
+        setHeaderImageUrl(result.url);
+        toast.success('Header image uploaded — save to apply');
+      } else {
+        toast.error(result.error || 'Failed to upload image');
+      }
+    } catch (error: unknown) {
+      console.error('Error uploading header image:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
+    } finally {
+      setUploadingHeader(false);
+    }
+  };
+
   const handleRemoveImage = () => {
     setSelectedFile(null);
     setImagePreview(null);
@@ -139,7 +173,12 @@ export function ProfileForm({
           const result = await updateProfile({
             profileId: profile.id,
             name: formData.name,
-            picture_url: finalPictureUrl,
+            // '' clears the photo; undefined would leave the old one in place.
+            picture_url: formData.picture_url,
+            // Only send when changed, so saving works before the column exists.
+            ...(headerImageUrl !== (profile.header_image_url || '')
+              ? { header_image_url: headerImageUrl }
+              : {}),
             bio: formData.bio || undefined,
             medium: formData.medium || undefined,
             location: formData.location || undefined,
@@ -312,6 +351,46 @@ export function ProfileForm({
               />
             </div>
           </div>
+
+          {/* Header image — edit only; a new profile gets one after it exists */}
+          {profile && (
+            <div>
+              <Label className="font-serif mb-1 block">Header Image</Label>
+              <p className="text-xs text-ink/60 font-serif mb-2">
+                A wide banner across the top of this profile&apos;s public page. Landscape images work best.
+              </p>
+              {headerImageUrl && (
+                <div className="relative w-full h-32 sm:h-40 mb-3 rounded-lg overflow-hidden border border-wine/20 bg-wine/5">
+                  <Image src={headerImageUrl} alt="Header preview" fill className="object-cover" unoptimized />
+                  <button
+                    type="button"
+                    onClick={() => setHeaderImageUrl('')}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    aria-label="Remove header image"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => headerInputRef.current?.click()}
+                disabled={uploadingHeader}
+                className="font-serif border-wine/30 hover:bg-wine/10"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploadingHeader ? 'Uploading...' : headerImageUrl ? 'Replace Header' : 'Upload Header'}
+              </Button>
+              <input
+                ref={headerInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleHeaderSelect}
+                className="hidden"
+              />
+            </div>
+          )}
 
           {/* Bio */}
           <div>

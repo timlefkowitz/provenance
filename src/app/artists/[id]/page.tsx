@@ -56,6 +56,10 @@ import {
   type TemplateId,
 } from './_components/template-registry';
 import { TemplateSwitcher } from './_components/template-switcher';
+import { ProfileHeaderBanner } from './_components/profile-header-banner';
+import { GalleryWorksGrid } from './_components/gallery-works-grid';
+import { TemplateWorksPager } from './_components/template-works-pager';
+import { GALLERY_WORKS_PAGE_SIZE } from './_components/gallery-works-page-size';
 import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
 
@@ -646,6 +650,8 @@ export default async function ArtistProfilePage({
   // For galleries, fetch artworks from their exhibitions
   // For artists/collectors, fetch their own artworks
   let artworks = null;
+  // Total Certificates of Show for this gallery profile, so the grid can offer "See more".
+  let galleryWorksTotal = 0;
   if (isGallery && roleProfile?.id) {
     // Gallery/institution profiles only show Certificates of Show issued under
     // this profile. Exhibition links also include the artists' own COA/COO
@@ -654,21 +660,25 @@ export default async function ArtistProfilePage({
       .from('artworks')
       .select(
         'id, title, artist_name, image_url, created_at, certificate_number, account_id, is_public, status',
+        { count: 'exact' },
       )
       .eq('certificate_type', 'show')
       .eq('gallery_profile_id', roleProfile.id)
       .eq('status', 'verified')
       .order('created_at', { ascending: false })
-      .limit(12);
+      .order('id', { ascending: false })
+      .limit(GALLERY_WORKS_PAGE_SIZE);
     if (!isOwner) {
       cosGridQuery = cosGridQuery.eq('is_public', true);
     }
-    const { data: cosGridRows, error: cosGridErr } = await cosGridQuery;
+    const { data: cosGridRows, error: cosGridErr, count: cosGridCount } = await cosGridQuery;
+    galleryWorksTotal = cosGridCount ?? cosGridRows?.length ?? 0;
     if (cosGridErr) console.error('[ArtistProfile] gallery COS grid fetch failed', cosGridErr);
     console.log('[ArtistProfile] gallery COS grid fetched', {
       galleryProfileId: roleProfile.id,
       isOwner,
       count: cosGridRows?.length ?? 0,
+      total: galleryWorksTotal,
     });
     artworks = cosGridRows;
   } else if (isGallery) {
@@ -751,25 +761,34 @@ export default async function ArtistProfilePage({
     return `/exhibitions/${exhibitionId}`;
   };
 
+  // Templates are chosen per role profile, so each gallery an account runs can look different.
+  // Artists fall back to the old account-level choice until their profile row has one.
+  const supportsTemplates = isArtistProfile || isGallery;
   const requestedTemplate = resolvedSearchParams?.template;
-  const persistedTemplate = (account.public_data as Record<string, unknown> | null)
-    ?.template as string | undefined;
-  const templateId: TemplateId | null = isArtistProfile
+  const profileTemplate = (roleProfile as { template?: string | null } | null)?.template ?? undefined;
+  const legacyAccountTemplate = isArtistProfile
+    ? ((account.public_data as Record<string, unknown> | null)?.template as string | undefined)
+    : undefined;
+  const persistedTemplate = profileTemplate ?? legacyAccountTemplate;
+  const templateId: TemplateId | null = supportsTemplates
     ? isValidTemplateId(requestedTemplate)
       ? requestedTemplate
       : isValidTemplateId(persistedTemplate)
         ? persistedTemplate
         : null
     : null;
+  const headerImageUrl =
+    (roleProfile as { header_image_url?: string | null } | null)?.header_image_url ?? null;
 
-  if (isArtistProfile) {
+  if (supportsTemplates) {
     console.log('[ArtistProfile] template resolved', {
       accountId: account.id,
+      profileId: roleProfile?.id ?? null,
       template: templateId,
     });
   }
 
-  const artistTemplateProps: ArtistTemplateProps | null = isArtistProfile
+  const artistTemplateProps: ArtistTemplateProps | null = supportsTemplates
     ? {
         displayName,
         medium: medium || null,
@@ -813,6 +832,7 @@ export default async function ArtistProfilePage({
         phone: publicPhone,
         isOwner,
         profileId: roleProfile?.id,
+        kind: isGallery ? (isInstitutionProfile ? 'institution' : 'gallery') : 'artist',
         publishedSiteUrl,
         hasCv,
         cvHref,
@@ -829,9 +849,9 @@ export default async function ArtistProfilePage({
   const TemplateComponent =
     templateId && artistTemplateProps ? getTemplateComponent(templateId) : null;
 
-  const artistTemplateSwitcher = isArtistProfile && isOwner ? (
+  const artistTemplateSwitcher = supportsTemplates && isOwner && roleProfile?.id ? (
     <Suspense fallback={null}>
-      <TemplateSwitcher current={templateId} />
+      <TemplateSwitcher profileId={roleProfile.id} current={templateId} />
     </Suspense>
   ) : null;
 
@@ -839,7 +859,17 @@ export default async function ArtistProfilePage({
     return (
       <>
         {safetyMenu}
-        <TemplateComponent {...artistTemplateProps} />
+        <ProfileHeaderBanner url={headerImageUrl} alt={displayName} />
+        {isGallery && roleProfile?.id && templateId ? (
+          <TemplateWorksPager
+            templateId={templateId}
+            templateProps={artistTemplateProps}
+            galleryProfileId={roleProfile.id}
+            total={galleryWorksTotal}
+          />
+        ) : (
+          <TemplateComponent {...artistTemplateProps} />
+        )}
         {artistTemplateSwitcher}
       </>
     );
@@ -870,6 +900,7 @@ export default async function ArtistProfilePage({
       />
       {safetyMenu}
       <div className="min-h-screen">
+      <ProfileHeaderBanner url={headerImageUrl} alt={displayName} />
       {/* ── HERO HEADER ─────────────────────────────────────────── */}
       <div className="border-b border-wine/15">
         <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14">
@@ -963,7 +994,7 @@ export default async function ArtistProfilePage({
                     >
                       <Link
                         href={
-                          requestedProfileId && roleProfile
+                          roleProfile
                             ? `/profiles/${roleProfile.id}/edit`
                             : '/profile'
                         }
@@ -1312,7 +1343,14 @@ export default async function ArtistProfilePage({
                 )}
               </div>
 
-              {artworks && artworks.length > 0 ? (
+              {isGallery && roleProfile?.id && artworks && artworks.length > 0 ? (
+                <GalleryWorksGrid
+                  galleryProfileId={roleProfile.id}
+                  initialArtworks={artworks as any}
+                  total={galleryWorksTotal}
+                  currentUserId={user?.id}
+                />
+              ) : artworks && artworks.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
                   {artworks.map((artwork) => (
                     <ArtworkCard
