@@ -7,13 +7,12 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 import { artworkImageUploader } from '~/lib/artwork-storage';
-import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
-import { createProvenanceUpdateRequest } from '~/app/artworks/[id]/_actions/create-provenance-update-request';
+import { offerCosChangesToCoa } from '~/lib/certificate-claims/offer-cos-changes-to-coa';
 
 export async function updateArtworkImage(
   artworkId: string,
   formData: FormData,
-): Promise<{ success: boolean; error?: string; imageUrl?: string; pendingApproval?: boolean }> {
+): Promise<{ success: boolean; error?: string; imageUrl?: string; sentToArtist?: string | null }> {
   console.log('[Collection] updateArtworkImage started', { artworkId });
 
   try {
@@ -28,7 +27,7 @@ export async function updateArtworkImage(
 
     const { data: artwork, error: artworkError } = await asUntyped(client)
       .from('artworks')
-      .select('id, account_id, gallery_profile_id, certificate_type, artist_account_id')
+      .select('id, title, account_id, gallery_profile_id, certificate_type, artist_account_id')
       .eq('id', artworkId)
       .single();
 
@@ -67,17 +66,6 @@ export async function updateArtworkImage(
       return { success: false, error: 'Image upload failed' };
     }
 
-    // A new photo on a Certificate of Show issued from an artist's CoA goes to
-    // the artist to approve.
-    const approvingArtist = cosApprovingArtistId(artwork);
-    if (approvingArtist && approvingArtist !== user.id) {
-      const requestResult = await createProvenanceUpdateRequest(artworkId, { image_url: imageUrl });
-      if (!requestResult.success) {
-        return { success: false, error: requestResult.error || 'Could not send the photo to the artist' };
-      }
-      return { success: true, pendingApproval: true };
-    }
-
     const { error: updateError } = await asUntyped(client)
       .from('artworks')
       .update({ image_url: imageUrl, original_image_url: null })
@@ -92,8 +80,17 @@ export async function updateArtworkImage(
     revalidatePath(`/artworks/${artworkId}/certificate`);
     scheduleArtworkFingerprints([artworkId]);
 
+    // A new photo on a Certificate of Show is offered to the artist's CoA.
+    let sentToArtist: string | null = null;
+    const offer = await offerCosChangesToCoa({
+      cos: { ...artwork, title: (artwork.title as string | null) ?? null },
+      changes: { image_url: imageUrl, original_image_url: null },
+      editorId: user.id,
+    });
+    if (offer.offered) sentToArtist = offer.artistName || 'the artist';
+
     console.log('[Collection] updateArtworkImage succeeded', { artworkId });
-    return { success: true, imageUrl };
+    return { success: true, imageUrl, sentToArtist };
   } catch (err) {
     console.error('[Collection] updateArtworkImage failed', err);
     return {

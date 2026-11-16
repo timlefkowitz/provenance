@@ -1890,7 +1890,7 @@ export function CertificateOfAuthenticity({
                 )}
                 <EditArtworkDialog 
                   artwork={artwork} 
-                  isCreator={false}
+                  isCreator={canEditCertificate}
                   exhibition={exhibition}
                   creatorInfo={creatorInfo}
                   certificateType={certificateType}

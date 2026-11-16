@@ -1076,7 +1076,7 @@ export function SpreadsheetEditForm({
           toast.error(res.error ?? 'Failed to upload photo');
           return;
         }
-        toast.success(res.pendingApproval ? 'Photo sent to the artist to approve' : 'Photo updated');
+        toast.success(res.sentToArtist ? `Photo updated. ${res.sentToArtist} was notified and can add it to their certificate.` : 'Photo updated');
         router.refresh();
       } catch (e: unknown) {
         console.error('[Collection] image upload failed', e);
@@ -1213,9 +1213,9 @@ export function SpreadsheetEditForm({
         for (const { artworkId, updates: updateData } of updates) {
           try {
             const result = await batchUpdateProvenance([artworkId], updateData);
-            if (!result.error && result.pendingApprovalCount) {
+            if (!result.error && result.sentToArtistCount) {
               toast.info(
-                `Changes to "${artworks.find((a) => a.id === artworkId)?.title || 'a Certificate of Show'}" were sent to the artist to approve.`,
+                `Changes to "${artworks.find((a) => a.id === artworkId)?.title || 'a Certificate of Show'}" were saved. The artist was notified and can add them to their certificate.`,
               );
             }
             if (result.error) {

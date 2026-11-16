@@ -6,6 +6,7 @@ import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { isShownInExhibition } from '../_helpers/exhibition-submission-status';
 import { resolveShowArtists, type ShowArtist } from '../_helpers/show-artists';
 import { preferArtistCoa } from '../_helpers/prefer-artist-coa';
+import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
 export type Exhibition = {
   id: string;
@@ -59,6 +60,12 @@ export type ExhibitionWithDetails = Exhibition & {
     /** Sold (on this certificate or its linked COA / COS); drawn as a red dot. */
     isSold?: boolean;
     status: string;
+    /**
+     * The Certificate of Show issued for this work in this show, when the work
+     * is listed as the artist's COA. Only set for the show's managers, who open
+     * and edit the COS rather than the artist's COA.
+     */
+    cosId?: string;
   }>;
   /**
    * Everyone in the show — credited artists plus the artist of every visible
@@ -507,6 +514,7 @@ export async function getExhibitionWithDetails(
         listPriceDisplay: listPrice,
         isSold: Boolean(a.is_sold || a.sold_at),
         status: a.status as string,
+        cosId: undefined as string | undefined,
       };
     });
 
@@ -518,6 +526,12 @@ export async function getExhibitionWithDetails(
     if (coa && folded && !coa.listPriceDisplay) coa.listPriceDisplay = folded.listPriceDisplay;
     // Sold through the show's COS, or by the artist on their COA: either way it's sold.
     if (coa && folded && (coa.isSold || folded.isSold)) coa.isSold = folded.isSold = true;
+    const foldedRow = rawArtworkRows.find((r) => r.id === foldedId);
+    if (coa && folded && foldedRow?.certificate_type === CERTIFICATE_TYPES.SHOW) {
+      // The show's own photo of the work, set on its Certificate of Show.
+      if (folded.image_url) coa.image_url = folded.image_url;
+      if (canSeeDraftListings && !coa.cosId) coa.cosId = foldedId;
+    }
   }
   const filteredArtworks = mappedArtworks.filter((a) => !foldedInto.has(a.id));
 

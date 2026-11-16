@@ -301,9 +301,9 @@ export async function respondToProvenanceUpdateRequest(
             {
               skipOwnershipCheck: true,
               skipNotification: true,
-              // The artist approving is the approval; a holder accepting someone
-              // else's suggestion to a COS still sends it on to the artist.
-              skipArtistApproval: !reviewerIsHolder,
+              // A holder accepting someone else's suggestion to a COS still
+              // offers it on to the artist's CoA; the artist's own approval doesn't.
+              skipCosOffer: !reviewerIsHolder,
               syncMethod: 'request_approved',
               ...(reviewerIsHolder ? {} : { dataClient: adminClient }),
             },

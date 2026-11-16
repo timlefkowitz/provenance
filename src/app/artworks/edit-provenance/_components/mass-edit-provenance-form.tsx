@@ -165,9 +165,9 @@ export function MassEditProvenanceForm({ artworks }: { artworks: Artwork[] }) {
         for (const { artworkId, updates: updateData } of updates) {
           try {
             const result = await batchUpdateProvenance([artworkId], updateData);
-            if (!result.error && result.pendingApprovalCount) {
+            if (!result.error && result.sentToArtistCount) {
               toast.info(
-                `Changes to "${artworks.find((a) => a.id === artworkId)?.title || 'a Certificate of Show'}" were sent to the artist to approve.`,
+                `Changes to "${artworks.find((a) => a.id === artworkId)?.title || 'a Certificate of Show'}" were saved. The artist was notified and can add them to their certificate.`,
               );
             }
             if (result.error) {

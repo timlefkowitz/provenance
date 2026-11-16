@@ -104,6 +104,11 @@ export function ExhibitionDetails({
     });
   };
 
+  // The show's managers open the Certificate of Show they issued for a work,
+  // where they edit its photo and details; visitors see the artist's COA.
+  const certificateHref = (artwork: { id: string; cosId?: string }) =>
+    `/artworks/${isOwner && artwork.cosId ? artwork.cosId : artwork.id}/certificate`;
+
   if (exhibition.artworks.length === 0 && !isOwner) {
     return (
       <div className="text-center py-24 border border-dashed border-wine/15 rounded-2xl">
@@ -209,7 +214,7 @@ export function ExhibitionDetails({
               key={artwork.id}
               className="group relative break-inside-avoid mb-4 md:mb-5 rounded-lg bg-parchment/60 overflow-hidden"
             >
-              <Link href={`/artworks/${artwork.id}/certificate`} className="block relative overflow-hidden">
+              <Link href={certificateHref(artwork)} className="block relative overflow-hidden">
                 {artwork.image_url ? (
                   <div className="relative w-full overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -238,7 +243,7 @@ export function ExhibitionDetails({
                 isOwner ||
                 artwork.status === 'draft') && (
                 <div className="px-4 pt-3 pb-4 border-t border-wine/10">
-                  <Link href={`/artworks/${artwork.id}/certificate`} className="block hover:bg-wine/[0.03] -mx-2 px-2 rounded-md transition-colors">
+                  <Link href={certificateHref(artwork)} className="block hover:bg-wine/[0.03] -mx-2 px-2 rounded-md transition-colors">
                     {artwork.title && (
                       <p className="font-serif text-sm font-semibold text-ink leading-snug line-clamp-2 group-hover:text-wine transition-colors">
                         {artwork.title}
@@ -260,7 +265,7 @@ export function ExhibitionDetails({
 
                   {artwork.description && (
                     <Link
-                      href={`/artworks/${artwork.id}/certificate`}
+                      href={certificateHref(artwork)}
                       className="block hover:bg-wine/[0.03] -mx-2 px-2 rounded-md transition-colors"
                     >
                       <p className="font-serif text-xs text-ink/50 leading-relaxed line-clamp-3 mt-1">
@@ -321,7 +326,7 @@ export function ExhibitionDetails({
                         hasTitle={Boolean(artwork.title?.trim())}
                       />
                       <Button variant="outline" size="sm" className="font-serif text-xs h-8 border-wine/25" asChild>
-                        <Link href={`/artworks/${artwork.id}/certificate`}>Edit details</Link>
+                        <Link href={certificateHref(artwork)}>Edit details</Link>
                       </Button>
                     </div>
                   )}

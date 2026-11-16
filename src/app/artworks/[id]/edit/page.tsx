@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { EditProvenanceForm } from './_components/edit-provenance-form';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
+import { canEditGalleryArtworks } from '~/app/profiles/_actions/gallery-members';
 import { EditorialPageHeader } from '~/components/editorial-form';
 import { getArtworkExhibition } from '../../[id]/certificate/_actions/get-artwork-exhibition';
 import { ShopListingCard } from './_components/shop-listing-card';
@@ -27,17 +28,24 @@ export default async function EditProvenancePage({
     redirect('/auth/sign-in');
   }
 
-  // Fetch artwork - only the owner can edit
+  // The holder, or a member of the gallery team it's filed under, can edit.
   const { data: artwork, error } = await asUntyped(client)
     .from('artworks')
     .select('*')
     .eq('id', id)
-    .eq('account_id', user.id)
     .single();
 
-  if (error || !artwork) {
+  if (
+    error ||
+    !artwork ||
+    !(await canEditGalleryArtworks(user.id, {
+      account_id: artwork.account_id,
+      gallery_profile_id: artwork.gallery_profile_id ?? undefined,
+    }))
+  ) {
     redirect('/artworks');
   }
+  const isHolder = artwork.account_id === user.id;
 
   // Get current exhibition for this artwork
   const [currentExhibition, connectAccount] = await Promise.all([
@@ -45,8 +53,8 @@ export default async function EditProvenancePage({
     getConnectAccount(user.id),
   ]);
 
-  // A Certificate of Show issued from an artist's CoA: content changes go to
-  // the artist to approve.
+  // A Certificate of Show issued from an artist's CoA: the artist is told about
+  // changes and can add them to their CoA.
   const approvingArtistId = cosApprovingArtistId(artwork);
   let approverName: string | null = null;
   if (approvingArtistId && approvingArtistId !== user.id) {
@@ -66,6 +74,7 @@ export default async function EditProvenancePage({
         description={<>Update the details and provenance for <span className="text-editorial-ink">“{artwork.title}”</span>.</>}
       />
 
+      {isHolder && (
       <ShopListingCard
         artworkId={artwork.id}
         shopOpen={!!connectAccount}
@@ -74,6 +83,7 @@ export default async function EditProvenancePage({
         initialPrice={artwork.sale_price != null ? Number(artwork.sale_price) : null}
         feePercent={platformFeePercent()}
       />
+      )}
 
       <EditProvenanceForm 
         artwork={artwork} 

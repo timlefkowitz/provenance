@@ -21,7 +21,7 @@ import {
 import { getAccountDisplayName } from '~/lib/certificate-claims/propagate-provenance';
 import { clearToggleSale, recordSale } from '~/lib/sales/record-sale';
 import { cosApprovingArtistId, splitCosContentChanges } from '~/lib/certificate-claims/cos-approval';
-import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
+import { offerCosChangesToCoa } from '~/lib/certificate-claims/offer-cos-changes-to-coa';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
 import { resolveArtist } from '~/lib/people/resolve-artist';
 import { resolveOwnerColumns } from '~/lib/people/resolve-owner';
@@ -73,11 +73,10 @@ export async function updateProvenance(
      */
     dataClient?: SupabaseClient;
     /**
-     * Apply content changes to a Certificate of Show directly, without the
-     * artist's approval. Only for applying a change request the reviewer has
-     * just approved.
+     * Don't offer this change to the artist's CoA when editing a Certificate
+     * of Show (the caller offers it itself, or the change came from the artist).
      */
-    skipArtistApproval?: boolean;
+    skipCosOffer?: boolean;
     /** How mirrored changes are tagged on linked certificates. */
     syncMethod?: ProvenanceSyncMethod;
   }
@@ -152,34 +151,13 @@ export async function updateProvenance(
       }
     }
 
-    // A Certificate of Show issued from an artist's CoA: its content changes go
-    // to the artist to approve; the holder's other changes apply directly.
-    let pendingApproval = false;
-    const approvingArtist = options?.skipArtistApproval ? null : cosApprovingArtistId(artwork);
-    if (approvingArtist && approvingArtist !== user.id) {
-      const { requestFields, remaining } = splitCosContentChanges(provenance, artwork);
-      if (Object.keys(requestFields).length > 0) {
-        const requestResult = await createProvenanceUpdateRequest(
-          artworkId,
-          requestFields,
-          undefined,
-          'provenance_update',
-        );
-        if (!requestResult.success) {
-          return { error: requestResult.error || 'Could not send the changes to the artist' };
-        }
-        pendingApproval = true;
-      }
-      // Who the artist and owner are is part of the content the artist approves.
-      delete remaining.artist;
-      delete remaining.owner;
-      provenance = remaining;
-      if (Object.values(provenance).every((v) => v === undefined)) {
-        revalidatePath(`/artworks/${artworkId}/certificate`);
-        revalidatePath('/portal');
-        return { success: true, pendingApproval };
-      }
-    }
+    // A Certificate of Show issued from an artist's CoA: its changes apply
+    // directly, and the changed content is then offered to the artist's CoA.
+    const approvingArtist = options?.skipCosOffer ? null : cosApprovingArtistId(artwork);
+    const cosChangesForCoa =
+      approvingArtist && approvingArtist !== user.id
+        ? splitCosContentChanges(provenance, artwork).requestFields
+        : null;
 
     // Store original title to check if it changed
     const originalTitle = artwork.title;
@@ -571,7 +549,23 @@ export async function updateProvenance(
       }
     }
 
-    return { success: true, pendingApproval };
+    let sentToArtist: string | null = null;
+    if (cosChangesForCoa && Object.keys(cosChangesForCoa).length > 0) {
+      const offer = await offerCosChangesToCoa({
+        cos: {
+          id: artworkId,
+          title: (provenance.title ?? artwork.title) as string | null,
+          account_id: artwork.account_id,
+          certificate_type: artwork.certificate_type,
+          artist_account_id: artwork.artist_account_id,
+        },
+        changes: cosChangesForCoa,
+        editorId: user.id,
+      });
+      if (offer.offered) sentToArtist = offer.artistName || 'the artist';
+    }
+
+    return { success: true, sentToArtist };
   } catch (error) {
     logger.error('update_provenance_failed', {
       artworkId,

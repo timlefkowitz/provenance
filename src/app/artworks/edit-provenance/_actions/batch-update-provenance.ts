@@ -36,7 +36,7 @@ export async function batchUpdateProvenance(
     isSold?: boolean;
     displayOrder?: number | null;
   }
-): Promise<{ success: boolean; error?: string; updatedCount?: number; pendingApprovalCount?: number }> {
+): Promise<{ success: boolean; error?: string; updatedCount?: number; sentToArtistCount?: number }> {
   try {
     console.log('[BatchUpdateProvenance] started', { count: artworkIds.length });
     const client = asUntyped(getSupabaseServerClient());
@@ -72,8 +72,8 @@ export async function batchUpdateProvenance(
 
     // Update each artwork
     let successCount = 0;
-    // Certificates of Show whose content changes went to the artist to approve.
-    let pendingApprovalCount = 0;
+    // Certificates of Show whose changes were offered to the artist's CoA.
+    let sentToArtistCount = 0;
     const errors: string[] = [];
 
     for (const artworkId of artworkIds) {
@@ -87,7 +87,7 @@ export async function batchUpdateProvenance(
           errors.push(`Artwork ${artworkId}: ${result.error}`);
         } else {
           successCount++;
-          if (result.pendingApproval) pendingApprovalCount++;
+          if (result.sentToArtist) sentToArtistCount++;
         }
       } catch (error) {
         errors.push(`Artwork ${artworkId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -107,13 +107,13 @@ export async function batchUpdateProvenance(
       return { 
         success: true, 
         updatedCount: successCount,
-        pendingApprovalCount,
+        sentToArtistCount,
         error: `Updated ${successCount} artworks, but some failed: ${errors.join(', ')}` 
       };
     }
 
     console.log('[BatchUpdateProvenance] completed', { updatedCount: successCount });
-    return { success: true, updatedCount: successCount, pendingApprovalCount };
+    return { success: true, updatedCount: successCount, sentToArtistCount };
   } catch (error) {
     console.error('[BatchUpdateProvenance] failed', error);
     logger.error('batch_update_provenance_failed', {

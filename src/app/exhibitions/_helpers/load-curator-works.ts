@@ -6,7 +6,7 @@ import {
   canManageExhibition,
   isGalleryMember,
 } from '~/app/profiles/_actions/gallery-members';
-import { cosApprovingArtistId, shouldIssueExhibitionCos } from '~/lib/certificate-claims/cos-approval';
+import { shouldIssueExhibitionCos } from '~/lib/certificate-claims/cos-approval';
 import type { CuratorWork } from '../[id]/curate/_components/curator-works-list';
 import { isShownInExhibition } from './exhibition-submission-status';
 import { ownerReceivesCertificateOfShow } from './exhibition-owner-roles';
@@ -134,14 +134,6 @@ export async function loadCuratorWorks(
   const works: CuratorWork[] = [];
   for (const a of visible) {
     const editable = await canEdit(a);
-    const approvingArtist = editable
-      ? cosApprovingArtistId({
-          account_id: (a.account_id as string | null) ?? null,
-          certificate_type: (a.certificate_type as string | null) ?? null,
-          artist_account_id: (a.artist_account_id as string | null) ?? null,
-        })
-      : null;
-    const needsApproval = Boolean(approvingArtist && approvingArtist !== userId);
     works.push({
       artwork: a as unknown as CuratorWork['artwork'],
       coaId: coaOfCos.get(a.id as string) ?? null,
@@ -149,15 +141,14 @@ export async function loadCuratorWorks(
       isDraft: a.status === 'draft',
       holderName: holderName.get(a.account_id as string) || null,
       editable,
-      editHref:
-        editable && !needsApproval
-          ? a.account_id === userId
-            ? `/artworks/${a.id}/edit`
-            : `/artworks/${a.id}/certificate`
-          : null,
-      approverName: needsApproval
-        ? holderName.get(approvingArtist as string) || (a.artist_name as string | null) || 'the artist'
+      // A Certificate of Show's edits apply directly; the artist is told and
+      // can copy them onto their COA.
+      editHref: editable
+        ? a.account_id === userId
+          ? `/artworks/${a.id}/edit`
+          : `/artworks/${a.id}/certificate`
         : null,
+      approverName: null,
       changePending: pendingIds.has(a.id as string),
       sold:
         a.is_sold || a.sold_at

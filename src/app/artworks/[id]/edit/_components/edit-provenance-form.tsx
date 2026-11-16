@@ -175,7 +175,7 @@ export function EditProvenanceForm({
             }
           }
           setSuccess(true);
-          setSentForApproval(Boolean('pendingApproval' in result && result.pendingApproval));
+          setSentForApproval(Boolean('sentToArtist' in result && result.sentToArtist));
           setTimeout(() => {
             router.push(`/artworks/${artwork.id}/certificate`);
           }, 1500);
@@ -198,12 +198,12 @@ export function EditProvenanceForm({
       {approverName && (
         <Alert className="rounded-none border-editorial-border/30 bg-cream/60">
           <AlertTitle className="font-jetbrains text-[11px] uppercase tracking-[0.18em]">
-            Artist approval
+            Artist&apos;s certificate
           </AlertTitle>
           <AlertDescription className="font-serif">
             This Certificate of Show was issued from {approverName}&apos;s Certificate of
-            Authenticity. Changes to its details are sent to them to approve and apply once
-            approved. Visibility and sale status still save straight away.
+            Authenticity. Your changes save here straight away; {approverName} is notified and can
+            add them to their certificate.
           </AlertDescription>
         </Alert>
       )}
@@ -219,11 +219,11 @@ export function EditProvenanceForm({
           {success && (
             <Alert className="rounded-none border-editorial-border/30 bg-cream/60">
               <AlertTitle className="font-jetbrains text-[11px] uppercase tracking-[0.18em]">
-                {sentForApproval ? 'Sent for approval' : 'Saved'}
+                {sentForApproval ? 'Saved, artist notified' : 'Saved'}
               </AlertTitle>
               <AlertDescription className="font-serif">
                 {sentForApproval
-                  ? `Your changes were sent to ${approverName ?? 'the artist'} to approve; they apply once approved. Taking you back to the certificate…`
+                  ? `Certificate updated. ${approverName ?? 'The artist'} was notified and can add these changes to their certificate. Taking you back to it…`
                   : 'Certificate updated. Taking you back to it…'}
               </AlertDescription>
             </Alert>

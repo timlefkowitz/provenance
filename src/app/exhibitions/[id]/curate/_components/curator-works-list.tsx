@@ -124,7 +124,7 @@ export function CuratorWorksList({
       )}
       <Section
         title="Your certificates"
-        note="Certificates of Show for this show. Changes to one issued from an artist's certificate go to the artist to approve."
+        note="Certificates of Show for this show. Your changes apply right away; the artist is told and can add them to their certificate."
         works={editable}
         selection={selection}
         renderAction={(w) => (
@@ -137,29 +137,14 @@ export function CuratorWorksList({
                 defaultPriceCents={setValueCents(w.artwork)}
               />
             )}
-            {w.approverName ? (
-              w.changePending ? (
-                <span className="inline-flex items-center gap-1.5 font-serif text-xs text-amber-800">
-                  <Clock className="h-3.5 w-3.5" />
-                  Awaiting {w.approverName}&apos;s approval
-                </span>
-              ) : (
-                <RequestUpdateDialog
-                  artwork={w.artwork}
-                  exhibitionId={exhibitionId}
-                  triggerLabel="Edit"
-                  approverName={w.approverName}
-                  onSubmitted={() => router.refresh()}
-                />
-              )
-            ) : (
+            {w.editHref && (
               <Button
                 asChild
                 variant="outline"
                 size="sm"
                 className="border-wine/30 hover:bg-wine/10 h-8 gap-1.5 font-serif"
               >
-                <Link href={w.editHref!}>
+                <Link href={w.editHref}>
                   <Edit className="h-3.5 w-3.5" />
                   Edit
                 </Link>
@@ -230,7 +215,7 @@ function Section({
               />
             )}
             <Link
-              href={`/artworks/${w.coaId ?? w.artwork.id}/certificate`}
+              href={`/artworks/${w.artwork.id}/certificate`}
               className="bg-ink/5 relative h-16 w-16 shrink-0 overflow-hidden rounded"
             >
               {w.artwork.image_url && (
@@ -245,7 +230,7 @@ function Section({
             </Link>
             <div className="min-w-0 flex-1">
               <Link
-                href={`/artworks/${w.coaId ?? w.artwork.id}/certificate`}
+                href={`/artworks/${w.artwork.id}/certificate`}
                 className="font-display text-ink hover:text-wine block truncate text-lg font-semibold"
               >
                 {w.artwork.title}
@@ -262,9 +247,6 @@ function Section({
                 {w.coaId && <span>Your Certificate of Show issued</span>}
                 {!w.editable && w.holderName && (
                   <span>Held by {w.holderName}</span>
-                )}
-                {w.approverName && (
-                  <span>Edits approved by {w.approverName}</span>
                 )}
                 {w.awaitsCos && (
                   <span className="text-wine/70">

@@ -17,7 +17,7 @@ import {
 import { canEditGalleryArtworks, canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { logger } from '~/lib/logger';
 import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
-import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { offerCosChangesToCoa } from '~/lib/certificate-claims/offer-cos-changes-to-coa';
 
 export type EditArtworkFields = {
   title?: string | null;
@@ -26,31 +26,6 @@ export type EditArtworkFields = {
   created_at?: string;
   exhibitionId?: string | null;
 };
-
-/** The artist's Certificate of Authenticity a Certificate of Show was issued from. */
-async function findSourceCoaId(artworkId: string): Promise<string | null> {
-  const admin = asUntyped(getSupabaseServerAdminClient());
-  let current: string | null = artworkId;
-  for (let i = 0; i < 16 && current; i++) {
-    const { data }: { data: { source_artwork_id: string | null } | null } = await admin
-      .from('artworks')
-      .select('source_artwork_id')
-      .eq('id', current)
-      .maybeSingle();
-    const parentId: string | null = data?.source_artwork_id ?? null;
-    if (!parentId) return null;
-    const { data: parent }: { data: { certificate_type: string | null } | null } = await admin
-      .from('artworks')
-      .select('certificate_type')
-      .eq('id', parentId)
-      .maybeSingle();
-    if ((parent?.certificate_type ?? CERTIFICATE_TYPES.AUTHENTICITY) === CERTIFICATE_TYPES.AUTHENTICITY) {
-      return parentId;
-    }
-    current = parentId;
-  }
-  return null;
-}
 
 /** True when `url` is a photo this user uploaded to the artworks bucket. */
 function isOwnArtworkUpload(url: string, userId: string): boolean {
@@ -86,7 +61,7 @@ export async function editArtwork(
   artworkId: string,
   formData: FormData,
   isCreator: boolean,
-): Promise<{ success: boolean; error?: string; pendingApproval?: boolean }> {
+): Promise<{ success: boolean; error?: string; sentToArtist?: string | null }> {
   try {
     const client = asUntyped(getSupabaseServerClient());
     const { data: { user } } = await client.auth.getUser();
@@ -198,47 +173,23 @@ export async function editArtwork(
       return { success: false, error: 'No changes detected' };
     }
 
-    // A Certificate of Show issued from an artist's CoA: the certificate's
-    // content (title, artist, date) goes to the artist to approve as one
-    // request. The photo is the show's own and applies directly; the holder can
-    // also propose it for the artist's CoA, which the artist approves there.
-    // The exhibition link and details below still apply directly.
-    let pendingApproval = false;
+    // A Certificate of Show issued from an artist's CoA: every change applies
+    // directly; the changed photo and details are then offered to the artist's
+    // CoA, which they can add or leave.
     const approvingArtist = isCreator ? cosApprovingArtistId(artwork) : null;
-    if (approvingArtist && approvingArtist !== user.id) {
-      if (updateFields.image?.image_url && formData.get('propose_image_to_coa') === 'true') {
-        const coaId = await findSourceCoaId(artworkId);
-        if (coaId) {
-          const coaResult = await createProvenanceUpdateRequest(coaId, {
-            image_url: updateFields.image.image_url,
-            original_image_url: updateFields.image.original_image_url,
-          });
-          if (!coaResult.success) return coaResult;
-          pendingApproval = true;
-        } else {
-          logger.warn('edit_artwork_cos_source_coa_missing', { artworkId });
-        }
+    const offerToCoa = Boolean(approvingArtist && approvingArtist !== user.id);
+    const cosChangesForCoa: Record<string, string | null> = {};
+    if (offerToCoa) {
+      if (updateFields.title !== undefined && updateFields.title !== artwork.title) {
+        cosChangesForCoa.title = updateFields.title;
       }
-
-      const requestFields: Record<string, string | null> = {};
-      if (updateFields.title !== undefined) requestFields.title = updateFields.title ?? '';
       if (updateFields.artist_name !== undefined && updateFields.artist_name !== (artwork.artist_name ?? null)) {
-        requestFields.artist_name = updateFields.artist_name ?? '';
+        cosChangesForCoa.artist_name = updateFields.artist_name;
       }
-      if (
-        updateFields.created_at &&
-        updateFields.created_at.slice(0, 10) !== String(artwork.created_at ?? '').slice(0, 10)
-      ) {
-        requestFields.created_at = updateFields.created_at;
+      if (updateFields.image?.image_url && updateFields.image.image_url !== artwork.image_url) {
+        cosChangesForCoa.image_url = updateFields.image.image_url;
+        cosChangesForCoa.original_image_url = updateFields.image.original_image_url ?? null;
       }
-      if (Object.keys(requestFields).length > 0) {
-        const requestResult = await createProvenanceUpdateRequest(artworkId, requestFields);
-        if (!requestResult.success) return requestResult;
-        pendingApproval = true;
-      }
-      delete updateFields.title;
-      delete updateFields.artist_name;
-      delete updateFields.created_at;
     }
 
     if (isCreator) {
@@ -348,6 +299,8 @@ export async function editArtwork(
         const result = await updateProvenance(artworkId, provenanceUpdate, {
           skipOwnershipCheck: true,
           skipNotification: true,
+          // Offered below, together with the photo.
+          skipCosOffer: true,
         });
 
         if (result.error) {
@@ -363,7 +316,23 @@ export async function editArtwork(
         revalidatePath('/exhibitions');
       }
 
-      return { success: true, pendingApproval };
+      let sentToArtist: string | null = null;
+      if (Object.keys(cosChangesForCoa).length > 0) {
+        const offer = await offerCosChangesToCoa({
+          cos: {
+            id: artworkId,
+            title: (updateFields.title ?? artwork.title) as string | null,
+            account_id: artwork.account_id,
+            certificate_type: artwork.certificate_type,
+            artist_account_id: artwork.artist_account_id,
+          },
+          changes: cosChangesForCoa,
+          editorId: user.id,
+        });
+        if (offer.offered) sentToArtist = offer.artistName || 'the artist';
+      }
+
+      return { success: true, sentToArtist };
     } else {
       // Approval request - user is not the creator
       const requestMessage = formData.get('request_message')?.toString();
