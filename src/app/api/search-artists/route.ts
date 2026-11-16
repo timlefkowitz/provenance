@@ -1,62 +1,51 @@
-import { asUntyped } from '~/lib/supabase-untyped';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { checkRateLimit } from '~/lib/rate-limit';
-import { escapeIlike } from '~/lib/escape-ilike';
+import { searchPeople } from '~/lib/people/search-people';
 
+/**
+ * Artist name search. `id` is the artist's account id. With
+ * `include_unclaimed=1`, placeholder artist profiles are returned too
+ * (their `id` is then the profile id and `accountId` is null).
+ */
 const SearchArtistsQuerySchema = z.object({
-  q: z
-    .string()
-    .trim()
-    .min(2)
-    .max(100),
+  q: z.string().trim().min(2).max(100),
+  include_unclaimed: z.enum(['0', '1']).default('0'),
 });
-
-const MAX_LIMIT = 20;
 
 export async function GET(request: NextRequest) {
   if (!await checkRateLimit(request, { keyPrefix: 'search_artists', maxPerWindow: 60 })) {
     return NextResponse.json([], { status: 429 });
   }
 
-  const searchParams = request.nextUrl.searchParams;
-
   const parseResult = SearchArtistsQuerySchema.safeParse({
-    q: searchParams.get('q') ?? '',
+    q: request.nextUrl.searchParams.get('q') ?? '',
+    include_unclaimed: request.nextUrl.searchParams.get('include_unclaimed') ?? undefined,
   });
-
   if (!parseResult.success) {
     return NextResponse.json([], { status: 400 });
   }
 
-  const { q } = parseResult.data;
-
-  const client = getSupabaseServerClient();
-
-  const { data: accounts, error } = await asUntyped(client)
-    .from('accounts')
-    .select('id, name, picture_url, public_data')
-    .ilike('name', `%${escapeIlike(q)}%`)
-    .limit(MAX_LIMIT);
-
-  if (error) {
+  try {
+    const people = await searchPeople(getSupabaseServerClient(), {
+      query: parseResult.data.q,
+      role: 'artist',
+      includeUnclaimed: parseResult.data.include_unclaimed === '1',
+      limit: 20,
+    });
+    return NextResponse.json(
+      people.map((p) => ({
+        id: p.accountId ?? p.profileId,
+        accountId: p.accountId,
+        profileId: p.profileId,
+        name: p.name,
+        picture_url: p.picture_url,
+        claimed: p.claimed,
+      })),
+    );
+  } catch (error) {
     console.error('Error searching artists:', error);
     return NextResponse.json([], { status: 500 });
   }
-
-  const artists = (accounts || [])
-    .filter((account) => {
-      const role = getUserRole(account.public_data as Record<string, unknown>);
-      return role === USER_ROLES.ARTIST;
-    })
-    .map((account) => ({
-      id: account.id,
-      name: account.name,
-      picture_url: account.picture_url,
-    }));
-
-  return NextResponse.json(artists);
 }
-

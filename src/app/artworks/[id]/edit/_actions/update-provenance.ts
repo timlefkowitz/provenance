@@ -23,6 +23,9 @@ import { clearToggleSale, recordSale } from '~/lib/sales/record-sale';
 import { cosApprovingArtistId, splitCosContentChanges } from '~/lib/certificate-claims/cos-approval';
 import { createProvenanceUpdateRequest } from '../../_actions/create-provenance-update-request';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
+import { resolveArtist } from '~/lib/people/resolve-artist';
+import { resolveOwnerColumns } from '~/lib/people/resolve-owner';
+import type { PersonValue } from '~/lib/people/types';
 
 export async function updateProvenance(
   artworkId: string,
@@ -30,6 +33,13 @@ export async function updateProvenance(
     title?: string;
     description?: string;
     artist_name?: string;
+    /**
+     * The artist picked in a PersonPicker. Sets artist_name and the artist
+     * account/profile links together. null clears the artist.
+     */
+    artist?: PersonValue | null;
+    /** The owner picked in a PersonPicker: owned_by plus its account/profile links. */
+    owner?: PersonValue | null;
     medium?: string;
     creationDate?: string;
     dimensions?: string;
@@ -160,6 +170,9 @@ export async function updateProvenance(
         }
         pendingApproval = true;
       }
+      // Who the artist and owner are is part of the content the artist approves.
+      delete remaining.artist;
+      delete remaining.owner;
       provenance = remaining;
       if (Object.values(provenance).every((v) => v === undefined)) {
         revalidatePath(`/artworks/${artworkId}/certificate`);
@@ -301,6 +314,51 @@ export async function updateProvenance(
     }
     if (provenance.isSold !== undefined) {
       updateData.is_sold = provenance.isSold;
+    }
+
+    // --- Who the artist and owner are ---
+    // Locked when the artist is the holder (their own work) or must approve
+    // changes (a Certificate of Show from their CoA).
+    const artistLocked =
+      !!artwork.artist_account_id &&
+      (artwork.artist_account_id === artwork.account_id || cosApprovingArtistId(artwork) !== null);
+    const peopleDb = getSupabaseServerAdminClient();
+    if (!artistLocked) {
+      if (provenance.artist === null) {
+        updateData.artist_name = null;
+        updateData.artist_account_id = null;
+        updateData.artist_profile_id = null;
+      } else if (provenance.artist) {
+        const resolved = await resolveArtist(peopleDb, {
+          artist: provenance.artist,
+          posterAccountId: artwork.account_id,
+          medium: provenance.medium ?? artwork.medium,
+        });
+        updateData.artist_name = resolved.name || null;
+        updateData.artist_account_id = resolved.artistAccountId;
+        updateData.artist_profile_id = resolved.artistProfileId;
+      } else if (
+        provenance.artist_name !== undefined &&
+        !artwork.artist_account_id &&
+        (provenance.artist_name ?? '').trim() !== (artwork.artist_name ?? '').trim()
+      ) {
+        // A name typed without picking (older forms, spreadsheets, approved
+        // requests): relink so the name and the profile don't drift apart. A
+        // registered artist already linked is never unlinked by a rename.
+        const resolved = await resolveArtist(peopleDb, {
+          artist: provenance.artist_name?.trim() ? { name: provenance.artist_name } : null,
+          posterAccountId: artwork.account_id,
+          medium: provenance.medium ?? artwork.medium,
+        });
+        updateData.artist_account_id = resolved.artistAccountId;
+        updateData.artist_profile_id = resolved.artistProfileId;
+      }
+    }
+    if (provenance.owner !== undefined) {
+      const owner = await resolveOwnerColumns(peopleDb, provenance.owner);
+      updateData.owned_by = owner.owned_by;
+      updateData.owned_by_account_id = owner.owned_by_account_id;
+      updateData.owned_by_profile_id = owner.owned_by_profile_id;
     }
     if (provenance.displayOrder !== undefined) {
       updateData.display_order = provenance.displayOrder ?? null;

@@ -14,10 +14,13 @@ import {
  *
  * - layered: every work floats over a blown-up, blurred detail of itself,
  *   with the next work ghosted behind it. The cover is a collage of the show.
- * - riso: two fluorescent inks (pink and blue) on cream, halftone dots and a
- *   misregistered second ink, the way a risograph prints. No black anywhere.
- * - xerox: photocopied cut-and-paste: toner-black photos taped down at an
- *   angle, typewriter captions and a ransom-note cover.
+ * - riso: two fluorescent inks (pink and blue) on cream. Each work sits on a
+ *   misregistered one-ink halftone plate of itself, the way a risograph prints.
+ * - xerox: photocopied cut-and-paste: photos taped down at an angle on
+ *   toner-grained paper, typewriter captions and a ransom-note cover.
+ *
+ * The works themselves are never filtered: every style shows the artwork in
+ * its true colours, and the effects live on the layers around it.
  *
  * "booklet" imposes the pages two to a Letter sheet in saddle-stitch order:
  * print double-sided, flip on the short edge, fold the stack and staple.
@@ -239,11 +242,11 @@ const layered: StyleKit = {
 
 // ── Riso ──────────────────────────────────────────────────────────────────────
 
-const RISO_DEFS = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="duo-pink" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="1.000 0.984"/><feFuncG type="table" tableValues="0.282 0.973"/><feFuncB type="table" tableValues="0.690 0.945"/></feComponentTransfer></filter><filter id="duo-blue" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="0.000 0.984"/><feFuncG type="table" tableValues="0.471 0.973"/><feFuncB type="table" tableValues="0.749 0.945"/></feComponentTransfer></filter><filter id="shadow-pink" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="1.000 0.984 0.984 0.984"/><feFuncG type="table" tableValues="0.282 0.973 0.973 0.973"/><feFuncB type="table" tableValues="0.690 0.945 0.945 0.945"/></feComponentTransfer></filter><filter id="shadow-blue" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="0.000 0.984 0.984 0.984"/><feFuncG type="table" tableValues="0.471 0.973 0.973 0.973"/><feFuncB type="table" tableValues="0.749 0.945 0.945 0.945"/></feComponentTransfer></filter></svg>`;
+const RISO_DEFS = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="duo-pink" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="1.000 0.984"/><feFuncG type="table" tableValues="0.282 0.973"/><feFuncB type="table" tableValues="0.690 0.945"/></feComponentTransfer></filter><filter id="duo-blue" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="0.000 0.984"/><feFuncG type="table" tableValues="0.471 0.973"/><feFuncB type="table" tableValues="0.749 0.945"/></feComponentTransfer></filter></svg>`;
 
-/** A riso print of an image: one ink, halftone, and the other ink's shadows off-register. */
+/** A work over an off-register, one-ink halftone plate of itself. The work stays unfiltered. */
 const risoFig = (url: string, style = '') =>
-  `<div class="fig"><div class="mono">${img(url, '', style)}<i class="dots"></i></div>${img(url, 'misreg', style)}</div>`;
+  `<div class="fig"><div class="plate">${img(url, '', style)}<i class="dots"></i></div>${img(url, 'art', style)}</div>`;
 
 const riso: StyleKit = {
   defs: RISO_DEFS,
@@ -254,12 +257,11 @@ const riso: StyleKit = {
   .zp { background: var(--paper); color: var(--blue); font-family: 'Space Mono', 'Courier New', monospace; }
   .p { --ink: var(--pink); --ink2: var(--blue); } .b { --ink: var(--blue); --ink2: var(--pink); }
   .fig { position: relative; display: inline-block; isolation: isolate; }
-  .mono { position: relative; overflow: hidden; }
-  .mono img { display: block; }
-  .p .mono img { filter: contrast(1.25) url(#duo-pink); } .b .mono img { filter: contrast(1.25) url(#duo-blue); }
-  .misreg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: translate(0.06in, 0.045in); mix-blend-mode: multiply; pointer-events: none; }
-  .p .misreg { filter: contrast(1.25) url(#shadow-blue); } .b .misreg { filter: contrast(1.25) url(#shadow-pink); }
-  .mono .dots { position: absolute; inset: 0; background-image: radial-gradient(circle, var(--paper) 30%, transparent 34%); background-size: 3.4pt 3.4pt; mix-blend-mode: lighten; opacity: 0.55; }
+  .fig .art { position: relative; display: block; z-index: 1; }
+  .fig .plate { position: absolute; inset: 0; overflow: hidden; transform: translate(0.1in, 0.08in); mix-blend-mode: multiply; pointer-events: none; }
+  .fig .plate img { display: block; width: 100%; height: 100%; }
+  .p .fig .plate img { filter: contrast(1.25) url(#duo-blue); } .b .fig .plate img { filter: contrast(1.25) url(#duo-pink); }
+  .fig .plate .dots { position: absolute; inset: 0; background-image: radial-gradient(circle, var(--paper) 30%, transparent 34%); background-size: 3.4pt 3.4pt; mix-blend-mode: lighten; opacity: 0.55; }
   .over { mix-blend-mode: multiply; }
   .big { font-family: 'Archivo Black', Impact, sans-serif; text-transform: uppercase; }
   .wfig { position: absolute; top: 0.85in; left: 0.45in; right: 0.45in; height: 4.25in; display: flex; align-items: center; justify-content: center; }
@@ -362,7 +364,7 @@ const xerox: StyleKit = {
   .zp { background: #efece5; color: #111; font-family: 'Special Elite', 'Courier New', monospace; box-shadow: inset 0 0 0.4in rgba(0,0,0,0.16); }
   .zp::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(rgba(0,0,0,0.09) 0.6px, transparent 0.8px), radial-gradient(rgba(0,0,0,0.06) 0.5px, transparent 0.7px); background-size: 9px 11px, 13px 7px; background-position: 0 0, 4px 5px; pointer-events: none; }
   .photo { position: absolute; background: #fff; padding: 0.08in; box-shadow: 0 1pt 3pt rgba(0,0,0,0.3); }
-  .photo img { display: block; filter: grayscale(1) contrast(1.75) brightness(1.08); }
+  .photo img { display: block; }
   .tape { position: absolute; width: 1.05in; height: 0.3in; background: rgba(226,218,176,0.78); box-shadow: 0 0.5pt 1pt rgba(0,0,0,0.15); }
   .tape.t { top: -0.14in; left: 50%; margin-left: -0.52in; transform: rotate(-3deg); }
   .tape.tl { top: -0.08in; left: -0.32in; transform: rotate(-38deg); }

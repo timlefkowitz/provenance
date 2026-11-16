@@ -21,6 +21,10 @@ import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
 
 import { sellExhibitionWork } from '~/app/exhibitions/_actions/sell-exhibition-work';
+import {
+  SoldToPicker,
+  type SoldToValue,
+} from '~/app/artworks/edit-provenance/_components/sold-to-picker';
 
 function today(): string {
   const d = new Date();
@@ -43,8 +47,7 @@ export function SellWorkDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [buyer, setBuyer] = useState<SoldToValue | null>(null);
   const initialPrice = defaultPriceCents ? String(defaultPriceCents / 100) : '';
   const [price, setPrice] = useState(initialPrice);
   const [soldOn, setSoldOn] = useState(today);
@@ -64,12 +67,18 @@ export function SellWorkDialog({
       priceCents = Math.round(value * 100);
     }
 
+    if (!buyer?.accountId && !buyer?.email?.trim()) {
+      setError('Pick the buyer, or add them with their email so they get their certificate');
+      return;
+    }
+
     startTransition(async () => {
       const result = await sellExhibitionWork({
         exhibitionId,
         artworkId,
-        buyerEmail: email,
-        buyerName: name.trim() || null,
+        buyerAccountId: buyer.accountId ?? null,
+        buyerEmail: buyer.email ?? null,
+        buyerName: buyer.name?.trim() || null,
         priceCents,
         soldOn,
       });
@@ -79,7 +88,7 @@ export function SellWorkDialog({
       }
       if (result.certificateSent) {
         toast.success(
-          `Marked sold. ${email.trim()} was sent their Certificate of Ownership to claim.`,
+          `Marked sold. ${buyer.name || buyer.email || 'The buyer'} was sent their Certificate of Ownership to claim.`,
         );
       } else {
         toast.warning('Marked sold, but the Certificate of Ownership was not sent.', {
@@ -90,8 +99,7 @@ export function SellWorkDialog({
         });
       }
       setOpen(false);
-      setEmail('');
-      setName('');
+      setBuyer(null);
       setPrice(initialPrice);
       router.refresh();
     });
@@ -133,29 +141,11 @@ export function SellWorkDialog({
           }}
         >
           <div className="space-y-1">
-            <Label htmlFor="sell-buyer-email">Buyer email</Label>
-            <Input
-              id="sell-buyer-email"
-              type="email"
-              required
-              autoComplete="off"
-              placeholder="collector@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="sell-buyer-name">
-              Buyer name{' '}
-              <span className="text-ink/40 font-normal">(optional)</span>
-            </Label>
-            <Input
-              id="sell-buyer-name"
-              autoComplete="off"
-              placeholder="Jane Smith"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Label>Buyer</Label>
+            <SoldToPicker value={buyer} onChange={setBuyer} />
+            <p className="text-ink/60 text-xs">
+              Pick them if they’re on Provenance. If not, add their name and email.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -193,7 +183,7 @@ export function SellWorkDialog({
             </Button>
             <Button
               type="submit"
-              disabled={pending || !email.trim()}
+              disabled={pending || !(buyer?.accountId || buyer?.email?.trim())}
               className="bg-wine text-parchment hover:bg-wine/90 gap-1.5 font-serif"
             >
               {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

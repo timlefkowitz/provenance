@@ -14,7 +14,10 @@ import { asUntyped } from '~/lib/supabase-untyped';
 export interface SellExhibitionWorkInput {
   exhibitionId: string;
   artworkId: string;
-  buyerEmail: string;
+  /** Email for a buyer not on Provenance (or to override). */
+  buyerEmail?: string | null;
+  /** A buyer picked from Provenance; their email is looked up here. */
+  buyerAccountId?: string | null;
   buyerName?: string | null;
   priceCents?: number | null;
   currency?: string | null;
@@ -43,15 +46,35 @@ export async function sellExhibitionWork(
     } = await client.auth.getUser();
     if (!user) return { success: false, error: 'You must be signed in' };
 
-    const buyerEmail = normalizeInviteEmail(input.buyerEmail);
+    const admin = asUntyped(getSupabaseServerAdminClient());
+
+    // A buyer picked from Provenance: use their account's email (never sent to the browser).
+    let buyerAccountId: string | null = null;
+    let accountEmail: string | null = null;
+    let accountName: string | null = null;
+    if (input.buyerAccountId) {
+      const { data: buyerAccount } = await admin
+        .from('accounts')
+        .select('id, name, email')
+        .eq('id', input.buyerAccountId)
+        .maybeSingle();
+      if (!buyerAccount) return { success: false, error: 'That buyer could not be found' };
+      if (buyerAccount.id === user.id) {
+        return { success: false, error: 'Pick the buyer, not yourself' };
+      }
+      buyerAccountId = buyerAccount.id as string;
+      accountEmail = (buyerAccount.email as string | null) ?? null;
+      accountName = (buyerAccount.name as string | null) ?? null;
+    }
+
+    const buyerEmail = normalizeInviteEmail(input.buyerEmail || accountEmail || '');
     if (!buyerEmail || !buyerEmail.includes('@')) {
       return {
         success: false,
-        error: "Enter the buyer's email to send their certificate",
+        error: "Pick the buyer or enter their email to send their certificate",
       };
     }
 
-    const admin = asUntyped(getSupabaseServerAdminClient());
     const { data: exhibition } = await admin
       .from('exhibitions')
       .select('id, title, gallery_id')
@@ -88,11 +111,11 @@ export async function sellExhibitionWork(
     const soldAt = input.soldOn
       ? new Date(`${input.soldOn}T12:00:00`).toISOString()
       : new Date().toISOString();
-    const buyerName = input.buyerName?.trim() || null;
+    const buyerName = input.buyerName?.trim() || accountName || null;
 
     const result = await markArtworkSold({
       artworkId: input.artworkId,
-      soldTo: { email: buyerEmail, name: buyerName },
+      soldTo: { accountId: buyerAccountId, email: buyerEmail, name: buyerName },
       priceCents: input.priceCents ?? null,
       currency: input.currency ?? 'USD',
       soldAt,

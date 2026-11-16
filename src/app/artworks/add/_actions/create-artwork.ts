@@ -1,6 +1,7 @@
 'use server';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { ensureArtistProfileForCertificate } from '~/app/artworks/_actions/ensure-artist-profile-for-certificate';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -101,19 +102,16 @@ export async function createArtwork(formData: FormData, userId: string) {
       });
     }
     let artistAccountId: string | null = null;
-    if (looksUpArtistAccount && artistName) {
-      try {
-        const { data: artistAccount } = await client
-          .from('accounts')
-          .select('id, public_data')
-          .eq('name', artistName)
-          .single();
-        if (artistAccount && getUserRole(artistAccount.public_data as Record<string, unknown>) === USER_ROLES.ARTIST) {
-          artistAccountId = artistAccount.id;
-        }
-      } catch {
-        // Artist not found by name; they can claim later
-      }
+    let artistProfileId: string | null = null;
+    if (looksUpArtistAccount && artistName && userRole) {
+      const ensured = await ensureArtistProfileForCertificate({
+        artistName,
+        posterAccountId: userId,
+        medium,
+        posterRole: userRole,
+      });
+      artistAccountId = ensured.artistAccountId;
+      artistProfileId = ensured.artistProfileId;
     }
 
     // Create artwork record
@@ -132,7 +130,8 @@ export async function createArtwork(formData: FormData, userId: string) {
       created_by: userId,
       updated_by: userId,
     };
-    if (artistAccountId) (insertPayload as any).artist_account_id = artistAccountId;
+    if (artistAccountId) insertPayload.artist_account_id = artistAccountId;
+    if (artistProfileId) insertPayload.artist_profile_id = artistProfileId;
 
     const { data: artwork, error } = await asUntyped(client)
       .from('artworks')

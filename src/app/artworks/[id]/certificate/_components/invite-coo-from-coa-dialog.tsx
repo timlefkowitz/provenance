@@ -15,6 +15,10 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
 import { createOwnerInviteFromCoa } from '~/app/claim/certificate/_actions/create-owner-invite-from-coa';
+import {
+  SoldToPicker,
+  type SoldToValue,
+} from '~/app/artworks/edit-provenance/_components/sold-to-picker';
 
 /** Dollars typed by the sender → cents; blank or invalid is no price. */
 function toCents(text: string): number | null {
@@ -47,8 +51,7 @@ export function InviteCooFromCoaDialog({
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
   const setOpen = onOpenChange ?? setInnerOpen;
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [buyer, setBuyer] = useState<SoldToValue | null>(null);
   const [price, setPrice] = useState(defaultPriceCents ? String(defaultPriceCents / 100) : '');
   const [pending, startTransition] = useTransition();
 
@@ -76,28 +79,11 @@ export function InviteCooFromCoaDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="invite-coo-email">Collector email</Label>
-            <Input
-              id="invite-coo-email"
-              type="email"
-              autoComplete="email"
-              placeholder="collector@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="font-serif"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="invite-coo-name">Collector name <span className="text-ink/40 font-normal">(optional)</span></Label>
-            <Input
-              id="invite-coo-name"
-              type="text"
-              autoComplete="name"
-              placeholder="Jane Smith"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="font-serif"
-            />
+            <Label>Collector</Label>
+            <SoldToPicker value={buyer} onChange={setBuyer} />
+            <p className="text-xs text-ink/50">
+              Pick them if they&apos;re on Provenance. If not, add their name and email.
+            </p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="invite-coo-price">
@@ -124,15 +110,16 @@ export function InviteCooFromCoaDialog({
           <Button
             type="button"
             className="bg-wine text-parchment hover:bg-wine/90 font-serif"
-            disabled={pending}
+            disabled={pending || !(buyer?.accountId || buyer?.email?.trim())}
             onClick={() => {
               startTransition(async () => {
                 console.log('[Certificates] InviteCooFromCoaDialog submit', { artworkId });
                 const result = await createOwnerInviteFromCoa(
                   artworkId,
-                  email,
-                  name.trim() || undefined,
+                  buyer?.email ?? '',
+                  buyer?.name?.trim() || undefined,
                   toCents(price),
+                  buyer?.accountId ?? null,
                 );
                 if (!result.success) {
                   toast.error(result.emailFailed ? 'Email not delivered' : result.error, {
@@ -145,8 +132,7 @@ export function InviteCooFromCoaDialog({
                 }
                 toast.success('Sale recorded and Certificate of Ownership sent. The collector claims it from their email.');
                 setOpen(false);
-                setEmail('');
-                setName('');
+                setBuyer(null);
               });
             }}
           >

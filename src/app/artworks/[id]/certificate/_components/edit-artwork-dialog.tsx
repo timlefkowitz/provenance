@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { editArtwork, uploadArtworkOriginalPhoto } from '../_actions/edit-artwork';
 import type { Artwork } from './certificate-of-authenticity';
+import { PersonPicker, personValueFromColumns, type PersonValue } from '~/components/person-picker';
 import Image from 'next/image';
 import { X, Upload, ArrowRight, Crop, History } from 'lucide-react';
 import { ImageCropDialog, type CropSource } from '~/components/image-crop-dialog';
@@ -72,6 +73,10 @@ export function EditArtworkDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const initialArtist = () =>
+    personValueFromColumns(artwork.artist_name, artwork.artist_account_id, artwork.artist_profile_id);
+  const [artistPerson, setArtistPerson] = useState<PersonValue | null>(initialArtist);
+  const [artistTouched, setArtistTouched] = useState(false);
   const user = useCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(artwork.image_url || null);
@@ -244,6 +249,9 @@ export function EditArtworkDialog({
         const formDataToSend = new FormData();
         formDataToSend.append('title', formData.title);
         formDataToSend.append('artist_name', formData.artist_name);
+        if (canPickArtist && artistTouched) {
+          formDataToSend.append('artist', artistPerson ? JSON.stringify(artistPerson) : '');
+        }
         formDataToSend.append('created_at', formData.created_at);
         formDataToSend.append('exhibitionId', formData.exhibitionId || '__none__');
         
@@ -305,6 +313,7 @@ export function EditArtworkDialog({
             toast.success('Edit request submitted. The creator will review your request.');
           }
           setOpen(false);
+          setArtistTouched(false);
           // Reset form
           setFormData({
             title: artwork.title || '',
@@ -340,6 +349,9 @@ export function EditArtworkDialog({
 
   const canInviteArtistFromThisCertificate =
     certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP;
+  // The holder of someone else's work picks the artist from Provenance; locked when
+  // the artist's own CoA backs this certificate (they approve changes).
+  const canPickArtist = isCreator && canInviteArtistFromThisCertificate && !canProposeImageToCoa;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -539,12 +551,27 @@ export function EditArtworkDialog({
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="artist_name" className={FIELD_LABEL}>Artist</Label>
-                  <Input
-                    id="artist_name"
-                    value={formData.artist_name}
-                    onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
-                    className={FIELD_INPUT}
-                  />
+                  {canPickArtist ? (
+                    <PersonPicker
+                      id="artist_name"
+                      role="artist"
+                      noun="artist"
+                      placeholder="Search for the artist, or add them"
+                      value={artistPerson}
+                      onChange={(next) => {
+                        setArtistPerson(next);
+                        setArtistTouched(true);
+                        setFormData({ ...formData, artist_name: next?.name ?? '' });
+                      }}
+                    />
+                  ) : (
+                    <Input
+                      id="artist_name"
+                      value={formData.artist_name}
+                      onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
+                      className={FIELD_INPUT}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -787,6 +814,8 @@ export function EditArtworkDialog({
               variant="outline"
               onClick={() => {
                 setOpen(false);
+                setArtistPerson(initialArtist());
+                setArtistTouched(false);
                 // Reset form on cancel
                 setFormData({
                   title: artwork.title || '',

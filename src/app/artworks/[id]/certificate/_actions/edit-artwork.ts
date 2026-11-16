@@ -1,6 +1,7 @@
 'use server';
 
 import { asUntyped } from '~/lib/supabase-untyped';
+import { parsePersonValue } from '~/lib/people/parse-person-value';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { revalidatePath } from 'next/cache';
@@ -249,6 +250,10 @@ export async function editArtwork(
       }
       if (updateFields.artist_name !== undefined) {
         provenanceUpdate.artist_name = updateFields.artist_name;
+      }
+      // A picked artist (PersonPicker) links the account/profile, not just the name.
+      if (formData.has('artist') && updateFields.artist_name !== undefined) {
+        provenanceUpdate.artist = parsePersonValue(formData.get('artist'));
       }
       if (updateFields.exhibitionId !== undefined) {
         provenanceUpdate.exhibitionId = updateFields.exhibitionId;

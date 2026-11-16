@@ -26,6 +26,8 @@ import { getInstitutionLockError } from '~/lib/institution-account-guard';
 import { isManagedArtistOf, isManagedCollectionOf } from '~/lib/managed-collections';
 import { createArtworkStripeListing } from './create-artwork-stripe-listing';
 import { containsObjectionableText, OBJECTIONABLE_TEXT_MESSAGE } from '~/lib/moderation/text-filter';
+import { parsePersonValue } from '~/lib/people/parse-person-value';
+import { ownerIdColumns, resolveOwnerColumns } from '~/lib/people/resolve-owner';
 
 export async function createArtworksBatch(formData: FormData, userId: string) {
   try {
@@ -40,7 +42,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const titles = formData.getAll('titles') as string[];
     const locations = formData.getAll('locations') as string[]; // JSON strings
     const description = formData.get('description') as string || '';
-    const artistName = formData.get('artistName') as string || '';
+    // The artist picked in the form (account / placeholder profile / new name).
+    const artistPerson = parsePersonValue(formData.get('artist'));
+    const artistName = artistPerson?.name || (formData.get('artistName') as string) || '';
+    const ownerPerson = parsePersonValue(formData.get('owner'));
     const medium = formData.get('medium') as string || '';
     const creationDate = formData.get('creationDate') as string || '';
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
@@ -251,6 +256,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     });
 
     const adminClient = getSupabaseServerAdminClient();
+    const ownerColumns = ownerPerson
+      ? await resolveOwnerColumns(adminClient, ownerPerson)
+      : null;
     for (let i = 0; i < images.length; i++) {
       const imageFile = images[i];
       const title = titles[i];
@@ -298,6 +306,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           if (artistName?.trim()) {
             const ensured = await ensureArtistProfileForCertificate({
               artistName: artistName.trim(),
+              artist: artistPerson,
               posterAccountId: userId,
               medium,
               posterRole: effectiveRole,
@@ -315,6 +324,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           if (artistName?.trim()) {
             const ensured = await ensureArtistProfileForCertificate({
               artistName: artistName.trim(),
+              artist: artistPerson,
               posterAccountId: userId,
               medium,
               posterRole: effectiveRole,
@@ -376,7 +386,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           value_is_public: valueIsPublic,
           edition: edition || null,
           production_location: productionLocation || null,
-          owned_by: ownedBy || null,
+          owned_by: ownerColumns?.owned_by ?? (ownedBy || null),
+          ...(ownerColumns ? ownerIdColumns(ownerColumns) : {}),
           owned_by_is_public: ownedByIsPublic,
           sold_by: soldBy || null,
           sold_by_is_public: soldByIsPublic,
@@ -401,7 +412,8 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
           try {
             const { data: profile } = await asUntyped(client)
               .from('user_profiles')
-              .select('id, user_id, role')
+              // '*' so this keeps working if the privacy column isn't migrated yet.
+              .select('*')
               .eq('id', galleryProfileId)
               .eq('role', effectiveRole)
               .single();
@@ -424,6 +436,10 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
               
               if (isOwner || isMember) {
                 insertData.gallery_profile_id = galleryProfileId;
+                // The institution/gallery chose to keep its works private.
+                if (profile.artworks_private_by_default === true) {
+                  insertData.is_public = false;
+                }
               }
             }
           } catch (error) {
@@ -534,9 +550,9 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
             });
           }
           
-          // Create unclaimed artist profile in registry if gallery/institution/collector added artwork with artist name
-          // and artist doesn't have an account yet
-          if ((posterRequiresArtistClaim(effectiveRole) || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId) {
+          // Fallback only: resolveArtist (via ensureArtistProfileForCertificate) already links or
+          // creates the placeholder profile; this runs if that failed to produce one.
+          if ((posterRequiresArtistClaim(effectiveRole) || effectiveRole === USER_ROLES.COLLECTOR) && artistName && !artistAccountId && !artistProfileId) {
             try {
               // Check if unclaimed profile already exists for this artist name
               const { data: existingProfile } = await asUntyped(client)

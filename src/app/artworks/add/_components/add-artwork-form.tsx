@@ -49,6 +49,9 @@ import type { UserExhibition } from '../_actions/get-user-exhibitions';
 import { CreateExhibitionDialog } from './create-exhibition-dialog';
 import { ForArtistPicker, type PendingArtistHandoff } from './for-artist-picker';
 import { sendProfileHandoff } from '~/app/profiles/_actions/send-profile-handoff';
+import { PersonPicker, type PersonValue } from '~/components/person-picker';
+import type { PersonSearchResult } from '~/lib/people/types';
+import { invitePeopleForArtworks } from '~/app/artworks/_actions/invite-people-for-artworks';
 import { toast } from '@kit/ui/sonner';
 
 type ImagePreview = {
@@ -399,6 +402,9 @@ export function AddArtworkForm({
     edition: '',
     productionLocation: '',
     ownedBy: '',
+    // Structured "who": picked from Provenance or added as new (with optional invite email)
+    artistPerson: null as PersonValue | null,
+    ownerPerson: null as PersonValue | null,
     ownedByIsPublic: false,
     soldBy: '',
     soldByIsPublic: false,
@@ -502,12 +508,29 @@ export function AddArtworkForm({
   const selectedManagedArtist =
     artistsForPicker.find((a) => a.id === formData.managedArtistId) ?? null;
 
+  // Galleries, institutions and collectors name someone else as the artist: pick them
+  // from Provenance (or add them) so the work is linked to the right account.
+  const usesArtistPicker =
+    !selectedManagedArtist &&
+    (isTeamProfileRole(userRole) || userRole === USER_ROLES.COLLECTOR);
+  const pastArtistSuggestions: PersonSearchResult[] = pastArtists.slice(0, 8).map((a) => ({
+    key: `past:${a.artist_name}`,
+    accountId: null,
+    profileId: null,
+    name: a.artist_name,
+    picture_url: null,
+    role: USER_ROLES.ARTIST,
+    location: a.count > 1 ? `${a.count} of your works` : 'In your works',
+    claimed: true,
+  }));
+
   const handleForArtistSelect = (artist: UserProfile | null, handoff: PendingArtistHandoff | null) => {
     setPendingArtistHandoff(artist ? handoff : null);
     setFormData((prev) => ({
       ...prev,
       managedArtistId: artist ? artist.id : '',
       artistName: artist ? artist.managed_for_name || artist.name : defaultArtistName,
+      artistPerson: null,
       sourceCoaCertificateNumber: artist ? '' : prev.sourceCoaCertificateNumber,
     }));
   };
@@ -769,6 +792,12 @@ export function AddArtworkForm({
           });
           formDataToSend.append('description', formData.description);
           formDataToSend.append('artistName', formData.artistName);
+          if (usesArtistPicker && formData.artistPerson) {
+            formDataToSend.append('artist', JSON.stringify(formData.artistPerson));
+          }
+          if (formData.ownerPerson) {
+            formDataToSend.append('owner', JSON.stringify(formData.ownerPerson));
+          }
           formDataToSend.append('medium', formData.medium);
           formDataToSend.append('creationDate', formData.creationDate);
           formDataToSend.append('isPublic', formData.isPublic.toString());
@@ -870,6 +899,31 @@ export function AddArtworkForm({
           });
         }
         gtmService.trackArtworkCreated(!hasExistingArtworks);
+        // Invite a new artist (if an email was given) and the named owner, one email each.
+        const ownerToInvite =
+          formData.ownerPerson && userRole !== USER_ROLES.COLLECTOR ? formData.ownerPerson : null;
+        const artistToInvite =
+          usesArtistPicker && formData.artistPerson?.isNew && formData.artistPerson.email
+            ? formData.artistPerson
+            : null;
+        if (allArtworkIds.length > 0 && (ownerToInvite || artistToInvite)) {
+          try {
+            const invited = await invitePeopleForArtworks({
+              artworkIds: allArtworkIds,
+              artist: artistToInvite,
+              owner: ownerToInvite,
+            });
+            if (invited.artist?.sent) toast.success('Invite sent to the artist');
+            if (invited.owner?.sent) toast.success('Ownership invite sent to the owner');
+            const failed = [...(invited.artist?.errors ?? []), ...(invited.owner?.errors ?? [])];
+            if (failed.length && !invited.artist?.sent && !invited.owner?.sent) {
+              toast.error(`Works uploaded, but the invite didn't send: ${failed[0]}`);
+            }
+          } catch (inviteErr) {
+            console.error('[AddArtworkForm] invitePeopleForArtworks failed', inviteErr);
+            toast.error("Works uploaded, but the invite didn't send. You can send it from the certificate.");
+          }
+        }
         if (selectedManagedArtist && pendingArtistHandoff && allArtworkIds.length > 0) {
           const sent = await sendProfileHandoff(selectedManagedArtist.id, pendingArtistHandoff);
           if (sent.success) {
@@ -1168,57 +1222,24 @@ export function AddArtworkForm({
       {/* Basic Information */}
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="artistName">Artist Name</Label>
-          {isTeamProfileRole(userRole) && pastArtists.length > 0 ? (
-            <div className="space-y-2">
-              <Select
-                value={
-                  formData.artistName &&
-                  pastArtists.some((a) => a.artist_name === formData.artistName)
-                    ? formData.artistName
-                    : '__none__'
-                }
-                onValueChange={(value) => {
-                  if (value && value !== '__none__') {
-                    setFormData({ ...formData, artistName: value });
-                  } else {
-                    setFormData({ ...formData, artistName: '' });
-                  }
-                }}
-              >
-                <SelectTrigger id="artistNameSelect" className="font-serif">
-                  <SelectValue placeholder="Select a past artist or type below" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__" className="font-serif">
-                    Enter new artist name
-                  </SelectItem>
-                  {pastArtists.map((artist) => (
-                    <SelectItem
-                      key={artist.artist_name}
-                      value={artist.artist_name}
-                      className="font-serif"
-                    >
-                      {artist.artist_name}
-                      {artist.count > 1 && (
-                        <span className="text-ink/60 ml-2 text-xs">
-                          ({artist.count} artworks)
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                id="artistName"
-                value={formData.artistName}
-                onChange={(e) =>
-                  setFormData({ ...formData, artistName: e.target.value })
-                }
-                placeholder="Or type artist name here"
-                className="font-serif"
-              />
-            </div>
+          <Label htmlFor="artistName">Artist</Label>
+          {usesArtistPicker ? (
+            <PersonPicker
+              id="artistName"
+              role="artist"
+              noun="artist"
+              placeholder="Search for the artist, or add them"
+              askEmailForNew
+              suggestions={pastArtistSuggestions}
+              value={formData.artistPerson}
+              onChange={(next) =>
+                setFormData({
+                  ...formData,
+                  artistPerson: next,
+                  artistName: next?.name ?? '',
+                })
+              }
+            />
           ) : (
             <Input
               id="artistName"
@@ -1232,12 +1253,9 @@ export function AddArtworkForm({
             />
           )}
           <p className="text-ink/60 font-serif text-xs">
-            This will be applied to all artworks
-            {isTeamProfileRole(userRole) && pastArtists.length > 0 && (
-              <span className="mt-1 block">
-                Select from past artists or enter a new name
-              </span>
-            )}
+            {usesArtistPicker
+              ? 'Pick them if they’re on Provenance so the works reach their account. If not, add them; with an email they’re invited to claim the works.'
+              : 'This will be applied to all artworks'}
           </p>
         </div>
 
@@ -1317,15 +1335,24 @@ export function AddArtworkForm({
           <AccordionContent>
             <div className="space-y-2">
               <Label htmlFor="ownedBy">Owned By</Label>
-              <ArtworkTextTypeahead
+              <PersonPicker
                 id="ownedBy"
-                value={formData.ownedBy}
-                onChange={(next) => setFormData({ ...formData, ownedBy: next })}
-                placeholder="Current owner name or collection"
-                className="font-serif"
-                userId={userId}
-                field="owned_by"
+                role="any"
+                noun="owner"
+                placeholder="Search for the owner, or add them"
+                askEmailForNew={userRole !== USER_ROLES.COLLECTOR}
+                includeSelf
+                value={formData.ownerPerson}
+                onChange={(next) =>
+                  setFormData({ ...formData, ownerPerson: next, ownedBy: next?.name ?? '' })
+                }
               />
+              {formData.ownerPerson && userRole !== USER_ROLES.COLLECTOR ? (
+                <p className="text-ink/60 font-serif text-xs">
+                  If they’re on Provenance (or you add an email), they’re invited to accept a
+                  Certificate of Ownership. The work moves to them only when they accept.
+                </p>
+              ) : null}
               <div className="border-wine/20 bg-parchment/50 flex items-center justify-between rounded-lg border p-3">
                 <div className="space-y-0.5">
                   <Label

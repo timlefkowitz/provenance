@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { asUntyped } from '~/lib/supabase-untyped';
-import { getUserRole, USER_ROLES } from '~/lib/user-roles';
 import { checkRateLimit } from '~/lib/rate-limit';
-import { escapeIlike } from '~/lib/escape-ilike';
+import { getBlockedUserIds } from '~/lib/moderation/blocks';
+import { searchPeople } from '~/lib/people/search-people';
 
 /**
- * Find someone on Provenance by name, to hand a drafted collection or an artist's
- * certificates to. Signed-in only; returns display name and avatar, never email.
- * `role=artist` limits results to artist accounts.
+ * Find someone on Provenance by name: an artist for an artwork, a buyer or
+ * owner, a recipient for a handoff. Signed-in only; never returns email.
+ *
+ * - `role` limits to one role (default any).
+ * - `include_unclaimed=1` also returns placeholder profiles nobody has claimed
+ *   yet (e.g. an artist a gallery added), so they get reused, not duplicated.
+ *
+ * Each result keeps `id` (the account id, or the profile id for placeholders)
+ * for older callers.
  */
 const QuerySchema = z.object({
   q: z.string().trim().min(2).max(100),
-  role: z.enum(['artist', 'any']).default('any'),
+  role: z.enum(['artist', 'collector', 'gallery', 'institution', 'any']).default('any'),
+  include_unclaimed: z.enum(['0', '1']).default('0'),
+  include_self: z.enum(['0', '1']).default('0'),
 });
 
 export async function GET(request: NextRequest) {
@@ -21,40 +28,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([], { status: 429 });
   }
 
+  const sp = request.nextUrl.searchParams;
   const parsed = QuerySchema.safeParse({
-    q: request.nextUrl.searchParams.get('q') ?? '',
-    role: request.nextUrl.searchParams.get('role') ?? undefined,
+    q: sp.get('q') ?? '',
+    role: sp.get('role') ?? undefined,
+    include_unclaimed: sp.get('include_unclaimed') ?? undefined,
+    include_self: sp.get('include_self') ?? undefined,
   });
   if (!parsed.success) {
     return NextResponse.json([], { status: 400 });
   }
 
-  const client = asUntyped(getSupabaseServerClient());
+  const client = getSupabaseServerClient();
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
     return NextResponse.json([], { status: 401 });
   }
 
-  const { data: accounts, error } = await client
-    .from('accounts')
-    .select('id, name, picture_url, public_data')
-    .ilike('name', `%${escapeIlike(parsed.data.q)}%`)
-    .neq('id', user.id)
-    .limit(20);
-  if (error) {
-    console.error('[SearchPeople] query failed', error);
+  try {
+    const blocked = await getBlockedUserIds(user.id);
+    if (parsed.data.include_self !== '1') blocked.add(user.id);
+
+    const people = await searchPeople(client, {
+      query: parsed.data.q,
+      role: parsed.data.role,
+      includeUnclaimed: parsed.data.include_unclaimed === '1',
+      excludeIds: blocked,
+    });
+
+    return NextResponse.json(
+      people.map((p) => ({ ...p, id: p.accountId ?? p.profileId })),
+    );
+  } catch (err) {
+    console.error('[SearchPeople] query failed', err);
     return NextResponse.json([], { status: 500 });
   }
-
-  const people = (accounts ?? [])
-    .map((account) => ({
-      id: account.id as string,
-      name: account.name as string,
-      picture_url: (account.picture_url as string | null) ?? null,
-      role: getUserRole(account.public_data as Record<string, unknown>),
-    }))
-    .filter((p) => p.name && (parsed.data.role !== 'artist' || p.role === USER_ROLES.ARTIST))
-    .slice(0, 10);
-
-  return NextResponse.json(people);
 }

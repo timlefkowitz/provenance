@@ -17,6 +17,8 @@ import { ExhibitionSelector } from './exhibition-selector';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { sendArtistClaimInvite } from '../../certificate/_actions/send-artist-claim-invite';
 import { CERTIFICATE_TYPES } from '~/lib/user-roles';
+import { PersonPicker, personValueFromColumns, type PersonValue } from '~/components/person-picker';
+import { invitePeopleForArtworks } from '~/app/artworks/_actions/invite-people-for-artworks';
 import {
   FIELD_LABEL,
   FIELD_INPUT,
@@ -47,6 +49,10 @@ type Artwork = {
   edition: string | null;
   production_location: string | null;
   owned_by: string | null;
+  owned_by_account_id?: string | null;
+  owned_by_profile_id?: string | null;
+  artist_account_id?: string | null;
+  artist_profile_id?: string | null;
   owned_by_is_public: boolean | null;
   sold_by: string | null;
   sold_by_is_public: boolean | null;
@@ -124,6 +130,15 @@ export function EditProvenanceForm({
     soldByIsPublic: artwork.sold_by_is_public ?? false, // Default to false (private)
     exhibitionId: currentExhibitionId || null,
   });
+  // Picked people; sent only when changed so untouched links are left alone.
+  const [artistPerson, setArtistPerson] = useState<PersonValue | null>(() =>
+    personValueFromColumns(artwork.artist_name, artwork.artist_account_id, artwork.artist_profile_id),
+  );
+  const [ownerPerson, setOwnerPerson] = useState<PersonValue | null>(() =>
+    personValueFromColumns(artwork.owned_by, artwork.owned_by_account_id, artwork.owned_by_profile_id),
+  );
+  const [artistTouched, setArtistTouched] = useState(false);
+  const [ownerTouched, setOwnerTouched] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,11 +153,27 @@ export function EditProvenanceForm({
 
     startTransition(async () => {
       try {
-        const result = await updateProvenance(artwork.id, formData);
+        const result = await updateProvenance(artwork.id, {
+          ...formData,
+          ...(artistTouched ? { artist: artistPerson } : {}),
+          ...(ownerTouched ? { owner: ownerPerson } : {}),
+        });
 
         if (result.error) {
           setError(result.error);
         } else {
+          const inviteOwner =
+            ownerTouched &&
+            ownerPerson &&
+            (artwork.certificate_type === CERTIFICATE_TYPES.AUTHENTICITY ||
+              artwork.certificate_type === CERTIFICATE_TYPES.SHOW);
+          if (inviteOwner) {
+            try {
+              await invitePeopleForArtworks({ artworkIds: [artwork.id], owner: ownerPerson });
+            } catch (inviteErr) {
+              console.error('[EditProvenanceForm] owner invite failed', inviteErr);
+            }
+          }
           setSuccess(true);
           setSentForApproval(Boolean('pendingApproval' in result && result.pendingApproval));
           setTimeout(() => {
@@ -159,6 +190,8 @@ export function EditProvenanceForm({
   const canSendArtistInvite =
     artwork.certificate_type === CERTIFICATE_TYPES.SHOW ||
     artwork.certificate_type === CERTIFICATE_TYPES.OWNERSHIP;
+  // Someone else's work whose artist isn't locked to an approving artist.
+  const canPickArtist = canSendArtistInvite && !approverName;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-12">
@@ -233,13 +266,28 @@ export function EditProvenanceForm({
         <div className="grid gap-7 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="artistName" className={FIELD_LABEL}>Artist</Label>
-            <Input
-              id="artistName"
-              value={formData.artist_name}
-              onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
-              placeholder="Artist name"
-              className={FIELD_INPUT}
-            />
+            {canPickArtist ? (
+              <PersonPicker
+                id="artistName"
+                role="artist"
+                noun="artist"
+                placeholder="Search for the artist, or add them"
+                value={artistPerson}
+                onChange={(next) => {
+                  setArtistPerson(next);
+                  setArtistTouched(true);
+                  setFormData({ ...formData, artist_name: next?.name ?? '' });
+                }}
+              />
+            ) : (
+              <Input
+                id="artistName"
+                value={formData.artist_name}
+                onChange={(e) => setFormData({ ...formData, artist_name: e.target.value })}
+                placeholder="Artist name"
+                className={FIELD_INPUT}
+              />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -392,14 +440,22 @@ export function EditProvenanceForm({
 
         <div className="space-y-3">
           <Label htmlFor="ownedBy" className={FIELD_LABEL}>Owned by</Label>
-          <ArtworkTextTypeahead
+          <PersonPicker
             id="ownedBy"
-            value={formData.ownedBy}
-            onChange={(next) => setFormData({ ...formData, ownedBy: next })}
-            placeholder="Current owner or collection"
-            className={FIELD_INPUT}
-            userId={user.data?.id}
-            field="owned_by"
+            role="any"
+            noun="owner"
+            placeholder="Search for the owner, or add them"
+            includeSelf
+            askEmailForNew={
+              artwork.certificate_type === CERTIFICATE_TYPES.AUTHENTICITY ||
+              artwork.certificate_type === CERTIFICATE_TYPES.SHOW
+            }
+            value={ownerPerson}
+            onChange={(next) => {
+              setOwnerPerson(next);
+              setOwnerTouched(true);
+              setFormData({ ...formData, ownedBy: next?.name ?? '' });
+            }}
           />
           <PrivacyToggle
             id="ownedByIsPublic"

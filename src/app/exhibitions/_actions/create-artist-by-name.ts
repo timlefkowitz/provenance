@@ -4,6 +4,8 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getUserRole, isTeamProfileRole, USER_ROLES } from '~/lib/user-roles';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
+import { escapeIlike } from '~/lib/escape-ilike';
+import { normalizePersonName } from '~/lib/people/types';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 /**
@@ -35,28 +37,28 @@ export async function createArtistByName(artistName: string) {
       return { error: 'Only galleries and institutions can create artists', success: false };
     }
 
-    // Check if artist with this name already exists
+    // Reuse an artist account with the same name (ignoring case and spacing).
+    const trimmedName = artistName.trim().replace(/\s+/g, ' ');
     const { data: existing } = await client
       .from('accounts')
-      .select('id, name, public_data')
-      .ilike('name', artistName.trim())
-      .limit(1);
+      .select('id, name, picture_url, public_data')
+      .ilike('name', escapeIlike(trimmedName))
+      .limit(10);
 
-    if (existing && existing.length > 0) {
-      const existingAccount = existing[0];
-      const existingRole = getUserRole(existingAccount.public_data as Record<string, unknown>);
-      
-      if (existingRole === USER_ROLES.ARTIST) {
-        // Artist already exists, return it
-        return {
-          success: true,
-          artist: {
-            id: existingAccount.id,
-            name: existingAccount.name,
-            picture_url: null,
-          },
-        };
-      }
+    const existingArtist = (existing ?? []).find(
+      (row: { name: string | null; public_data: unknown }) =>
+        normalizePersonName(row.name) === normalizePersonName(trimmedName) &&
+        getUserRole(row.public_data as Record<string, unknown>) === USER_ROLES.ARTIST,
+    );
+    if (existingArtist) {
+      return {
+        success: true,
+        artist: {
+          id: existingArtist.id as string,
+          name: existingArtist.name as string,
+          picture_url: (existingArtist.picture_url as string | null) ?? null,
+        },
+      };
     }
 
     // Create a new account for the artist
@@ -67,7 +69,7 @@ export async function createArtistByName(artistName: string) {
     const { data: newAccount, error: createError } = await adminClient
       .from('accounts')
       .insert({
-        name: artistName.trim(),
+        name: trimmedName,
         email: null,
         public_data: {
           role: USER_ROLES.ARTIST,

@@ -30,6 +30,8 @@ export async function createOwnerInviteFromCoa(
   inviteeEmailRaw: string,
   inviteeName?: string,
   priceCents?: number | null,
+  /** A collector picked from Provenance: their account email is used. */
+  inviteeAccountId?: string | null,
 ): Promise<CreateOwnerInviteResult> {
   console.log('[Certificates] createOwnerInviteFromCoa started', { artworkId });
   try {
@@ -40,6 +42,22 @@ export async function createOwnerInviteFromCoa(
 
     if (!user) {
       return { success: false, error: 'You must be signed in' };
+    }
+
+    if (inviteeAccountId) {
+      const { data: invitee } = await asUntyped(getSupabaseServerAdminClient())
+        .from('accounts')
+        .select('id, name, email')
+        .eq('id', inviteeAccountId)
+        .maybeSingle();
+      if (!invitee?.email) {
+        return { success: false, error: 'That collector could not be found' };
+      }
+      if (invitee.id === user.id) {
+        return { success: false, error: 'Pick the collector, not yourself' };
+      }
+      inviteeEmailRaw = invitee.email as string;
+      inviteeName = inviteeName || ((invitee.name as string | null) ?? undefined);
     }
 
     const inviteeEmail = normalizeInviteEmail(inviteeEmailRaw);
