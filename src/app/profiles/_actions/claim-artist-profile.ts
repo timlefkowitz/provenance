@@ -68,17 +68,8 @@ export async function claimArtistProfile(profileId: string, message?: string) {
       }
     }
 
-    // Check if user already has an artist profile
-    const { data: existingProfile } = await client
-      .from('user_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('role', 'artist')
-      .single();
-
-    if (existingProfile && !isManaged) {
-      return { error: 'You already have an artist profile. You can only claim if you don\'t have one yet.' };
-    }
+    // An artist who already has a profile may still claim a duplicate someone added for them;
+    // on approval it merges into their existing profile (works and contributed content move over).
 
     // Check if there's already a pending claim for this profile by this artist
     const { data: existingClaim } = await client

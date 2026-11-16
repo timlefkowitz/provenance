@@ -79,7 +79,10 @@ export type NotificationType =
   | 'profile_handoff_declined'
   | 'artist_profile_claim_request'
   | 'artist_profile_claim_approved'
-  | 'artist_profile_claim_rejected';
+  | 'artist_profile_claim_rejected'
+  | 'artist_profile_update_request'
+  | 'artist_profile_update_request_fulfilled'
+  | 'artist_profile_update_request_dismissed';
 
 export interface CreateNotificationParams {
   userId: string;

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '~/lib/notifications';
 import { isManagedArtistOf } from '~/lib/managed-collections';
 import { transferManagedProfile, type HandoffProfile } from '~/lib/profile-handoff/handoff';
+import { mergeUnclaimedArtistProfile } from '~/lib/artist-profile-content/merge-profile';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 /**
@@ -125,26 +126,62 @@ export async function approveArtistProfileClaim(
         return { error: 'This profile has already been claimed by another artist' };
       }
 
-      // Check if artist already has a profile
+      // The artist already has a profile: this one is a duplicate someone added before they
+      // joined. Merge it into theirs: certificates crediting it, and the bio, statement, CV and
+      // header people contributed, move over; the duplicate is retired.
       const { data: existingProfile } = await adminClient
         .from('user_profiles')
         .select('id')
         .eq('user_id', claim.artist_user_id)
         .eq('role', 'artist')
-        .single();
+        .eq('is_claimed', true)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
       if (existingProfile) {
-        // Update claim status to rejected
+        const merged = await mergeUnclaimedArtistProfile({
+          fromProfileId: claim.profile_id,
+          toProfileId: existingProfile.id,
+          artistUserId: claim.artist_user_id,
+        });
+        if (!merged.success) {
+          return { error: merged.error };
+        }
+        const now = new Date().toISOString();
         await adminClient
           .from('artist_profile_claims')
-          .update({
-            status: 'rejected',
-            gallery_response: 'Artist already has an artist profile',
-            updated_at: new Date().toISOString(),
-          })
+          .update({ status: 'approved', gallery_response: galleryResponse?.trim() || null, updated_at: now })
           .eq('id', claimId);
-
-        return { error: 'This artist already has an artist profile' };
+        await adminClient
+          .from('artist_profile_claims')
+          .update({ status: 'rejected', gallery_response: 'Another claim was approved', updated_at: now })
+          .eq('profile_id', claim.profile_id)
+          .eq('status', 'pending');
+        try {
+          await createNotification({
+            userId: claim.artist_user_id,
+            type: 'artist_claim_approved',
+            title: `Profile Claim Approved: ${profile.name}`,
+            message: `${account.name || 'The profile creator'} approved your claim for "${profile.name}". Its works and profile details were added to your artist profile.`,
+            relatedUserId: user.id,
+            metadata: { profileId: existingProfile.id, mergedProfileId: claim.profile_id, claimId: claim.id },
+          });
+        } catch (notifError) {
+          console.error('Error creating notification:', notifError);
+        }
+        console.log('[Claims] approved claim merged duplicate profile', {
+          claimId,
+          fromProfileId: claim.profile_id,
+          toProfileId: existingProfile.id,
+          works: merged.works,
+        });
+        revalidatePath('/registry');
+        revalidatePath('/profile');
+        revalidatePath('/notifications');
+        revalidatePath(`/artists/${claim.artist_user_id}`);
+        return { success: true };
       }
 
       // Approve: Update claim status and link profile to artist

@@ -7,6 +7,10 @@ import { Calendar, MapPin, Newspaper, FileText } from 'lucide-react';
 import { SocialLinkItem } from './social-link-item';
 import { TacoAvatar } from '~/components/taco-avatar';
 import { ThisIsMeButton } from './this-is-me-button';
+import { ProfileHeaderBanner } from './profile-header-banner';
+import { UnclaimedArtistContribute } from './unclaimed-artist-contribute';
+import { cvEntriesFromCvJson } from '~/lib/artist-details/fields';
+import type { ArtistCvJson } from '~/lib/grants';
 
 export type UnclaimedArtistProfileRow = {
   id: string;
@@ -21,7 +25,12 @@ export type UnclaimedArtistProfileRow = {
   news_publications?: { title: string; url: string; publication_name?: string; date?: string }[] | null;
   /** Present when the registry profile has an uploaded CV */
   artist_cv_json?: unknown | null;
+  artist_cv_uploaded_at?: string | null;
+  artist_statement?: string | null;
+  header_image_url?: string | null;
 };
+
+export type ProfileContributorCredit = { userId: string; name: string };
 
 export type ExhibitionSummary = {
   id: string;
@@ -37,6 +46,8 @@ export function UnclaimedArtistPublicView({
   exhibitions,
   currentUserId,
   claim = null,
+  contributors = [],
+  contribute = true,
 }: {
   profile: UnclaimedArtistProfileRow;
   artworks: ArtworkCardArtwork[];
@@ -44,6 +55,10 @@ export function UnclaimedArtistPublicView({
   currentUserId?: string;
   /** Set when the artist can claim this profile ("This is me") */
   claim?: { addedByName: string | null; signedIn: boolean } | null;
+  /** People who added information to this profile */
+  contributors?: ProfileContributorCredit[];
+  /** Show the "Add information" panel (unclaimed artists only) */
+  contribute?: boolean;
 }) {
   const displayName = profile.name;
   const pictureUrl = profile.picture_url;
@@ -55,12 +70,17 @@ export function UnclaimedArtistPublicView({
   const galleries = profile.galleries || [];
   const newsPublications = profile.news_publications || [];
   const hasCv = Boolean(profile.artist_cv_json);
+  const statement = profile.artist_statement?.trim() || '';
+  const cvExhibitions = cvEntriesFromCvJson(profile.artist_cv_json as ArtistCvJson | null)
+    .filter((e) => e.type === 'exhibition')
+    .sort((a, b) => (parseInt(b.year ?? '', 10) || 0) - (parseInt(a.year ?? '', 10) || 0));
 
   const hasSidebarContent =
-    Boolean(bio) || galleries.length > 0 || newsPublications.length > 0;
+    Boolean(bio) || galleries.length > 0 || newsPublications.length > 0 || contributors.length > 0;
 
   return (
     <div className="min-h-screen">
+      <ProfileHeaderBanner url={profile.header_image_url} alt={displayName} />
       {/* ── HERO HEADER ─────────────────────────────────────────── */}
       <div className="border-b border-wine/15">
         <div className="container mx-auto px-4 max-w-6xl py-10 md:py-14">
@@ -188,11 +208,73 @@ export function UnclaimedArtistPublicView({
                   </ul>
                 </section>
               )}
+
+              {contributors.length > 0 && (
+                <section className={bio || galleries.length > 0 || newsPublications.length > 0 ? 'border-t border-wine/10 pt-8' : ''}>
+                  <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-3">Contributed by</p>
+                  <p className="font-serif text-sm text-ink/70" data-testid="profile-contributors">
+                    {contributors.map((c, i) => (
+                      <span key={c.userId}>
+                        {i > 0 && ', '}
+                        <Link href={`/artists/${c.userId}`} className="hover:text-wine hover:underline">
+                          {c.name}
+                        </Link>
+                      </span>
+                    ))}
+                  </p>
+                </section>
+              )}
             </aside>
           )}
 
           {/* ── MAIN CONTENT ── */}
           <main className="min-w-0">
+            {statement && (
+              <section className="mb-12">
+                <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-4">Artist Statement</p>
+                <p className="max-w-prose whitespace-pre-wrap font-serif text-[15px] leading-relaxed text-ink/80">{statement}</p>
+              </section>
+            )}
+
+            {cvExhibitions.length > 0 && (
+              <section className="mb-12">
+                <p className="text-[10px] uppercase tracking-widest text-ink/35 font-serif mb-4">Exhibition History</p>
+                <ul className="space-y-2">
+                  {cvExhibitions.slice(0, 8).map((e) => (
+                    <li key={`${e.title}|${e.venue ?? ''}|${e.year ?? ''}`} className="font-serif text-sm text-ink/80">
+                      {e.year && <span className="mr-3 tabular-nums text-ink/45">{e.year}</span>}
+                      <span className="font-medium">{e.title}</span>
+                      {(e.venue || e.city) && (
+                        <span className="text-ink/55">, {[e.venue, e.city].filter(Boolean).join(', ')}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {cvExhibitions.length > 8 && (
+                  <Link href={`/artists/${profile.id}/cv`} className="mt-3 inline-block font-serif text-xs text-wine hover:underline">
+                    See all {cvExhibitions.length} in the CV
+                  </Link>
+                )}
+              </section>
+            )}
+
+            {contribute && (
+              <div className="mb-12">
+                <UnclaimedArtistContribute
+                  profileId={profile.id}
+                  artistName={displayName}
+                  signedIn={Boolean(currentUserId)}
+                  content={{
+                    bio: profile.bio,
+                    artist_statement: profile.artist_statement ?? null,
+                    header_image_url: profile.header_image_url ?? null,
+                    hasCv,
+                    cvUploadedAt: profile.artist_cv_uploaded_at ?? null,
+                  }}
+                />
+              </div>
+            )}
+
             {/* Exhibitions */}
             {exhibitions.length > 0 && (
               <section className="mb-12">

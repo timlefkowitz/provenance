@@ -13,9 +13,11 @@ type Props = {
   profileId: string;
   hasExistingFile: boolean;
   uploadedAt: string | null;
+  /** Someone adding a CV for an unclaimed artist, not the artist themself. */
+  contributor?: boolean;
 };
 
-export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props) {
+export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt, contributor = false }: Props) {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -70,7 +72,13 @@ export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props)
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-wine/70 flex-shrink-0" />
         <p className="font-serif text-sm font-semibold text-ink">
-          {hasExistingFile ? 'Replace your CV' : 'Upload your CV'}
+          {contributor
+            ? hasExistingFile
+              ? "Replace this artist's CV"
+              : 'Upload a CV for this artist'
+            : hasExistingFile
+              ? 'Replace your CV'
+              : 'Upload your CV'}
         </p>
       </div>
 
@@ -86,11 +94,13 @@ export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props)
       )}
 
       <p className="text-xs font-serif text-ink/60 leading-relaxed">
-        Upload a PDF, Word, or plain-text CV. We&apos;ll extract the structured data
-        and merge it with your Provenance exhibitions.
+        {contributor
+          ? "Upload a PDF, Word, or plain-text CV. We'll extract the exhibitions and other entries. If the artist joins Provenance, it moves to their profile and they can replace it."
+          : "Upload a PDF, Word, or plain-text CV. We'll extract the structured data and merge it with your Provenance exhibitions."}
       </p>
 
       <form onSubmit={handleUpload} className="space-y-3">
+        <input type="hidden" name="profileId" value={profileId} />
         <input
           type="file"
           name="file"
@@ -124,7 +134,7 @@ export function CvUploadPanel({ profileId, hasExistingFile, uploadedAt }: Props)
         </Button>
       </form>
 
-      {hasExistingFile && (
+      {hasExistingFile && !contributor && (
         <div className="border-t border-wine/10 pt-3">
           {downloadError && (
             <p className="text-red-600 text-xs font-serif mb-2">{downloadError}</p>

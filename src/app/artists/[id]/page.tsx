@@ -1,6 +1,6 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { TacoAvatar } from '~/components/taco-avatar';
@@ -64,6 +64,14 @@ import { getBlockedUserIds } from '~/lib/moderation/blocks';
 import { isHiddenFromPublic } from '~/lib/institutions/institution-setup';
 import { isGalleryMember } from '~/app/profiles/_actions/gallery-members';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
+import { RequestProfileUpdateButton } from './_components/request-profile-update-button';
+import { getMyOpenProfileUpdateRequest } from './_actions/profile-update-requests';
+import { getArtistProfileContributors } from './_actions/contribute-to-unclaimed-artist';
+import {
+  canRequestUpdateFrom,
+  isUnclaimedArtistProfile,
+  type RequestableField,
+} from '~/lib/artist-profile-content/fields';
 
 export async function generateMetadata({
   params,
@@ -231,7 +239,7 @@ export default async function ArtistProfilePage({
     const { data: profileRow } = await sb
       .from('user_profiles')
       .select(
-        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active, artist_cv_json, created_by_gallery_id, managed_for_name',
+        'id, name, picture_url, bio, medium, location, website, links, galleries, news_publications, user_id, role, is_active, is_claimed, artist_cv_json, artist_cv_uploaded_at, artist_statement, header_image_url, created_by_gallery_id, managed_for_name',
       )
       .eq('id', id)
       .eq('role', USER_ROLES.ARTIST)
@@ -247,6 +255,7 @@ export default async function ArtistProfilePage({
     }
 
     const profile = profileRow as UnclaimedArtistProfileRow;
+    const contributors = await getArtistProfileContributors(profileRow.id);
 
     // Someone else added this artist's work; the artist can say "This is me" and claim it.
     let addedByName: string | null = null;
@@ -331,6 +340,8 @@ export default async function ArtistProfilePage({
           exhibitions={exhibitions}
           currentUserId={user?.id}
           claim={claimable ? { addedByName, signedIn: Boolean(user) } : null}
+          contributors={contributors.map((c) => ({ userId: c.userId, name: c.name }))}
+          contribute={isUnclaimedArtistProfile(profileRow)}
         />
       </>
     );
@@ -873,6 +884,41 @@ export default async function ArtistProfilePage({
   const TemplateComponent =
     templateId && artistTemplateProps ? getTemplateComponent(templateId) : null;
 
+  // The artist's own view: how many update requests are waiting for them.
+  let pendingUpdateRequests = 0;
+  if (isArtistProfile && isOwner) {
+    const { count } = await client
+      .from('artist_profile_update_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('artist_account_id', account.id)
+      .eq('status', 'pending');
+    pendingUpdateRequests = count ?? 0;
+  }
+  // Visitors can ask the artist to add or refresh their CV, statement, exhibition history,
+  // bio or header image. Many artist accounts have no artist profile row yet, so requests
+  // go to the account and carry the profile when there is one.
+  const canRequestUpdate = isArtistProfile && !isOwner && (!user || canRequestUpdateFrom(account.id, user.id));
+  let requestUpdateButton: ReactNode = null;
+  if (canRequestUpdate) {
+    const openRequest = user ? await getMyOpenProfileUpdateRequest(account.id) : null;
+    const missing: RequestableField[] = [];
+    if (!roleProfile?.artist_cv_json) missing.push('cv', 'exhibitions');
+    if (!roleProfile?.artist_statement) missing.push('artist_statement');
+    if (!bio) missing.push('bio');
+    if (!headerImageUrl) missing.push('header_image');
+    requestUpdateButton = (
+      <RequestProfileUpdateButton
+        artistAccountId={account.id}
+        profileId={roleProfile?.id ?? null}
+        artistName={displayName}
+        signedIn={Boolean(user)}
+        returnPath={`/artists/${id}${requestedProfileId && roleProfile?.id ? `?profileId=${roleProfile.id}` : ''}`}
+        openRequest={openRequest ? { fields: openRequest.fields, message: openRequest.message } : null}
+        missing={missing}
+      />
+    );
+  }
+
   const artistTemplateSwitcher = supportsTemplates && isOwner && roleProfile?.id ? (
     <Suspense fallback={null}>
       <TemplateSwitcher profileId={roleProfile.id} current={templateId} />
@@ -884,6 +930,9 @@ export default async function ArtistProfilePage({
       <>
         {safetyMenu}
         <ProfileHeaderBanner url={headerImageUrl} alt={displayName} />
+        {requestUpdateButton && (
+          <div className="container mx-auto max-w-6xl px-4 pt-4 flex justify-end">{requestUpdateButton}</div>
+        )}
         {isGallery && roleProfile?.id && templateId ? (
           <TemplateWorksPager
             templateId={templateId}
@@ -1059,12 +1108,26 @@ export default async function ArtistProfilePage({
                         </Link>
                       </Button>
                     )}
+                    {pendingUpdateRequests > 0 && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="font-serif border-wine/30 hover:bg-wine/10"
+                      >
+                        <Link href="/profiles/suggestions">
+                          {pendingUpdateRequests === 1
+                            ? '1 update request'
+                            : `${pendingUpdateRequests} update requests`}
+                        </Link>
+                      </Button>
+                    )}
                     <AccountSettingsButton />
                   </div>
                 )}
 
                 {/* Public badges: Website + CV (visitors) */}
-                {!isOwner && (publishedSiteUrl || hasCv) && (
+                {!isOwner && (publishedSiteUrl || hasCv || requestUpdateButton) && (
                   <div className="shrink-0 flex flex-wrap gap-2">
                     {publishedSiteUrl && (
                       <a
@@ -1086,6 +1149,7 @@ export default async function ArtistProfilePage({
                         CV
                       </Link>
                     )}
+                    {requestUpdateButton}
                   </div>
                 )}
               </div>

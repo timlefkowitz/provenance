@@ -145,6 +145,9 @@ export function NotificationsList({
       case 'artist_profile_suggestion':
       case 'artist_profile_suggestion_approved':
       case 'artist_profile_suggestion_denied':
+      case 'artist_profile_update_request':
+      case 'artist_profile_update_request_fulfilled':
+      case 'artist_profile_update_request_dismissed':
         return <UserPlus className="h-5 w-5" />;
       case 'gallery_team_invite':
         return <Users className="h-5 w-5" />;
@@ -193,6 +196,7 @@ export function NotificationsList({
       case 'artwork_reservation_response':
       case 'auction_won':
       case 'auction_lot_sold':
+      case 'artist_profile_update_request_fulfilled':
         return 'text-notify-success';
       case 'auction_outbid':
       case 'auction_consignment_submitted':
@@ -208,6 +212,7 @@ export function NotificationsList({
       case 'profile_handoff_received':
       case 'artist_profile_claim_request':
       case 'artist_claim_request':
+      case 'artist_profile_update_request':
         return 'text-wine';
       case 'artist_profile_claim_rejected':
       case 'profile_handoff_declined':
@@ -580,6 +585,32 @@ export function NotificationsList({
                           className="font-serif border-wine/30 hover:bg-wine/10"
                         >
                           View profiles
+                        </Button>
+                      </Link>
+                    )}
+
+                    {notification.type === 'artist_profile_update_request' && (
+                      <Link href="/profiles/suggestions">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          See request
+                        </Button>
+                      </Link>
+                    )}
+
+                    {(notification.type === 'artist_profile_update_request_fulfilled' ||
+                      notification.type === 'artist_profile_update_request_dismissed') &&
+                      typeof notification.metadata?.artist_user_id === 'string' && (
+                      <Link href={`/artists/${notification.metadata.artist_user_id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          View profile
                         </Button>
                       </Link>
                     )}

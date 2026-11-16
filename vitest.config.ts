@@ -43,6 +43,7 @@ export default defineConfig({
       'src/lib/valuation/provenance-value.test.ts',
       'src/lib/valuation/load-chain-provenance-values.test.ts',
       'src/lib/artist-details/**/*.test.ts',
+      'src/lib/artist-profile-content/**/*.test.ts',
       'src/lib/artist-research/**/*.test.ts',
     ],
   },

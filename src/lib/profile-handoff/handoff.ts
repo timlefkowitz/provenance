@@ -13,6 +13,7 @@ import {
 import { canHandOffProfile, isManagedArtistOf } from '~/lib/managed-collections';
 import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
 import { inviteIsForUser, resolveHandoffTarget } from './target';
+import { carryOverArtistProfileContent } from '~/lib/artist-profile-content/carry-over';
 
 /**
  * Handing a managed profile over to the person it belongs to.
@@ -546,6 +547,8 @@ export async function transferManagedProfile(
   }
 
   if (existing?.id) {
+    // Bio, statement, CV and header people added to the managed profile join the artist's own.
+    if (isArtist) await carryOverArtistProfileContent(db, profile.id, existing.id as string);
     await db.from('user_profiles').update({ is_active: false, updated_at: now }).eq('id', profile.id);
   } else {
     await db
