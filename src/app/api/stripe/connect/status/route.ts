@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getConnectAccount } from '~/lib/stripe-connect';
+import { payDueEarnings } from '~/lib/payouts/seller-payouts';
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
@@ -46,6 +47,11 @@ export async function GET(_req: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', user.id);
+
+    // Payout details just finished: send any money that's already released.
+    if (account.payouts_enabled && !connectAccount.payouts_enabled) {
+      await payDueEarnings({ sellerAccountId: user.id });
+    }
 
     console.log('[StripeConnect] Status refreshed', {
       userId: user.id,

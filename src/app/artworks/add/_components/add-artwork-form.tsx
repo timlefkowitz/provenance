@@ -34,7 +34,6 @@ import { ArtworkTagPicker } from '~/app/artworks/_components/artwork-tag-picker'
 import type { Tag } from '~/app/artworks/_actions/tags';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { ImageCropDialog } from '~/components/image-crop-dialog';
-import { UpgradePrompt } from '~/components/upgrade-prompt';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { takeNativePhoto } from '~/lib/capacitor/native-camera';
 import { gtmService } from '~/lib/gtm';
@@ -1851,22 +1850,14 @@ export function AddArtworkForm({
           />
         </div>
 
-        {/* Sell toggle — paid gate */}
-        {!hasPaidPlan ? (
-          <div className="pt-2">
-            <UpgradePrompt
-              featureName="Sell Your Work"
-              description="List this artwork for sale on your creator site. Buyers pay through Stripe — funds go straight to your account."
-              source="add_artwork_form_sell"
-            />
-          </div>
-        ) : !sellingEnabled ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-serif text-sm text-amber-800">
-            To list artworks for sale, first{' '}
-            <a href="/settings#selling" className="font-medium underline">
-              connect your Stripe account
+        {/* Sell toggle — needs an open shop (no plan or Stripe account required) */}
+        {!sellingEnabled ? (
+          <div className="rounded-lg border border-wine/20 bg-parchment/60 px-4 py-3 font-serif text-sm text-ink/80">
+            Want to sell this work?{' '}
+            <a href="/settings#shop" className="font-medium text-wine underline">
+              Open your shop
             </a>{' '}
-            in Settings and complete onboarding.
+            in Settings. It takes one click, and you don&rsquo;t need a plan.
           </div>
         ) : (
           <div className="space-y-3">
@@ -1912,8 +1903,8 @@ export function AddArtworkForm({
                   />
                 </div>
                 <p className="text-ink/50 font-serif text-xs">
-                  Stripe fees apply. Funds are deposited to your connected bank
-                  account.
+                  Buyers pay by card on your site. We keep 2.7% plus card
+                  processing and send you the rest.
                 </p>
               </div>
             )}

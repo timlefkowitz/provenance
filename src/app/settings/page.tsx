@@ -11,7 +11,8 @@ import { BillingSection } from './_components/billing-section';
 import { AppearanceSection } from './_components/appearance-section';
 import { TeamsSection } from './_components/teams-section';
 import { AccountActionsSection } from './_components/account-actions-section';
-import { StripeConnectCard } from './_components/stripe-connect-card';
+import { ShopSection, type ShopEarning } from './_components/shop-section';
+import { payoutHoldDays, platformFeePercent } from '~/lib/payouts/earnings-math';
 import { SecuritySection } from './_components/security-section';
 import { PrivacySection } from './_components/privacy-section';
 import { hasAiConsent } from '~/lib/ai-consent';
@@ -50,7 +51,7 @@ export default async function SettingsPage({
   }
 
   const subscriptionNowIso = new Date().toISOString();
-  const [accountResult, allProfiles, galleryProfiles, subscriptionResult, connectAccount, aiConsented, blockedUsers] =
+  const [accountResult, allProfiles, galleryProfiles, subscriptionResult, connectAccount, aiConsented, blockedUsers, earningsResult, sitesResult] =
     await Promise.all([
       client
         .from('accounts')
@@ -72,20 +73,35 @@ export default async function SettingsPage({
       getConnectAccount(user.id),
       hasAiConsent(user.id),
       listMyBlockedUsers(),
+      client
+        .from('seller_earnings')
+        .select('id, artwork_title, gross_cents, platform_fee_cents, stripe_fee_cents, net_cents, currency, status, release_at, created_at')
+        .eq('seller_account_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      client
+        .from('profile_sites')
+        .select('handle, published_at, user_profiles!inner(user_id)')
+        .eq('user_profiles.user_id', user.id)
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .limit(1),
     ]);
 
   const account = accountResult.data;
   const publicData = (account?.public_data as Record<string, unknown>) || {};
   const subscription = subscriptionResult.data?.[0] ?? null;
-  const hasPaidPlan = !!(subscription?.status === 'active' || subscription?.status === 'trialing');
-  const connectStatus = connectAccount
+  const earnings = (earningsResult.data ?? []) as ShopEarning[];
+  const siteRow = sitesResult.data?.[0] as { handle: string; published_at: string | null } | undefined;
+  const siteHost = (() => {
+    const host = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://provenance.guru').hostname;
+    return host.startsWith('www.') ? host.slice(4) : host;
+  })();
+  const shopSite = siteRow
     ? {
-        connected: true,
-        charges_enabled: connectAccount.charges_enabled,
-        details_submitted: connectAccount.details_submitted,
-        payouts_enabled: connectAccount.payouts_enabled,
+        published: !!siteRow.published_at,
+        url: siteRow.published_at ? `https://${siteRow.handle}.${siteHost}` : null,
       }
-    : { connected: false };
+    : null;
 
   const editableProfiles = allProfiles.filter(
     (p) => p.role === USER_ROLES.GALLERY || p.role === USER_ROLES.ARTIST,
@@ -129,7 +145,14 @@ export default async function SettingsPage({
 
           <BillingSection subscription={subscription} />
 
-          <StripeConnectCard hasPaidPlan={hasPaidPlan} initialStatus={connectStatus} />
+          <ShopSection
+            shopOpen={!!connectAccount}
+            payoutsEnabled={!!connectAccount?.payouts_enabled}
+            earnings={earnings}
+            feePercent={platformFeePercent()}
+            holdDays={payoutHoldDays()}
+            site={shopSite}
+          />
 
           <AppearanceSection />
 

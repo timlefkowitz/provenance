@@ -5,6 +5,12 @@ import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { fulfillDomainPurchase } from '~/lib/domain-purchase-fulfillment';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
+import {
+  handleChargeReversal,
+  payDueEarnings,
+  recordEarningFromCheckout,
+  syncConnectAccount,
+} from '~/lib/payouts/seller-payouts';
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -14,6 +20,11 @@ function getStripe(): Stripe | null {
 
 function getWebhookSecret(): string | null {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  return typeof secret === 'string' && secret.trim() ? secret.trim() : null;
+}
+
+function getConnectWebhookSecret(): string | null {
+  const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
   return typeof secret === 'string' && secret.trim() ? secret.trim() : null;
 }
 
@@ -195,11 +206,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } catch (err) {
-    console.error('[Stripe] Webhook signature verification failed', err);
+  // The platform endpoint and the Connect endpoint (connected-account events
+  // like account.updated) point at this route with different signing secrets.
+  let event: Stripe.Event | null = null;
+  let lastErr: unknown = null;
+  for (const secret of [webhookSecret, getConnectWebhookSecret()]) {
+    if (!secret) continue;
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, secret);
+      break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!event) {
+    console.error('[Stripe] Webhook signature verification failed', lastErr);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
@@ -262,6 +283,32 @@ export async function POST(request: NextRequest) {
             sessionId: session.id,
           });
 
+          // Platform-collected sale. Webhooks retry, so a session we've already
+          // booked is done. The earning goes first: if it fails we 500 and
+          // Stripe retries before anything else is written.
+          if (session.metadata.payout_model === 'platform') {
+            const { data: alreadyBooked } = await admin
+              .from('seller_earnings')
+              .select('id')
+              .eq('checkout_session_id', session.id)
+              .maybeSingle();
+            if (alreadyBooked) {
+              return NextResponse.json({ received: true, duplicate: true });
+            }
+            try {
+              await recordEarningFromCheckout({
+                stripe,
+                admin,
+                session,
+                sellerAccountId: session.metadata.seller_account_id ?? ownerAccountId,
+                artworkId,
+              });
+            } catch (earnErr) {
+              console.error('[ArtworkSale] Webhook: failed to book seller earning', earnErr);
+              return NextResponse.json({ error: 'Failed to record seller earning' }, { status: 500 });
+            }
+          }
+
           try {
             // Record the sale (sold columns, ledger, event, linked certs, stats)
             const saleResult = await recordSale(admin, {
@@ -276,6 +323,7 @@ export async function POST(request: NextRequest) {
             if (!saleResult.success) {
               console.error('[ArtworkSale] Webhook: failed to record sale', saleResult.error);
             }
+
 
             // Record purchase in artwork_inquiries
             const { error: inquiryErr } = await asUntyped(admin)
@@ -415,6 +463,44 @@ export async function POST(request: NextRequest) {
           customer: subscription.customer,
           attemptCount: invoice.attempt_count,
         });
+        return NextResponse.json({ received: true });
+      }
+
+      case 'checkout.session.expired': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === 'artwork_purchase' && session.metadata.artwork_id) {
+          await admin
+            .from('artworks')
+            .update({ checkout_reserved_until: null })
+            .eq('id', session.metadata.artwork_id)
+            .is('sold_at', null);
+        }
+        return NextResponse.json({ received: true });
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        // Only a full refund pulls back the seller's earning; partial refunds are reviewed by hand.
+        if (charge.refunded) {
+          await handleChargeReversal(stripe, charge.id, 'refund');
+        }
+        return NextResponse.json({ received: true });
+      }
+
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge.id;
+        await handleChargeReversal(stripe, chargeId, 'dispute');
+        return NextResponse.json({ received: true });
+      }
+
+      case 'account.updated': {
+        // Arrives on the Connect endpoint (STRIPE_CONNECT_WEBHOOK_SECRET).
+        const account = event.data.object as Stripe.Account;
+        const userId = await syncConnectAccount(account);
+        if (userId && account.payouts_enabled) {
+          await payDueEarnings({ sellerAccountId: userId });
+        }
         return NextResponse.json({ received: true });
       }
 

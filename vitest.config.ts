@@ -28,6 +28,7 @@ export default defineConfig({
       'src/lib/portal-graphs/**/*.test.ts',
       'src/lib/collectors/**/*.test.ts',
       'src/lib/sales/**/*.test.ts',
+      'src/lib/payouts/**/*.test.ts',
       'src/lib/auctions/**/*.test.ts',
       'src/lib/operations/reports/**/*.test.ts',
       'src/lib/artists/**/*.test.ts',

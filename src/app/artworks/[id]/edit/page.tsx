@@ -6,6 +6,9 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { cosApprovingArtistId } from '~/lib/certificate-claims/cos-approval';
 import { EditorialPageHeader } from '~/components/editorial-form';
 import { getArtworkExhibition } from '../../[id]/certificate/_actions/get-artwork-exhibition';
+import { ShopListingCard } from './_components/shop-listing-card';
+import { getConnectAccount } from '~/lib/stripe-connect';
+import { platformFeePercent } from '~/lib/payouts/earnings-math';
 
 export const metadata = {
   title: 'Edit Provenance | Provenance',
@@ -37,7 +40,10 @@ export default async function EditProvenancePage({
   }
 
   // Get current exhibition for this artwork
-  const currentExhibition = await getArtworkExhibition(id);
+  const [currentExhibition, connectAccount] = await Promise.all([
+    getArtworkExhibition(id),
+    getConnectAccount(user.id),
+  ]);
 
   // A Certificate of Show issued from an artist's CoA: content changes go to
   // the artist to approve.
@@ -58,6 +64,15 @@ export default async function EditProvenancePage({
         eyebrow="Certificate / Edit"
         title="Edit artwork"
         description={<>Update the details and provenance for <span className="text-editorial-ink">“{artwork.title}”</span>.</>}
+      />
+
+      <ShopListingCard
+        artworkId={artwork.id}
+        shopOpen={!!connectAccount}
+        sold={!!artwork.sold_at || !!artwork.is_sold}
+        initialForSale={!!artwork.for_sale}
+        initialPrice={artwork.sale_price != null ? Number(artwork.sale_price) : null}
+        feePercent={platformFeePercent()}
       />
 
       <EditProvenanceForm 

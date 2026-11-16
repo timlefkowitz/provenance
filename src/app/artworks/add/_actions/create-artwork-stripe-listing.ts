@@ -3,8 +3,6 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { getActiveSubscription } from '~/lib/subscription';
-import { getConnectAccount } from '~/lib/stripe-connect';
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
@@ -26,8 +24,8 @@ type Result =
 
 /**
  * Creates a Stripe Product + one-time Price for an artwork and persists the
- * IDs to the artworks row.  Only runs when the seller has an active plan AND
- * a connected Stripe account with charges_enabled.
+ * IDs to the artworks row. Buyers pay Provenance and sellers are paid out, so
+ * no plan or seller Stripe account is needed to list.
  */
 export async function createArtworkStripeListing(input: Input): Promise<Result> {
   console.log('[ArtworkSale] createArtworkStripeListing started', {
@@ -36,19 +34,6 @@ export async function createArtworkStripeListing(input: Input): Promise<Result> 
   });
 
   try {
-    const sub = await getActiveSubscription(input.ownerUserId);
-    if (!sub) {
-      return { ok: false, error: 'Active subscription required to list artworks for sale.' };
-    }
-
-    const connect = await getConnectAccount(input.ownerUserId);
-    if (!connect?.charges_enabled) {
-      return {
-        ok: false,
-        error: 'Stripe Connect account with charges enabled is required to list artworks for sale.',
-      };
-    }
-
     const stripe = getStripe();
     if (!stripe) {
       return { ok: false, error: 'Billing not configured.' };
