@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -17,12 +17,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@kit/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
@@ -386,6 +386,13 @@ export function CertificateOfAuthenticity({
     (isOwner || canEditCertificate || canSell) &&
     (certificateType === CERTIFICATE_TYPES.AUTHENTICITY || certificateType === CERTIFICATE_TYPES.SHOW);
   const [issueCooOpen, setIssueCooOpen] = useState(false);
+  // Dialogs opened from the toolbar menus
+  const [sendOpen, setSendOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const hasMoreMenu = isOwner || canEditCertificate || isAdmin;
   const user = useCurrentUser();
   const [pending, startTransition] = useTransition();
   const [verifying, setVerifying] = useState(false);
@@ -836,219 +843,275 @@ export function CertificateOfAuthenticity({
 
   return (
     <div className="min-h-screen bg-parchment">
-      {/* Toolbar — hidden when printing */}
+      {/* Toolbar — hidden when printing.
+          Back on the left; on the right one Edit, then Share and Print menus,
+          and everything occasional behind "More". */}
       <div className="container mx-auto px-4 py-4 sm:py-6 print:hidden">
-        <div className="flex flex-wrap gap-2 justify-end items-center">
-          {/* Edit (owner only) */}
-          {isOwner && (
-            <Button
-              onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
-              variant="outline"
-              className="font-serif text-xs sm:text-sm"
-              size="sm"
-            >
-              Edit
-            </Button>
-          )}
-
-          {/* Inquiries (owner only) */}
-          {isOwner && (
-            <Button
-              onClick={() => router.push(`/artworks/${artwork.id}/inquiries`)}
-              variant="outline"
-              className="font-serif text-xs sm:text-sm"
-              size="sm"
-            >
-              Inquiries
-            </Button>
-          )}
-
-          {/* Upload (owner or gallery team) */}
-          {canEditCertificate && (
-            <UploadAttachmentsDialog
-              artworkId={artwork.id}
-              artworkTitle={artwork.title || 'Untitled'}
-              attachments={attachments}
-              isCreatorForEdit={canEditCertificate}
-            />
-          )}
-
-          {/* Add to a list, e.g. a "To print" wall-label queue (owner only) */}
-          {isOwner && <AddToListButton artworkIds={[artwork.id]} />}
-
-          {/* Print dropdown (owner only) */}
-          {isOwner && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="font-serif text-xs sm:text-sm gap-1.5"
-                  size="sm"
-                >
-                  <Printer className="h-3.5 w-3.5" aria-hidden />
-                  Print
-                  <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="font-serif text-sm">
-                <DropdownMenuItem onClick={handlePrint}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print certificate
-                </DropdownMenuItem>
-                {certificateUrl && (
-                  <DropdownMenuItem onClick={handlePrintQR}>
-                    <Scan className="mr-2 h-4 w-4" />
-                    Print QR code
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handlePrintWallLabel}>
-                  <Tag className="mr-2 h-4 w-4" />
-                  Print wall label
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDownload}>
-                  Download PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* Admin dropdown */}
-          {isAdmin && (
-            <AlertDialog>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="font-serif text-xs sm:text-sm border-wine/30 hover:bg-wine/10 gap-1.5"
-                    disabled={pending}
-                  >
-                    Admin
-                    <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="font-serif text-sm">
-                  <DropdownMenuItem
-                    onClick={handleFeature}
-                    disabled={pending || featured || loadingFeatured}
-                  >
-                    <Star className={`mr-2 h-4 w-4 ${featured ? 'fill-wine text-wine' : ''}`} aria-hidden />
-                    {pending ? 'Featuring...' : featured ? 'Featured!' : 'Feature on Homepage'}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                      disabled={pending}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-                      Delete certificate
-                    </DropdownMenuItem>
-                  </AlertDialogTrigger>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this certificate?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete <strong>{artwork.title || 'this artwork'}</strong> and cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red-600 text-white hover:bg-red-700"
-                    onClick={() => {
-                      startTransition(async () => {
-                        try {
-                          await adminDeleteArtwork(artwork.id);
-                          toast.success('Artwork deleted.');
-                          router.push('/artworks');
-                        } catch (err) {
-                          console.error('[Certificate] adminDeleteArtwork failed', err);
-                          toast.error(err instanceof Error ? err.message : 'Failed to delete artwork');
-                        }
-                      });
-                    }}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-
-          {/* Send by email to an artist, collector or gallery (owner or gallery team) */}
-          {canEditCertificate && (
-            <SendCertificateDialog
-              artworkId={artwork.id}
-              artworkTitle={artwork.title || 'Untitled'}
-              onIssueOwnership={canIssueOwnership ? () => setIssueCooOpen(true) : undefined}
-            />
-          )}
-          {canIssueOwnership && (
-            <InviteCooFromCoaDialog
-              artworkId={artwork.id}
-              artworkTitle={artwork.title || 'Untitled'}
-              isShowCertificate={certificateType === CERTIFICATE_TYPES.SHOW}
-              defaultPriceCents={setValueCents(artwork)}
-              open={issueCooOpen}
-              onOpenChange={setIssueCooOpen}
-              // Curators without "Send certificate" get the button directly.
-              hideTrigger={canEditCertificate}
-            />
-          )}
-
-          {/* Void into the Archive (holder or gallery team) */}
-          {canEditCertificate && !voided && (
-            <VoidCertificateButton artworkId={artwork.id} artworkTitle={artwork.title || 'Untitled'} />
-          )}
-
-          {/* Share dropdown — visible to everyone */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
-                size="sm"
-              >
-                <Share2 className="h-3.5 w-3.5" aria-hidden />
-                Share
-                <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="font-serif text-sm">
-              <DropdownMenuItem onClick={handleShare}>
-                <Share2 className="mr-2 h-4 w-4" />
-                Share…
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyLink}>
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Copy link
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleShareFacebook}>
-                <Facebook className="mr-2 h-4 w-4" />
-                Facebook
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShareInstagram}>
-                <Instagram className="mr-2 h-4 w-4" />
-                Instagram
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
+        <div className="flex items-center justify-between gap-2">
           <Button
             onClick={() => router.push('/artworks')}
             variant="ghost"
-            className="font-serif text-xs sm:text-sm"
+            className="font-serif text-xs sm:text-sm gap-1 -ml-2 text-ink/70 hover:text-ink"
             size="sm"
           >
-            Back
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Artworks</span>
+            <span className="sr-only sm:hidden">Back to artworks</span>
           </Button>
+
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {isOwner && (
+              <Button
+                onClick={() => router.push(`/artworks/${artwork.id}/edit`)}
+                variant="outline"
+                className="font-serif text-xs sm:text-sm gap-1.5"
+                size="sm"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                Edit
+              </Button>
+            )}
+
+            {/* Share — everyone. Emailing it to a person lives here too. */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="font-serif text-xs sm:text-sm gap-1.5 bg-wine text-parchment hover:bg-wine/90"
+                  size="sm"
+                >
+                  <Share2 className="h-3.5 w-3.5" aria-hidden />
+                  Share
+                  <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="font-serif text-sm min-w-[13rem]">
+                {canEditCertificate && (
+                  <>
+                    <DropdownMenuItem onSelect={() => setSendOpen(true)}>
+                      <Send className="mr-2 h-4 w-4" />
+                      Email to someone…
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onSelect={handleCopyLink}>
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                  Copy link
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleShare}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share via…
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleShareFacebook}>
+                  <Facebook className="mr-2 h-4 w-4" />
+                  Facebook
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleShareInstagram}>
+                  <Instagram className="mr-2 h-4 w-4" />
+                  Instagram
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Print — certificate, wall label, QR, PDF */}
+            {isOwner && (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="font-serif text-xs sm:text-sm gap-1.5"
+                    size="sm"
+                    aria-label="Print"
+                  >
+                    <Printer className="h-3.5 w-3.5" aria-hidden />
+                    <span className="hidden sm:inline">Print</span>
+                    <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="font-serif text-sm min-w-[12rem]">
+                  <DropdownMenuItem onSelect={handlePrint}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Certificate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handlePrintWallLabel}>
+                    <Tag className="mr-2 h-4 w-4" />
+                    Wall label
+                  </DropdownMenuItem>
+                  {certificateUrl && (
+                    <DropdownMenuItem onSelect={handlePrintQR}>
+                      <Scan className="mr-2 h-4 w-4" />
+                      QR code
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={handleDownload}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Save as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* More — occasional and destructive actions */}
+            {hasMoreMenu && (
+              <div className="relative">
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="font-serif px-2"
+                      aria-label="More actions"
+                      disabled={pending}
+                    >
+                      <MoreHorizontal className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="font-serif text-sm min-w-[13rem]">
+                    {isOwner && (
+                      <DropdownMenuItem onSelect={() => router.push(`/artworks/${artwork.id}/inquiries`)}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Inquiries
+                      </DropdownMenuItem>
+                    )}
+                    {canEditCertificate && (
+                      <DropdownMenuItem onSelect={() => setUploadOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Images & documents
+                      </DropdownMenuItem>
+                    )}
+                    {isOwner && (
+                      <DropdownMenuItem onSelect={() => setListsOpen(true)}>
+                        <ListPlus className="mr-2 h-4 w-4" />
+                        Add to list…
+                      </DropdownMenuItem>
+                    )}
+                    {canEditCertificate && !voided && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onSelect={() => setVoidOpen(true)}
+                          className="text-red-700 focus:text-red-700 focus:bg-red-50"
+                        >
+                          <Ban className="mr-2 h-4 w-4" />
+                          Void certificate…
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-ink/40 font-normal">
+                          Admin
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onSelect={handleFeature}
+                          disabled={pending || featured || loadingFeatured}
+                        >
+                          <Star className={`mr-2 h-4 w-4 ${featured ? 'fill-wine text-wine' : ''}`} aria-hidden />
+                          {pending ? 'Featuring...' : featured ? 'Featured on homepage' : 'Feature on homepage'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => setDeleteOpen(true)}
+                          disabled={pending}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                          Delete certificate…
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {isOwner && (
+                  <AddToListButton
+                    artworkIds={[artwork.id]}
+                    open={listsOpen}
+                    onOpenChange={setListsOpen}
+                    anchor={<span aria-hidden className="pointer-events-none absolute inset-0" />}
+                    className="absolute inset-0 pointer-events-none"
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Dialogs opened from the menus above */}
+        {canEditCertificate && (
+          <SendCertificateDialog
+            artworkId={artwork.id}
+            artworkTitle={artwork.title || 'Untitled'}
+            onIssueOwnership={canIssueOwnership ? () => setIssueCooOpen(true) : undefined}
+            open={sendOpen}
+            onOpenChange={setSendOpen}
+            hideTrigger
+          />
+        )}
+        {canEditCertificate && (
+          <UploadAttachmentsDialog
+            artworkId={artwork.id}
+            artworkTitle={artwork.title || 'Untitled'}
+            attachments={attachments}
+            isCreatorForEdit={canEditCertificate}
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            hideTrigger
+          />
+        )}
+        {canEditCertificate && !voided && (
+          <VoidCertificateButton
+            artworkId={artwork.id}
+            artworkTitle={artwork.title || 'Untitled'}
+            open={voidOpen}
+            onOpenChange={setVoidOpen}
+            hideTrigger
+          />
+        )}
+        {canIssueOwnership && (
+          <InviteCooFromCoaDialog
+            artworkId={artwork.id}
+            artworkTitle={artwork.title || 'Untitled'}
+            isShowCertificate={certificateType === CERTIFICATE_TYPES.SHOW}
+            defaultPriceCents={setValueCents(artwork)}
+            open={issueCooOpen}
+            onOpenChange={setIssueCooOpen}
+            hideTrigger
+          />
+        )}
+        {isAdmin && (
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this certificate?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <strong>{artwork.title || 'this artwork'}</strong> and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={() => {
+                    startTransition(async () => {
+                      try {
+                        await adminDeleteArtwork(artwork.id);
+                        toast.success('Artwork deleted.');
+                        router.push('/artworks');
+                      } catch (err) {
+                        console.error('[Certificate] adminDeleteArtwork failed', err);
+                        toast.error(err instanceof Error ? err.message : 'Failed to delete artwork');
+                      }
+                    });
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Private certificate indicator — owner only */}
@@ -1900,8 +1963,8 @@ export function CertificateOfAuthenticity({
             </div>
           )}
 
-          {/* Owner / team actions: issue a Certificate of Ownership, edit */}
-          {(isOwner || canIssueOwnership) && user.data && (
+          {/* Issue a Certificate of Ownership (Edit lives in the toolbar) */}
+          {canIssueOwnership && user.data && (
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
               <div className="flex flex-wrap gap-2 justify-center">
                 {canIssueOwnership && (
@@ -1913,15 +1976,6 @@ export function CertificateOfAuthenticity({
                   >
                     Issue Certificate of Ownership
                   </Button>
-                )}
-                {isOwner && (
-                  <EditArtworkDialog
-                    artwork={artwork}
-                    isCreator={true}
-                    exhibition={exhibition}
-                    creatorInfo={creatorInfo}
-                    certificateType={certificateType}
-                  />
                 )}
               </div>
               {canIssueOwnership && <PendingCooInviteStatus artworkId={artwork.id} />}

@@ -26,12 +26,21 @@ import { restoreCertificate, voidCertificate } from '../../_actions/void-certifi
 export function VoidCertificateButton({
   artworkId,
   artworkTitle,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   artworkId: string;
   artworkTitle: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render without its own button; open it from a menu instead. */
+  hideTrigger?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const [reason, setReason] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -50,16 +59,18 @@ export function VoidCertificateButton({
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="font-serif text-xs sm:text-sm gap-1.5 text-red-700 border-red-200 hover:bg-red-50 hover:text-red-800"
-        >
-          <Ban className="h-3.5 w-3.5" aria-hidden />
-          Void
-        </Button>
-      </AlertDialogTrigger>
+      {!hideTrigger && (
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-serif text-xs sm:text-sm gap-1.5 text-red-700 border-red-200 hover:bg-red-50 hover:text-red-800"
+          >
+            <Ban className="h-3.5 w-3.5" aria-hidden />
+            Void
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="font-display text-wine">Void this certificate?</AlertDialogTitle>

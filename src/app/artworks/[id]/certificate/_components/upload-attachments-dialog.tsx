@@ -47,14 +47,23 @@ export function UploadAttachmentsDialog({
   artworkTitle,
   attachments,
   isCreatorForEdit,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   artworkId: string;
   artworkTitle: string;
   attachments: ArtworkAttachmentRow[];
   isCreatorForEdit: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render without its own button; open it from a menu instead. */
+  hideTrigger?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const [pending, startTransition] = useTransition();
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -174,18 +183,20 @@ export function UploadAttachmentsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPendingFile(null); }}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="font-serif text-xs sm:text-sm gap-1.5"
-          size="sm"
-          disabled={pending}
-        >
-          <Upload className="h-3.5 w-3.5" aria-hidden />
-          Upload
-          <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            className="font-serif text-xs sm:text-sm gap-1.5"
+            size="sm"
+            disabled={pending}
+          >
+            <Upload className="h-3.5 w-3.5" aria-hidden />
+            Upload
+            <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md font-serif sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Upload to certificate</DialogTitle>

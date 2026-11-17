@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Check, ListPlus, Loader2, Plus } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
@@ -60,14 +60,26 @@ export function AddToListButton({
   size = 'sm',
   className,
   showQuickAdd = true,
+  open: controlledOpen,
+  onOpenChange,
+  anchor,
 }: {
   artworkIds: string[];
   size?: 'sm' | 'default';
   className?: string;
   showQuickAdd?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /**
+   * Opened from elsewhere (e.g. a menu item): render this element as the
+   * popover's anchor instead of the buttons.
+   */
+  anchor?: ReactNode;
 }) {
   const single = artworkIds.length === 1 ? artworkIds[0] : null;
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const [lists, setLists] = useState<ArtworkList[] | null>(null);
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
   const [lastList, setLastList] = useState<LastList | null>(null);
@@ -176,7 +188,7 @@ export function AddToListButton({
 
   return (
     <div className={cn('inline-flex items-center gap-1.5', className)}>
-      {showQuickAdd && lastList && (
+      {!anchor && showQuickAdd && lastList && (
         <Button
           type="button"
           variant="outline"
@@ -198,12 +210,16 @@ export function AddToListButton({
       )}
 
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size={size} className="font-serif gap-1 border-wine/25">
-            <ListPlus className="h-3.5 w-3.5" />
-            {lastList && showQuickAdd ? 'Lists' : 'Add to list'}
-          </Button>
-        </PopoverTrigger>
+        {anchor ? (
+          <PopoverAnchor asChild>{anchor}</PopoverAnchor>
+        ) : (
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size={size} className="font-serif gap-1 border-wine/25">
+              <ListPlus className="h-3.5 w-3.5" />
+              {lastList && showQuickAdd ? 'Lists' : 'Add to list'}
+            </Button>
+          </PopoverTrigger>
+        )}
         <PopoverContent className="w-[min(calc(100vw-2rem),280px)] p-0" align="end">
           <div className="border-b border-wine/10 px-3 py-2">
             <p className="font-display text-sm text-wine">

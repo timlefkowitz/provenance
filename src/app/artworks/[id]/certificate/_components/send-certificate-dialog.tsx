@@ -29,13 +29,22 @@ export function SendCertificateDialog({
   artworkId,
   artworkTitle,
   onIssueOwnership,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   artworkId: string;
   artworkTitle: string;
   /** When set, a collector send offers "Issue Certificate of Ownership" instead. */
   onIssueOwnership?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render without its own button; open it from a menu instead. */
+  hideTrigger?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const [role, setRole] = useState<CertificateRecipientRole>('collector');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -73,17 +82,19 @@ export function SendCertificateDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
-          size="sm"
-        >
-          <Send className="h-3.5 w-3.5" aria-hidden />
-          Send
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="font-serif text-xs sm:text-sm border-wine/40 hover:bg-wine/10 gap-1.5"
+            size="sm"
+          >
+            <Send className="h-3.5 w-3.5" aria-hidden />
+            Send
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md font-serif">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
