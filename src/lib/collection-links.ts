@@ -1,7 +1,7 @@
 /**
  * Links saved in Collection Management (Instagram, website, shop…), offered
- * as extra QR codes when printing wall labels. Stored on the account in
- * public_data.collection_links.
+ * as extra QR codes when printing wall labels. Account-wide links live in
+ * accounts.public_data.collection_links; a work's own links in artworks.links.
  */
 export type CollectionLink = {
   id: string;
@@ -10,6 +10,8 @@ export type CollectionLink = {
 };
 
 export const MAX_COLLECTION_LINKS = 12;
+/** Per artwork: more than this crowds a wall label. */
+export const MAX_ARTWORK_LINKS = 3;
 export const COLLECTION_LINK_LABEL_MAX = 40;
 export const COLLECTION_LINK_URL_MAX = 500;
 
@@ -53,7 +55,7 @@ export function suggestLinkLabel(url: string): string {
   }
 }
 
-export function readCollectionLinks(raw: unknown): CollectionLink[] {
+export function readCollectionLinks(raw: unknown, max = MAX_COLLECTION_LINKS): CollectionLink[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
@@ -68,5 +70,5 @@ export function readCollectionLinks(raw: unknown): CollectionLink[] {
       };
     })
     .filter((l): l is CollectionLink => l !== null)
-    .slice(0, MAX_COLLECTION_LINKS);
+    .slice(0, max);
 }

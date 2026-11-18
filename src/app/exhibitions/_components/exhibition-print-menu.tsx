@@ -457,6 +457,7 @@ export function ExhibitionPrintMenu({
           if (!open) setWallOrder(null);
         }}
         count={labelArtworks.length}
+        artworkIds={labelArtworks.map((a) => a.id)}
         optionsStorageKey={LABEL_OPTIONS_KEY}
         extraQrStorageKey={`provenance.exhibition.labelQrs.${exhibition.id}`}
         qrStyleStorageKey={`provenance.exhibition.labelQrStyle.${exhibition.id}`}

@@ -83,7 +83,7 @@ export default async function MyArtworksPage({
        medium, dimensions, former_owners, auction_history, exhibition_history,
        historic_context, celebrity_notes, is_public, value, value_is_public,
        edition, production_location, owned_by, owned_by_is_public, sold_by, sold_by_is_public,
-       image_url, created_at, is_sold, display_order, certificate_type, status`;
+       image_url, created_at, is_sold, display_order, certificate_type, status, links`;
 
   // Determine the certificate type that matches the active perspective so the
   // collection only shows relevant cert types (COA for artists, COO for

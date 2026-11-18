@@ -502,6 +502,7 @@ export function PrintMenu({
         open={labelsOpen}
         onOpenChange={setLabelsOpen}
         count={selectedArtworks.length}
+        artworkIds={selectedArtworks.map((a) => a.id)}
         optionsStorageKey={LABEL_OPTIONS_KEY}
         extraQrStorageKey={'provenance.collection.labelQrs'}
         qrStyleStorageKey={'provenance.collection.labelQrStyle'}

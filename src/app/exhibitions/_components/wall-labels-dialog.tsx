@@ -21,6 +21,7 @@ import { composeStyledQr, DEFAULT_QR_STYLE, readQrStyle, type QrStyleSettings } 
 import { QrStylePicker } from './qr-style-picker';
 import { ExtraLabelQrsEditor, readExtraQrs, resolveExtraQrs, type ExtraLabelQr } from './extra-label-qrs';
 import { getCollectionLinks } from '~/app/artworks/my/_actions/collection-links';
+import { getArtworkLinks } from '~/app/artworks/_actions/artwork-links';
 import type { CollectionLink } from '~/lib/collection-links';
 
 export type WallLabelToggleKey = Exclude<keyof WallLabelOptions, 'size' | 'qrPosition' | 'layout'>;
@@ -56,6 +57,14 @@ function loadLabelOptions(storageKey: string): WallLabelOptions {
     // storage unavailable — use defaults
   }
   return { ...DEFAULT_LABEL_OPTIONS, priceSymbol };
+}
+
+function loadIncludeArtworkLinks(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) !== 'false';
+  } catch {
+    return true;
+  }
 }
 
 function saveJson(key: string, value: unknown) {
@@ -107,6 +116,7 @@ export function WallLabelsDialog({
   open,
   onOpenChange,
   count,
+  artworkIds,
   optionsStorageKey,
   bioEditsStorageKey,
   extraQrStorageKey,
@@ -121,6 +131,8 @@ export function WallLabelsDialog({
   onOpenChange: (open: boolean) => void;
   /** Number of labels that will print. */
   count: number;
+  /** The works being labelled, for their own links (artworks.links). */
+  artworkIds: string[];
   /** localStorage key for the remembered field choices. */
   optionsStorageKey: string;
   /** localStorage key for bio edits, keyed by ArtistBio.key. */
@@ -157,6 +169,10 @@ export function WallLabelsDialog({
   const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
   const [extras, setExtras] = useState<ExtraLabelQr[]>([]);
   const [savedLinks, setSavedLinks] = useState<CollectionLink[]>([]);
+  const [artworkLinks, setArtworkLinks] = useState<Record<string, CollectionLink[]>>({});
+  const [includeArtworkLinks, setIncludeArtworkLinks] = useState(true);
+  const artworkLinkSvgRef = useRef<HTMLDivElement>(null);
+  const artworkLinksPrefKey = `${extraQrStorageKey}.artworkLinks`;
   const extraSvgRef = useRef<HTMLDivElement>(null);
   const [qrStyle, setQrStyle] = useState<QrStyleSettings>(DEFAULT_QR_STYLE);
   const [qrBaseSvg, setQrBaseSvg] = useState('');
@@ -213,6 +229,11 @@ export function WallLabelsDialog({
     getCollectionLinks()
       .then(setSavedLinks)
       .catch((err) => console.error('[Print] Load collection links failed', err));
+    setArtworkLinks({});
+    setIncludeArtworkLinks(loadIncludeArtworkLinks(artworkLinksPrefKey));
+    getArtworkLinks(artworkIds)
+      .then(setArtworkLinks)
+      .catch((err) => console.error('[Print] Load artwork links failed', err));
     // Artists drive both bios and "only on this artist's labels".
     if (saved.artistBio || savedExtras.length > 0) void fetchBios();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,6 +274,8 @@ export function WallLabelsDialog({
     if (next.length > 0 && !artistBios && !biosLoading) void fetchBios();
   };
 
+  const worksWithLinks = Object.keys(artworkLinks).length;
+
   const handlePrint = () => {
     saveJson(optionsStorageKey, options);
     savePriceSymbolPref(options.priceSymbol);
@@ -261,7 +284,22 @@ export function WallLabelsDialog({
       const text = bioText(artist).trim();
       if (text) for (const id of artist.artworkIds) biosByArtwork.set(id, text);
     }
-    onPrint(options, biosByArtwork, resolveExtraQrs(extras, artistBios, extraSvgRef.current), qrStyle);
+    const extraFor = resolveExtraQrs(extras, artistBios, extraSvgRef.current);
+    const root = artworkLinkSvgRef.current;
+    const qrsFor = (artworkId: string): LabelQr[] => {
+      const shared = extraFor(artworkId);
+      if (!includeArtworkLinks) return shared;
+      const own = (artworkLinks[artworkId] ?? [])
+        // Skip a link already added for every label.
+        .filter((l) => !extras.some((e) => !e.image && e.url.trim() === l.url))
+        .map((l) => ({
+          html: root?.querySelector(`[data-artwork-link="${artworkId}:${l.id}"]`)?.innerHTML ?? '',
+          caption: l.label,
+        }))
+        .filter((q) => q.html);
+      return [...own, ...shared];
+    };
+    onPrint(options, biosByArtwork, qrsFor, qrStyle);
     onOpenChange(false);
   };
 
@@ -438,7 +476,42 @@ export function WallLabelsDialog({
           </div>
         )}
 
-        {(options.qrCode || extras.length > 0) && (
+        {worksWithLinks > 0 && (
+          <div className="pt-2">
+            <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Artwork links</p>
+            {/* Each work's link codes, drawn here and copied into the print window. */}
+            <div ref={artworkLinkSvgRef} aria-hidden="true" className="hidden">
+              {Object.entries(artworkLinks).flatMap(([id, links]) =>
+                links.map((l) => (
+                  <div key={`${id}:${l.id}`} data-artwork-link={`${id}:${l.id}`}>
+                    <QRCodeSVG value={l.url} size={256} level="M" marginSize={1} />
+                  </div>
+                )),
+              )}
+            </div>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="wl-artwork-links"
+                checked={includeArtworkLinks}
+                onCheckedChange={(checked) => {
+                  const next = checked === true;
+                  setIncludeArtworkLinks(next);
+                  saveJson(artworkLinksPrefKey, next);
+                }}
+                className="mt-0.5 border-wine/30"
+              />
+              <Label htmlFor="wl-artwork-links" className="font-serif text-sm leading-tight cursor-pointer">
+                Each work&apos;s own links
+                <span className="block text-[11px] text-ink/40 font-normal">
+                  {worksWithLinks === 1 ? '1 work has' : `${worksWithLinks} works have`} links, printed as QR codes on
+                  their labels
+                </span>
+              </Label>
+            </div>
+          </div>
+        )}
+
+        {(options.qrCode || extras.length > 0 || (includeArtworkLinks && worksWithLinks > 0)) && (
           <div className="pt-2">
             <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">QR code position</p>
             <div className="flex gap-2">

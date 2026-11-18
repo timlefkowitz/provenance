@@ -18,6 +18,9 @@ import {
   X,
 } from 'lucide-react';
 import { PrintMenu } from './print-menu';
+import { ArtworkLinksField, cleanArtworkLinks } from './artwork-links-field';
+import { saveArtworkLinks } from '../../_actions/artwork-links';
+import { MAX_ARTWORK_LINKS, readCollectionLinks, type CollectionLink } from '~/lib/collection-links';
 import { ExhibitionPrintMenu } from '~/app/exhibitions/_components/exhibition-print-menu';
 import type { ExhibitionWithDetails } from '~/app/exhibitions/_actions/get-exhibitions';
 import { AddToListButton } from '~/app/artworks/_components/add-to-list-button';
@@ -112,6 +115,8 @@ type Artwork = {
   certificate_type?: string | null;
   /** DB status; draft rows are showroom listings not yet published. */
   status?: string | null;
+  /** artworks.links: [{ id, label, url }], printable as wall-label QR codes. */
+  links?: unknown;
 };
 
 type ArtworkFormData = {
@@ -138,6 +143,7 @@ type ArtworkFormData = {
   sold_by_is_public: boolean | null;
   is_sold: boolean;
   display_order: string;
+  links: CollectionLink[];
 };
 
 /** Optional blocks stacked in the primary “image & title” column (hidden until toggled). */
@@ -158,6 +164,7 @@ const OPTIONAL_PRIMARY_FIELDS = [
   'production_location',
   'owned_by',
   'sold_by',
+  'links',
   'is_public',
   'received',
 ] as const;
@@ -166,7 +173,7 @@ type OptionalPrimaryField = (typeof OPTIONAL_PRIMARY_FIELDS)[number];
 
 /** Fields that can be stamped onto every selected artwork at once via "Bulk edit selected". */
 const BULK_EDIT_FIELDS: Array<{
-  key: Exclude<keyof ArtworkFormData, 'title' | 'exhibition_id'>;
+  key: Exclude<keyof ArtworkFormData, 'title' | 'exhibition_id' | 'links'>;
   label: string;
   kind: 'text' | 'textarea' | 'date' | 'number' | 'boolean';
 }> = [
@@ -210,6 +217,7 @@ const OPTIONAL_PRIMARY_LABELS: Record<OptionalPrimaryField, string> = {
   production_location: 'Production location',
   owned_by: 'Owned by',
   sold_by: 'Sold by',
+  links: 'Links',
   is_public: 'Public listing',
   received: 'Received',
 };
@@ -750,6 +758,7 @@ export function SpreadsheetEditForm({
         sold_by_is_public: artwork.sold_by_is_public,
         is_sold: artwork.is_sold ?? false,
         display_order: artwork.display_order != null ? String(artwork.display_order) : '',
+        links: readCollectionLinks(artwork.links, MAX_ARTWORK_LINKS),
       };
     });
     return initial;
@@ -1137,6 +1146,21 @@ export function SpreadsheetEditForm({
           }
         }
 
+        // Links save on their own, not through the provenance update.
+        const linkUpdates: Array<{ artworkId: string; links: CollectionLink[] }> = [];
+        for (const artwork of targetArtworks) {
+          const data = artworkData[artwork.id];
+          if (!data) continue;
+          const cleaned = cleanArtworkLinks(data.links);
+          if (!cleaned) {
+            setError(`Check the links on "${data.title || artwork.title || 'Untitled'}". One is not a usable link.`);
+            return;
+          }
+          const original = readCollectionLinks(artwork.links, MAX_ARTWORK_LINKS);
+          const key = (ls: CollectionLink[]) => JSON.stringify(ls.map((l) => [l.label, l.url]));
+          if (key(cleaned) !== key(original)) linkUpdates.push({ artworkId: artwork.id, links: cleaned });
+        }
+
         // Build update objects for each artwork
         for (const artwork of targetArtworks) {
           const data = artworkData[artwork.id];
@@ -1225,7 +1249,7 @@ export function SpreadsheetEditForm({
           }
         }
 
-        if (updates.length === 0) {
+        if (updates.length === 0 && linkUpdates.length === 0) {
           setError('No changes detected. Please make at least one change to save.');
           return;
         }
@@ -1233,6 +1257,13 @@ export function SpreadsheetEditForm({
         // Update each artwork individually
         let successCount = 0;
         const errors: string[] = [];
+
+        for (const { artworkId, links } of linkUpdates) {
+          const res = await saveArtworkLinks(artworkId, links);
+          const title = artworks.find((a) => a.id === artworkId)?.title || artworkId;
+          if (!res.success) errors.push(`${title}: ${res.error}`);
+          else if (!updates.some((u) => u.artworkId === artworkId)) successCount++;
+        }
 
         for (const { artworkId, updates: updateData } of updates) {
           try {
@@ -2292,6 +2323,17 @@ export function SpreadsheetEditForm({
                                   }
                                   className="font-serif text-sm h-9 border-wine/20"
                                   placeholder="Gallery or seller"
+                                />
+                              </>
+                            ) : null}
+                            {field === 'links' ? (
+                              <>
+                                <Label className="text-xs font-serif text-ink/60">
+                                  {OPTIONAL_PRIMARY_LABELS.links}
+                                </Label>
+                                <ArtworkLinksField
+                                  links={data.links}
+                                  onChange={(next) => updateField(artwork.id, 'links', next)}
                                 />
                               </>
                             ) : null}
