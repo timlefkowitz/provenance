@@ -131,9 +131,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           <Link href="/registry" className={navLinkClass('/registry', pathname)}>
             <Trans i18nKey="common:navigation.registry" defaults="Artists" />
           </Link>
-          <Link href="/auctions" className={navLinkClass('/auctions', pathname)}>
-            Auctions
-          </Link>
+          {/* Auctions hidden for now */}
 
           {user.data && (
             <>
@@ -379,13 +377,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
             >
               <Trans i18nKey="common:navigation.registry" defaults="Artists" />
             </Link>
-            <Link
-              href="/auctions"
-              className="w-full text-center text-lg font-fraunces italic text-editorial-ink hover:text-vermillion transition-colors py-3"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Auctions
-            </Link>
+            {/* Auctions hidden for now */}
 
             {user.data && (
               <>
