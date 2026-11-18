@@ -50,7 +50,9 @@ export async function updateArtworkImage(
       return { success: false, error: 'No image file provided' };
     }
 
-    if (!imageFile.type.startsWith('image/')) {
+    // iPhone HEIC picks can arrive with an empty type; the uploader verifies the
+    // file signature, so only reject types that are clearly not images.
+    if (imageFile.type && !imageFile.type.startsWith('image/')) {
       return { success: false, error: 'File must be an image' };
     }
 

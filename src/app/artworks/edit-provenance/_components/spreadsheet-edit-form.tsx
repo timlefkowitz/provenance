@@ -57,6 +57,11 @@ import { cn } from '@kit/ui/utils';
 import { toast } from '@kit/ui/sonner';
 import { batchUpdateProvenance } from '../_actions/batch-update-provenance';
 import { updateArtworkImage } from '../_actions/update-artwork-image';
+import {
+  isLikelyImageFile,
+  prepareImageForUpload,
+  MAX_UPLOAD_IMAGE_BYTES,
+} from '~/lib/client-image-upload';
 import { publishExhibitionListing } from '~/app/exhibitions/_actions/publish-exhibition-listing';
 import {
   CuratorWorksList,
@@ -1066,11 +1071,30 @@ export function SpreadsheetEditForm({
     if (!file || file.size === 0) return;
     if (uploadingImageId) return;
 
+    // iPhone photo-library picks often have an empty type or image/heic.
+    if (!isLikelyImageFile(file)) {
+      toast.error('Please select an image file');
+      return;
+    }
+
     setUploadingImageId(artworkId);
     startTransition(async () => {
       try {
+        // Vercel rejects Server Action bodies over ~4.5MB before the action runs,
+        // and HEIC doesn't display everywhere: convert + compress in the browser.
+        const prepared = await prepareImageForUpload(file);
+        if (prepared.size > MAX_UPLOAD_IMAGE_BYTES) {
+          console.warn('[Collection] image too large after compression', {
+            artworkId,
+            name: file.name,
+            beforeBytes: file.size,
+            afterBytes: prepared.size,
+          });
+          toast.error('Photo is too large to upload. Please choose an image under 4 MB.');
+          return;
+        }
         const fd = new FormData();
-        fd.append('image', file);
+        fd.append('image', prepared);
         const res = await updateArtworkImage(artworkId, fd);
         if (!res.success) {
           toast.error(res.error ?? 'Failed to upload photo');
