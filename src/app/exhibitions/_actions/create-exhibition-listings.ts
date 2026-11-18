@@ -65,7 +65,7 @@ export async function createQuickExhibitionListings(
 
   const { data: exhibition, error: exErr } = await asUntyped(client)
     .from('exhibitions')
-    .select('gallery_id')
+    .select('gallery_id, gallery_profile_id')
     .eq('id', exhibitionId)
     .maybeSingle();
 
@@ -102,12 +102,12 @@ export async function createQuickExhibitionListings(
   }
 
   const posterContext = await getExhibitionPosterContext(user.id);
+  // Credit the profile that hosts the show; fall back to the poster's active profile.
+  const preferredProfileId =
+    (exhibition.gallery_profile_id as string | null) || posterContext.galleryProfileId;
   let galleryProfileId: string | null = null;
-  if (
-    posterContext.galleryProfileId &&
-    (await canAttachGalleryProfile(user.id, posterContext.galleryProfileId))
-  ) {
-    galleryProfileId = posterContext.galleryProfileId;
+  if (preferredProfileId && (await canAttachGalleryProfile(user.id, preferredProfileId))) {
+    galleryProfileId = preferredProfileId;
   }
 
   const certificateType = isEligibleForShowCertificate(posterContext)

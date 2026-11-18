@@ -50,7 +50,7 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
     const creationDate = formData.get('creationDate') as string || '';
     const isPublic = formData.get('isPublic') === 'true'; // Default to true if not provided
     const exhibitionId = formData.get('exhibitionId') as string || null;
-    const galleryProfileId = formData.get('galleryProfileId') as string || null;
+    let galleryProfileId = formData.get('galleryProfileId') as string || null;
     // Posting Certificates of Authenticity on an artist's behalf, from any role.
     const managedArtistIdField = formData.get('managedArtistId') as string || null;
     const tagIdsRaw = formData.get('tagIds') as string || '';
@@ -243,6 +243,19 @@ export async function createArtworksBatch(formData: FormData, userId: string) {
       }
       sourceCoaRow = src as Record<string, unknown>;
       console.log('[Certificates] createArtworksBatch linked to source COA', { sourceId: src.id });
+    }
+
+    // Posting into a show hosted under one of your gallery profiles: credit the show's
+    // profile, not whichever profile happens to be active in the form.
+    if (exhibitionId && posterRequiresArtistClaim(effectiveRole)) {
+      const { data: showRow } = await asUntyped(client)
+        .from('exhibitions')
+        .select('gallery_id, gallery_profile_id')
+        .eq('id', exhibitionId)
+        .maybeSingle();
+      if (showRow?.gallery_id === userId && showRow.gallery_profile_id) {
+        galleryProfileId = showRow.gallery_profile_id as string;
+      }
     }
 
     logger.info('artwork_post_start', {
