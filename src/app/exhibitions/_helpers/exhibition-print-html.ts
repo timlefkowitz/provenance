@@ -204,7 +204,7 @@ export function buildWallLabelsHtml(
   const large = options.size === 'large';
   const g = LABEL_GEOMETRY[options.size] ?? LABEL_GEOMETRY.standard;
   const institutional = options.layout !== 'compact';
-  const qrBase = large ? 1 : 0.8;
+  const qrBase = large ? 0.8 : 0.65;
 
   const label = (a: WallLabelItem) => {
     const year = options.year ? getYear(a.creation_date) : '';
@@ -273,6 +273,8 @@ export function buildWallLabelsHtml(
   @page { size: letter ${g.orientation}; margin: ${LABEL_PAGE_MARGIN_IN}in; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #111; }
+  /* Georgia has no medium weight: a hairline stroke thickens the text a touch. */
+  .body { -webkit-text-stroke: 0.018em currentColor; }
   .sheet {
     display: grid;
     grid-template-columns: repeat(${g.cols}, ${g.widthIn}in);
@@ -292,17 +294,17 @@ export function buildWallLabelsHtml(
     display: flex; gap: 0.14in; align-items: stretch;
   }
   .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .artist { font-size: ${pt(large ? 12 : 10)}; font-weight: bold; line-height: 1.25; margin-bottom: 5px; }
+  .artist { font-size: ${pt(large ? 12 : 10)}; font-weight: 800; line-height: 1.25; margin-bottom: 5px; }
   .title { font-size: ${pt(large ? 11 : 9.5)}; font-style: italic; line-height: 1.3; }
   .meta { font-size: ${pt(large ? 10 : 9)}; line-height: 1.4; }
-  .credit { font-size: ${pt(large ? 9 : 8)}; color: #555; margin-top: 3px; }
-  .description { font-size: ${pt(large ? 9 : 7.5)}; line-height: 1.45; color: #333; margin-top: 6px; }
-  .bio { font-size: ${pt(large ? 8.5 : 7)}; line-height: 1.45; color: #555; margin-top: 6px; padding-top: 5px; border-top: 0.5pt solid #e5e0da; }
+  .credit { font-size: ${pt(large ? 9 : 8)}; color: #333; margin-top: 3px; }
+  .description { font-size: ${pt(large ? 9 : 7.5)}; line-height: 1.45; color: #1a1a1a; margin-top: 6px; }
+  .bio { font-size: ${pt(large ? 8.5 : 7)}; line-height: 1.45; color: #333; margin-top: 6px; padding-top: 5px; border-top: 0.5pt solid #e5e0da; }
   .qr-col { flex: none; display: grid; grid-template-columns: var(--qs); gap: 0.06in; align-content: ${options.qrPosition === 'bottom' ? 'end' : 'start'}; }
   .qr-col.two { grid-template-columns: var(--qs) var(--qs); }
   .qr-item { width: var(--qs); text-align: center; }
   .qr svg, .qr img { width: 100%; height: auto; display: block; }
-  .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; line-height: 1.2; color: #888; letter-spacing: 0.02em; margin-top: 2px; overflow-wrap: anywhere; }
+  .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; font-weight: 600; line-height: 1.2; color: #555; letter-spacing: 0.02em; margin-top: 2px; overflow-wrap: anywhere; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>${fitScript}</head>
 <body>${body}<script>window.onload = function () { fitLabels(); setTimeout(function () { window.print(); }, 150); window.onafterprint = function () { window.close(); }; };</script></body></html>`;
