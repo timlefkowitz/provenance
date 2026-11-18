@@ -9,6 +9,7 @@ import { cn } from '@kit/ui/utils';
 import Link from 'next/link';
 import { Archive, LayoutGrid, ListChecks } from 'lucide-react';
 import { NewExhibitionDialog } from './new-exhibition-dialog';
+import { CollectionLinksDialog } from './collection-links-dialog';
 
 /** Public exhibitions index — www in prod when env uses apex (matches sitemap canonical host). */
 function exhibitionsCatalogHref(): string {
@@ -160,6 +161,7 @@ export function CollectionHeaderActions({
             Archive
           </Link>
         </Button>
+        <CollectionLinksDialog />
         <Button
           variant="outline"
           asChild

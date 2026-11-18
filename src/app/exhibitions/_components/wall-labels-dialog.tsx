@@ -20,6 +20,8 @@ import {
 import { composeStyledQr, DEFAULT_QR_STYLE, readQrStyle, type QrStyleSettings } from '../_helpers/qr-style';
 import { QrStylePicker } from './qr-style-picker';
 import { ExtraLabelQrsEditor, readExtraQrs, resolveExtraQrs, type ExtraLabelQr } from './extra-label-qrs';
+import { getCollectionLinks } from '~/app/artworks/my/_actions/collection-links';
+import type { CollectionLink } from '~/lib/collection-links';
 
 export type WallLabelToggleKey = Exclude<keyof WallLabelOptions, 'size' | 'qrPosition' | 'layout'>;
 
@@ -154,6 +156,7 @@ export function WallLabelsDialog({
   const [biosError, setBiosError] = useState<string | null>(null);
   const [bioEdits, setBioEdits] = useState<Record<string, string>>({});
   const [extras, setExtras] = useState<ExtraLabelQr[]>([]);
+  const [savedLinks, setSavedLinks] = useState<CollectionLink[]>([]);
   const extraSvgRef = useRef<HTMLDivElement>(null);
   const [qrStyle, setQrStyle] = useState<QrStyleSettings>(DEFAULT_QR_STYLE);
   const [qrBaseSvg, setQrBaseSvg] = useState('');
@@ -207,6 +210,9 @@ export function WallLabelsDialog({
     setExtras(savedExtras);
     setQrStyle(loadQrStyle(qrStyleStorageKey));
     setStylePickerOpen(false);
+    getCollectionLinks()
+      .then(setSavedLinks)
+      .catch((err) => console.error('[Print] Load collection links failed', err));
     // Artists drive both bios and "only on this artist's labels".
     if (saved.artistBio || savedExtras.length > 0) void fetchBios();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -466,6 +472,7 @@ export function WallLabelsDialog({
           artists={artistBios}
           artistsLoading={biosLoading}
           svgRootRef={extraSvgRef}
+          savedLinks={savedLinks}
         />
 
         <div className="pt-2">

@@ -2,11 +2,12 @@
 
 import { useRef, type RefObject } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ImagePlus, Plus, X } from 'lucide-react';
+import { ImagePlus, Link2, Plus, X } from 'lucide-react';
 import { Input } from '@kit/ui/input';
 import { toast } from '@kit/ui/sonner';
 import type { ArtistBio } from '../_helpers/artist-bios';
 import type { LabelQr } from '../_helpers/exhibition-print-html';
+import type { CollectionLink } from '~/lib/collection-links';
 
 /**
  * Extra QR codes on wall labels, e.g. an artist's own code for their website
@@ -25,6 +26,8 @@ export type ExtraLabelQr = {
 };
 
 const MAX_EXTRA_QRS = 6;
+
+const newQrId = () => Math.random().toString(36).slice(2, 10);
 const UPLOAD_MAX_SIDE = 480;
 const MAX_IMAGE_CHARS = 200_000;
 
@@ -98,6 +101,7 @@ export function ExtraLabelQrsEditor({
   artists,
   artistsLoading,
   svgRootRef,
+  savedLinks = [],
 }: {
   extras: ExtraLabelQr[];
   onChange: (next: ExtraLabelQr[]) => void;
@@ -106,6 +110,8 @@ export function ExtraLabelQrsEditor({
   artistsLoading: boolean;
   /** Hidden container holding the drawn link codes, read at print time. */
   svgRootRef: RefObject<HTMLDivElement | null>;
+  /** Links saved in Collection Management, offered as one-click codes. */
+  savedLinks?: CollectionLink[];
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadFor = useRef<string | null>(null);
@@ -113,11 +119,19 @@ export function ExtraLabelQrsEditor({
   const update = (id: string, patch: Partial<ExtraLabelQr>) =>
     onChange(extras.map((e) => (e.id === id ? { ...e, ...patch } : e)));
 
-  const add = () =>
+  const add = (from?: CollectionLink) =>
     onChange([
       ...extras,
-      { id: Math.random().toString(36).slice(2, 10), caption: '', url: '', image: null, target: 'all' },
+      {
+        id: newQrId(),
+        caption: from ? from.label.slice(0, 40) : '',
+        url: from?.url ?? '',
+        image: null,
+        target: 'all',
+      },
     ]);
+
+  const unusedLinks = savedLinks.filter((l) => !extras.some((e) => !e.image && e.url.trim() === l.url));
 
   const handleUpload = async (file: File | undefined) => {
     const id = uploadFor.current;
@@ -140,6 +154,7 @@ export function ExtraLabelQrsEditor({
       <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-1">More QR codes</p>
       <p className="text-[11px] font-serif text-ink/45 mb-2">
         Add an artist&apos;s own code (website, shop, video) as a link or an image of the code.
+        {savedLinks.length === 0 && ' Save links you reuse under Links in Collection Management.'}
       </p>
 
       {/* Link codes, drawn here and copied into the print window. */}
@@ -232,10 +247,28 @@ export function ExtraLabelQrsEditor({
         ))}
       </div>
 
+      {unusedLinks.length > 0 && extras.length < MAX_EXTRA_QRS && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-serif text-ink/45">Your links:</span>
+          {unusedLinks.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => add(l)}
+              title={l.url}
+              className="inline-flex items-center gap-1 rounded-full border border-wine/25 px-2 py-0.5 text-[11px] font-serif text-ink/70 hover:bg-wine/10 hover:text-ink"
+            >
+              <Link2 className="h-3 w-3" aria-hidden />
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {extras.length < MAX_EXTRA_QRS && (
         <button
           type="button"
-          onClick={add}
+          onClick={() => add()}
           className="mt-2 inline-flex items-center gap-1 text-xs font-serif text-wine underline hover:text-wine/80"
         >
           <Plus className="h-3.5 w-3.5" />
