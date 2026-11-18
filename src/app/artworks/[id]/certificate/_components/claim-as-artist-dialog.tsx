@@ -26,7 +26,8 @@ export function ClaimAsArtistDialog({ artworkId }: { artworkId: string }) {
       <DialogTrigger asChild>
         <Button
           variant="default"
-          className="font-serif bg-wine text-parchment hover:bg-wine/90"
+          size="sm"
+          className="font-serif text-xs sm:text-sm bg-wine text-parchment hover:bg-wine/90"
         >
           Claim as Artist
         </Button>

@@ -21,7 +21,7 @@ import { editArtwork, uploadArtworkOriginalPhoto } from '../_actions/edit-artwor
 import type { Artwork } from './certificate-of-authenticity';
 import { PersonPicker, personValueFromColumns, type PersonValue } from '~/components/person-picker';
 import Image from 'next/image';
-import { X, Upload, ArrowRight, Crop, History } from 'lucide-react';
+import { X, Upload, ArrowRight, Crop, History, Pencil } from 'lucide-react';
 import { ImageCropDialog, type CropSource } from '~/components/image-crop-dialog';
 import { cn } from '@kit/ui/utils';
 import { sendArtistClaimInvite } from '../_actions/send-artist-claim-invite';
@@ -351,8 +351,10 @@ export function EditArtworkDialog({
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="font-serif border-wine/30 hover:bg-wine/10"
+          size="sm"
+          className="font-serif text-xs sm:text-sm gap-1.5"
         >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
           Edit
         </Button>
       </DialogTrigger>

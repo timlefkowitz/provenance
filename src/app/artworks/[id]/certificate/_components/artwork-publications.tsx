@@ -33,9 +33,9 @@ export function ArtworkPublications({
   if (publications.length === 0 && !canEdit) return null;
 
   return (
-    <div className="border-b border-wine/20 pb-2">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <p className="text-xs sm:text-sm text-ink/60 font-serif">
+    <div className="border-t border-ink/10 pt-3">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif">
           {publications.length > 1 ? `Publications (${publications.length})` : 'Publications'}
         </p>
         {canEdit && <EditPublicationsDialog artworkId={artworkId} publications={publications} />}

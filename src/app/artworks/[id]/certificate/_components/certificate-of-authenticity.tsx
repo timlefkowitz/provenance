@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban } from 'lucide-react';
+import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban, BadgeCheck } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -1117,9 +1117,9 @@ export function CertificateOfAuthenticity({
       {/* Private certificate indicator — owner only */}
       {isOwner && artwork.is_public === false && (
         <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-4xl mb-4">
-          <div className="flex items-center gap-2 bg-ink/5 border border-ink/15 rounded-lg p-4 text-ink/80">
-            <Lock className="h-5 w-5 shrink-0" aria-hidden />
-            <p className="font-serif text-sm sm:text-base">
+          <div className="flex items-center gap-2.5 rounded-lg border border-ink/10 bg-white/60 px-4 py-3 text-ink/70">
+            <Lock className="h-4 w-4 shrink-0" aria-hidden />
+            <p className="font-serif text-sm">
               Private — only you can see this certificate
             </p>
           </div>
@@ -1130,8 +1130,8 @@ export function CertificateOfAuthenticity({
       {isOwner && showVerifyCta && (
         <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-4xl mb-4">
           {certificateStatus === 'pending_verification' ? (
-            <div className="bg-wine/10 border-2 border-wine/40 rounded-lg p-4 sm:p-5">
-              <p className="font-serif text-ink mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-wine/20 bg-wine/5 px-4 py-3">
+              <p className="flex-1 font-serif text-sm text-ink">
                 An artist has claimed this certificate. Review the details below to confirm the claim, then verify to complete the process.
               </p>
               <Button
@@ -1154,20 +1154,22 @@ export function CertificateOfAuthenticity({
                   });
                 }}
                 disabled={verifying || pending}
-                className="font-serif bg-wine text-parchment hover:bg-wine/90"
+                size="sm"
+                className="shrink-0 font-serif text-xs sm:text-sm gap-1.5 bg-wine text-parchment hover:bg-wine/90"
               >
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                 {verifying || pending ? 'Verifying...' : 'Verify certificate'}
               </Button>
             </div>
           ) : certificateStatus === 'verified' ? (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
-              <CheckCircle2 className="h-5 w-5 shrink-0" />
-              <p className="font-serif">This certificate has been verified.</p>
+            <div className="flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <p className="font-serif text-sm">This certificate has been verified.</p>
             </div>
           ) : (
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              <p className="font-serif">
+            <div className="flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p className="font-serif text-sm">
                 Certificate is not ready for verification. It may have already been verified or the claim is still in progress.
               </p>
             </div>
@@ -1185,8 +1187,8 @@ export function CertificateOfAuthenticity({
       )}
 
       {/* Certificate */}
-      <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-12 max-w-4xl">
-        <div className="relative bg-white border-double-box p-4 sm:p-6 md:p-12 shadow-lg print:shadow-none">
+      <div className="container mx-auto px-4 sm:px-6 md:px-8 pt-2 pb-10 sm:pb-16 max-w-4xl print:p-0">
+        <div className="relative overflow-hidden rounded-xl border border-ink/10 bg-white px-5 py-8 sm:px-10 sm:py-12 md:px-14 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_16px_40px_-20px_rgba(0,0,0,0.18)] print:rounded-none print:border-ink/30 print:shadow-none">
           {voided && (
             <div
               aria-hidden
@@ -1198,44 +1200,47 @@ export function CertificateOfAuthenticity({
             </div>
           )}
           {/* Header */}
-          <div className="text-center mb-6 sm:mb-8 border-b-2 border-wine pb-4 sm:pb-6">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-wine mb-2 tracking-widest">
-              {getCertificateTypeLabel(certificateType).toUpperCase()}
+          <div className="text-center mb-8 sm:mb-10">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-ink/45 font-serif mb-3">
+              Provenance Registry
+            </p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-semibold tracking-tight text-wine">
+              {getCertificateTypeLabel(certificateType)}
             </h1>
-            <p className="text-ink/70 font-serif text-sm sm:text-base md:text-lg">
-              Provenance | A Journal of Art, Objects & Their Histories
+            <p className="mt-2 text-ink/55 font-serif text-xs sm:text-sm">
+              A Journal of Art, Objects &amp; Their Histories
             </p>
           </div>
 
           {/* Certificate Number and QR Code - Only visible to owner */}
           {isOwner && (
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div className="flex-1">
-                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Number</p>
-                <p className="text-lg sm:text-xl font-display font-bold text-wine break-all">
+            <div className="flex flex-row justify-between items-center gap-4 mb-8 rounded-lg border border-ink/10 bg-parchment/50 p-4 sm:p-5">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Certificate Number</p>
+                <p className="text-base sm:text-lg font-display font-semibold tracking-wide text-wine break-all">
                   {artwork.certificate_number}
                 </p>
               </div>
               {certificateUrl && (
-                <div className="flex flex-col items-center sm:items-end">
-                  <div className="bg-white p-2 border-2 border-wine/20 rounded">
+                <div className="flex flex-col items-center shrink-0">
+                  <div className="bg-white p-1.5 border border-ink/10 rounded-md">
                     <QRCodeSVG
                       value={certificateUrl}
-                      size={80}
+                      size={72}
                       level="H"
                       includeMargin={false}
                       className="sm:hidden"
                     />
                     <QRCodeSVG
                       value={certificateUrl}
-                      size={120}
+                      size={96}
                       level="H"
                       includeMargin={false}
                       className="hidden sm:block"
                     />
                   </div>
-                  <p className="text-xs text-ink/50 font-serif mt-2 text-center max-w-[120px]">
-                    Scan to verify certificate
+                  <p className="text-[10px] text-ink/45 font-serif mt-1.5 text-center">
+                    Scan to verify
                   </p>
                 </div>
               )}
@@ -1244,8 +1249,8 @@ export function CertificateOfAuthenticity({
 
           {/* Artwork Image */}
           {artwork.image_url && (
-            <div className="mb-6 sm:mb-8 text-center">
-              <div className="inline-block border-2 border-wine p-2 sm:p-4 bg-parchment max-w-full">
+            <div className="mb-8 sm:mb-10 flex justify-center rounded-lg bg-parchment/60 p-3 sm:p-6">
+              <div className="max-w-full">
                 {imageError ? (
                   <div className="w-full min-h-48 flex items-center justify-center text-ink/50 font-serif py-12">
                     Image unavailable
@@ -1257,7 +1262,7 @@ export function CertificateOfAuthenticity({
                       alt={artwork.title}
                       width={600}
                       height={400}
-                      className="object-contain w-full h-auto max-h-64 sm:max-h-80 md:max-h-96"
+                      className="object-contain w-full h-auto max-h-72 sm:max-h-96 md:max-h-[28rem] rounded-sm"
                       unoptimized
                       onError={() => setImageError(true)}
                     />
@@ -1268,15 +1273,15 @@ export function CertificateOfAuthenticity({
           )}
 
           {/* Artwork Details */}
-          <div className="space-y-4 mb-6 sm:mb-8">
-            <div className="border-b border-wine/20 pb-2">
-              <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Title</p>
+          <div className="space-y-4">
+            <div className="border-t border-ink/10 pt-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Title</p>
               <FieldWithHistory
                 dbField="title"
                 currentValue={artwork.title || 'Untitled Artwork'}
                 history={artwork.provenance_history}
                 renderValue={(v) => (
-                  <p className="text-xl sm:text-2xl font-display font-bold text-wine break-words">
+                  <p className="text-2xl sm:text-3xl font-display font-semibold tracking-tight text-wine break-words">
                     {v}
                     {isSold && <SoldDot className="ml-2 -mt-1" />}
                   </p>
@@ -1285,8 +1290,8 @@ export function CertificateOfAuthenticity({
             </div>
 
             {artwork.artist_name && (
-              <div className="border-b border-wine/20 pb-2">
-                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+              <div className="border-t border-ink/10 pt-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">
                   Artist
                 </p>
                 <FieldWithHistory
@@ -1297,12 +1302,12 @@ export function CertificateOfAuthenticity({
                     artistPublicHref ? (
                       <Link
                         href={artistPublicHref}
-                        className="text-lg sm:text-xl font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
+                        className="text-base sm:text-lg font-serif text-wine break-words hover:text-wine/80 underline-offset-4 hover:underline"
                       >
                         {v}
                       </Link>
                     ) : (
-                      <p className="text-lg sm:text-xl font-serif text-wine break-words">{v}</p>
+                      <p className="text-base sm:text-lg font-serif text-wine break-words">{v}</p>
                     )
                   }
                 />
@@ -1310,8 +1315,8 @@ export function CertificateOfAuthenticity({
             )}
 
             {artwork.description && (
-              <div className="border-b border-wine/20 pb-2">
-                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Description</p>
+              <div className="border-t border-ink/10 pt-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Description</p>
                 <FieldWithHistory
                   dbField="description"
                   currentValue={artwork.description}
@@ -1323,10 +1328,10 @@ export function CertificateOfAuthenticity({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
               {artwork.creation_date && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Creation Date</p>
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Creation Date</p>
                   <FieldWithHistory
                     dbField="creation_date"
                     currentValue={artwork.creation_date}
@@ -1345,8 +1350,8 @@ export function CertificateOfAuthenticity({
               )}
 
               {artwork.medium && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Medium</p>
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Medium</p>
                   <FieldWithHistory
                     dbField="medium"
                     currentValue={artwork.medium}
@@ -1359,8 +1364,8 @@ export function CertificateOfAuthenticity({
               )}
 
               {artwork.dimensions && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Dimensions</p>
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Dimensions</p>
                   <FieldWithHistory
                     dbField="dimensions"
                     currentValue={artwork.dimensions}
@@ -1372,8 +1377,8 @@ export function CertificateOfAuthenticity({
                 </div>
               )}
 
-              <div className="border-b border-wine/20 pb-2">
-                <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Date Certified</p>
+              <div className="border-t border-ink/10 pt-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Date Certified</p>
                 <p className="text-sm sm:text-base font-serif text-ink break-words">
                   {new Date(artwork.created_at).toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -1385,8 +1390,8 @@ export function CertificateOfAuthenticity({
 
               {/* Certificate Creator */}
               {creatorInfo && creatorInfo.name && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">
                     {creatorInfo.role === 'gallery'
                       ? 'Uploaded by Gallery'
                       : creatorInfo.role === 'institution'
@@ -1411,8 +1416,8 @@ export function CertificateOfAuthenticity({
               )}
 
               {exhibitionList.length > 0 && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">
                     {exhibitionList.length > 1 ? `Exhibitions (${exhibitionList.length})` : 'Exhibition'}
                   </p>
                   <ul className="space-y-2">
@@ -1464,8 +1469,8 @@ export function CertificateOfAuthenticity({
               />
 
               {artwork.metadata?.certificate_location?.formatted && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Certificate Created In</p>
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Certificate Created In</p>
                   <p className="text-sm sm:text-base font-serif text-ink break-words">
                     {artwork.metadata.certificate_location.formatted}
                   </p>
@@ -1473,8 +1478,8 @@ export function CertificateOfAuthenticity({
               )}
 
               {artwork.edition && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Edition</p>
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Edition</p>
                   <FieldWithHistory
                     dbField="edition"
                     currentValue={artwork.edition}
@@ -1487,73 +1492,11 @@ export function CertificateOfAuthenticity({
               )}
 
               {artwork.production_location && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">Production Location</p>
+                <div className="border-t border-ink/10 pt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Production Location</p>
                   <FieldWithHistory
                     dbField="production_location"
                     currentValue={artwork.production_location}
-                    history={artwork.provenance_history}
-                    renderValue={(v) => (
-                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* Value - show if public OR if owner */}
-              {artwork.value && (artwork.value_is_public || isOwner) && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
-                    Value
-                    {!artwork.value_is_public && isOwner && (
-                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
-                    )}
-                  </p>
-                  <FieldWithHistory
-                    dbField="value"
-                    currentValue={artwork.value}
-                    history={artwork.provenance_history}
-                    renderValue={(v) => (
-                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
-                    )}
-                  />
-                </div>
-              )}
-              {provenanceValue && (artwork.value_is_public || isOwner) && (
-                <ProvenanceValueLine value={provenanceValue} isPrivate={!artwork.value_is_public} />
-              )}
-
-              {/* Owned By - show if public OR if owner */}
-              {artwork.owned_by && (artwork.owned_by_is_public || isOwner) && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
-                    Owned By
-                    {!artwork.owned_by_is_public && isOwner && (
-                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
-                    )}
-                  </p>
-                  <FieldWithHistory
-                    dbField="owned_by"
-                    currentValue={artwork.owned_by}
-                    history={artwork.provenance_history}
-                    renderValue={(v) => (
-                      <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
-                    )}
-                  />
-                </div>
-              )}
-              {/* Sold By - show if public OR if owner */}
-              {artwork.sold_by && (artwork.sold_by_is_public || isOwner) && (
-                <div className="border-b border-wine/20 pb-2">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1">
-                    Sold By
-                    {!artwork.sold_by_is_public && isOwner && (
-                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
-                    )}
-                  </p>
-                  <FieldWithHistory
-                    dbField="sold_by"
-                    currentValue={artwork.sold_by}
                     history={artwork.provenance_history}
                     renderValue={(v) => (
                       <p className="text-sm sm:text-base font-serif text-ink break-words">{v}</p>
@@ -1586,15 +1529,15 @@ export function CertificateOfAuthenticity({
             linkedCertificates.length > 1 ||
             scanStats.total > 0 ||
             (canViewScanMap && scanLocations && scanLocations.length > 0)) && (
-            <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
-              <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
+            <div className="border-t border-ink/10 pt-8 mt-8 sm:mt-10">
+              <h2 className="text-lg sm:text-xl font-display font-semibold tracking-tight text-wine mb-5">
                 Provenance
               </h2>
 
               {/* Certificates: every CoA / CoS / CoO issued for this work */}
               {linkedCertificates.length > 1 && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Certificates</p>
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Certificates</p>
                   <ul className="space-y-1">
                     {linkedCertificates.map((cert) => {
                       const label = (
@@ -1613,7 +1556,7 @@ export function CertificateOfAuthenticity({
                         : null;
                       return (
                         <li key={cert.id} className="text-sm sm:text-base font-serif text-ink break-words">
-                          <span className="mr-2 inline-block rounded border border-wine/30 px-1.5 text-[10px] font-sans uppercase tracking-wide text-wine align-middle">
+                          <span className="mr-2 inline-block rounded-full border border-ink/15 px-2 py-px text-[10px] font-serif uppercase tracking-wider text-ink/60 align-middle">
                             {SYNC_CERT_LABEL[cert.certificateType] ?? 'Cert'}
                           </span>
                           {cert.isCurrent ? (
@@ -1639,8 +1582,8 @@ export function CertificateOfAuthenticity({
 
               {/* Former Owners */}
               {artwork.former_owners && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Former Owners</p>
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Former Owners</p>
                   <FieldWithHistory
                     dbField="former_owners"
                     currentValue={artwork.former_owners}
@@ -1654,11 +1597,11 @@ export function CertificateOfAuthenticity({
 
               {/* Value - show if it exists and (is public OR user is owner) */}
               {artwork.value && (artwork.value_is_public || isOwner) && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">
                     Value
                     {!artwork.value_is_public && isOwner && (
-                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                      <span className="ml-2 normal-case tracking-normal text-ink/40 italic font-normal">(Private)</span>
                     )}
                   </p>
                   <FieldWithHistory
@@ -1677,11 +1620,11 @@ export function CertificateOfAuthenticity({
 
               {/* Owned By - show if it exists and (is public OR user is owner) */}
               {artwork.owned_by && (artwork.owned_by_is_public || isOwner) && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">
                     Owned By
                     {!artwork.owned_by_is_public && isOwner && (
-                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                      <span className="ml-2 normal-case tracking-normal text-ink/40 italic font-normal">(Private)</span>
                     )}
                   </p>
                   <FieldWithHistory
@@ -1697,11 +1640,11 @@ export function CertificateOfAuthenticity({
 
               {/* Sold By - show if it exists and (is public OR user is owner) */}
               {artwork.sold_by && (artwork.sold_by_is_public || isOwner) && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">
                     Sold By
                     {!artwork.sold_by_is_public && isOwner && (
-                      <span className="ml-2 text-xs text-ink/40 italic">(Private)</span>
+                      <span className="ml-2 normal-case tracking-normal text-ink/40 italic font-normal">(Private)</span>
                     )}
                   </p>
                   <FieldWithHistory
@@ -1717,8 +1660,8 @@ export function CertificateOfAuthenticity({
 
               {/* Auction History */}
               {artwork.auction_history && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Auction History</p>
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Auction History</p>
                   <FieldWithHistory
                     dbField="auction_history"
                     currentValue={artwork.auction_history}
@@ -1732,8 +1675,8 @@ export function CertificateOfAuthenticity({
 
               {/* Exhibition History */}
               {artwork.exhibition_history && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Exhibition History / Literature References</p>
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Exhibition History / Literature References</p>
                   <FieldWithHistory
                     dbField="exhibition_history"
                     currentValue={artwork.exhibition_history}
@@ -1747,8 +1690,8 @@ export function CertificateOfAuthenticity({
 
               {/* Historic Context */}
               {artwork.historic_context && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Historic Context / Origin Information</p>
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Historic Context / Origin Information</p>
                   <FieldWithHistory
                     dbField="historic_context"
                     currentValue={artwork.historic_context}
@@ -1762,8 +1705,8 @@ export function CertificateOfAuthenticity({
 
               {/* Celebrity Notes */}
               {artwork.celebrity_notes && (
-                <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-ink/60 font-serif mb-1 font-semibold">Special Notes on Celebrity or Notable Ownership</p>
+                <div className="mb-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif mb-1.5">Special Notes on Celebrity or Notable Ownership</p>
                   <FieldWithHistory
                     dbField="celebrity_notes"
                     currentValue={artwork.celebrity_notes}
@@ -1778,7 +1721,7 @@ export function CertificateOfAuthenticity({
               {/* QR scan stats: counts for everyone */}
               {formatScanStats(scanStats) && (
                 <div className="mb-3 sm:mb-4 flex items-start gap-2">
-                  <Scan className="h-4 w-4 text-wine mt-0.5 flex-shrink-0" />
+                  <Scan className="h-3.5 w-3.5 text-ink/40 mt-0.5 flex-shrink-0" />
                   <p className="text-xs sm:text-sm text-ink/70 font-serif">
                     <span className="font-semibold text-ink">{formatScanStats(scanStats)}</span>
                     {scanStats.lastScannedAt &&
@@ -1793,10 +1736,10 @@ export function CertificateOfAuthenticity({
 
               {/* QR Code Scan Locations: owner and admins only */}
               {canViewScanMap && scanLocations && scanLocations.length > 0 && (
-                <div className="mb-3 sm:mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Scan className="h-4 w-4 text-wine" />
-                    <p className="text-xs sm:text-sm text-ink/60 font-serif font-semibold">QR Code Scan Locations</p>
+                <div className="mb-5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Scan className="h-3.5 w-3.5 text-ink/40" />
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink/50 font-serif">QR Code Scan Locations</p>
                   </div>
                   {canViewScanMap && scanLocationsWithCoordinates.length > 0 && (
                     <div className="mb-3">
@@ -1831,12 +1774,12 @@ export function CertificateOfAuthenticity({
                             : ' · location denied';
 
                       return (
-                        <div key={index} className="text-sm sm:text-base font-serif text-ink bg-wine/5 p-2 sm:p-3 rounded border border-wine/30">
+                        <div key={index} className="text-sm font-serif text-ink rounded-lg border border-ink/10 bg-parchment/40 px-3 py-2.5">
                           <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-wine mt-0.5 flex-shrink-0" />
+                            <MapPin className="h-3.5 w-3.5 text-ink/40 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
-                              <p className="font-semibold mb-1 text-wine">
-                                Scanned on {new Date(scan.scanned_at).toLocaleDateString('en-US', {
+                              <p className="font-medium mb-0.5 text-ink">
+                                Scanned {new Date(scan.scanned_at).toLocaleDateString('en-US', {
                                   month: 'long',
                                   day: 'numeric',
                                   year: 'numeric',
@@ -1872,15 +1815,15 @@ export function CertificateOfAuthenticity({
               : attachments.filter((a) => a.is_public);
             if (visibleAttachments.length === 0) return null;
             return (
-              <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8 print:break-inside-avoid">
-                <h2 className="text-xl sm:text-2xl font-display font-bold text-wine mb-3 sm:mb-4">
+              <div className="border-t border-ink/10 pt-8 mt-8 sm:mt-10 print:break-inside-avoid">
+                <h2 className="text-lg sm:text-xl font-display font-semibold tracking-tight text-wine mb-5">
                   Attachments
                 </h2>
                 <ul className="space-y-4">
                   {visibleAttachments.map((att) => (
-                    <li key={att.id} className="rounded-md border border-wine/20 bg-parchment/40 p-3 sm:p-4">
+                    <li key={att.id} className="rounded-lg border border-ink/10 bg-parchment/40 p-3 sm:p-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm sm:text-base font-display font-semibold text-wine break-words">
+                        <p className="text-sm font-display font-medium text-ink break-words">
                           {att.label ?? att.file_name}
                         </p>
                         {(isOwner || isAdmin) && !att.is_public && (
@@ -1908,9 +1851,9 @@ export function CertificateOfAuthenticity({
                           href={att.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm font-serif text-wine underline underline-offset-4 hover:text-wine/80"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-white px-3 text-xs sm:text-sm font-serif text-ink hover:bg-accent transition-colors"
                         >
-                          <FileText className="h-4 w-4 shrink-0" aria-hidden />
+                          <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
                           Open PDF
                         </a>
                       )}
@@ -1922,13 +1865,13 @@ export function CertificateOfAuthenticity({
           })()}
 
           {/* Authentication Statement */}
-          <div className="border-t-2 border-wine pt-4 sm:pt-6 mt-6 sm:mt-8">
-            <p className="text-sm sm:text-base font-serif text-ink leading-relaxed mb-3 sm:mb-4 break-words">
+          <div className="border-t border-ink/10 pt-8 mt-8 sm:mt-10">
+            <p className="text-sm font-serif text-ink/75 leading-relaxed mb-3 break-words">
               This certifies that the artwork described above has been registered in the
               Provenance registry
               {isOwner ? (
                 <> and assigned the certificate number{' '}
-                <span className="font-bold text-wine break-all">{artwork.certificate_number}</span>.
+                <span className="font-semibold text-wine break-all">{artwork.certificate_number}</span>.
                 </>
               ) : (
                 '.'
@@ -1937,7 +1880,7 @@ export function CertificateOfAuthenticity({
               artwork.
             </p>
             {isOwner && (
-              <p className="text-xs sm:text-sm text-ink/70 font-serif italic break-words">
+              <p className="text-xs text-ink/50 font-serif break-words">
                 This certificate is issued by Provenance and can be verified using the
                 certificate number above.
               </p>
@@ -1946,7 +1889,7 @@ export function CertificateOfAuthenticity({
 
           {/* Request Update and Edit Buttons (for non-owners) */}
           {!isOwner && user.data && (
-            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
+            <div className="mt-8 pt-6 border-t border-ink/10 text-center print:hidden">
               <div className="flex flex-wrap gap-2 justify-center">
                 {(certificateType === CERTIFICATE_TYPES.SHOW || certificateType === CERTIFICATE_TYPES.OWNERSHIP) && canClaimAsArtist && (
                   <ClaimAsArtistDialog artworkId={artwork.id} />
@@ -1965,15 +1908,17 @@ export function CertificateOfAuthenticity({
 
           {/* Issue a Certificate of Ownership (Edit lives in the toolbar) */}
           {canIssueOwnership && user.data && (
-            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-wine/20 text-center">
+            <div className="mt-8 pt-6 border-t border-ink/10 text-center print:hidden">
               <div className="flex flex-wrap gap-2 justify-center">
                 {canIssueOwnership && (
                   <Button
                     type="button"
                     variant="outline"
-                    className="font-serif border-wine/30 hover:bg-wine/10"
+                    size="sm"
+                    className="font-serif text-xs sm:text-sm gap-1.5"
                     onClick={() => setIssueCooOpen(true)}
                   >
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
                     Issue Certificate of Ownership
                   </Button>
                 )}
@@ -1983,8 +1928,8 @@ export function CertificateOfAuthenticity({
           )}
 
           {/* Footer */}
-          <div className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-wine/20 text-center">
-            <p className="text-xs text-ink/50 font-serif">
+          <div className="mt-10 sm:mt-12 text-center">
+            <p className="text-[11px] tracking-wide text-ink/40 font-serif">
               Provenance | Verified provenance entries and immutable historical timelines
             </p>
           </div>

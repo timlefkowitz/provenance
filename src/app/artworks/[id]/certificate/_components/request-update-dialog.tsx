@@ -193,7 +193,8 @@ export function RequestUpdateDialog({
           <DialogTrigger asChild>
             <Button
               variant="default"
-              className="font-serif bg-wine text-parchment hover:bg-wine/90"
+              size="sm"
+              className="font-serif text-xs sm:text-sm bg-wine text-parchment hover:bg-wine/90"
               onClick={() => setRequestType('ownership_request')}
             >
               Request Ownership
@@ -203,7 +204,8 @@ export function RequestUpdateDialog({
         <DialogTrigger asChild>
           <Button
             variant="outline"
-            className="font-serif border-wine/30 hover:bg-wine/10"
+            size="sm"
+            className="font-serif text-xs sm:text-sm"
             onClick={() => setRequestType('provenance_update')}
           >
             {triggerLabel}
