@@ -10,14 +10,16 @@ import { EditorialDialogContent } from '~/components/editorial-dialog';
 import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import type { ArtistBio } from '../_helpers/artist-bios';
 import {
+  CATALOG_BINDINGS,
   CATALOG_STYLES,
   DEFAULT_CATALOG_OPTIONS,
   type CatalogArtist,
+  type CatalogBinding,
   type CatalogOptions,
   type CatalogStyle,
 } from '../_helpers/catalog-print-html';
 
-type ToggleKey = Exclude<keyof CatalogOptions, 'style' | 'coverName'>;
+type ToggleKey = Exclude<keyof CatalogOptions, 'style' | 'coverName' | 'binding'>;
 
 const TOGGLES: Array<{ key: ToggleKey; label: string; hint?: string; requires?: ToggleKey }> = [
   { key: 'descriptions', label: 'Descriptions' },
@@ -48,6 +50,35 @@ function loadBioEdits(key: string): Record<string, string> {
   } catch {
     return {};
   }
+}
+
+/** A sheet of paper and how it's folded for each binding. */
+function BindingThumb({ binding }: { binding: CatalogBinding }) {
+  if (binding === 'sheets') {
+    return (
+      <div className="flex h-10 items-end justify-center gap-0.5" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-9 w-7 border border-black/20 bg-white" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-10 items-end justify-center" aria-hidden="true">
+      <div className="relative flex h-9 w-14 border border-black/20 bg-white">
+        <div className="flex-1 border-r border-dashed border-black/30" />
+        <div className="flex-1" />
+        {binding === 'staple' ? (
+          <>
+            <span className="absolute left-1/2 top-2 h-1.5 w-[3px] -translate-x-1/2 bg-ink/60" />
+            <span className="absolute bottom-2 left-1/2 h-1.5 w-[3px] -translate-x-1/2 bg-ink/60" />
+          </>
+        ) : (
+          <span className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-amber-300/80" />
+        )}
+      </div>
+    </div>
+  );
 }
 
 /** Small drawings of each style's first pages, so the choice is visual. */
@@ -214,7 +245,7 @@ export function CatalogDialog({
           })
           .filter((a) => a.bio || a.statement)
       : [];
-    console.log('[Catalog] Print', { style: options.style, coverName: options.coverName, count, artists: artists.length });
+    console.log('[Catalog] Print', { style: options.style, binding: options.binding, coverName: options.coverName, count, artists: artists.length });
     onPrint(
       { ...options, prices: options.prices && hasPrices, provenance: options.provenance && hasProvenance },
       artists,
@@ -228,7 +259,8 @@ export function CatalogDialog({
         <DialogHeader>
           <DialogTitle>Catalog</DialogTitle>
           <DialogDescription>
-            Pick a look and what to include. {count} {count === 1 ? 'work' : 'works'}, printed on US Letter.
+            Pick a look and what to include. {count} {count === 1 ? 'work' : 'works'}, printed on US Letter
+            (8.5 × 11in).
           </DialogDescription>
         </DialogHeader>
 
@@ -257,6 +289,42 @@ export function CatalogDialog({
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <p className="mb-2 font-serif text-[10px] uppercase tracking-widest text-ink/40">Format</p>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Catalog format">
+            {CATALOG_BINDINGS.map((b) => {
+              const on = options.binding === b.value;
+              return (
+                <button
+                  key={b.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setOptions((o) => ({ ...o, binding: b.value }))}
+                  className={`flex flex-col gap-1.5 border p-2 text-left font-serif transition-colors ${
+                    on ? 'border-wine bg-wine/10' : 'border-wine/20 hover:border-wine/40'
+                  }`}
+                >
+                  <BindingThumb binding={b.value} />
+                  <span className={`text-sm ${on ? 'text-wine' : 'text-ink'}`}>
+                    {b.label}
+                    <span className="block text-[11px] leading-tight text-ink/45">{b.hint}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {options.binding !== 'sheets' && (
+            <p className="mt-2 font-serif text-xs leading-snug text-ink/55">
+              Half-letter pages (5.5 × 8.5in), two to a sheet. In the print dialog choose{' '}
+              <span className="text-ink">double-sided, flip on short edge</span>.{' '}
+              {options.binding === 'staple'
+                ? 'Fold the whole stack in half and staple along the fold. Best up to about 10 sheets (40 pages).'
+                : 'Fold each sheet in half, stack them in order and glue the folds together. No page limit.'}
+            </p>
+          )}
         </div>
 
         <div>
@@ -345,7 +413,7 @@ export function CatalogDialog({
             ) : (
               <Printer className="mr-1.5 h-3.5 w-3.5" />
             )}
-            Print catalog
+            {options.binding === 'sheets' ? 'Print catalog' : 'Print book'}
           </Button>
         </DialogFooter>
       </EditorialDialogContent>

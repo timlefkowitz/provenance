@@ -15,6 +15,16 @@ import { parseDateOnly } from '~/lib/parse-date-only';
  *
  * Every style prints on US Letter and ends with a checklist (and a price list
  * when prices are on).
+ *
+ * Binding: "sheets" prints one Letter page per sheet. The two book bindings
+ * print half-letter pages (5.5 × 8.5in), two to a landscape Letter sheet,
+ * double-sided (flip on the short edge):
+ * - staple: saddle-stitch order. Fold the stack in half and staple the fold.
+ * - glue: each sheet is its own folded leaf of four pages. Fold every sheet,
+ *   stack them in order and glue the folds together.
+ * Book pages are laid out at 6.875 × 10.625in and scaled to 80%, so each
+ * style keeps its letter-size layout. Long sections (checklist, bios) are
+ * split into pages in the print window, where they can be measured.
  */
 
 export type CatalogStyle = 'standard' | 'editorial' | 'monograph';
@@ -65,8 +75,17 @@ export type CatalogMeta = {
 /** The name above the title: the owner's (gallery, institution) or ours. */
 export type CatalogCoverName = 'owner' | 'provenance';
 
+export type CatalogBinding = 'sheets' | 'staple' | 'glue';
+
+export const CATALOG_BINDINGS: Array<{ value: CatalogBinding; label: string; hint: string }> = [
+  { value: 'sheets', label: 'Pages', hint: 'One Letter page per sheet' },
+  { value: 'staple', label: 'Booklet', hint: 'Fold the stack, staple the middle' },
+  { value: 'glue', label: 'Glued book', hint: 'Fold each sheet, glue the folds' },
+];
+
 export type CatalogOptions = {
   style: CatalogStyle;
+  binding: CatalogBinding;
   coverName: CatalogCoverName;
   /** Price list at the end (and the price under each work in editorial). */
   prices: boolean;
@@ -82,6 +101,7 @@ export type CatalogOptions = {
 
 export const DEFAULT_CATALOG_OPTIONS: CatalogOptions = {
   style: 'standard',
+  binding: 'sheets',
   coverName: 'owner',
   prices: true,
   priceSymbol: true,
@@ -232,7 +252,8 @@ function priceTable(works: Work[]): string {
   return `<table class="list"><thead><tr><th>#</th><th>Artist</th><th>Title &amp; year</th><th>Medium</th><th>Dimensions</th><th class="price">Price</th></tr></thead><tbody>${tableRows(priced, true)}</tbody></table>`;
 }
 
-function doc(title: string, fonts: string, css: string, body: string): string {
+function doc(title: string, fonts: string, css: string, body: string, binding: CatalogBinding = 'sheets'): string {
+  const book = binding !== 'sheets';
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>${esc(title)}</title>
@@ -241,8 +262,146 @@ ${fonts}
   * { box-sizing: border-box; margin: 0; padding: 0; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 ${css}
+${book ? BOOK_CSS : ''}
 </style></head>
-<body>${body}${PRINT_WHEN_READY}</body></html>`;
+<body>${book ? `${bookNote(binding)}<div id="bk-src">${body}</div>${bookScript(binding)}` : `${body}${PRINT_WHEN_READY}`}</body></html>`;
+}
+
+// ── Book bindings ─────────────────────────────────────────────────────────────
+
+/** Book pages are laid out at this size and scaled by 0.8 into 5.5 × 8.5in. */
+const BOOK_CSS = `
+  :root { --pw: 6.875in; --ph: 10.625in; }
+  @page { size: letter landscape; margin: 0; }
+  #bk-src, #bk-stage { position: absolute; left: -20000px; top: 0; }
+  .page { width: var(--pw) !important; height: var(--ph) !important; min-height: 0 !important; overflow: hidden !important; }
+  .sheet { width: 11in; height: 8.5in; display: flex; overflow: hidden; background: #fff; break-after: page; page-break-after: always; }
+  .sheet:last-child { break-after: auto; page-break-after: auto; }
+  .sheet * { break-before: auto !important; break-after: auto !important; page-break-before: auto !important; page-break-after: auto !important; }
+  .slot { position: relative; width: 5.5in; height: 8.5in; flex: none; overflow: hidden; }
+  .slot > .page { position: absolute; left: 0; top: 0; transform: scale(0.8); transform-origin: 0 0; }
+  .bk-note { font: 13px/1.5 -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #222; background: #fff; max-width: 11in; margin: 0 auto 0.25in; padding: 12px 16px; border: 1px solid #ddd; }
+  .bk-note b { font-weight: 600; }
+  @media screen { html, body { background: #8a8a8a !important; } body { padding: 0.3in 0; } .sheet { margin: 0 auto 0.3in; box-shadow: 0 2px 12px rgba(0,0,0,0.3); } }
+  @media print { .bk-note { display: none; } html, body { background: #fff !important; } }`;
+
+function bookNote(binding: CatalogBinding): string {
+  const finish =
+    binding === 'staple'
+      ? 'Keep the sheets in order, fold the stack in half and staple along the fold.'
+      : 'Fold each sheet in half, stack them in order and glue the folded edges together.';
+  return `<div class="bk-note"><b>Print double-sided, flip on short edge</b> (landscape, Letter, 100% scale). ${finish} <span id="bk-count">Laying out pages…</span></div>`;
+}
+
+/**
+ * Runs in the print window: splits long ("flow") pages to fit, pads to a
+ * multiple of four (keeping a back cover last), imposes two pages per side
+ * in binding order, then prints.
+ */
+function bookScript(binding: CatalogBinding): string {
+  return `<script>
+(function () {
+  var MODE = ${JSON.stringify(binding)};
+  var done = false;
+  function splittable(el) {
+    if (el.nodeType !== 1 || !/^(DIV|SECTION|TABLE|TBODY|ARTICLE)$/.test(el.tagName) || !el.firstElementChild) return false;
+    var bi = getComputedStyle(el).breakInside;
+    return bi !== 'avoid' && bi !== 'avoid-page';
+  }
+  function paginate(section, out, stage) {
+    var repeat = Array.prototype.filter.call(section.children, function (c) { return c.classList.contains('bar'); });
+    var page, stack, filled, origs = [];
+    function open(cont) {
+      page = section.cloneNode(false);
+      stage.appendChild(page);
+      out.push(page);
+      filled = false;
+      if (cont) repeat.forEach(function (r) { page.appendChild(r.cloneNode(true)); });
+      stack = [page];
+      origs.forEach(function (o) {
+        var c = o.cloneNode(false);
+        if (o.bkHead) c.appendChild(o.bkHead.cloneNode(true));
+        stack[stack.length - 1].appendChild(c);
+        stack.push(c);
+      });
+    }
+    function over() { return page.scrollHeight > page.clientHeight + 1; }
+    function place(node) {
+      var parent = stack[stack.length - 1];
+      if (node.nodeType === 1 && node.tagName === 'THEAD' && parent.querySelector('thead')) return;
+      parent.appendChild(node);
+      if (!over()) { if (node.nodeType === 1) filled = true; return; }
+      parent.removeChild(node);
+      if (splittable(node)) {
+        // Continuation pages repeat a table's header row.
+        if (node.tagName === 'TABLE') node.bkHead = node.querySelector('thead');
+        var shell = node.cloneNode(false);
+        parent.appendChild(shell);
+        stack.push(shell);
+        origs.push(node);
+        Array.prototype.slice.call(node.childNodes).forEach(place);
+        stack.pop();
+        origs.pop();
+        return;
+      }
+      if (filled) { open(true); stack[stack.length - 1].appendChild(node); }
+      else parent.appendChild(node);
+      filled = true;
+    }
+    open(false);
+    Array.prototype.slice.call(section.childNodes).forEach(place);
+  }
+  function build() {
+    if (done) return;
+    done = true;
+    var src = document.getElementById('bk-src');
+    var stage = document.createElement('div');
+    stage.id = 'bk-stage';
+    document.body.appendChild(stage);
+    var pages = [];
+    Array.prototype.slice.call(src.children).forEach(function (sec) {
+      if (sec.classList.contains('flow')) paginate(sec, pages, stage);
+      else { stage.appendChild(sec); pages.push(sec); }
+    });
+    // A table left with only its header at the foot of a page goes.
+    pages.forEach(function (p) {
+      p.querySelectorAll('table').forEach(function (t) { if (!t.querySelector('tbody tr')) t.remove(); });
+    });
+    var back = pages.length && pages[pages.length - 1].classList.contains('back') ? pages.pop() : null;
+    var pad = (4 - ((pages.length + (back ? 1 : 0)) % 4)) % 4;
+    for (var b = 0; b < pad; b++) { var blank = document.createElement('section'); blank.className = 'page blank'; pages.push(blank); }
+    if (back) pages.push(back);
+    var n = pages.length, sides = [];
+    for (var s = 0; s < n / 4; s++) {
+      if (MODE === 'staple') { sides.push([n - 1 - 2 * s, 2 * s]); sides.push([2 * s + 1, n - 2 - 2 * s]); }
+      else { sides.push([4 * s + 3, 4 * s]); sides.push([4 * s + 1, 4 * s + 2]); }
+    }
+    var frag = document.createDocumentFragment();
+    sides.forEach(function (pair) {
+      var sheet = document.createElement('div');
+      sheet.className = 'sheet';
+      pair.forEach(function (i) { var slot = document.createElement('div'); slot.className = 'slot'; slot.appendChild(pages[i]); sheet.appendChild(slot); });
+      frag.appendChild(sheet);
+    });
+    document.body.insertBefore(frag, src);
+    src.remove();
+    stage.remove();
+    var count = document.getElementById('bk-count');
+    if (count) {
+      count.textContent = n + ' pages on ' + (n / 4) + (n / 4 === 1 ? ' sheet' : ' sheets') + ' of paper.' +
+        (MODE === 'staple' && n / 4 > 10 ? ' That is thick for a stapler: the Glued book format handles any length.' : '');
+    }
+    setTimeout(function () { window.print(); }, 250);
+  }
+  function go() { try { build(); } catch (e) { console.error('[Catalog] Book layout failed', e); } }
+  window.onafterprint = function () { window.close(); };
+  window.addEventListener('load', function () {
+    var fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+    fonts.then(function () { setTimeout(go, 50); }, go);
+  });
+  setTimeout(go, 9000);
+})();
+</script>`;
 }
 
 // ── Standard ──────────────────────────────────────────────────────────────────
@@ -365,6 +524,31 @@ function buildStandard(meta: CatalogMeta, works: Work[], options: CatalogOptions
   table.list .price { text-align: right; white-space: nowrap; }
   table.list td.price { font-family: ${sans}; }`;
 
+  if (options.binding !== 'sheets') {
+    // Book pages: the cover is one page; every other section flows onto pages.
+    const bookCss = `${css}
+  .page { padding: 0.75in; background: #fff; }
+  .page.flow { display: block; }
+  .page.cover-page { display: flex; flex-direction: column; }
+  .cover-page .cover { flex: 1; min-height: 0; }
+  .page .section-header { margin-top: 0; }
+  .page.back { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.12in; }
+  .back-qr { width: 1.4in; margin-bottom: 0.1in; } .back-qr svg { width: 100%; height: auto; display: block; }
+  .back-line { font-family: ${sans}; font-size: 7.5pt; letter-spacing: 0.2em; text-transform: uppercase; color: #888; }
+  .back-title { font-size: 16pt; font-weight: bold; }`;
+    const back = `<section class="page back">
+      ${meta.qrSvg ? `<div class="back-qr">${meta.qrSvg}</div><div class="back-line">Scan to view online</div>` : ''}
+      <div class="back-title">${esc(meta.title)}</div>
+      ${meta.kicker ? `<div class="back-line">${esc(meta.kicker)}</div>` : ''}
+      <div class="back-line">${esc(meta.printDate)}</div>
+    </section>`;
+    const body = [
+      `<section class="page cover-page">${cover}</section>`,
+      ...[intro, plates, bios, checklist, prices].filter((p) => p.trim()).map((p) => `<section class="page flow">${p}</section>`),
+      back,
+    ].join('');
+    return doc(`${meta.title} — Catalog`, '', bookCss, body, options.binding);
+  }
   return doc(`${meta.title} — Catalog`, '', css, `${cover}${intro}${plates}${bios}${checklist}${prices}`);
 }
 
@@ -526,7 +710,24 @@ function buildEditorial(meta: CatalogMeta, works: Work[], options: CatalogOption
   table.list .price { text-align: right; white-space: nowrap; }
   table.list td.price { font-family: ${mono}; font-size: 8pt; }`;
 
-  return doc(`${meta.title} — Catalog`, fonts, css, `${cover}${intro}${workPages}${bios}${checklist}${prices}`);
+  // Books close on a back cover: the wordmark and the show's QR code.
+  const back =
+    options.binding === 'sheets'
+      ? ''
+      : `<section class="page back">
+      <div class="back-inner">
+        ${meta.qrSvg ? `<div class="back-qr">${meta.qrSvg}</div><div class="mono back-sub">Scan to view online</div>` : ''}
+        <div class="wordmark back-mark">Provenance<span>.</span></div>
+        <div class="mono back-sub">${esc(meta.title)}${meta.kicker ? ` · ${esc(meta.kicker)}` : ''}</div>
+      </div>
+    </section>`;
+  const backCss = `
+  .back { justify-content: center; align-items: center; }
+  .back-inner { display: flex; flex-direction: column; align-items: center; gap: 0.14in; text-align: center; }
+  .back-qr { width: 1.4in; background: #fff; padding: 0.08in; border: 0.75pt solid ${ED.rule}; } .back-qr svg { width: 100%; height: auto; display: block; }
+  .back-mark { font-size: 30pt; }
+  .back-sub { font-size: 7pt; color: ${ED.muted}; }`;
+  return doc(`${meta.title} — Catalog`, fonts, css + backCss, `${cover}${intro}${workPages}${bios}${checklist}${prices}${back}`, options.binding);
 }
 
 // ── Monograph ─────────────────────────────────────────────────────────────────
@@ -640,7 +841,7 @@ function buildMonograph(meta: CatalogMeta, works: Work[], options: CatalogOption
   .back-qr svg { width: 100%; height: auto; display: block; }
   .back-brand { font-style: italic; font-size: 22pt; margin-top: 0.6in; }`;
 
-  return doc(`${meta.title} — Catalog`, fonts, css, `${cover}${intro}${plates}${bios}${checklist}${prices}${back}`);
+  return doc(`${meta.title} — Catalog`, fonts, css, `${cover}${intro}${plates}${bios}${checklist}${prices}${back}`, options.binding);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
