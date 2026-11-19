@@ -26,6 +26,7 @@ import { WallLabelsDialog } from '~/app/exhibitions/_components/wall-labels-dial
 import { CatalogDialog } from '~/app/exhibitions/_components/catalog-dialog';
 import {
   buildCatalogHtml,
+  layoutBookWindow,
   type CatalogArtist,
   type CatalogItem,
   type CatalogOptions,
@@ -71,6 +72,8 @@ export function openPrintWindow(html: string, width = 960, height = 780): void {
   }
   win.document.write(html);
   win.document.close();
+  // Book catalogs are laid out from here: the print window can't run its own scripts.
+  layoutBookWindow(win);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────

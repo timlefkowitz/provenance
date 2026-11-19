@@ -24,7 +24,8 @@ import { parseDateOnly } from '~/lib/parse-date-only';
  *   stack them in order and glue the folds together.
  * Book pages are laid out at 6.875 × 10.625in and scaled to 80%, so each
  * style keeps its letter-size layout. Long sections (checklist, bios) are
- * split into pages in the print window, where they can be measured.
+ * split into pages in the print window, where they can be measured, by
+ * layoutBookWindow (called from openPrintWindow).
  */
 
 export type CatalogStyle = 'standard' | 'editorial' | 'monograph';
@@ -264,7 +265,7 @@ ${fonts}
 ${css}
 ${book ? BOOK_CSS : ''}
 </style></head>
-<body>${book ? `${bookNote(binding)}<div id="bk-src">${body}</div>${bookScript(binding)}` : `${body}${PRINT_WHEN_READY}`}</body></html>`;
+${book ? `<body data-book="${binding}">${bookNote(binding)}<div id="bk-src">${body}</div>` : `<body>${body}${PRINT_WHEN_READY}`}</body></html>`;
 }
 
 // ── Book bindings ─────────────────────────────────────────────────────────────
@@ -293,115 +294,173 @@ function bookNote(binding: CatalogBinding): string {
   return `<div class="bk-note"><b>Print double-sided, flip on short edge</b> (landscape, Letter, 100% scale). ${finish} <span id="bk-count">Laying out pages…</span></div>`;
 }
 
-/**
- * Runs in the print window: splits long ("flow") pages to fit, pads to a
- * multiple of four (keeping a back cover last), imposes two pages per side
- * in binding order, then prints.
- */
-function bookScript(binding: CatalogBinding): string {
-  return `<script>
-(function () {
-  var MODE = ${JSON.stringify(binding)};
-  var done = false;
-  function splittable(el) {
-    if (el.nodeType !== 1 || !/^(DIV|SECTION|TABLE|TBODY|ARTICLE)$/.test(el.tagName) || !el.firstElementChild) return false;
-    var bi = getComputedStyle(el).breakInside;
+// The site's CSP (nonce + strict-dynamic) is inherited by the about:blank
+// print window, so inline scripts written into it never run. The book layout
+// therefore runs from the opener, against the print window's document.
+
+/** Splits a long ("flow") page into as many fixed-height pages as it needs. */
+function paginate(doc: Document, section: Element, out: Element[], stage: Element): void {
+  const view = doc.defaultView!;
+  const heads = new WeakMap<Node, Element>();
+  const repeat = Array.from(section.children).filter((c) => c.classList.contains('bar'));
+  const origs: Node[] = [];
+  let page!: Element;
+  let stack: Node[] = [];
+  let filled = false;
+
+  const open = (cont: boolean) => {
+    page = section.cloneNode(false) as Element;
+    stage.appendChild(page);
+    out.push(page);
+    filled = false;
+    if (cont) repeat.forEach((r) => page.appendChild(r.cloneNode(true)));
+    stack = [page];
+    for (const o of origs) {
+      const c = o.cloneNode(false);
+      // Continuation pages repeat a table's header row.
+      const head = heads.get(o);
+      if (head) c.appendChild(head.cloneNode(true));
+      stack[stack.length - 1]!.appendChild(c);
+      stack.push(c);
+    }
+  };
+  const over = () => page.scrollHeight > page.clientHeight + 1;
+  const splittable = (n: Node): n is Element => {
+    if (n.nodeType !== 1) return false;
+    const el = n as Element;
+    if (!/^(DIV|SECTION|TABLE|TBODY|ARTICLE)$/.test(el.tagName) || !el.firstElementChild) return false;
+    const bi = view.getComputedStyle(el).breakInside;
     return bi !== 'avoid' && bi !== 'avoid-page';
-  }
-  function paginate(section, out, stage) {
-    var repeat = Array.prototype.filter.call(section.children, function (c) { return c.classList.contains('bar'); });
-    var page, stack, filled, origs = [];
-    function open(cont) {
-      page = section.cloneNode(false);
-      stage.appendChild(page);
-      out.push(page);
-      filled = false;
-      if (cont) repeat.forEach(function (r) { page.appendChild(r.cloneNode(true)); });
-      stack = [page];
-      origs.forEach(function (o) {
-        var c = o.cloneNode(false);
-        if (o.bkHead) c.appendChild(o.bkHead.cloneNode(true));
-        stack[stack.length - 1].appendChild(c);
-        stack.push(c);
-      });
+  };
+  const place = (node: Node) => {
+    const parent = stack[stack.length - 1]!;
+    if (node.nodeType === 1 && (node as Element).tagName === 'THEAD' && (parent as Element).querySelector?.('thead')) return;
+    parent.appendChild(node);
+    if (!over()) {
+      if (node.nodeType === 1) filled = true;
+      return;
     }
-    function over() { return page.scrollHeight > page.clientHeight + 1; }
-    function place(node) {
-      var parent = stack[stack.length - 1];
-      if (node.nodeType === 1 && node.tagName === 'THEAD' && parent.querySelector('thead')) return;
-      parent.appendChild(node);
-      if (!over()) { if (node.nodeType === 1) filled = true; return; }
-      parent.removeChild(node);
-      if (splittable(node)) {
-        // Continuation pages repeat a table's header row.
-        if (node.tagName === 'TABLE') node.bkHead = node.querySelector('thead');
-        var shell = node.cloneNode(false);
-        parent.appendChild(shell);
-        stack.push(shell);
-        origs.push(node);
-        Array.prototype.slice.call(node.childNodes).forEach(place);
-        stack.pop();
-        origs.pop();
-        return;
+    parent.removeChild(node);
+    if (splittable(node)) {
+      if (node.tagName === 'TABLE') {
+        const head = node.querySelector('thead');
+        if (head) heads.set(node, head);
       }
-      if (filled) { open(true); stack[stack.length - 1].appendChild(node); }
-      else parent.appendChild(node);
-      filled = true;
+      const shell = node.cloneNode(false);
+      parent.appendChild(shell);
+      stack.push(shell);
+      origs.push(node);
+      Array.from(node.childNodes).forEach(place);
+      stack.pop();
+      origs.pop();
+      return;
     }
-    open(false);
-    Array.prototype.slice.call(section.childNodes).forEach(place);
+    if (filled) {
+      open(true);
+      stack[stack.length - 1]!.appendChild(node);
+    } else {
+      parent.appendChild(node); // taller than a page on its own: clipped
+    }
+    filled = true;
+  };
+
+  open(false);
+  Array.from(section.childNodes).forEach(place);
+}
+
+/**
+ * Splits flow pages to fit, pads to a multiple of four (keeping a back cover
+ * last) and imposes two pages per sheet side in binding order.
+ */
+function imposeBook(doc: Document, binding: 'staple' | 'glue'): void {
+  const src = doc.getElementById('bk-src');
+  if (!src) return;
+  const stage = doc.createElement('div');
+  stage.id = 'bk-stage';
+  doc.body.appendChild(stage);
+
+  const pages: Element[] = [];
+  for (const sec of Array.from(src.children)) {
+    if (sec.classList.contains('flow')) paginate(doc, sec, pages, stage);
+    else {
+      stage.appendChild(sec);
+      pages.push(sec);
+    }
   }
-  function build() {
-    if (done) return;
+  // A table left with only its header at the foot of a page goes.
+  for (const p of pages) p.querySelectorAll('table').forEach((t) => !t.querySelector('tbody tr') && t.remove());
+
+  const back = pages.length && pages[pages.length - 1]!.classList.contains('back') ? pages.pop()! : null;
+  const pad = (4 - ((pages.length + (back ? 1 : 0)) % 4)) % 4;
+  for (let b = 0; b < pad; b++) {
+    const blank = doc.createElement('section');
+    blank.className = 'page blank';
+    pages.push(blank);
+  }
+  if (back) pages.push(back);
+
+  const n = pages.length;
+  const sides: Array<[number, number]> = [];
+  for (let s = 0; s < n / 4; s++) {
+    if (binding === 'staple') sides.push([n - 1 - 2 * s, 2 * s], [2 * s + 1, n - 2 - 2 * s]);
+    else sides.push([4 * s + 3, 4 * s], [4 * s + 1, 4 * s + 2]);
+  }
+  const frag = doc.createDocumentFragment();
+  for (const pair of sides) {
+    const sheet = doc.createElement('div');
+    sheet.className = 'sheet';
+    for (const i of pair) {
+      const slot = doc.createElement('div');
+      slot.className = 'slot';
+      slot.appendChild(pages[i]!);
+      sheet.appendChild(slot);
+    }
+    frag.appendChild(sheet);
+  }
+  doc.body.insertBefore(frag, src);
+  src.remove();
+  stage.remove();
+
+  const sheets = n / 4;
+  const count = doc.getElementById('bk-count');
+  if (count) {
+    count.textContent =
+      `${n} pages on ${sheets} ${sheets === 1 ? 'sheet' : 'sheets'} of paper.` +
+      (binding === 'staple' && sheets > 10 ? ' That is thick for a stapler: the Glued book format handles any length.' : '');
+  }
+}
+
+/**
+ * Called by openPrintWindow after the HTML is written. For a book catalog,
+ * waits for images and fonts, lays the book out, then opens the print dialog.
+ */
+export function layoutBookWindow(win: Window): void {
+  const doc = win.document;
+  const binding = doc.body?.dataset.book;
+  if (binding !== 'staple' && binding !== 'glue') return;
+  let done = false;
+  const run = () => {
+    if (done || win.closed) return;
     done = true;
-    var src = document.getElementById('bk-src');
-    var stage = document.createElement('div');
-    stage.id = 'bk-stage';
-    document.body.appendChild(stage);
-    var pages = [];
-    Array.prototype.slice.call(src.children).forEach(function (sec) {
-      if (sec.classList.contains('flow')) paginate(sec, pages, stage);
-      else { stage.appendChild(sec); pages.push(sec); }
-    });
-    // A table left with only its header at the foot of a page goes.
-    pages.forEach(function (p) {
-      p.querySelectorAll('table').forEach(function (t) { if (!t.querySelector('tbody tr')) t.remove(); });
-    });
-    var back = pages.length && pages[pages.length - 1].classList.contains('back') ? pages.pop() : null;
-    var pad = (4 - ((pages.length + (back ? 1 : 0)) % 4)) % 4;
-    for (var b = 0; b < pad; b++) { var blank = document.createElement('section'); blank.className = 'page blank'; pages.push(blank); }
-    if (back) pages.push(back);
-    var n = pages.length, sides = [];
-    for (var s = 0; s < n / 4; s++) {
-      if (MODE === 'staple') { sides.push([n - 1 - 2 * s, 2 * s]); sides.push([2 * s + 1, n - 2 - 2 * s]); }
-      else { sides.push([4 * s + 3, 4 * s]); sides.push([4 * s + 1, 4 * s + 2]); }
+    try {
+      imposeBook(doc, binding);
+      console.log('[Catalog] Book laid out', { binding, sheets: doc.querySelectorAll('.sheet').length });
+      win.onafterprint = () => win.close();
+      setTimeout(() => !win.closed && win.print(), 250);
+    } catch (err) {
+      console.error('[Catalog] Book layout failed', err);
+      const count = doc.getElementById('bk-count');
+      if (count) count.textContent = 'Could not lay out the book. Close this window and try again.';
     }
-    var frag = document.createDocumentFragment();
-    sides.forEach(function (pair) {
-      var sheet = document.createElement('div');
-      sheet.className = 'sheet';
-      pair.forEach(function (i) { var slot = document.createElement('div'); slot.className = 'slot'; slot.appendChild(pages[i]); sheet.appendChild(slot); });
-      frag.appendChild(sheet);
-    });
-    document.body.insertBefore(frag, src);
-    src.remove();
-    stage.remove();
-    var count = document.getElementById('bk-count');
-    if (count) {
-      count.textContent = n + ' pages on ' + (n / 4) + (n / 4 === 1 ? ' sheet' : ' sheets') + ' of paper.' +
-        (MODE === 'staple' && n / 4 > 10 ? ' That is thick for a stapler: the Glued book format handles any length.' : '');
-    }
-    setTimeout(function () { window.print(); }, 250);
-  }
-  function go() { try { build(); } catch (e) { console.error('[Catalog] Book layout failed', e); } }
-  window.onafterprint = function () { window.close(); };
-  window.addEventListener('load', function () {
-    var fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
-    fonts.then(function () { setTimeout(go, 50); }, go);
-  });
-  setTimeout(go, 9000);
-})();
-</script>`;
+  };
+  const ready = () => {
+    const fonts = doc.fonts?.ready ?? Promise.resolve();
+    fonts.then(() => setTimeout(run, 50), run);
+  };
+  if (doc.readyState === 'complete') ready();
+  else win.addEventListener('load', ready);
+  // Images that never finish loading shouldn't hold the book up.
+  setTimeout(run, 9000);
 }
 
 // ── Standard ──────────────────────────────────────────────────────────────────
