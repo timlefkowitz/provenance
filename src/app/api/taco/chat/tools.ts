@@ -1,4 +1,5 @@
 import type OpenAI from 'openai';
+import { PROVENANCE_TOOLS } from './provenance-tools';
 
 const SEARCH_ARTWORKS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: 'function',
@@ -413,7 +414,8 @@ const GET_COLLECTOR_CONTACTS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = 
   },
 };
 
-const CREATE_ARTWORK_DRAFT_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+/** Replaced by propose_create_artworks; the route still accepts the old name. */
+export const CREATE_ARTWORK_DRAFT_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: 'function',
   function: {
     name: 'create_artwork_draft',
@@ -576,13 +578,14 @@ export const ALL_TACO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   SUGGEST_PRICING_TOOL,
   // Phase 4 — extended
   GET_COLLECTOR_CONTACTS_TOOL,
-  CREATE_ARTWORK_DRAFT_TOOL,
   SEARCH_COMPARABLE_SALES_TOOL,
   FIND_GRANTS_FOR_ME_TOOL,
   // Website editing
   GET_MY_WEBSITE_TOOL,
   UPDATE_MY_WEBSITE_TOOL,
   PUBLISH_MY_WEBSITE_TOOL,
+  // Files & provenance (confirm cards)
+  ...PROVENANCE_TOOLS,
   // Meta
   FLAG_UNHANDLED_REQUEST_TOOL,
 ];

@@ -7,6 +7,24 @@ import { getActiveSubscription } from '~/lib/subscription';
 import { checkRateLimit } from '~/lib/rate-limit';
 import { extractTextFromCvBuffer } from '~/app/grants/_actions/extract-text-from-cv';
 import { ALL_TACO_TOOLS } from './tools';
+import { PROVENANCE_SYSTEM_PROMPT } from './provenance-tools';
+import {
+  currentArtworkContext,
+  handleExtractFromDocument,
+  handleFindMatchingArtworks,
+  handleGetArtworkDetails,
+  proposeAddPhoto,
+  proposeAddPublication,
+  proposeAddToExhibition,
+  proposeAttachDocument,
+  proposeCreateArtworks,
+  proposeProvenanceRequest,
+  proposeRecordSale,
+  proposeUpdateProvenance,
+  type ProposeResult,
+} from './provenance-handlers';
+import { cleanAttachmentIds, loadTacoAttachments } from '~/lib/taco/attachments';
+import type { TacoProposalView } from '~/lib/taco/proposals';
 import { AI_CONSENT_REQUIRED, AI_CONSENT_REQUIRED_MESSAGE, hasAiConsent } from '~/lib/ai-consent';
 import {
   handleSearchArtworks,
@@ -32,7 +50,6 @@ import {
   handleGenerateWebsiteBio,
   handleSuggestPricing,
   handleGetCollectorContacts,
-  handleCreateArtworkDraft,
   handleSearchComparableSales,
   handleFindGrantsForMe,
   handleGetMyWebsite,
@@ -41,10 +58,10 @@ import {
   type NavigationSuggestion,
 } from './tool-handlers';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** Maximum agentic iterations before forcing a final reply. */
-const MAX_ITERATIONS = 6;
+const MAX_ITERATIONS = 8;
 
 const BASE_SYSTEM_PROMPT = `You are Taco, a sleek black cat and the studio AI on Provenance — a platform for artists, galleries, and collectors to document and share art history.
 
@@ -138,8 +155,16 @@ const ROUTE_CONTEXT_MAP: { prefix: string; label: string; hint: string }[] = [
   },
 ];
 
-function buildSystemPrompt(pathname?: string | null, profileContext?: string | null): string {
-  let prompt = BASE_SYSTEM_PROMPT;
+function buildSystemPrompt(
+  pathname?: string | null,
+  profileContext?: string | null,
+  artworkContext?: string | null,
+): string {
+  let prompt = BASE_SYSTEM_PROMPT + '\n' + PROVENANCE_SYSTEM_PROMPT;
+
+  if (artworkContext) {
+    prompt += `\n\nCurrent artwork: ${artworkContext}`;
+  }
 
   if (pathname) {
     const match = ROUTE_CONTEXT_MAP.find((r) => pathname.startsWith(r.prefix));
@@ -267,6 +292,10 @@ export async function POST(request: NextRequest) {
       images?: { dataUrl: string; name: string }[];
       docs?: { name: string; mime: string; base64: string }[];
       pathname?: string;
+      /** Files dropped this turn, uploaded via /api/taco/attachments. */
+      attachmentIds?: string[];
+      /** Files from earlier turns, so "the photo from before" still resolves. */
+      priorAttachments?: { id: string; kind: string; name: string }[];
     };
 
     const messageText = (typeof body.message === 'string' ? body.message : '').trim();
@@ -274,6 +303,10 @@ export async function POST(request: NextRequest) {
     const incomingImages = Array.isArray(body.images) ? body.images.slice(0, 8) : [];
     const incomingDocs = Array.isArray(body.docs) ? body.docs.slice(0, 5) : [];
     const pathname = typeof body.pathname === 'string' ? body.pathname : null;
+    const attachmentIds = cleanAttachmentIds(body.attachmentIds, 10);
+    const priorAttachments = (Array.isArray(body.priorAttachments) ? body.priorAttachments : [])
+      .filter((a) => cleanAttachmentIds([a?.id]).length === 1)
+      .slice(-20);
 
     // Optionally enrich with artist profile context for personalized responses
     let profileContext: string | null = null;
@@ -310,7 +343,17 @@ export async function POST(request: NextRequest) {
 
     console.log('[Taco] pathname=', pathname, 'profileContext=', profileContext);
 
-    if (!messageText && incomingImages.length === 0 && incomingDocs.length === 0) {
+    // -- Files dropped this turn (stored by /api/taco/attachments) --
+    const turnAttachments = await loadTacoAttachments(
+      getSupabaseServerAdminClient(),
+      user.id,
+      attachmentIds,
+    );
+    for (const att of turnAttachments) {
+      if (att.kind === 'image') incomingImages.push({ dataUrl: att.public_url, name: att.name });
+    }
+
+    if (!messageText && incomingImages.length === 0 && incomingDocs.length === 0 && turnAttachments.length === 0) {
       return NextResponse.json({ error: 'Message, image, or document required' }, { status: 400 });
     }
 
@@ -331,10 +374,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // -- Build message list --
-    const userContent = buildUserContent(messageText, incomingImages, extractedDocs);
+    for (const att of turnAttachments) {
+      if (att.kind === 'document') {
+        extractedDocs.push({
+          name: att.name,
+          text: att.extracted_text || '(no readable text: probably a scan; ask for a photo of it)',
+        });
+      }
+    }
 
-    const SYSTEM_PROMPT = buildSystemPrompt(pathname, profileContext);
+    // -- Build message list --
+    const manifestLines = [
+      ...priorAttachments.map((a) => `[att:${a.id}] ${a.kind === 'image' ? 'photo' : 'document'} "${String(a.name).slice(0, 120)}" (earlier)`),
+      ...turnAttachments.map((a) => `[att:${a.id}] ${a.kind === 'image' ? 'photo' : 'document'} "${a.name}" (just dropped)`),
+    ];
+    const textWithManifest = manifestLines.length
+      ? `${messageText || (turnAttachments.length ? 'I dropped these files.' : '')}\n\n[Files in this conversation:]\n${manifestLines.join('\n')}`
+      : messageText;
+    const userContent = buildUserContent(textWithManifest, incomingImages, extractedDocs);
+
+    const artworkContext = await currentArtworkContext(pathname, user.id).catch((err) => {
+      console.error('[Taco] artwork context failed', err);
+      return null;
+    });
+    const SYSTEM_PROMPT = buildSystemPrompt(pathname, profileContext, artworkContext);
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },
@@ -355,6 +418,12 @@ export async function POST(request: NextRequest) {
 
     // -- Agentic loop --
     const collectedSuggestions: NavigationSuggestion[] = [];
+    const collectedProposals: TacoProposalView[] = [];
+    const proposed = (r: ProposeResult): unknown => {
+      if ('error' in r) return r;
+      collectedProposals.push(r.view);
+      return r.forModel;
+    };
 
     // Accumulated token counts across all iterations
     let totalPromptTokens = 0;
@@ -499,10 +568,42 @@ export async function POST(request: NextRequest) {
               result = await handleGetCollectorContacts(user.id);
               break;
             case 'create_artwork_draft':
-              result = await handleCreateArtworkDraft(
-                args as { title: string; medium?: string; year?: string; dimensions?: string; description?: string },
-                user.id,
-              );
+              // Older tool name: now a confirm card like other artwork changes.
+              result = proposed(await proposeCreateArtworks({ rows: [args] }, user.id));
+              break;
+            // ── Files & provenance ─────────────────────────────────────────
+            case 'find_matching_artworks':
+              result = await handleFindMatchingArtworks(args as never, user.id);
+              break;
+            case 'extract_from_document':
+              result = await handleExtractFromDocument(args as { attachment_id?: string }, user.id, apiKey);
+              break;
+            case 'get_artwork_details':
+              result = await handleGetArtworkDetails(args as { artwork_id?: string }, user.id);
+              break;
+            case 'propose_create_artworks':
+              result = proposed(await proposeCreateArtworks(args, user.id));
+              break;
+            case 'propose_add_photo':
+              result = proposed(await proposeAddPhoto(args as never, user.id));
+              break;
+            case 'propose_attach_document':
+              result = proposed(await proposeAttachDocument(args as never, user.id));
+              break;
+            case 'propose_update_provenance':
+              result = proposed(await proposeUpdateProvenance(args, user.id));
+              break;
+            case 'propose_add_to_exhibition':
+              result = proposed(await proposeAddToExhibition(args as never, user.id));
+              break;
+            case 'propose_add_publication':
+              result = proposed(await proposeAddPublication(args, user.id));
+              break;
+            case 'propose_record_sale':
+              result = proposed(await proposeRecordSale(args as never, user.id));
+              break;
+            case 'propose_provenance_request':
+              result = proposed(await proposeProvenanceRequest(args, user.id));
               break;
             case 'search_comparable_sales':
               result = await handleSearchComparableSales(
@@ -630,7 +731,7 @@ export async function POST(request: NextRequest) {
             total_tokens: totalPromptTokens + totalCompletionTokens,
             agent_iterations: completedIterations,
             had_images: incomingImages.length > 0,
-            had_docs: incomingDocs.length > 0,
+            had_docs: incomingDocs.length > 0 || turnAttachments.some((a) => a.kind === 'document'),
             estimated_cost_usd: estimatedCostUsd,
           });
         if (logError) {
@@ -651,6 +752,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       reply,
       suggestions: collectedSuggestions.length ? collectedSuggestions : undefined,
+      proposals: collectedProposals.length ? collectedProposals : undefined,
     });
   } catch (err) {
     console.error('[Taco] chat error', err);

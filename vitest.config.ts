@@ -17,6 +17,7 @@ export default defineConfig({
       'src/lib/managed-collections.test.ts',
       'src/lib/profile-handoff/**/*.test.ts',
       'src/lib/people/**/*.test.ts',
+      'src/lib/taco/**/*.test.ts',
       'src/lib/profile-questionnaire.test.ts',
       'src/app/mailing-list/**/*.test.ts',
       'src/lib/crm/**/*.test.ts',

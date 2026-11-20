@@ -1,32 +1,25 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, type DragEvent, type ChangeEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { Paperclip, Send, Loader2, X, FileText, ExternalLink } from 'lucide-react';
+import { Paperclip, Send, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
+import { TacoAttachmentTray, TacoDropOverlay } from '~/components/taco/taco-attachment-tray';
+import { TacoProposalCard } from '~/components/taco/taco-proposal-card';
+import {
+  TACO_FILE_ACCEPT,
+  useTacoAttachments,
+  type PendingAttachment,
+} from '~/components/taco/use-taco-attachments';
+import type { TacoAttachmentRef } from '~/lib/taco/attachments';
+import type { TacoProposalView } from '~/lib/taco/proposals';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
 /* -------------------------------------------------------------------------- */
-
-export type AttachmentImage = {
-  kind: 'image';
-  name: string;
-  dataUrl: string;
-  previewUrl: string;
-};
-
-export type AttachmentDoc = {
-  kind: 'doc';
-  name: string;
-  mime: string;
-  base64: string;
-};
-
-export type Attachment = AttachmentImage | AttachmentDoc;
 
 export type NavigationSuggestion = {
   label: string;
@@ -36,8 +29,11 @@ export type NavigationSuggestion = {
 export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
-  attachments?: Attachment[];
+  attachments?: PendingAttachment[];
   suggestions?: NavigationSuggestion[];
+  proposals?: TacoProposalView[];
+  /** Notes for Taco's history (e.g. "[Applied: …]"); not rendered. */
+  hidden?: boolean;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -45,99 +41,25 @@ export type ChatMessage = {
 /* -------------------------------------------------------------------------- */
 
 const QUICK_PROMPTS = [
+  'Is this work already on Provenance?',
+  'Add provenance from a document',
+  'Import a checklist or price list',
   'What artworks are in my collection?',
   'Find grants for my practice',
-  'Show me upcoming open calls',
   'Help me write an artist statement',
-  'What exhibitions have I listed?',
 ];
-
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const ALLOWED_DOC_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/msword',
-  'text/plain',
-  'text/csv',
-];
-const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
-
-/* -------------------------------------------------------------------------- */
-/*  Helpers                                                                   */
-/* -------------------------------------------------------------------------- */
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function processFile(file: File): Promise<Attachment | null> {
-  if (file.size > MAX_FILE_BYTES) return null;
-
-  if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    const dataUrl = await fileToDataUrl(file);
-    return { kind: 'image', name: file.name, dataUrl, previewUrl: dataUrl };
-  }
-
-  if (ALLOWED_DOC_TYPES.includes(file.type)) {
-    const base64 = await fileToBase64(file);
-    return { kind: 'doc', name: file.name, mime: file.type, base64 };
-  }
-
-  return null;
-}
 
 /* -------------------------------------------------------------------------- */
 /*  Sub-components                                                            */
 /* -------------------------------------------------------------------------- */
 
-function AttachmentChip({
-  attachment,
-  onRemove,
+function MessageBubble({
+  message,
+  onProposalResolved,
 }: {
-  attachment: Attachment;
-  onRemove: () => void;
+  message: ChatMessage;
+  onProposalResolved: (note: string) => void;
 }) {
-  return (
-    <div className="group relative inline-flex items-center gap-1.5 rounded-lg border border-wine/20 bg-white/70 px-2.5 py-1.5 text-xs font-serif text-ink/70 shadow-xs">
-      {attachment.kind === 'image' ? (
-        <Image
-          src={attachment.previewUrl}
-          alt={attachment.name}
-          width={20}
-          height={20}
-          className="h-5 w-5 rounded object-cover"
-        />
-      ) : (
-        <FileText className="h-3.5 w-3.5 shrink-0 text-wine/60" />
-      )}
-      <span className="max-w-[120px] truncate">{attachment.name}</span>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="ml-0.5 rounded-full p-0.5 text-ink/40 hover:bg-wine/10 hover:text-wine transition-colors"
-        aria-label={`Remove ${attachment.name}`}
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: ChatMessage }) {
   const router = useRouter();
   const isUser = message.role === 'user';
 
@@ -161,14 +83,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         {isUser && message.attachments && message.attachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 justify-end">
             {message.attachments.map((att, i) =>
-              att.kind === 'image' ? (
-                <Image
+              att.kind === 'image' && att.previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local object URL
+                <img
                   key={i}
                   src={att.previewUrl}
                   alt={att.name}
-                  width={80}
-                  height={80}
-                  className="rounded-xl object-cover border border-wine/15 shadow-xs"
+                  className="h-20 w-20 rounded-xl object-cover border border-wine/15 shadow-xs"
                 />
               ) : (
                 <div
@@ -199,6 +120,17 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             </div>
           )}
         </div>
+
+        {/* Confirm cards */}
+        {!isUser &&
+          message.proposals?.map((p) => (
+            <TacoProposalCard
+              key={p.id}
+              proposal={p}
+              onResolved={(note) => onProposalResolved(note)}
+              onNavigate={(href) => router.push(href)}
+            />
+          ))}
 
         {/* Navigation suggestions */}
         {!isUser && message.suggestions && message.suggestions.length > 0 && (
@@ -232,17 +164,17 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
     {
       role: 'assistant',
       content:
-        "*stretches and blinks* Hi. I'm Taco — your studio assistant on Provenance. I can look up your collection, find grants and open calls, help with writing, and answer questions about your practice. Drop an image or document and I'll read it too.",
+        "*stretches and blinks* Hi. I'm Taco — your studio assistant on Provenance. I can look up your collection, find grants and open calls, help with writing, and answer questions about your practice. Drop a photo of a work or a document (COA, invoice, checklist) and I'll check whether it's already on Provenance and suggest updates for you to approve.",
     },
   ]);
   const [input, setInput] = useState('');
   const { ensureAiConsent } = useAiConsent();
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sentRefs = useRef<TacoAttachmentRef[]>([]);
+  const files = useTacoAttachments({ beforeAdd: ensureAiConsent });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -256,78 +188,43 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [input]);
 
-  /* ----- File handling ----- */
-  const addFiles = useCallback(async (files: FileList | File[]) => {
-    const arr = Array.from(files);
-    const processed = await Promise.all(arr.map(processFile));
-    const valid = processed.filter((a): a is Attachment => a !== null);
-    setAttachments((prev) => [...prev, ...valid].slice(0, 8)); // max 8 attachments
-  }, []);
-
   const handleFileChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       if (e.target.files?.length) {
-        addFiles(e.target.files);
+        void files.addFiles(e.target.files);
         e.target.value = '';
       }
     },
-    [addFiles],
+    [files],
   );
 
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(false);
-      if (e.dataTransfer.files?.length) {
-        addFiles(e.dataTransfer.files);
-      }
-    },
-    [addFiles],
-  );
-
-  const removeAttachment = useCallback((index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  const addNote = useCallback((note: string) => {
+    setMessages((prev) => [...prev, { role: 'user', content: note, hidden: true }]);
   }, []);
 
   /* ----- Send message ----- */
   const sendMessage = useCallback(
-    async (text: string, pendingAttachments: Attachment[] = attachments) => {
-      if ((!text.trim() && pendingAttachments.length === 0) || loading) return;
+    async (text: string, withFiles = true) => {
+      if (loading) return;
+      const ready = withFiles ? files.take() : [];
+      if (!text.trim() && ready.length === 0) return;
       if (!(await ensureAiConsent())) return;
 
-      console.log('[Taco] sendMessage', text.trim().slice(0, 80));
+      console.log('[Taco] sendMessage', text.trim().slice(0, 80), 'files=', ready.length);
 
       const userMessage: ChatMessage = {
         role: 'user',
         content: text.trim(),
-        attachments: pendingAttachments.length ? [...pendingAttachments] : undefined,
+        attachments: ready.length ? ready : undefined,
       };
 
       setMessages((prev) => [...prev, userMessage]);
       setInput('');
-      setAttachments([]);
       setLoading(true);
 
       try {
-        const images = pendingAttachments
-          .filter((a): a is AttachmentImage => a.kind === 'image')
-          .map((a) => ({ dataUrl: a.dataUrl, name: a.name }));
-
-        const docs = pendingAttachments
-          .filter((a): a is AttachmentDoc => a.kind === 'doc')
-          .map((a) => ({ name: a.name, mime: a.mime, base64: a.base64 }));
-
         const history = messages.map((m) => ({ role: m.role, content: m.content }));
+        const refs = ready.flatMap((r) => (r.ref ? [r.ref] : []));
 
         const res = await fetch('/api/taco/chat', {
           method: 'POST',
@@ -335,10 +232,12 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
           body: JSON.stringify({
             message: text.trim(),
             history,
-            images: images.length ? images : undefined,
-            docs: docs.length ? docs : undefined,
+            pathname: '/taco',
+            attachmentIds: refs.map((r) => r.id),
+            priorAttachments: sentRefs.current.map(({ id, kind, name }) => ({ id, kind, name })),
           }),
         });
+        sentRefs.current = [...sentRefs.current, ...refs].slice(-20);
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -348,6 +247,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
         const data = (await res.json()) as {
           reply: string;
           suggestions?: NavigationSuggestion[];
+          proposals?: TacoProposalView[];
         };
 
         setMessages((prev) => [
@@ -356,6 +256,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
             role: 'assistant',
             content: data.reply ?? 'No response.',
             suggestions: data.suggestions?.length ? data.suggestions : undefined,
+            proposals: data.proposals?.length ? data.proposals : undefined,
           },
         ]);
       } catch (e) {
@@ -371,7 +272,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
         setLoading(false);
       }
     },
-    [loading, messages, attachments, ensureAiConsent],
+    [loading, messages, files, ensureAiConsent],
   );
 
   const handleKeyDown = useCallback(
@@ -388,10 +289,8 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
 
   return (
     <div
-      className={`flex flex-col flex-1 h-full transition-colors duration-200 ${isDragging ? 'bg-wine/5' : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      className={`relative flex flex-col flex-1 h-full transition-colors duration-200 ${files.isDragging ? 'bg-wine/5' : ''}`}
+      {...files.dropHandlers}
     >
       {/* Header */}
       <div className="shrink-0 border-b border-wine/15 bg-parchment/95 backdrop-blur-sm px-4 sm:px-6 py-4">
@@ -416,22 +315,14 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
         </div>
       </div>
 
-      {/* Drop overlay hint */}
-      {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="rounded-2xl border-2 border-dashed border-wine/40 bg-parchment/90 px-10 py-6 text-center shadow-xl shadow-wine/10">
-            <p className="font-display text-lg text-wine">Drop files here</p>
-            <p className="font-serif text-sm text-ink/50 mt-1">Images, PDFs, Word docs, text files</p>
-          </div>
-        </div>
-      )}
+      {files.isDragging && <TacoDropOverlay />}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {messages.map((m, i) => (
-            <MessageBubble key={i} message={m} />
-          ))}
+          {messages.map((m, i) =>
+            m.hidden ? null : <MessageBubble key={i} message={m} onProposalResolved={addNote} />,
+          )}
 
           {loading && (
             <div className="flex gap-3">
@@ -463,7 +354,15 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
               <button
                 key={prompt}
                 type="button"
-                onClick={() => sendMessage(prompt, [])}
+                onClick={() => {
+                  // File prompts need a file: open the picker and prefill the ask.
+                  if (prompt.startsWith('Is this') || prompt.startsWith('Add provenance') || prompt.startsWith('Import')) {
+                    setInput(prompt);
+                    fileInputRef.current?.click();
+                    return;
+                  }
+                  void sendMessage(prompt, false);
+                }}
                 className="text-xs font-serif border border-wine/25 rounded-full px-3 py-1.5 text-wine/75 hover:bg-wine/8 hover:border-wine/40 transition-all"
               >
                 {prompt}
@@ -476,18 +375,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
       {/* Composer */}
       <div className="shrink-0 border-t border-wine/10 bg-white/60 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 space-y-2">
-          {/* Attachment chips */}
-          {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {attachments.map((att, i) => (
-                <AttachmentChip
-                  key={i}
-                  attachment={att}
-                  onRemove={() => removeAttachment(i)}
-                />
-              ))}
-            </div>
-          )}
+          <TacoAttachmentTray items={files.items} onRemove={files.remove} />
 
           {/* Input row */}
           <div className="flex items-end gap-2">
@@ -507,7 +395,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*,.pdf,.docx,.doc,.txt,.csv"
+              accept={TACO_FILE_ACCEPT}
               className="hidden"
               onChange={handleFileChange}
             />
@@ -518,7 +406,8 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything — artworks, grants, writing…"
+              onPaste={files.onPaste}
+              placeholder="Ask anything, or drop artwork photos and documents…"
               disabled={loading}
               rows={1}
               className="flex-1 resize-none border border-wine/20 rounded-xl px-4 py-2.5 text-[15px] font-serif bg-white text-ink placeholder:text-ink/35 disabled:opacity-50 focus:outline-none focus:border-wine/50 transition-colors leading-relaxed"
@@ -528,7 +417,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
             <Button
               type="button"
               onClick={() => sendMessage(input)}
-              disabled={loading || (!input.trim() && attachments.length === 0)}
+              disabled={loading || files.isUploading || (!input.trim() && files.readyCount === 0)}
               className="shrink-0 mb-0.5 bg-wine text-parchment hover:bg-wine/90 font-serif rounded-xl h-10 px-4 disabled:opacity-40"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -536,7 +425,7 @@ export function TacoAssistant({ userId: _userId }: { userId: string }) {
           </div>
 
           <p className="text-[10px] text-ink/30 font-serif text-center">
-            Drag & drop images or docs · Shift+Enter for newline
+            Drop artwork photos, COAs, invoices or checklists · Taco asks before saving anything
           </p>
         </div>
       </div>

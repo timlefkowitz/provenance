@@ -5,8 +5,17 @@ import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import { ExternalLink, Send, X, Maximize2 } from 'lucide-react';
+import { ExternalLink, Send, X, Maximize2, Paperclip } from 'lucide-react';
 import { useAiConsent } from '~/components/ai-consent/ai-consent-provider';
+import { TacoAttachmentTray, TacoDropOverlay } from '~/components/taco/taco-attachment-tray';
+import { TacoProposalCard } from '~/components/taco/taco-proposal-card';
+import {
+  TACO_FILE_ACCEPT,
+  useTacoAttachments,
+  type PendingAttachment,
+} from '~/components/taco/use-taco-attachments';
+import type { TacoAttachmentRef } from '~/lib/taco/attachments';
+import type { TacoProposalView } from '~/lib/taco/proposals';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -17,6 +26,10 @@ type BubbleMessage = {
   role: 'user' | 'assistant';
   content: string;
   suggestions?: { label: string; href: string }[];
+  proposals?: TacoProposalView[];
+  attachments?: PendingAttachment[];
+  /** Notes for Taco's history (e.g. "[Applied: …]"); not rendered. */
+  hidden?: boolean;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -98,6 +111,13 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
   const [nudge, setNudge] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const sentRefs = useRef<TacoAttachmentRef[]>([]);
+  const files = useTacoAttachments({ beforeAdd: ensureAiConsent });
+
+  const addNote = useCallback((note: string) => {
+    setMessages((prev) => [...prev, { id: msgId++, role: 'user', content: note, hidden: true }]);
+  }, []);
 
   // Subtle bounce nudge after 30s to let users know Taco is here
   useEffect(() => {
@@ -129,24 +149,39 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || loading) return;
+      if (loading || files.isUploading) return;
+      const ready = files.take();
+      if (!trimmed && !ready.length) return;
       if (!(await ensureAiConsent())) return;
 
-      console.log('[TacoBubble] sendMessage', trimmed.slice(0, 80));
+      console.log('[TacoBubble] sendMessage', trimmed.slice(0, 80), 'files=', ready.length);
 
-      const userMsg: BubbleMessage = { id: msgId++, role: 'user', content: trimmed };
+      const userMsg: BubbleMessage = {
+        id: msgId++,
+        role: 'user',
+        content: trimmed,
+        attachments: ready.length ? ready : undefined,
+      };
       setMessages((prev) => [...prev, userMsg]);
       setInput('');
       setLoading(true);
 
       try {
         const history = messages.map((m) => ({ role: m.role, content: m.content }));
+        const refs = ready.flatMap((r) => (r.ref ? [r.ref] : []));
 
         const res = await fetch('/api/taco/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: trimmed, history, pathname }),
+          body: JSON.stringify({
+            message: trimmed,
+            history,
+            pathname,
+            attachmentIds: refs.map((r) => r.id),
+            priorAttachments: sentRefs.current.map(({ id, kind, name }) => ({ id, kind, name })),
+          }),
         });
+        sentRefs.current = [...sentRefs.current, ...refs].slice(-20);
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({})) as { error?: string };
@@ -156,6 +191,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
         const data = (await res.json()) as {
           reply: string;
           suggestions?: { label: string; href: string }[];
+          proposals?: TacoProposalView[];
         };
 
         setMessages((prev) => [
@@ -165,6 +201,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
             role: 'assistant',
             content: data.reply ?? 'No response.',
             suggestions: data.suggestions?.length ? data.suggestions : undefined,
+            proposals: data.proposals?.length ? data.proposals : undefined,
           },
         ]);
       } catch (e) {
@@ -181,7 +218,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
         setLoading(false);
       }
     },
-    [loading, messages, pathname, ensureAiConsent],
+    [loading, messages, pathname, ensureAiConsent, files],
   );
 
   if (!isSignedIn || hidden) return null;
@@ -198,6 +235,18 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
           setNudge(false);
         }}
         aria-label="Chat with Taco"
+        onDragEnter={(e) => {
+          if (Array.from(e.dataTransfer.types).includes('Files')) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          setOpen(true);
+          if (e.dataTransfer.files?.length) void files.addFiles(e.dataTransfer.files);
+        }}
         className={[
           // 44px minimum touch target, centered image inside
           'fixed z-40 flex h-14 w-14 items-center justify-center rounded-full',
@@ -256,11 +305,13 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
         style={{
           // Mobile: up to 80% of the dynamic viewport height (accounts for browser chrome + keyboard)
           // Desktop: fixed 520px cap
-          maxHeight: 'min(80dvh, 520px)',
+          maxHeight: 'min(80dvh, 620px)',
           // On desktop, fix the width to 384px
           // (Tailwind sm:w-96 = 24rem = 384px handled by the sm:left-auto + sm:right-6 combo above)
         }}
+        {...files.dropHandlers}
       >
+        {files.isDragging && <TacoDropOverlay compact />}
         {/* Header */}
         <div className="flex shrink-0 items-center gap-3 border-b border-wine/15 bg-white/60 px-4 py-3 backdrop-blur-sm">
           <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-wine/20">
@@ -299,7 +350,7 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
         {/* Messages — flex-1 + min-h-0 lets it shrink to share space with input */}
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-4">
           {messages.map((msg) =>
-            msg.role === 'assistant' ? (
+            msg.hidden ? null : msg.role === 'assistant' ? (
               <AssistantMessage
                 key={msg.id}
                 message={msg}
@@ -307,9 +358,10 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
                   router.push(href);
                   setOpen(false);
                 }}
+                onProposalResolved={addNote}
               />
             ) : (
-              <UserMessage key={msg.id} content={msg.content} />
+              <UserMessage key={msg.id} content={msg.content} attachments={msg.attachments} />
             ),
           )}
           {loading && <TypingIndicator />}
@@ -322,9 +374,32 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
             e.preventDefault();
             sendMessage(input);
           }}
-          className="flex shrink-0 items-center gap-2 border-t border-wine/15 bg-white/40 px-3 pt-3"
+          className="flex shrink-0 flex-col gap-2 border-t border-wine/15 bg-white/40 px-3 pt-3"
           style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         >
+          <TacoAttachmentTray items={files.items} onRemove={files.remove} />
+          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl text-ink/40 transition-colors hover:text-wine disabled:opacity-40"
+            aria-label="Attach photos or documents"
+            title="Attach artwork photos or documents"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={TACO_FILE_ACCEPT}
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) void files.addFiles(e.target.files);
+              e.target.value = '';
+            }}
+          />
           {/*
            * font-size must be ≥ 16px on iOS or Safari auto-zooms the viewport.
            * We use text-base (16px) here instead of text-sm (14px).
@@ -333,7 +408,8 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Taco anything…"
+            onPaste={files.onPaste}
+            placeholder={files.items.length ? 'What should I do with these?' : 'Ask, or drop photos & docs…'}
             className="min-w-0 flex-1 rounded-xl border border-wine/20 bg-white/70 px-3 py-2.5 text-base font-serif text-ink placeholder-ink/30 outline-none focus:border-wine/50 focus:ring-1 focus:ring-wine/30"
             maxLength={400}
             // Prevent iOS double-tap zoom on the input
@@ -345,12 +421,13 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
           {/* 44px touch target for the send button */}
           <button
             type="submit"
-            disabled={!input.trim() || loading}
+            disabled={(!input.trim() && files.readyCount === 0) || loading || files.isUploading}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine text-parchment transition-colors hover:bg-wine/80 active:bg-wine/90 disabled:opacity-40"
             aria-label="Send"
           >
             <Send className="h-4 w-4" />
           </button>
+          </div>
         </form>
       </div>
 
@@ -375,21 +452,32 @@ export function TacoBubble({ isSignedIn }: { isSignedIn: boolean }) {
 function AssistantMessage({
   message,
   onNavigate,
+  onProposalResolved,
 }: {
   message: BubbleMessage;
   onNavigate: (href: string) => void;
+  onProposalResolved: (note: string) => void;
 }) {
   return (
     <div className="flex items-end gap-2">
       <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full">
         <Image src="/taco-cat.png" alt="" fill className="object-cover object-top" sizes="24px" />
       </div>
-      <div className="flex flex-col gap-1.5 max-w-[82%]">
+      <div className={`flex flex-col gap-1.5 ${message.proposals?.length ? 'w-[88%]' : 'max-w-[82%]'}`}>
         <div className="rounded-2xl rounded-bl-sm bg-white border border-wine/10 px-3 py-2 text-sm font-serif text-ink leading-relaxed shadow-xs">
           <div className="prose prose-sm max-w-none font-serif text-[13px] leading-relaxed prose-p:my-0.5 prose-ul:my-0.5 prose-li:my-0 prose-strong:text-wine prose-a:text-wine">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         </div>
+        {message.proposals?.map((p) => (
+          <TacoProposalCard
+            key={p.id}
+            proposal={p}
+            compact
+            onResolved={(note) => onProposalResolved(note)}
+            onNavigate={onNavigate}
+          />
+        ))}
         {message.suggestions && message.suggestions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {message.suggestions.map((s, i) => (
@@ -409,12 +497,28 @@ function AssistantMessage({
   );
 }
 
-function UserMessage({ content }: { content: string }) {
+function UserMessage({ content, attachments }: { content: string; attachments?: PendingAttachment[] }) {
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[82%] rounded-2xl rounded-br-sm bg-wine px-3 py-2 text-sm font-serif text-parchment leading-relaxed">
-        {content}
-      </div>
+    <div className="flex flex-col items-end gap-1">
+      {attachments && attachments.length > 0 && (
+        <div className="flex max-w-[82%] flex-wrap justify-end gap-1">
+          {attachments.map((a) =>
+            a.previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local object URL
+              <img key={a.localId} src={a.previewUrl} alt={a.name} className="h-14 w-14 rounded-lg object-cover ring-1 ring-wine/15" />
+            ) : (
+              <span key={a.localId} className="max-w-[160px] truncate rounded-lg bg-wine/10 px-2 py-1 font-serif text-[11px] text-wine">
+                {a.name}
+              </span>
+            ),
+          )}
+        </div>
+      )}
+      {content && (
+        <div className="max-w-[82%] rounded-2xl rounded-br-sm bg-wine px-3 py-2 text-sm font-serif text-parchment leading-relaxed">
+          {content}
+        </div>
+      )}
     </div>
   );
 }
