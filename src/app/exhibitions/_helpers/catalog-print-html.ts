@@ -253,7 +253,8 @@ function priceTable(works: Work[]): string {
   return `<table class="list"><thead><tr><th>#</th><th>Artist</th><th>Title &amp; year</th><th>Medium</th><th>Dimensions</th><th class="price">Price</th></tr></thead><tbody>${tableRows(priced, true)}</tbody></table>`;
 }
 
-function doc(title: string, fonts: string, css: string, body: string, binding: CatalogBinding = 'sheets'): string {
+/** Wraps print pages in a document; book bindings get the imposition scaffold layoutBookWindow expects. */
+export function doc(title: string, fonts: string, css: string, body: string, binding: CatalogBinding = 'sheets'): string {
   const book = binding !== 'sheets';
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
@@ -617,7 +618,7 @@ function buildStandard(meta: CatalogMeta, works: Work[], options: CatalogOptions
 // ── Editorial (navbar look) ───────────────────────────────────────────────────
 
 /** Approximations of the app's oklch tokens (globals.css) for print. */
-const ED = {
+export const ED = {
   bone: '#f6f1e7',
   ink: '#1c1814',
   vermillion: '#e2462c',
@@ -625,6 +626,9 @@ const ED = {
   rule: '#2a2520',
   muted: '#6f675d',
 };
+
+/** Fraunces (wordmark, titles) and JetBrains Mono (nav, labels) for the editorial look. */
+export const EDITORIAL_FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" />`;
 
 function buildEditorial(meta: CatalogMeta, works: Work[], options: CatalogOptions, artists: CatalogArtist[]): string {
   const sections = ['Catalogue', 'Works', options.checklist ? 'Index' : null, options.prices && works.some((w) => w.price) ? 'Prices' : null].filter(Boolean) as string[];
@@ -702,7 +706,7 @@ function buildEditorial(meta: CatalogMeta, works: Work[], options: CatalogOption
     ? `<section class="page flow">${bar('Prices')}<div class="eyebrow red"><span>Price list · for collectors</span><i></i></div>${priceTable(works)}</section>`
     : '';
 
-  const fonts = `<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" />`;
+  const fonts = EDITORIAL_FONTS;
   const mono = `'JetBrains Mono', ui-monospace, Menlo, monospace`;
   const serif = `'Fraunces', Georgia, 'Times New Roman', serif`;
 

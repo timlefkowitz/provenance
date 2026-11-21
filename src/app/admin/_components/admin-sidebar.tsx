@@ -16,6 +16,7 @@ const NAV: { href: string; label: string }[] = [
   { href: '/admin/users', label: 'users' },
   { href: '/admin/leads', label: 'leads' },
   { href: '/admin/contacts', label: 'contacts' },
+  { href: '/admin/brochure', label: 'brochure' },
   { href: '/admin/api-keys', label: 'api-keys' },
   { href: '/admin/audio', label: 'audio' },
   { href: '/admin/qr', label: 'qr-codes' },
