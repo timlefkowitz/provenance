@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { isTeamProfileRole } from '~/lib/user-roles';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { canManageGallery } from '~/app/profiles/_actions/gallery-members';
+import { assertAllowedFileWithAv } from '~/lib/file-signature';
 
 const BUCKET = 'profiles';
 
@@ -59,6 +60,15 @@ export async function uploadSiteImage(
       return { success: false, error: 'You do not have permission to upload to this profile' };
     }
 
+    const signatureCheck = await assertAllowedFileWithAv(file, 'image');
+    if (!signatureCheck.ok) {
+      console.warn('[Sites] uploadSiteImage rejected: file signature check failed', {
+        profileId,
+        error: signatureCheck.error,
+      });
+      return { success: false, error: signatureCheck.error };
+    }
+
     // Ensure bucket exists (mirrors uploadProfilePicture pattern)
     try {
       const adminClient = getSupabaseServerAdminClient();
@@ -79,7 +89,11 @@ export async function uploadSiteImage(
     const ext = file.name.split('.').pop() || 'jpg';
     const fileName = `sites/${profileId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-    const bucket = client.storage.from(BUCKET);
+    // The 'profiles' bucket's insert policy only allows paths that start with
+    // the caller's own user id, so a user-scoped upload to sites/<profile_id>/
+    // fails RLS. Access was checked above (owner or gallery manager), so write
+    // with the admin client.
+    const bucket = getSupabaseServerAdminClient().storage.from(BUCKET);
     const { error: uploadErr } = await bucket.upload(fileName, bytes, {
       contentType: file.type,
       upsert: false,
