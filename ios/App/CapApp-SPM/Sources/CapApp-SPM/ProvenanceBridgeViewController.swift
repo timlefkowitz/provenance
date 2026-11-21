@@ -17,6 +17,7 @@ public class ProvenanceBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(ScannerPlugin())
         bridge?.registerPluginInstance(BiometricPlugin())
         bridge?.registerPluginInstance(NativeAuthPlugin())
+        bridge?.registerPluginInstance(PrintPlugin())
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(didEnterBackground),

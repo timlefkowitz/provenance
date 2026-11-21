@@ -13,6 +13,8 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { BookOpen, ChevronDown, Grid3x3, List, Printer, Scissors, Tag } from 'lucide-react';
 import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
+import { isNativePlatform } from '~/lib/capacitor/is-native';
+import { openPrintPreview } from '~/lib/print-preview';
 import {
   buildArtworkQrSheetHtml,
   buildWallLabelsHtml as buildLabelsHtml,
@@ -65,9 +67,10 @@ function mergeField(formVal: string | undefined, artworkVal: string | null | und
 }
 
 export function openPrintWindow(html: string, width = 960, height = 780): void {
-  const win = window.open('', '_blank', `width=${width},height=${height}`);
+  // The iOS app's WebView can't open windows at all; skip straight to the preview.
+  const win = isNativePlatform() ? null : window.open('', '_blank', `width=${width},height=${height}`);
   if (!win) {
-    alert('Pop-up blocked. Please allow pop-ups for this site and try again.');
+    openPrintPreview(html, (frameWin) => layoutBookWindow(frameWin, { autoPrint: false }));
     return;
   }
   win.document.write(html);

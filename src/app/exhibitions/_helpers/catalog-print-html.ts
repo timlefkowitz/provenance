@@ -432,9 +432,10 @@ function imposeBook(doc: Document, binding: 'staple' | 'glue'): void {
 
 /**
  * Called by openPrintWindow after the HTML is written. For a book catalog,
- * waits for images and fonts, lays the book out, then opens the print dialog.
+ * waits for images and fonts, lays the book out, then opens the print dialog
+ * (unless autoPrint is false: the in-page preview prints from its own button).
  */
-export function layoutBookWindow(win: Window): void {
+export function layoutBookWindow(win: Window, { autoPrint = true }: { autoPrint?: boolean } = {}): void {
   const doc = win.document;
   const binding = doc.body?.dataset.book;
   if (binding !== 'staple' && binding !== 'glue') return;
@@ -445,8 +446,10 @@ export function layoutBookWindow(win: Window): void {
     try {
       imposeBook(doc, binding);
       console.log('[Catalog] Book laid out', { binding, sheets: doc.querySelectorAll('.sheet').length });
-      win.onafterprint = () => win.close();
-      setTimeout(() => !win.closed && win.print(), 250);
+      if (autoPrint) {
+        win.onafterprint = () => win.close();
+        setTimeout(() => !win.closed && win.print(), 250);
+      }
     } catch (err) {
       console.error('[Catalog] Book layout failed', err);
       const count = doc.getElementById('bk-count');
