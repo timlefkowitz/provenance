@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, Eye, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban, BadgeCheck } from 'lucide-react';
+import { Star, Scan, Eye, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban, BadgeCheck, Nfc } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -52,6 +52,7 @@ import { getCertificateTypeLabel, type CertificateType, CERTIFICATE_TYPES } from
 import { ClaimAsArtistDialog } from './claim-as-artist-dialog';
 import { InviteCooFromCoaDialog } from './invite-coo-from-coa-dialog';
 import { SendCertificateDialog } from './send-certificate-dialog';
+import { NfcWriteDialog } from '~/components/nfc/nfc-write-dialogs';
 import { PendingCooInviteStatus } from './pending-coo-invite-status';
 import { VoidCertificateButton, VoidedCertificateBanner } from './void-certificate-controls';
 import { getArtistPublicProfileHref } from '~/lib/artist-profile-link';
@@ -395,6 +396,7 @@ export function CertificateOfAuthenticity({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
+  const [nfcOpen, setNfcOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const hasMoreMenu = isOwner || canEditCertificate || isAdmin;
   const user = useCurrentUser();
@@ -948,6 +950,12 @@ export function CertificateOfAuthenticity({
                       QR code
                     </DropdownMenuItem>
                   )}
+                  {certificateUrl && (
+                    <DropdownMenuItem onSelect={() => setNfcOpen(true)}>
+                      <Nfc className="mr-2 h-4 w-4" />
+                      NFC tag…
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleDownload}>
                     <Download className="mr-2 h-4 w-4" />
@@ -1043,6 +1051,16 @@ export function CertificateOfAuthenticity({
         </div>
 
         {/* Dialogs opened from the menus above */}
+        {certificateUrl && (
+          <NfcWriteDialog
+            open={nfcOpen}
+            onOpenChange={setNfcOpen}
+            url={certificateUrl}
+            title="Write certificate to an NFC tag"
+            description="Stick the tag on the back of the work or its label. Tapping it with a phone opens this certificate and counts as a scan, just like the QR code."
+            itemLabel={[artwork.title || 'Untitled', artwork.artist_name].filter(Boolean).join(' — ')}
+          />
+        )}
         {canEditCertificate && (
           <SendCertificateDialog
             artworkId={artwork.id}

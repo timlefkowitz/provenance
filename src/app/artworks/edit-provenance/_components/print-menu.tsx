@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
-import { BookOpen, ChevronDown, Grid3x3, List, Printer, Scissors, Tag } from 'lucide-react';
+import { BookOpen, ChevronDown, Grid3x3, List, Nfc, Printer, Scissors, Tag } from 'lucide-react';
 import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
 import { openPrintPreview } from '~/lib/print-preview';
@@ -37,6 +37,7 @@ import { ZineDialog } from '~/app/exhibitions/_components/zine-dialog';
 import { buildZineHtml, type ZineOptions } from '~/app/exhibitions/_helpers/zine-print-html';
 import { getArtworkArtistBios } from '../_actions/get-artwork-artist-bios';
 import { loadCollectionQrStyle, QrSheetDialog, saveCollectionQrStyle } from './qr-sheet-dialog';
+import { NfcBatchWriteDialog } from '~/components/nfc/nfc-write-dialogs';
 
 const LABEL_OPTIONS_KEY = 'provenance.collection.wallLabelOptions';
 const BIO_EDITS_KEY = 'provenance.collection.artistBios';
@@ -265,6 +266,7 @@ export function PrintMenu({
   const [qrOpen, setQrOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [zineOpen, setZineOpen] = useState(false);
+  const [nfcOpen, setNfcOpen] = useState(false);
   const [qrStyle, setQrStyle] = useState<QrStyleSettings | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
 
@@ -454,6 +456,15 @@ export function PrintMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
+            onSelect={() => setNfcOpen(true)}
+            disabled={!origin}
+            className="text-xs font-serif cursor-pointer"
+          >
+            <Nfc className="h-3.5 w-3.5 mr-2 opacity-60" />
+            NFC Tags…
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onSelect={() => setLabelsOpen(true)}
             disabled={!origin}
             className="text-xs font-serif cursor-pointer"
@@ -542,6 +553,19 @@ export function PrintMenu({
         hasIntro={false}
         ownerName={galleryName}
         onPrint={handlePrintZine}
+      />
+
+      <NfcBatchWriteDialog
+        open={nfcOpen}
+        onOpenChange={setNfcOpen}
+        items={selectedArtworks.map((a) => ({
+          id: a.id,
+          label: mergeField(artworkData[a.id]?.title, a.title) || 'Untitled',
+          sublabel: mergeField(artworkData[a.id]?.artist_name, a.artist_name) || null,
+          url: certificateUrl(a.id),
+        }))}
+        title="Write NFC tags"
+        description={`One sticker per selected work (${selectedArtworks.length}). Tapping a tag with a phone opens that work's certificate and counts as a scan, just like its QR code.`}
       />
 
       {qrStyle && (

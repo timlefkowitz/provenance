@@ -9,6 +9,7 @@ import {
   Link as LinkIcon,
   Lock,
   MapPin,
+  Nfc,
   Pencil,
   Printer,
   Scan,
@@ -41,6 +42,7 @@ import { EMPTY_SCAN_STATS, formatScanStats, type ScanStats } from '~/lib/scan-st
 import { getScanVisitorId } from '~/lib/scan-visitor';
 import { shareLink } from '~/lib/capacitor/share';
 import { updateCollectibleValue } from '../../_actions/update-collectible-value';
+import { NfcWriteDialog } from '~/components/nfc/nfc-write-dialogs';
 
 // Reuse the artwork Leaflet scan map — it takes generic {latitude, longitude, ...}.
 const ScanLocationsMap = dynamic(
@@ -115,6 +117,7 @@ export function CollectibleCertificate({
 
   // Value editing (owner only)
   const [valueDialogOpen, setValueDialogOpen] = useState(false);
+  const [nfcOpen, setNfcOpen] = useState(false);
   const [valueDraft, setValueDraft] = useState(collectible.value ?? '');
   const [valuePublicDraft, setValuePublicDraft] = useState(!!collectible.value_is_public);
 
@@ -301,6 +304,10 @@ export function CollectibleCertificate({
                 <Scan className="mr-2 h-4 w-4" />
                 Print QR code
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setNfcOpen(true)} disabled={!scanUrl}>
+                <Nfc className="mr-2 h-4 w-4" />
+                Write NFC tag…
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handlePrint}>Download PDF</DropdownMenuItem>
             </DropdownMenuContent>
@@ -326,6 +333,17 @@ export function CollectibleCertificate({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {isOwner && scanUrl && (
+          <NfcWriteDialog
+            open={nfcOpen}
+            onOpenChange={setNfcOpen}
+            url={scanUrl}
+            title="Write certificate to an NFC tag"
+            description="Stick the tag on the piece, its case or its label. Tapping it with a phone opens this certificate and counts as a scan, just like the QR code."
+            itemLabel={collectible.title || 'Collectible'}
+          />
+        )}
 
         <Button
           onClick={() => router.push(isOwner ? '/collectibles/my' : '/collectibles')}

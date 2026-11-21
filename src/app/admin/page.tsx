@@ -80,6 +80,16 @@ const TOOLS: {
     desc: 'Voice Memo denoise (upload → clean m4a).',
   },
   {
+    href: '/admin/qr',
+    title: 'qr-codes',
+    desc: 'Styled QR code for any link (PNG / SVG).',
+  },
+  {
+    href: '/admin/nfc',
+    title: 'nfc-writer',
+    desc: 'Write any link to an NFC tag.',
+  },
+  {
     href: '/admin/queued-artworks',
     title: 'queued',
     desc: 'Homepage feature pool.',

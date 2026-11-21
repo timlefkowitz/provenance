@@ -8,9 +8,10 @@ import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit
 import { toast } from '@kit/ui/sonner';
 import { EditorialDialogContent } from '~/components/editorial-dialog';
 import { PosterTextEditor } from './poster-text-editor';
-import { loadImage, QrStylePicker } from './qr-style-picker';
+import { QrStylePicker } from './qr-style-picker';
+import { deliverFile, renderStyledQrPng } from '../_helpers/qr-export';
 import type { PosterOverrides, PosterText } from '../_helpers/poster-text';
-import { centreImagePlacement, composeStyledQr, type QrStyleSettings } from '../_helpers/qr-style';
+import { composeStyledQr, type QrStyleSettings } from '../_helpers/qr-style';
 
 const PNG_SIZE = 1024;
 
@@ -22,69 +23,6 @@ function slugify(title: string): string {
       .replace(/^-+|-+$/g, '')
       .slice(0, 60) || 'exhibition'
   );
-}
-
-/**
- * Hand a file to the user. On iOS (the native app and Safari) a plain
- * `<a download>` is unreliable, so prefer the share sheet when it accepts
- * files — that's where "Save Image" lives. Falls back to a download link.
- */
-async function deliverFile(file: File): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] });
-      return;
-    } catch (err) {
-      if ((err as DOMException)?.name === 'AbortError') return;
-      console.error('[Exhibitions] QR share failed, falling back to download', err);
-    }
-  }
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-/** Renders a styled QR SVG to a PNG blob. The centre image is drawn separately so the canvas isn't tainted. */
-async function renderPng(baseSvg: string, settings: QrStyleSettings): Promise<Blob> {
-  const svg = composeStyledQr(baseSvg, settings, { pixelSize: PNG_SIZE, omitImages: true });
-  const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = PNG_SIZE;
-    canvas.height = PNG_SIZE;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas unavailable');
-    ctx.drawImage(await loadImage(svgUrl), 0, 0, PNG_SIZE, PNG_SIZE);
-
-    const placement = centreImagePlacement(baseSvg, settings);
-    if (placement) {
-      const k = PNG_SIZE / placement.total;
-      const img = await loadImage(placement.href);
-      // Same "cover" crop as the SVG's preserveAspectRatio="xMidYMid slice".
-      const side = Math.min(img.naturalWidth, img.naturalHeight);
-      ctx.drawImage(
-        img,
-        (img.naturalWidth - side) / 2,
-        (img.naturalHeight - side) / 2,
-        side,
-        side,
-        placement.x * k,
-        placement.y * k,
-        placement.size * k,
-        placement.size * k,
-      );
-    }
-    return await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG export failed'))), 'image/png'),
-    );
-  } finally {
-    URL.revokeObjectURL(svgUrl);
-  }
 }
 
 /**
@@ -125,7 +63,7 @@ export function ExhibitionQrDialogContent({
     console.log('[Exhibitions] Download exhibition QR PNG', { exhibitionId, style: qrStyle.style });
     if (!baseSvg) return;
     try {
-      const blob = await renderPng(baseSvg, qrStyle);
+      const blob = await renderStyledQrPng(baseSvg, qrStyle, { size: PNG_SIZE });
       await deliverFile(new File([blob], `${baseName}.png`, { type: 'image/png' }));
     } catch (err) {
       console.error('[Exhibitions] QR PNG export failed', err);

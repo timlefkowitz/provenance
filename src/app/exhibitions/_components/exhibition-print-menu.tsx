@@ -2,7 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BookOpen, Camera, Scissors, ChevronDown, Grid3x3, List, Printer, QrCode, Tag } from 'lucide-react';
+import { BookOpen, Camera, Scissors, ChevronDown, Grid3x3, List, Nfc, Printer, QrCode, Tag } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Dialog } from '@kit/ui/dialog';
 import {
@@ -40,6 +40,7 @@ import {
 } from '../_helpers/poster-text';
 import { updateExhibitionPosterText } from '../_actions/update-exhibition-poster-text';
 import { ExhibitionQrDialogContent } from './exhibition-qr-dialog';
+import { NfcBatchWriteDialog, type NfcBatchItem } from '~/components/nfc/nfc-write-dialogs';
 import { WallLabelsDialog } from './wall-labels-dialog';
 import { WallScanDialog } from './wall-scan-dialog';
 import { CatalogDialog } from './catalog-dialog';
@@ -87,6 +88,7 @@ export function ExhibitionPrintMenu({
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [zineOpen, setZineOpen] = useState(false);
   const [wallScanOpen, setWallScanOpen] = useState(false);
+  const [nfcOpen, setNfcOpen] = useState(false);
   /** Hanging order from a wall scan; while set, wall labels print just these works in this order. */
   const [wallOrder, setWallOrder] = useState<string[] | null>(null);
   // The show's QR style (exhibitions.metadata.qr), used by the poster,
@@ -135,6 +137,19 @@ export function ExhibitionPrintMenu({
     ? wallOrder.flatMap((id) => exhibition.artworks.find((a) => a.id === id) ?? [])
     : printArtworks;
   const hasPrices = printArtworks.some((a) => a.listPriceDisplay?.trim());
+
+  // NFC tags: the show's page (counted like its QR code), then each work's certificate.
+  const nfcItems: NfcBatchItem[] = exhibitionQrUrl
+    ? [
+        { id: `exhibition-${exhibition.id}`, label: exhibition.title || 'Exhibition', sublabel: 'Exhibition page', url: exhibitionQrUrl },
+        ...printArtworks.map((a) => ({
+          id: a.id,
+          label: a.title || 'Untitled',
+          sublabel: a.artist_name,
+          url: `${origin}/artworks/${a.id}/certificate?scan=true`,
+        })),
+      ]
+    : [];
 
   const readQr = (key: string): string =>
     qrRef.current?.querySelector(`[data-qr="${key}"]`)?.innerHTML ?? '';
@@ -394,6 +409,13 @@ export function ExhibitionPrintMenu({
             Artwork QR Codes
           </DropdownMenuItem>
           <DropdownMenuItem
+            onSelect={() => setNfcOpen(true)}
+            className="font-serif text-xs cursor-pointer"
+          >
+            <Nfc className="h-3.5 w-3.5 mr-2 opacity-60" />
+            NFC Tags…
+          </DropdownMenuItem>
+          <DropdownMenuItem
             onSelect={handleChecklist}
             disabled={!hasWorks}
             className="font-serif text-xs cursor-pointer"
@@ -436,6 +458,18 @@ export function ExhibitionPrintMenu({
           />
         )}
       </Dialog>
+
+      <NfcBatchWriteDialog
+        open={nfcOpen}
+        onOpenChange={setNfcOpen}
+        items={nfcItems}
+        title="Write NFC tags"
+        description={
+          selectedArtworkIds
+            ? `One sticker for the show (opens the exhibition page) and one for each of the ${printArtworks.length} selected works (opens its certificate). Taps count as scans.`
+            : 'One sticker for the show (opens the exhibition page) and one for each work (opens its certificate). Put them on wall labels or plinths; taps count as scans.'
+        }
+      />
 
       <WallScanDialog
         open={wallScanOpen}
