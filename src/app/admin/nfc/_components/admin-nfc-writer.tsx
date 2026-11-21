@@ -66,6 +66,8 @@ export function AdminNfcWriter() {
   const { support, state, write, cancel, reset } = useNfcWriter();
   const [input, setInput] = useState('');
   const [lock, setLock] = useState(false);
+  /** Why the last tap on "write tag" couldn't start a write. */
+  const [blocked, setBlocked] = useState<string | null>(null);
   const recentRaw = useSyncExternalStore(subscribeRecent, readRecentRaw, () => '[]');
   const recent = useMemo(() => parseRecent(recentRaw), [recentRaw]);
 
@@ -77,7 +79,19 @@ export function AdminNfcWriter() {
   const waiting = state.phase === 'waiting';
 
   const handleWrite = async () => {
-    if (!valid) return;
+    // The button stays tappable so it can say why it can't write, instead of sitting greyed out.
+    const reason = !valid
+      ? 'Enter a full link, e.g. https://www.instagram.com/…'
+      : !tag
+        ? 'This link is too long for an NFC sticker. Shorten it first.'
+        : support?.kind === 'none'
+          ? `${nfcUnsupportedMessage(support.reason)} Or copy the link into an NFC app such as NFC Tools.`
+          : !support
+            ? 'Still checking this device for NFC. Try again in a second.'
+            : null;
+    console.log('[NFC] admin write tapped', { support: support?.kind ?? 'unknown', valid, fits: !!tag, reason });
+    setBlocked(reason);
+    if (reason) return;
     const ok = await write(url, { lock });
     if (ok) {
       saveRecent([url, ...recent.filter((r) => r !== url)]);
@@ -87,6 +101,14 @@ export function AdminNfcWriter() {
   return (
     <div className="flex flex-col gap-6">
       <section className={cn(adminPanel, 'p-5')}>
+        {support?.kind === 'none' && (
+          <p className="mb-4 flex gap-2 rounded-sm border border-amber-500/30 bg-amber-500/5 p-3 font-mono text-[11px] leading-snug text-amber-300">
+            <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />
+            <span>
+              {nfcUnsupportedMessage(support.reason)} The App Store app can write tags from the next build.
+            </span>
+          </p>
+        )}
         <p className={cn(adminMonoLabel, 'mb-3')}>link</p>
         <input
           type="url"
@@ -98,6 +120,7 @@ export function AdminNfcWriter() {
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
+            setBlocked(null);
             if (state.phase !== 'waiting') reset();
           }}
           className="w-full rounded-sm border border-[#1793d1]/30 bg-[#0c0e12] px-3 py-2.5 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus:border-[#1793d1]/70 focus:outline-none"
@@ -130,19 +153,16 @@ export function AdminNfcWriter() {
           <Switch checked={lock} onCheckedChange={setLock} />
         </label>
 
-        {support?.kind === 'none' && (
-          <p className="mt-4 flex gap-2 rounded-sm border border-amber-500/30 bg-amber-500/5 p-3 font-mono text-[11px] leading-snug text-amber-300">
-            <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />
-            {nfcUnsupportedMessage(support.reason)}
-          </p>
-        )}
-
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => void handleWrite()}
-            disabled={!canWrite || !valid || !tag || waiting}
-            className={cn(adminButtonPrimary, 'inline-flex items-center gap-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40')}
+            disabled={waiting || !input.trim()}
+            className={cn(
+              adminButtonPrimary,
+              'inline-flex items-center gap-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40',
+              !canWrite && 'opacity-60',
+            )}
           >
             {waiting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Nfc className="h-3.5 w-3.5" />}
             {waiting ? 'waiting for tag…' : 'write tag'}
@@ -164,6 +184,7 @@ export function AdminNfcWriter() {
               </span>
             )}
             {state.phase === 'error' && <span className="text-red-400">{state.message}</span>}
+            {blocked && state.phase === 'idle' && <span className="text-amber-400">{blocked}</span>}
           </span>
         </div>
       </section>

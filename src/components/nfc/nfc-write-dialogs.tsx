@@ -71,6 +71,26 @@ async function copyText(text: string): Promise<boolean> {
 
 const HOLD_HINT_WEB = 'Hold the NFC tag to the back of your phone…';
 
+/**
+ * Why a write can't start on this device, or null. Write buttons stay tappable
+ * and show this, rather than sitting greyed out with no explanation.
+ */
+function blockedReason(support: NfcSupport | null): string | null {
+  if (!support) return 'Still checking this device for NFC. Try again in a second.';
+  if (support.kind === 'none') return nfcUnsupportedMessage(support.reason);
+  return null;
+}
+
+function BlockedNotice({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-start gap-2 text-sm text-amber-800" role="alert">
+      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      {message}
+    </p>
+  );
+}
+
 // ── Single tag ────────────────────────────────────────────────────────────────
 
 /**
@@ -116,6 +136,7 @@ function NfcWriteDialogBody({
   const { support, state, write, cancel } = useNfcWriter();
   const [lock, setLock] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [blocked, setBlocked] = useState<string | null>(null);
   const size = sizeHint(url);
   const canWrite = support?.kind === 'native' || support?.kind === 'web';
   const waiting = state.phase === 'waiting';
@@ -165,6 +186,7 @@ function NfcWriteDialogBody({
           {state.message}
         </p>
       )}
+      {state.phase === 'idle' && <BlockedNotice message={blocked} />}
 
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
@@ -185,8 +207,14 @@ function NfcWriteDialogBody({
           </Button>
         ) : (
           <Button
-            onClick={() => void write(url, { lock })}
-            disabled={!canWrite || waiting || size.tooBig}
+            onClick={() => {
+              const reason = blockedReason(support);
+              console.log('[NFC] write tapped', { support: support?.kind ?? 'unknown', reason });
+              setBlocked(reason);
+              if (!reason) void write(url, { lock });
+            }}
+            disabled={waiting || size.tooBig}
+            className={cn(!canWrite && 'opacity-60')}
           >
             {waiting ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -247,12 +275,17 @@ function NfcBatchWriteBody({
   const { support, state, write, cancel } = useNfcWriter();
   const [lock, setLock] = useState(false);
   const [written, setWritten] = useState<Record<string, 'written' | 'locked'>>({});
+  const [blocked, setBlocked] = useState<string | null>(null);
   const canWrite = support?.kind === 'native' || support?.kind === 'web';
   const waiting = state.phase === 'waiting';
   const next = items.find((i) => !written[i.id]);
   const doneCount = items.filter((i) => written[i.id]).length;
 
   const writeItem = async (item: NfcBatchItem) => {
+    const reason = blockedReason(support);
+    console.log('[NFC] batch write tapped', { item: item.id, support: support?.kind ?? 'unknown', reason });
+    setBlocked(reason);
+    if (reason) return;
     const ok = await write(item.url, {
       key: item.id,
       lock,
@@ -287,6 +320,8 @@ function NfcBatchWriteBody({
         )}
       </div>
 
+      {state.phase === 'idle' && <BlockedNotice message={blocked} />}
+
       <ul className="-mt-2 divide-y divide-editorial-border border-y border-editorial-border">
         {items.map((item) => {
           const done = written[item.id];
@@ -314,7 +349,7 @@ function NfcBatchWriteBody({
                 variant="outline"
                 size="sm"
                 className="h-7 shrink-0 px-2.5 text-xs"
-                disabled={!canWrite || waiting || size.tooBig}
+                disabled={waiting || size.tooBig}
                 onClick={() => void writeItem(item)}
                 aria-label={`${done ? 'Rewrite' : 'Write'} tag for ${item.label}`}
               >
@@ -334,7 +369,7 @@ function NfcBatchWriteBody({
           <Button
             className="max-w-full"
             onClick={() => next && void writeItem(next)}
-            disabled={!canWrite || waiting || !next}
+            disabled={waiting || !next}
           >
             <Nfc className="mr-1.5 h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{next ? `Write next: ${next.label}` : 'All tags written'}</span>
