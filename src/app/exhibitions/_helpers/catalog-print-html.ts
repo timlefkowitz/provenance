@@ -281,7 +281,8 @@ const BOOK_CSS = `
   .sheet:last-child { break-after: auto; page-break-after: auto; }
   .sheet * { break-before: auto !important; break-after: auto !important; page-break-before: auto !important; page-break-after: auto !important; }
   .slot { position: relative; width: 5.5in; height: 8.5in; flex: none; overflow: hidden; }
-  .slot > .page { position: absolute; left: 0; top: 0; transform: scale(0.8); transform-origin: 0 0; }
+  /* zoom, not transform: a transform scales after printing has split the 10.625in page at 8.5in, cutting off its bottom fifth. */
+  .slot > .page { position: absolute; left: 0; top: 0; zoom: 0.8; }
   .bk-note { font: 13px/1.5 -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #222; background: #fff; max-width: 11in; margin: 0 auto 0.25in; padding: 12px 16px; border: 1px solid #ddd; }
   .bk-note b { font-weight: 600; }
   @media screen { html, body { background: #8a8a8a !important; } body { padding: 0.3in 0; } .sheet { margin: 0 auto 0.3in; box-shadow: 0 2px 12px rgba(0,0,0,0.3); } }
