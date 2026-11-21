@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
-import { Star, Scan, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban, BadgeCheck } from 'lucide-react';
+import { Star, Scan, Eye, MapPin, CheckCircle2, AlertCircle, Facebook, Instagram, Trash2, Share2, Printer, ChevronDown, Tag, Link as LinkIcon, FileText, Lock, ArrowLeft, Pencil, Send, Download, MoreHorizontal, MessageSquare, Upload, ListPlus, Ban, BadgeCheck } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import {
   AlertDialog,
@@ -42,6 +42,7 @@ import { setValueCents } from '~/lib/sales/sale-money';
 import { isArtworkFeatured } from '~/app/admin/_actions/manage-featured-artworks';
 import { recordScanLocation } from '../../_actions/record-scan-location';
 import { EMPTY_SCAN_STATS, formatScanStats, type ScanStats } from '~/lib/scan-stats';
+import { EMPTY_VIEW_STATS, formatViewStats, type ViewStats } from '~/lib/view-stats';
 import { getScanVisitorId } from '~/lib/scan-visitor';
 import { shareLink } from '~/lib/capacitor/share';
 import { verifyCertificate } from '../../_actions/verify-certificate';
@@ -315,6 +316,7 @@ export function CertificateOfAuthenticity({
   valuation = null,
   publications = [],
   scanStats = EMPTY_SCAN_STATS,
+  viewStats = EMPTY_VIEW_STATS,
   provenanceValue = null,
   linkedCertificates = [],
   voided = null,
@@ -358,6 +360,8 @@ export function CertificateOfAuthenticity({
   publications?: ArtworkPublication[];
   /** Public scan counts; per-scan details only reach the owner and admins. */
   scanStats?: ScanStats;
+  /** Certificate page views (holder's own left out); counts for everyone. */
+  viewStats?: ViewStats;
   /** Chain-wide Provenance Value (loadChainProvenanceValues): same on every linked certificate. */
   provenanceValue?: ProvenanceValue | null;
   /** Every CoA / CoS / CoO issued for this work (loadChainCertificates), this one included. */
@@ -1528,6 +1532,7 @@ export function CertificateOfAuthenticity({
             artwork.value || provenanceValue || artwork.owned_by || artwork.sold_by ||
             linkedCertificates.length > 1 ||
             scanStats.total > 0 ||
+            viewStats.total > 0 ||
             (canViewScanMap && scanLocations && scanLocations.length > 0)) && (
             <div className="border-t border-ink/10 pt-8 mt-8 sm:mt-10">
               <h2 className="text-lg sm:text-xl font-display font-semibold tracking-tight text-wine mb-5">
@@ -1715,6 +1720,22 @@ export function CertificateOfAuthenticity({
                       <p className="text-sm sm:text-base font-serif text-ink whitespace-pre-wrap break-words">{v}</p>
                     )}
                   />
+                </div>
+              )}
+
+              {/* Certificate page views: counts for everyone */}
+              {formatViewStats(viewStats) && (
+                <div className="mb-3 sm:mb-4 flex items-start gap-2">
+                  <Eye className="h-3.5 w-3.5 text-ink/40 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs sm:text-sm text-ink/70 font-serif">
+                    <span className="font-semibold text-ink">{formatViewStats(viewStats)}</span>
+                    {viewStats.lastViewedAt &&
+                      ` · last ${new Date(viewStats.lastViewedAt).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}`}
+                  </p>
                 </div>
               )}
 

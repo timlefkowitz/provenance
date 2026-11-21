@@ -1,5 +1,6 @@
 import { asUntyped } from '~/lib/supabase-untyped';
 import { computeScanStats, stripScanDetails } from '~/lib/scan-stats';
+import { loadOneCertificateViewStats } from '~/lib/load-view-stats';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -23,6 +24,7 @@ import appConfig from '~/config/app.config';
 import { safeJsonLd } from '~/lib/safe-json-ld';
 import { getBlockedUserIds, isOwnedByBlocked } from '~/lib/moderation/blocks';
 import { BlockedContentNotice, ContentSafetyMenu } from '~/components/moderation/content-safety-menu';
+import { CertificateViewRecorder } from './_components/certificate-view-recorder';
 
 export const dynamic = 'force-dynamic';
 
@@ -529,6 +531,11 @@ export default async function CertificatePage({
     isPartOf: { '@type': 'WebSite', name: 'Provenance', url: appConfig.url },
   };
 
+  const viewStats = await loadOneCertificateViewStats(artwork.id).catch((err) => {
+    console.error('[Certificate] view stats failed', { artworkId: artwork.id, err });
+    return undefined;
+  });
+
   return (
     <>
       <script
@@ -547,10 +554,12 @@ export default async function CertificatePage({
           />
         </div>
       )}
+      <CertificateViewRecorder artworkId={artwork.id} />
       <CertificateOfAuthenticity 
         // Scan dates and places are for the owner and admins; everyone gets the counts.
         artwork={isOwner || userIsAdmin ? artwork : { ...artwork, metadata: stripScanDetails(artwork.metadata) }}
         scanStats={computeScanStats(artwork.metadata)}
+        viewStats={viewStats}
         isOwner={isOwner} 
         canEditCertificate={canEditCertificate}
         canSell={canSell}

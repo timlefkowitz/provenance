@@ -11,6 +11,7 @@ export default defineConfig({
       'src/lib/push/**/*.test.ts',
       'src/lib/capacitor/**/*.test.ts',
       'src/lib/weekly-digest.test.ts',
+      'src/lib/view-stats.test.ts',
       'src/lib/email-preferences.test.ts',
       'src/lib/user-roles.test.ts',
       'src/lib/institution-account.test.ts',

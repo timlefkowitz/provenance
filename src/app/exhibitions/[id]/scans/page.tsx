@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, MapPin, ScanLine } from 'lucide-react';
+import { ArrowLeft, Eye, MapPin, ScanLine } from 'lucide-react';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getExhibitionScans } from '../../_helpers/exhibition-scans';
@@ -8,7 +8,7 @@ import { getExhibitionScans } from '../../_helpers/exhibition-scans';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'QR scans | Provenance',
+  title: 'QR scans & views | Provenance',
 };
 
 function formatDate(value: string | null, withYear = true) {
@@ -48,7 +48,8 @@ export default async function ExhibitionScansPage({
   const data = await getExhibitionScans(user.id, id);
   if (!data) notFound();
 
-  const { exhibition, works, scope, window, poster } = data;
+  const { exhibition, works, scope, window, poster, pageViews } = data;
+  const views = works.reduce((n, w) => n + w.views.duringShow.total, 0);
   const duringShow = works.reduce((n, w) => n + w.stats.duringShow, 0);
   const people = works.reduce((n, w) => n + w.stats.peopleDuringShow, 0);
   const scanned = works.filter((w) => w.stats.duringShow > 0).length;
@@ -70,7 +71,7 @@ export default async function ExhibitionScansPage({
             Back to exhibition
           </Link>
           <p className="mb-2 font-serif text-[11px] uppercase tracking-widest text-wine/50">
-            QR scans{scope === 'artist' ? ' · your works' : ''}
+            QR scans &amp; views{scope === 'artist' ? ' · your works' : ''}
           </p>
           <h1 className="font-display text-4xl font-bold tracking-tight text-ink md:text-5xl">
             {exhibition.title}
@@ -79,8 +80,27 @@ export default async function ExhibitionScansPage({
             How many visitors scanned each work&apos;s QR code during the show ({period}). A work
             counts scans of its wall label and of the artist&apos;s certificate it was shown from.
             Scans by a certificate&apos;s own holder aren&apos;t counted, and places are shown by
-            city only.
+            city only. Views count every visit to a work&apos;s certificate page, from a QR code, a
+            shared link or a search, once per browser every 30 minutes.
           </p>
+
+          {pageViews && (
+            <div className="mt-8 flex flex-wrap items-baseline gap-x-3 gap-y-1 border border-wine/15 bg-parchment/40 p-4 font-serif text-sm text-ink/70">
+              <span className="text-[11px] uppercase tracking-widest text-ink/50">Exhibition page</span>
+              <span>
+                <span className="font-display text-2xl font-bold text-ink">
+                  {pageViews.total.toLocaleString('en-US')}
+                </span>{' '}
+                {pageViews.total === 1 ? 'view' : 'views'}
+                {pageViews.people > 0 && <> by {plural(pageViews.people, 'person', 'people')}</>}
+              </span>
+              <span className="text-xs text-ink/50">
+                Counted since views started being tracked (November 2026)
+                {pageViews.lastViewedAt ? ` · last ${formatDate(pageViews.lastViewedAt)}` : ''}. Your
+                team&apos;s own visits aren&apos;t counted.
+              </span>
+            </div>
+          )}
 
           {poster && (
             <div className="mt-8 flex flex-wrap items-baseline gap-x-3 gap-y-1 border border-wine/15 bg-parchment/40 p-4 font-serif text-sm text-ink/70">
@@ -100,7 +120,7 @@ export default async function ExhibitionScansPage({
             </div>
           )}
 
-          <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {[
               { label: 'Scans during the show', value: duringShow.toLocaleString('en-US') },
               { label: 'People', value: people.toLocaleString('en-US') },
@@ -108,6 +128,7 @@ export default async function ExhibitionScansPage({
                 label: 'Works scanned',
                 value: `${scanned.toLocaleString('en-US')} of ${works.length.toLocaleString('en-US')}`,
               },
+              { label: 'Certificate views', value: views.toLocaleString('en-US') },
               { label: 'Most scanned', value: top ? top.title : '—' },
             ].map((s) => (
               <div key={s.label} className="border border-wine/15 bg-parchment/40 p-4">
@@ -170,6 +191,25 @@ export default async function ExhibitionScansPage({
                   {w.stats.allTime > w.stats.duringShow && (
                     <p className="font-serif text-xs text-ink/50">
                       {plural(w.stats.allTime, 'scan')} in all
+                    </p>
+                  )}
+                  <p className="mt-1 flex items-center gap-1.5 font-serif text-sm text-ink sm:justify-end">
+                    <Eye className="h-4 w-4 text-wine" />
+                    <span className="font-semibold">
+                      {w.views.duringShow.total > 0
+                        ? plural(w.views.duringShow.total, 'view')
+                        : 'No views yet'}
+                    </span>
+                    {w.views.duringShow.people > 0 && (
+                      <span className="text-ink/60">
+                        {' '}
+                        by {plural(w.views.duringShow.people, 'person', 'people')}
+                      </span>
+                    )}
+                  </p>
+                  {w.views.allTime > w.views.duringShow.total && (
+                    <p className="font-serif text-xs text-ink/50">
+                      {plural(w.views.allTime, 'view')} in all
                     </p>
                   )}
                 </div>

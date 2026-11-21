@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BadgeDollarSign, CalendarClock, MessageSquare, QrCode, ScanLine } from 'lucide-react';
+import { BadgeDollarSign, CalendarClock, Eye, MessageSquare, QrCode, ScanLine } from 'lucide-react';
 
 import { loadExhibitionSellThrough } from '~/lib/collectors/load-exhibition-sell-through';
 import { formatMoney } from '~/lib/portal-graphs/types';
@@ -21,7 +21,8 @@ type Tile = {
 };
 
 /**
- * Organiser-only numbers for a show: wall label scans during the show, scans
+ * Organiser-only numbers for a show: page views, certificate views and wall
+ * label scans during the show, scans
  * of the show's own QR code (poster, flyer, catalog), inquiries,
  * reservation requests and sales, each linking to the detail. Counts only;
  * the detail pages and panels apply their own privacy rules.
@@ -67,12 +68,38 @@ export async function ExhibitionStatsPanel({
   const scannedWorks = works.filter((w) => w.stats.duringShow > 0).length;
   const top = works[0]?.stats.duringShow ? works[0] : null;
   const poster = scans?.poster ?? null;
+  const pageViews = scans?.pageViews ?? null;
+  const certViews = works.reduce((sum, w) => sum + w.views.duringShow.total, 0);
+  const certViewers = works.reduce((sum, w) => sum + w.views.duringShow.people, 0);
+  const viewedWorks = works.filter((w) => w.views.duringShow.total > 0).length;
 
   const purchases = inquiries.filter((i) => i.inquiry_type === 'purchase').length;
   const pending = reservations.filter((r) => r.status === 'pending').length;
   const accepted = reservations.filter((r) => r.status === 'accepted').length;
 
   const tiles: Tile[] = [
+    {
+      label: 'Page views',
+      value: n(pageViews?.total ?? 0),
+      detail:
+        pageViews && pageViews.total > 0
+          ? `by ${plural(pageViews.people, 'person', 'people')} · this exhibition page`
+          : 'Visits to this exhibition page',
+      href: null,
+      icon: Eye,
+    },
+    {
+      label: 'Certificate views',
+      value: n(certViews),
+      detail:
+        certViews > 0
+          ? `by ${plural(certViewers, 'person', 'people')} · ${n(viewedWorks)} of ${plural(works.length, 'work')}`
+          : works.length > 0
+            ? 'No certificate views during the show yet'
+            : 'No works in the show yet',
+      href: `/exhibitions/${exhibitionId}/scans`,
+      icon: Eye,
+    },
     {
       label: 'Wall label scans',
       value: n(scanCount),
@@ -156,7 +183,7 @@ export async function ExhibitionStatsPanel({
           </p>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-px overflow-hidden border border-wine/15 bg-wine/15 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-px overflow-hidden border border-wine/15 bg-wine/15 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         {tiles.map(({ label, value, detail, href, icon: Icon }) => {
           const body = (
             <>

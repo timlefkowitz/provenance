@@ -25,6 +25,7 @@ import { ExhibitionTabs } from '../_components/exhibition-tabs';
 import { ExhibitionPublishBanner } from '../_components/exhibition-publish-banner';
 import { ExhibitionStatsPanel } from '../_components/exhibition-stats-panel';
 import { PosterScanRecorder } from '../_components/poster-scan-recorder';
+import { ExhibitionViewRecorder } from '../_components/exhibition-view-recorder';
 import { ExhibitionPrintMenu } from '../_components/exhibition-print-menu';
 import { RunAsAuctionButton } from '~/app/auctions/_components/run-as-auction-button';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -278,6 +279,7 @@ export default async function ExhibitionPage({
         dangerouslySetInnerHTML={{ __html: safeJsonLd(exhibitionJsonLd) }}
       />
       <PosterScanRecorder exhibitionId={id} />
+      <ExhibitionViewRecorder exhibitionId={id} />
     <div className="min-h-screen">
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div className="border-b border-wine/15">
@@ -336,7 +338,7 @@ export default async function ExhibitionPage({
               >
                 <Link href={`/exhibitions/${id}/scans`}>
                   <ScanLine className="h-3.5 w-3.5" />
-                  QR scans
+                  Scans &amp; views
                 </Link>
               </Button>
               <Button
@@ -361,7 +363,7 @@ export default async function ExhibitionPage({
               >
                 <Link href={`/exhibitions/${id}/scans`}>
                   <ScanLine className="h-3.5 w-3.5" />
-                  Your QR scans
+                  Your scans &amp; views
                 </Link>
               </Button>
             )}

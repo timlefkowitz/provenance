@@ -10,7 +10,9 @@ import {
   type ExhibitionWorkScanStats,
   type ScanWindow,
 } from '~/lib/exhibition-scan-stats';
+import { loadCertificateViewStats, loadExhibitionViewStats, loadWorkViewStatsInWindow } from '~/lib/load-view-stats';
 import { asUntyped } from '~/lib/supabase-untyped';
+import { EMPTY_VIEW_STATS, type ViewStats } from '~/lib/view-stats';
 
 import { isShownInExhibition } from './exhibition-submission-status';
 
@@ -21,6 +23,8 @@ export type ExhibitionScanWork = {
   artistName: string | null;
   imageUrl: string | null;
   stats: ExhibitionWorkScanStats;
+  /** Certificate page views (wall label QR, links, search), holders' own left out. */
+  views: { duringShow: ViewStats; allTime: number };
 };
 
 export type ExhibitionScans = {
@@ -31,6 +35,8 @@ export type ExhibitionScans = {
   works: ExhibitionScanWork[];
   /** Scans of the show's own QR code (poster, flyer, catalog); organisers only. */
   poster: PosterScanStats | null;
+  /** Views of the exhibition page itself; organisers only. */
+  pageViews: ViewStats | null;
 };
 
 type Link = {
@@ -148,13 +154,25 @@ export async function getExhibitionScans(
     end_date: (exhibition.end_date as string | null) ?? null,
   });
 
+  const windowFor = (id: string) =>
+    showWindow.from
+      ? showWindow
+      : exhibitionScanWindow({ start_date: null, end_date: showWindow.to }, joinedAt.get(id));
+
+  const groups = new Map(entries.map(([id, certs]) => [id, [...certs]]));
+  const [windowViews, allTimeViews, pageViews] = await Promise.all([
+    loadWorkViewStatsInWindow(groups, windowFor),
+    loadCertificateViewStats([...groups.values()].flat()),
+    organiser ? loadExhibitionViewStats(exhibitionId) : Promise.resolve(null),
+  ]);
+
   const works: ExhibitionScanWork[] = entries.map(([id, certs]) => {
     const shown = rows.get(id) as Row;
     const certRows = [...certs].map((c) => rows.get(c)).filter((r): r is Row => !!r);
     const artistAccount = certRows.find((r) => r.artist_account_id)?.artist_account_id ?? null;
-    const window = showWindow.from
-      ? showWindow
-      : exhibitionScanWindow({ start_date: null, end_date: showWindow.to }, joinedAt.get(id));
+    const window = windowFor(id);
+    const duringShowViews = windowViews.get(id) ?? EMPTY_VIEW_STATS;
+    const allTime = [...certs].reduce((sum, c) => sum + (allTimeViews.get(c)?.total ?? 0), 0);
     return {
       id,
       title: shown.title || 'Untitled',
@@ -166,6 +184,7 @@ export async function getExhibitionScans(
         certRows.map((r) => r.metadata),
         window,
       ),
+      views: { duringShow: duringShowViews, allTime: Math.max(allTime, duringShowViews.total) },
     };
   });
 
@@ -205,6 +224,7 @@ export async function getExhibitionScans(
     window: showWindow,
     works,
     poster,
+    pageViews,
   };
 }
 
