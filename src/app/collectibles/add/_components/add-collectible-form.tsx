@@ -24,8 +24,6 @@ import {
   formatCategoryLabel,
   formatConditionLabel,
 } from '~/lib/collectibles/constants';
-import { isNativePlatform } from '~/lib/capacitor/is-native';
-import { takeNativePhoto } from '~/lib/capacitor/native-camera';
 import { createCollectible } from '../_actions/create-collectible';
 
 const MAX_IMAGES = 6;
@@ -310,18 +308,9 @@ export function AddCollectibleForm({ userId }: { userId: string }) {
               variant="outline"
               className="flex-1 font-serif border-wine/30 hover:bg-wine/10"
               disabled={atCap}
-              onClick={async () => {
-                // In the iOS app, use the native camera directly.
-                if (isNativePlatform()) {
-                  try {
-                    const photo = await takeNativePhoto();
-                    if (photo) await handleFiles([photo]);
-                  } catch (err) {
-                    console.error('[AddCollectibleForm] native camera failed', err);
-                    setError('Could not open the camera.');
-                  }
-                  return;
-                }
+              onClick={() => {
+                // The capture attribute opens the device camera on the web and
+                // in the iOS app alike (see add-artwork-form for why not native).
                 fileInputRef.current?.setAttribute('capture', 'environment');
                 fileInputRef.current?.click();
               }}

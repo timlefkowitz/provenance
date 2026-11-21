@@ -35,7 +35,6 @@ import type { Tag } from '~/app/artworks/_actions/tags';
 import { ArtworkTextTypeahead } from '~/components/artwork-text-typeahead';
 import { ImageCropDialog } from '~/components/image-crop-dialog';
 import { isNativePlatform } from '~/lib/capacitor/is-native';
-import { takeNativePhoto } from '~/lib/capacitor/native-camera';
 import { gtmService } from '~/lib/gtm';
 import { asUntyped } from '~/lib/supabase-untyped';
 import type { UserRole } from '~/lib/user-roles';
@@ -1075,19 +1074,10 @@ export function AddArtworkForm({
             </Button>
             <Button
               type="button"
-              onClick={async () => {
-                // In the iOS app, use the native camera directly.
-                if (isNativePlatform()) {
-                  try {
-                    const photo = await takeNativePhoto();
-                    if (photo) await handleFiles([photo]);
-                  } catch (err) {
-                    console.error('[AddArtworkForm] native camera failed', err);
-                    setError('Could not open the camera.');
-                  }
-                  return;
-                }
-                // For camera, set capture attribute to use device camera
+              onClick={() => {
+                // The capture attribute opens the device camera on the web and
+                // in the iOS app alike. (The native camera plugin hands back a
+                // capacitor:// URL the https page can't read, so it failed.)
                 if (fileInputRef.current) {
                   fileInputRef.current.setAttribute('capture', 'environment');
                   fileInputRef.current.click();
