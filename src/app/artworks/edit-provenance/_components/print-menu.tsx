@@ -19,6 +19,7 @@ import {
   buildArtworkQrSheetHtml,
   buildWallLabelsHtml as buildLabelsHtml,
   DEFAULT_LABEL_OPTIONS,
+  fitWallLabels,
   sanitizeLabelStyle,
   type WallLabelItem,
   type LabelQr,
@@ -72,13 +73,18 @@ export function openPrintWindow(html: string, width = 960, height = 780): void {
   // The iOS app's WebView can't open windows at all; skip straight to the preview.
   const win = isNativePlatform() ? null : window.open('', '_blank', `width=${width},height=${height}`);
   if (!win) {
-    openPrintPreview(html, (frameWin) => layoutBookWindow(frameWin, { autoPrint: false }));
+    openPrintPreview(html, (frameWin) => {
+      layoutBookWindow(frameWin, { autoPrint: false });
+      fitWallLabels(frameWin);
+    });
     return;
   }
   win.document.write(html);
   win.document.close();
-  // Book catalogs are laid out from here: the print window can't run its own scripts.
+  // Book catalogs and wall labels are laid out from here: the print window
+  // can't run its own scripts.
   layoutBookWindow(win);
+  fitWallLabels(win);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────

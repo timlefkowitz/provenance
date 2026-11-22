@@ -127,6 +127,49 @@ export function sanitizeLabelStyle<T extends Partial<WallLabelOptions>>(options:
   return out;
 }
 
+/** Smallest text scale fitWallLabels uses before letting a label grow taller. */
+const MIN_FIT_SCALE = 0.8;
+
+/**
+ * Called by openPrintWindow after the HTML is written (the site's CSP keeps
+ * inline scripts in the print window from running). On institutional labels,
+ * shrinks the text of any label taller than its slot, down to MIN_FIT_SCALE;
+ * a label that still doesn't fit keeps its full text and grows its row.
+ */
+export function fitWallLabels(win: Window): void {
+  const doc = win.document;
+  if (!doc.body?.hasAttribute('data-fit-labels')) return;
+  let done = false;
+  const run = () => {
+    if (done || win.closed) return;
+    done = true;
+    // Measure each label at its own height, not its row's.
+    doc.body.classList.add('measuring');
+    let shrunk = 0;
+    let grown = 0;
+    doc.querySelectorAll<HTMLElement>('.sheet .label').forEach((el) => {
+      const slot = parseFloat(win.getComputedStyle(el).minHeight);
+      if (!slot) return;
+      let k = 1;
+      while (el.offsetHeight > slot + 1 && k - 0.04 >= MIN_FIT_SCALE - 0.001) {
+        k -= 0.04;
+        el.style.setProperty('--k', k.toFixed(2));
+      }
+      if (k < 1) shrunk++;
+      if (el.offsetHeight > slot + 1) grown++;
+    });
+    doc.body.classList.remove('measuring');
+    console.log('[Print] Wall labels fitted', { shrunk, grown });
+  };
+  const ready = () => {
+    const fonts = doc.fonts?.ready ?? Promise.resolve();
+    fonts.then(() => setTimeout(run, 50), run);
+  };
+  if (doc.readyState === 'complete') ready();
+  else win.addEventListener('load', ready);
+  setTimeout(run, 5000);
+}
+
 // ── HTML builders ─────────────────────────────────────────────────────────────
 
 /** The flyer's lines before any edits (see poster-text.ts). */
@@ -230,7 +273,9 @@ function chunk<T>(items: T[], size: number): T[][] {
 /**
  * Wall labels on US Letter, two across. "compact" packs labels that are only
  * as tall as their text into columns; "institutional" prints a uniform grid
- * (8 standard or 4 large per page) and shrinks text (to two-thirds at most) on any label that runs long.
+ * (8 standard or 4 large per page); fitWallLabels shrinks the text of a label
+ * that runs long, and one that still doesn't fit grows taller rather than
+ * losing text.
  */
 export function buildWallLabelsHtml(
   /** Shown in the print window's title, e.g. the exhibition or gallery name. */
@@ -302,12 +347,6 @@ export function buildWallLabelsHtml(
         .join('')
     : `<div class="flow">${items.map(label).join('')}</div>`;
 
-  // Institutional labels have a fixed height: shrink the text of any that
-  // overflow (down to 70%) before printing.
-  const fitScript = institutional
-    ? `<script>function fitLabels(){document.querySelectorAll('.label').forEach(function(el){var b=el.querySelector('.body');var k=1;while(b&&b.scrollHeight>b.clientHeight+1&&k>0.66){k-=0.04;el.style.setProperty('--k',k.toFixed(2));}});}</script>`
-    : '<script>function fitLabels(){}</script>';
-
   const pt = (n: number) => `calc(var(--k, 1) * ${+(n * textScale).toFixed(2)}pt)`;
 
   return `<!DOCTYPE html>
@@ -321,13 +360,14 @@ export function buildWallLabelsHtml(
   .sheet {
     display: grid;
     grid-template-columns: repeat(${g.cols}, ${g.widthIn}in);
-    grid-auto-rows: ${g.heightIn}in;
+    /* A label that still runs long after fitWallLabels shrinks it grows its row: text is never cut. */
+    grid-auto-rows: minmax(${g.heightIn}in, auto);
     column-gap: ${g.colGapIn}in; row-gap: ${g.rowGapIn}in;
     break-after: page; page-break-after: always;
   }
   .sheet:last-child { break-after: auto; page-break-after: auto; }
-  .sheet .label { height: ${g.heightIn}in; overflow: hidden; }
-  .sheet .body { overflow: hidden; }
+  .sheet .label { min-height: ${g.heightIn}in; }
+  .measuring .sheet .label { align-self: start; }
   .flow { width: ${(g.widthIn * g.cols + g.colGapIn * (g.cols - 1)).toFixed(2)}in; column-count: ${g.cols}; column-gap: ${g.colGapIn}in; column-fill: auto; }
   .flow .label { margin-bottom: 0.12in; }
   .label {
@@ -349,8 +389,8 @@ export function buildWallLabelsHtml(
   .qr svg, .qr img { width: 100%; height: auto; display: block; }
   .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; font-weight: 600; line-height: 1.2; color: #555; letter-spacing: 0.02em; margin-top: 2px; overflow-wrap: anywhere; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-</style>${fitScript}</head>
-<body>${body}<script>window.onload = function () { fitLabels(); setTimeout(function () { window.print(); }, 150); window.onafterprint = function () { window.close(); }; };</script></body></html>`;
+</style></head>
+<body${institutional ? ' data-fit-labels' : ''}>${body}</body></html>`;
 }
 
 export function buildChecklistHtml(

@@ -276,6 +276,8 @@ const BOOK_CSS = `
   :root { --pw: 6.875in; --ph: 10.625in; }
   @page { size: letter landscape; margin: 0; }
   #bk-src, #bk-stage { position: absolute; left: -20000px; top: 0; }
+  /* Measure pages at the zoom they print at, so lines wrap the same in both. */
+  #bk-stage { zoom: 0.8; }
   .page { width: var(--pw) !important; height: var(--ph) !important; min-height: 0 !important; overflow: hidden !important; }
   .sheet { width: 11in; height: 8.5in; display: flex; overflow: hidden; background: #fff; break-after: page; page-break-after: always; }
   .sheet:last-child { break-after: auto; page-break-after: auto; }
@@ -334,6 +336,62 @@ function paginate(doc: Document, section: Element, out: Element[], stage: Elemen
     const bi = view.getComputedStyle(el).breakInside;
     return bi !== 'avoid' && bi !== 'avoid-page';
   };
+  /** Places an element's children one by one, continuing it on new pages as needed. */
+  const split = (node: Element) => {
+    const parent = stack[stack.length - 1]!;
+    if (node.tagName === 'TABLE') {
+      const head = node.querySelector('thead');
+      if (head) heads.set(node, head);
+    }
+    const shell = node.cloneNode(false);
+    parent.appendChild(shell);
+    stack.push(shell);
+    origs.push(node);
+    Array.from(node.childNodes).forEach(place);
+    stack.pop();
+    origs.pop();
+  };
+  /** Whether a node just placed is taller than a page's whole text area. */
+  const tallerThanAPage = (node: Node) => {
+    const range = doc.createRange();
+    range.selectNode(node);
+    const style = view.getComputedStyle(page);
+    // As a share of the page, so zoom (#bk-stage) cancels out.
+    const area = 1 - (parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)) / page.clientHeight;
+    return range.getBoundingClientRect().height / page.getBoundingClientRect().height > area * 0.9;
+  };
+    /** Text-only node (a paragraph, or bare text): as many words as fit here, the rest on the next page. */
+  const textOnly = (n: Node) =>
+    n.nodeType === 3 || (n.nodeType === 1 && !(n as Element).firstElementChild && !!n.textContent?.trim());
+  const splitText = (node: Node) => {
+    const parent = stack[stack.length - 1]!;
+    const words = (node.textContent ?? '').match(/\s*\S+\s*/g) ?? [''];
+    const piece = (from: number, to: number) => {
+      const text = doc.createTextNode(words.slice(from, to).join(''));
+      if (node.nodeType === 3) return text;
+      const el = node.cloneNode(false);
+      el.appendChild(text);
+      return el;
+    };
+    // Most words that fit (at least one, so every pass makes progress).
+    let lo = 1;
+    let hi = words.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      const trial = piece(0, mid);
+      parent.appendChild(trial);
+      const fits = !over();
+      parent.removeChild(trial);
+      if (fits) lo = mid;
+      else hi = mid - 1;
+    }
+    parent.appendChild(piece(0, lo));
+    filled = true;
+    if (lo < words.length) {
+      open(true);
+      place(piece(lo, words.length));
+    }
+  };
   const place = (node: Node) => {
     const parent = stack[stack.length - 1]!;
     if (node.nodeType === 1 && (node as Element).tagName === 'THEAD' && (parent as Element).querySelector?.('thead')) return;
@@ -342,27 +400,25 @@ function paginate(doc: Document, section: Element, out: Element[], stage: Elemen
       if (node.nodeType === 1) filled = true;
       return;
     }
+    const tooTall = tallerThanAPage(node);
     parent.removeChild(node);
-    if (splittable(node)) {
-      if (node.tagName === 'TABLE') {
-        const head = node.querySelector('thead');
-        if (head) heads.set(node, head);
-      }
-      const shell = node.cloneNode(false);
-      parent.appendChild(shell);
-      stack.push(shell);
-      origs.push(node);
-      Array.from(node.childNodes).forEach(place);
-      stack.pop();
-      origs.pop();
-      return;
+    if (splittable(node)) return split(node);
+    // Can't fit on any page: split it here, so a heading or artist's name
+    // stays with the start of its text instead of being left on its own.
+    if (tooTall && filled) {
+      if (node.nodeType === 1 && (node as Element).firstElementChild) return split(node as Element);
+      if (textOnly(node)) return splitText(node);
     }
     if (filled) {
+      // Try it whole at the top of a new page first.
       open(true);
-      stack[stack.length - 1]!.appendChild(node);
-    } else {
-      parent.appendChild(node); // taller than a page on its own: clipped
+      return place(node);
     }
+    // Taller than a page on its own (e.g. a long artist bio, which asks not
+    // to break): split it anyway rather than cut its text off.
+    if (node.nodeType === 1 && (node as Element).firstElementChild) return split(node as Element);
+    if (textOnly(node)) return splitText(node);
+    parent.appendChild(node); // an image or other unsplittable block: clipped
     filled = true;
   };
 

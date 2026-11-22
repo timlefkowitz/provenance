@@ -617,7 +617,7 @@ export function WallLabelsDialog({
           </div>
           {options.layout === 'institutional' && (
             <p className="mt-2 text-[11px] font-serif text-ink/40">
-              Long labels get slightly smaller text so every label keeps the same height.
+              Long labels get slightly smaller text to keep the same height. One that still doesn&apos;t fit prints taller; no text is cut.
             </p>
           )}
         </div>
