@@ -71,10 +71,13 @@ export function ExhibitionForm({
   defaultOwnerRole,
   venueOptions = [],
   defaultShowType,
+  defaultTitle,
 }: {
   exhibition?: any;
   /** Show type preselected for a new exhibition (e.g. from ?type=solo). */
   defaultShowType?: ShowType | null;
+  /** Title for a new exhibition (e.g. spoken to Siri, passed as ?title=). */
+  defaultTitle?: string;
   /** Modes the new exhibition can be created under; ignored when editing. */
   ownerRoleOptions?: ExhibitionOwnerRole[];
   defaultOwnerRole?: ExhibitionOwnerRole;
@@ -122,7 +125,7 @@ export function ExhibitionForm({
       : venueOptions;
 
   const [formData, setFormData] = useState({
-    title: exhibition?.title || '',
+    title: exhibition?.title || defaultTitle || '',
     description: exhibition?.description || '',
     startDate: exhibition?.start_date
       ? new Date(exhibition.start_date).toISOString().split('T')[0]

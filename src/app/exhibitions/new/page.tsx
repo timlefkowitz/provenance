@@ -19,14 +19,18 @@ export const metadata = {
 export default async function NewExhibitionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string; type?: string }>;
+  searchParams: Promise<{ as?: string; type?: string; title?: string }>;
 }) {
-  const { as: requestedOwnerRole, type: requestedShowType } = await searchParams;
+  const { as: requestedOwnerRole, type: requestedShowType, title: requestedTitle } = await searchParams;
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
-    redirect('/auth/sign-in');
+    // Keep a pre-filled title (e.g. from Siri) through sign-in.
+    const next = requestedTitle
+      ? `/exhibitions/new?title=${encodeURIComponent(requestedTitle.slice(0, 200))}`
+      : '/exhibitions/new';
+    redirect(`/auth/sign-in?next=${encodeURIComponent(next)}`);
   }
 
   const { data: account } = await client
@@ -56,6 +60,7 @@ export default async function NewExhibitionPage({
         defaultOwnerRole={defaultExhibitionOwnerRole(userRole, requestedOwnerRole, institutionLocked)}
         venueOptions={venues.map(({ id, name }) => ({ id, name }))}
         defaultShowType={parseShowType(requestedShowType)}
+        defaultTitle={requestedTitle?.slice(0, 200)}
       />
     </div>
   );

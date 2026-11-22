@@ -13,6 +13,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+
+        // A Siri shortcut that cold-launched the app may have asked for a page
+        // before the web view existed.
+        SiriRouter.openPendingPage()
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        SiriRouter.openPendingPage()
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {

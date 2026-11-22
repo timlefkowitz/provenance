@@ -25,6 +25,7 @@ export function AddArtworkPageContent({
   initialCollectionId,
   managedArtists = [],
   initialManagedArtistId,
+  initialTitle,
   hasExistingArtworks,
   hasPaidPlan = false,
   sellingEnabled = false,
@@ -45,6 +46,7 @@ export function AddArtworkPageContent({
   managedArtists?: UserProfile[];
   /** From ?artist=, preselected when posting in artist mode */
   initialManagedArtistId?: string;
+  initialTitle?: string;
   hasExistingArtworks: boolean;
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
@@ -160,6 +162,7 @@ export function AddArtworkPageContent({
         initialCollectionId={initialCollectionId}
         managedArtists={managedArtists}
         initialManagedArtistId={initialManagedArtistId}
+        initialTitle={initialTitle}
         hasExistingArtworks={hasExistingArtworks}
         hasPaidPlan={hasPaidPlan}
         sellingEnabled={sellingEnabled}

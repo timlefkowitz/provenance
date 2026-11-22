@@ -19,14 +19,22 @@ export const metadata = {
 export default async function AddArtworkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ collection?: string; artist?: string }>;
+  searchParams: Promise<{ collection?: string; artist?: string; title?: string }>;
 }) {
-  const { collection: requestedCollectionId, artist: requestedArtistId } = await searchParams;
+  const {
+    collection: requestedCollectionId,
+    artist: requestedArtistId,
+    title: requestedTitle,
+  } = await searchParams;
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
   if (!user) {
-    redirect('/auth/sign-in');
+    // Keep a pre-filled title (e.g. from Siri) through sign-in.
+    const next = requestedTitle
+      ? `/artworks/add?title=${encodeURIComponent(requestedTitle.slice(0, 200))}`
+      : '/artworks/add';
+    redirect(`/auth/sign-in?next=${encodeURIComponent(next)}`);
   }
 
   // Get account name, medium, and role for auto-filling
@@ -105,6 +113,7 @@ export default async function AddArtworkPage({
         initialCollectionId={initialCollectionId}
         managedArtists={managedArtists}
         initialManagedArtistId={initialManagedArtistId}
+        initialTitle={requestedTitle?.slice(0, 200)}
         hasExistingArtworks={hasExistingArtworks}
         hasPaidPlan={hasPaidPlan}
         sellingEnabled={sellingEnabled}

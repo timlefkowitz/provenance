@@ -332,6 +332,7 @@ export function AddArtworkForm({
   initialCollectionId,
   managedArtists = [],
   initialManagedArtistId,
+  initialTitle = '',
   hasExistingArtworks = false,
   hasPaidPlan = false,
   sellingEnabled = false,
@@ -350,6 +351,8 @@ export function AddArtworkForm({
   /** Artist profiles the user manages for artists not on Provenance */
   managedArtists?: UserProfile[];
   initialManagedArtistId?: string;
+  /** Title for the first artwork (e.g. spoken to Siri, passed as ?title=). */
+  initialTitle?: string;
   hasExistingArtworks?: boolean;
   hasPaidPlan?: boolean;
   sellingEnabled?: boolean;
@@ -366,7 +369,7 @@ export function AddArtworkForm({
     batch: number;
     totalBatches: number;
   } | null>(null);
-  const [primaryTitle, setPrimaryTitle] = useState('');
+  const [primaryTitle, setPrimaryTitle] = useState(initialTitle);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [localExhibitions, setLocalExhibitions] =
     useState<UserExhibition[]>(exhibitions);
@@ -647,7 +650,9 @@ export function AddArtworkForm({
           id: previewId,
           file,
           preview: '', // not used; PreviewFromFile uses file + blob URL
+          // The first photo takes a title typed (or spoken to Siri) before it was added.
           title:
+            (imagePreviews.length + index === 0 && primaryTitle.trim()) ||
             file.name.replace(/\.[^/.]+$/, '') ||
             `Artwork ${imagePreviews.length + index + 1}`,
           location,
