@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Loader2, Printer } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
+import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit/ui/dialog';
@@ -15,10 +16,15 @@ import {
   DEFAULT_LABEL_OPTIONS,
   LABEL_FONTS,
   LABEL_GEOMETRY,
+  LABEL_ROLLS,
   LABEL_TEXT_SIZES,
+  labelStickerScale,
+  rollDimensions,
+  ROLL_LIMITS_IN,
   sanitizeLabelStyle,
   type LabelFontKey,
   type LabelQr,
+  type LabelRollKey,
   type LabelTextSizeKey,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
@@ -31,7 +37,7 @@ import type { CollectionLink } from '~/lib/collection-links';
 
 export type WallLabelToggleKey = Exclude<
   keyof WallLabelOptions,
-  'size' | 'qrPosition' | 'layout' | 'font' | 'textSize'
+  'size' | 'qrPosition' | 'layout' | 'font' | 'textSize' | 'paper' | 'rollSize' | 'rollWidthIn' | 'rollHeightIn' | 'rollPortrait'
 >;
 
 const FIELD_TOGGLES: Array<{
@@ -558,6 +564,104 @@ export function WallLabelsDialog({
         />
 
         <div className="pt-2">
+          <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Paper</p>
+          <div className="flex gap-2">
+            {(
+              [
+                ['sheet', 'Letter paper', 'Any printer, several per page'],
+                ['roll', 'Label printer', 'One label per sticker'],
+              ] as const
+            ).map(([value, text, hint]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setOptions((o) => ({ ...o, paper: value }))}
+                aria-pressed={options.paper === value}
+                className={`flex-1 rounded-md border px-3 py-2 text-left text-xs font-serif transition-colors ${
+                  options.paper === value
+                    ? 'border-wine bg-wine/10 text-wine'
+                    : 'border-wine/20 text-ink/60 hover:border-wine/40'
+                }`}
+              >
+                {text}
+                <span className="block text-[11px] text-ink/40">{hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {options.paper === 'roll' && (
+          <div className="pt-2">
+            <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Sticker size</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(LABEL_ROLLS) as LabelRollKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setOptions((o) => ({ ...o, rollSize: key }))}
+                  aria-pressed={options.rollSize === key}
+                  className={`rounded-md border px-3 py-2 text-left text-xs font-serif transition-colors ${
+                    options.rollSize === key
+                      ? 'border-wine bg-wine/10 text-wine'
+                      : 'border-wine/20 text-ink/60 hover:border-wine/40'
+                  }`}
+                >
+                  {LABEL_ROLLS[key].name}
+                  <span className="block text-[11px] text-ink/40">{LABEL_ROLLS[key].hint}</span>
+                </button>
+              ))}
+            </div>
+            {options.rollSize === 'custom' && (
+              <div className="mt-2 flex items-center gap-2 text-xs font-serif text-ink/60">
+                {(
+                  [
+                    ['rollWidthIn', 'Width'],
+                    ['rollHeightIn', 'Height'],
+                  ] as const
+                ).map(([key, text]) => (
+                  <label key={key} className="flex items-center gap-1.5">
+                    {text}
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min={ROLL_LIMITS_IN.min}
+                      max={ROLL_LIMITS_IN.max}
+                      step={0.125}
+                      value={Number.isFinite(options[key]) ? options[key] : ''}
+                      onChange={(e) => setOptions((o) => ({ ...o, [key]: parseFloat(e.target.value) }))}
+                      className="h-8 w-20 text-xs"
+                    />
+                    in
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex items-start gap-2">
+              <Checkbox
+                id="wl-roll-portrait"
+                checked={options.rollPortrait}
+                onCheckedChange={(checked) => setOptions((o) => ({ ...o, rollPortrait: checked === true }))}
+              />
+              <Label htmlFor="wl-roll-portrait" className="font-serif text-sm leading-tight cursor-pointer">
+                Tall label
+                <span className="block text-[11px] text-ink/40 font-normal">
+                  Print {(() => {
+                    const d = rollDimensions(options);
+                    return `${inches(+d.widthIn.toFixed(2))} in wide × ${inches(+d.heightIn.toFixed(2))} in tall`;
+                  })()}
+                </span>
+              </Label>
+            </div>
+            <p className="mt-2 text-[11px] font-serif text-ink/40">
+              In the print dialog, pick your label printer and the same paper size, with margins set to none and scale
+              at 100%. Long text gets smaller so each label stays on its own sticker.
+            </p>
+          </div>
+        )}
+
+        {options.paper !== 'roll' && (
+          <>
+        <div className="pt-2">
           <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Layout</p>
           <div className="flex gap-2">
             {(
@@ -621,6 +725,8 @@ export function WallLabelsDialog({
             </p>
           )}
         </div>
+          </>
+        )}
 
         <div className="pt-2">
           <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Font</p>
@@ -685,14 +791,29 @@ export function WallLabelsDialog({
 function LabelSample({ options }: { options: WallLabelOptions }) {
   const font = LABEL_FONTS[options.font] ?? LABEL_FONTS.georgia;
   const k = (LABEL_TEXT_SIZES[options.textSize] ?? LABEL_TEXT_SIZES.medium).scale;
-  const base = options.size === 'large' ? 1.2 : 1;
-  // 1pt on paper ≈ 1.33px; the preview shows the label at its printed size.
+  const sticker = options.paper === 'roll' ? rollDimensions(options) : null;
+  // Same scaling as the printed sticker (buildWallLabelsHtml).
+  const stickerScale = sticker ? labelStickerScale(sticker) : 1;
+  // A sticker is drawn at its shape, shrunk to fit the dialog (about 380px wide, 240px tall).
+  const view = sticker ? Math.min(1, 380 / (sticker.widthIn * 96), 240 / (sticker.heightIn * 96)) : 1;
+  const base = sticker ? stickerScale * view : options.size === 'large' ? 1.2 : 1;
+  // 1pt on paper ≈ 1.33px; the preview shows a sheet label at its printed size.
   const px = (pt: number) => `${(pt * base * k * 1.33).toFixed(1)}px`;
   return (
     <div
       aria-label="Label preview"
-      className="mt-1 rounded-sm border border-[#d0cdc8] bg-white px-4 py-3 text-[#111]"
-      style={{ fontFamily: font.stack, WebkitTextStroke: font.stroke ? '0.018em currentColor' : undefined }}
+      className={`mt-1 overflow-hidden rounded-sm border border-[#d0cdc8] bg-white text-[#111] ${sticker ? 'mx-auto' : 'px-4 py-3'}`}
+      style={{
+        fontFamily: font.stack,
+        WebkitTextStroke: font.stroke ? '0.018em currentColor' : undefined,
+        ...(sticker
+          ? {
+              width: `${sticker.widthIn * 96 * view}px`,
+              height: `${sticker.heightIn * 96 * view}px`,
+              padding: `${Math.max(0.06, 0.14 * stickerScale) * 96 * view}px`,
+            }
+          : {}),
+      }}
     >
       <div style={{ fontSize: px(10), fontWeight: 800, lineHeight: 1.25, marginBottom: 5 }}>Artist Name</div>
       <div style={{ fontSize: px(9.5), fontStyle: 'italic', lineHeight: 1.3 }}>Untitled (Blue), 2024</div>

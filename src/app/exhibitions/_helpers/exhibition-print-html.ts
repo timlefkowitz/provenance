@@ -62,7 +62,59 @@ export type WallLabelOptions = {
   font: LabelFontKey;
   /** Scales every line of label text (see LABEL_TEXT_SIZES). */
   textSize: LabelTextSizeKey;
+  /** sheet: labels laid out on US Letter. roll: one label per sticker on a label printer. */
+  paper: 'sheet' | 'roll';
+  /** Sticker size on a label printer (see LABEL_ROLLS). */
+  rollSize: LabelRollKey;
+  /** Sticker size for rollSize 'custom', in inches. */
+  rollWidthIn: number;
+  rollHeightIn: number;
+  /** Print the sticker turned a quarter turn (tall instead of wide). */
+  rollPortrait: boolean;
 };
+
+/**
+ * Sticker sizes for label printers, as printed (wider than tall; rollPortrait
+ * turns them). One wall label per sticker.
+ */
+export const LABEL_ROLLS = {
+  shipping: { name: '4 × 6 in', hint: 'Shipping labels: Rollo, Zebra, DYMO 4XL, MUNBYN', widthIn: 6, heightIn: 4 },
+  dymoLarge: { name: '4 × 2⅓ in', hint: 'DYMO 30256 shipping', widthIn: 4, heightIn: 2.31 },
+  brother62: { name: '62 × 100 mm', hint: 'Brother QL, 62 mm roll', widthIn: 3.94, heightIn: 2.44 },
+  fourByThree: { name: '4 × 3 in', hint: 'Zebra, Rollo', widthIn: 4, heightIn: 3 },
+  address: { name: '3½ × 1⅛ in', hint: 'DYMO 30252 address: artist and title only fit well', widthIn: 3.5, heightIn: 1.125 },
+  custom: { name: 'Custom', hint: 'Your sticker size', widthIn: 0, heightIn: 0 },
+} as const;
+
+export type LabelRollKey = keyof typeof LABEL_ROLLS;
+
+/**
+ * How much a sticker scales the standard label's type: by area (geometric
+ * mean of the two sides), so a long thin sticker keeps readable text and
+ * fitWallLabels shrinks whatever then doesn't fit.
+ */
+export function labelStickerScale(sticker: { widthIn: number; heightIn: number }): number {
+  const g = LABEL_GEOMETRY.standard;
+  const byArea = Math.sqrt((sticker.widthIn / g.widthIn) * (sticker.heightIn / g.heightIn));
+  return Math.min(1.6, Math.max(0.6, byArea));
+}
+
+/** Smallest and largest custom sticker sides, in inches. */
+export const ROLL_LIMITS_IN = { min: 1, max: 12 } as const;
+
+/** The sticker size to print, in inches, after the custom size and turning. */
+export function rollDimensions(options: Pick<WallLabelOptions, 'rollSize' | 'rollWidthIn' | 'rollHeightIn' | 'rollPortrait'>): {
+  widthIn: number;
+  heightIn: number;
+} {
+  const preset = LABEL_ROLLS[options.rollSize] ?? LABEL_ROLLS.shipping;
+  const clamp = (n: number, fallback: number) =>
+    Number.isFinite(n) && n > 0 ? Math.min(ROLL_LIMITS_IN.max, Math.max(ROLL_LIMITS_IN.min, n)) : fallback;
+  const w = options.rollSize === 'custom' ? clamp(options.rollWidthIn, 4) : preset.widthIn;
+  const h = options.rollSize === 'custom' ? clamp(options.rollHeightIn, 2) : preset.heightIn;
+  const wide = { widthIn: Math.max(w, h), heightIn: Math.min(w, h) };
+  return options.rollPortrait ? { widthIn: wide.heightIn, heightIn: wide.widthIn } : wide;
+}
 
 /**
  * Typefaces for wall labels. Print windows can't wait for web fonts, so these
@@ -117,6 +169,11 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   qrPosition: 'top',
   font: 'georgia',
   textSize: 'medium',
+  paper: 'sheet',
+  rollSize: 'shipping',
+  rollWidthIn: 4,
+  rollHeightIn: 2,
+  rollPortrait: false,
 };
 
 /** Keeps a font or text size read from storage to one that exists. */
@@ -124,17 +181,25 @@ export function sanitizeLabelStyle<T extends Partial<WallLabelOptions>>(options:
   const out = { ...options };
   if (typeof out.font !== 'string' || !(out.font in LABEL_FONTS)) delete out.font;
   if (typeof out.textSize !== 'string' || !(out.textSize in LABEL_TEXT_SIZES)) delete out.textSize;
+  if (out.paper !== 'sheet' && out.paper !== 'roll') delete out.paper;
+  if (typeof out.rollSize !== 'string' || !(out.rollSize in LABEL_ROLLS)) delete out.rollSize;
+  if (typeof out.rollWidthIn !== 'number' || !Number.isFinite(out.rollWidthIn)) delete out.rollWidthIn;
+  if (typeof out.rollHeightIn !== 'number' || !Number.isFinite(out.rollHeightIn)) delete out.rollHeightIn;
+  if (typeof out.rollPortrait !== 'boolean') delete out.rollPortrait;
   return out;
 }
 
 /** Smallest text scale fitWallLabels uses before letting a label grow taller. */
 const MIN_FIT_SCALE = 0.8;
+/** A sticker can't grow, so its text may shrink further to stay on it. */
+const MIN_STICKER_SCALE = 0.4;
 
 /**
  * Called by openPrintWindow after the HTML is written (the site's CSP keeps
  * inline scripts in the print window from running). On institutional labels,
  * shrinks the text of any label taller than its slot, down to MIN_FIT_SCALE;
- * a label that still doesn't fit keeps its full text and grows its row.
+ * a label that still doesn't fit keeps its full text and grows its row. A
+ * sticker can't grow, so its text shrinks as far as MIN_STICKER_SCALE.
  */
 export function fitWallLabels(win: Window): void {
   const doc = win.document;
@@ -147,6 +212,17 @@ export function fitWallLabels(win: Window): void {
     doc.body.classList.add('measuring');
     let shrunk = 0;
     let grown = 0;
+    let squeezed = 0;
+    // Stickers: shrink until the label fits its sticker (it can't grow onto the next one).
+    doc.querySelectorAll<HTMLElement>('.sticker .label').forEach((el) => {
+      let k = 1;
+      while (el.scrollHeight > el.clientHeight + 1 && k - 0.04 >= MIN_STICKER_SCALE - 0.001) {
+        k -= 0.04;
+        el.style.setProperty('--k', k.toFixed(2));
+      }
+      if (k < 1) shrunk++;
+      if (el.scrollHeight > el.clientHeight + 1) squeezed++;
+    });
     doc.querySelectorAll<HTMLElement>('.sheet .label').forEach((el) => {
       const slot = parseFloat(win.getComputedStyle(el).minHeight);
       if (!slot) return;
@@ -159,7 +235,7 @@ export function fitWallLabels(win: Window): void {
       if (el.offsetHeight > slot + 1) grown++;
     });
     doc.body.classList.remove('measuring');
-    console.log('[Print] Wall labels fitted', { shrunk, grown });
+    console.log('[Print] Wall labels fitted', { shrunk, grown, squeezed });
   };
   const ready = () => {
     const fonts = doc.fonts?.ready ?? Promise.resolve();
@@ -271,7 +347,8 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 /**
- * Wall labels on US Letter, two across. "compact" packs labels that are only
+ * Wall labels on US Letter, two across, or one per sticker on a label printer
+ * (options.paper 'roll'). "compact" packs labels that are only
  * as tall as their text into columns; "institutional" prints a uniform grid
  * (8 standard or 4 large per page); fitWallLabels shrinks the text of a label
  * that runs long, and one that still doesn't fit grows taller rather than
@@ -288,10 +365,19 @@ export function buildWallLabelsHtml(
   /** Extra QR codes for a work (e.g. the artist's own), after the certificate code. */
   extraQrs: (artworkId: string) => LabelQr[] = () => [],
 ): string {
-  const large = options.size === 'large';
-  const g = LABEL_GEOMETRY[options.size] ?? LABEL_GEOMETRY.standard;
-  const institutional = options.layout !== 'compact';
-  const qrBase = large ? 0.8 : 0.65;
+  const roll = options.paper === 'roll';
+  const large = !roll && options.size === 'large';
+  const g = LABEL_GEOMETRY[large ? 'large' : 'standard'];
+  const institutional = !roll && options.layout !== 'compact';
+  // Stickers scale the standard label's type and QR code to their size.
+  const sticker = roll ? rollDimensions(options) : null;
+  const stickerScale = sticker ? labelStickerScale(sticker) : 1;
+  const stickerPadIn = sticker ? Math.max(0.06, +(0.14 * stickerScale).toFixed(3)) : 0;
+  const qrBase = sticker
+    ? Math.min(0.65 * stickerScale, (sticker.heightIn - 2 * stickerPadIn) * 0.8, sticker.widthIn * 0.4)
+    : large
+      ? 0.8
+      : 0.65;
   const font = LABEL_FONTS[options.font] ?? LABEL_FONTS.georgia;
   const textScale = (LABEL_TEXT_SIZES[options.textSize] ?? LABEL_TEXT_SIZES.medium).scale;
 
@@ -341,19 +427,21 @@ export function buildWallLabelsHtml(
       </div>`;
   };
 
-  const body = institutional
+  const body = sticker
+    ? items.map((a) => `<div class="sticker">${label(a)}</div>`).join('')
+    : institutional
     ? chunk(items, g.cols * g.rows)
         .map((page) => `<div class="sheet">${page.map(label).join('')}</div>`)
         .join('')
     : `<div class="flow">${items.map(label).join('')}</div>`;
 
-  const pt = (n: number) => `calc(var(--k, 1) * ${+(n * textScale).toFixed(2)}pt)`;
+  const pt = (n: number) => `calc(var(--k, 1) * ${+(n * textScale * stickerScale).toFixed(2)}pt)`;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>Wall Labels — ${esc(docTitle)}</title>
 <style>
-  @page { size: letter ${g.orientation}; margin: ${LABEL_PAGE_MARGIN_IN}in; }
+  @page { ${sticker ? `size: ${sticker.widthIn}in ${sticker.heightIn}in; margin: 0;` : `size: letter ${g.orientation}; margin: ${LABEL_PAGE_MARGIN_IN}in;`} }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: ${font.stack}; background: #fff; color: #111; }
   ${font.stroke ? '/* No medium weight: a hairline stroke thickens the text a touch. */\n  .body { -webkit-text-stroke: 0.018em currentColor; }' : ''}
@@ -370,6 +458,16 @@ export function buildWallLabelsHtml(
   .measuring .sheet .label { align-self: start; }
   .flow { width: ${(g.widthIn * g.cols + g.colGapIn * (g.cols - 1)).toFixed(2)}in; column-count: ${g.cols}; column-gap: ${g.colGapIn}in; column-fill: auto; }
   .flow .label { margin-bottom: 0.12in; }
+  ${
+    sticker
+      ? `/* One label per sticker, filling it; the sticker's edge is the border. */
+  html, body { margin: 0; }
+  .sticker { width: ${sticker.widthIn}in; height: ${sticker.heightIn}in; overflow: hidden; break-after: page; page-break-after: always; }
+  .sticker:last-child { break-after: auto; page-break-after: auto; }
+  .sticker .label { width: 100%; height: 100%; overflow: hidden; border: 0; padding: ${stickerPadIn}in ${+(stickerPadIn * 1.15).toFixed(3)}in; gap: ${+(0.14 * stickerScale).toFixed(3)}in; }
+  @media screen { html { background: #8a8a8a; } body { padding: 0.3in; } .sticker { background: #fff; margin: 0 auto 0.3in; box-shadow: 0 2px 10px rgba(0,0,0,0.3); } }`
+      : ''
+  }
   .label {
     width: ${g.widthIn}in;
     break-inside: avoid; page-break-inside: avoid;
@@ -387,10 +485,10 @@ export function buildWallLabelsHtml(
   .qr-col.two { grid-template-columns: var(--qs) var(--qs); }
   .qr-item { width: var(--qs); text-align: center; }
   .qr svg, .qr img { width: 100%; height: auto; display: block; }
-  .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 5.5pt; font-weight: 600; line-height: 1.2; color: #555; letter-spacing: 0.02em; margin-top: 2px; overflow-wrap: anywhere; }
+  .qr-caption { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: ${sticker ? +Math.max(4.5, Math.min(8, 5.5 * stickerScale)).toFixed(1) : 5.5}pt; font-weight: 600; line-height: 1.2; color: #555; letter-spacing: 0.02em; margin-top: 2px; overflow-wrap: anywhere; }
   @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head>
-<body${institutional ? ' data-fit-labels' : ''}>${body}</body></html>`;
+<body${institutional || sticker ? ' data-fit-labels' : ''}>${body}</body></html>`;
 }
 
 export function buildChecklistHtml(

@@ -161,13 +161,16 @@ export function buildWallLabelsHtml(
   );
 }
 
-/** The font and text size last chosen in the collection's wall label dialog. */
+/** The font, text size and paper last chosen in the collection's wall label dialog. */
 function savedLabelStyle(): Partial<WallLabelOptions> {
   try {
     const raw = window.localStorage.getItem(LABEL_OPTIONS_KEY);
     if (!raw) return {};
-    const { font, textSize } = JSON.parse(raw) as Partial<WallLabelOptions>;
-    return sanitizeLabelStyle({ font, textSize });
+    const { font, textSize, paper, rollSize, rollWidthIn, rollHeightIn, rollPortrait } = JSON.parse(
+      raw,
+    ) as Partial<WallLabelOptions>;
+    // A label printer choice carries over too: one label is a natural sticker.
+    return sanitizeLabelStyle({ font, textSize, paper, rollSize, rollWidthIn, rollHeightIn, rollPortrait });
   } catch {
     return {};
   }
