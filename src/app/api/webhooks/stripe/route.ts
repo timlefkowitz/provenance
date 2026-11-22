@@ -308,7 +308,16 @@ export async function POST(request: NextRequest) {
               .select('id')
               .eq('checkout_session_id', session.id)
               .maybeSingle();
-            if (alreadyBooked) {
+            // House-account sales book no earning, so also look for the purchase row.
+            const { data: alreadySold } = alreadyBooked
+              ? { data: null }
+              : await asUntyped(admin)
+                  .from('artwork_inquiries')
+                  .select('id')
+                  .eq('stripe_session_id', session.id)
+                  .limit(1)
+                  .maybeSingle();
+            if (alreadyBooked || alreadySold) {
               return NextResponse.json({ received: true, duplicate: true });
             }
             try {

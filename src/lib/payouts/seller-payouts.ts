@@ -16,6 +16,7 @@ import {
   type OrderItemForSplit,
   type EarningStatus,
 } from './earnings-math';
+import { houseAccountIds, isHouseAccount } from './house-accounts';
 
 /**
  * Seller payouts.
@@ -189,6 +190,13 @@ export async function recordEarningFromCheckout(params: {
 
   const split = splitEarning(gross, stripeFee, platformFeePercent());
 
+  if (isHouseAccount(sellerAccountId)) {
+    // Company-owned seller: the money is already in the company's balance.
+    await admin.from('artworks').update({ checkout_reserved_until: null }).eq('id', artworkId);
+    console.log('[Payouts] house account sale, no earning booked', { sessionId: session.id, sellerAccountId });
+    return;
+  }
+
   const { data: artwork } = await admin.from('artworks').select('title').eq('id', artworkId).maybeSingle();
   const title = (artwork?.title as string | undefined) ?? 'your artwork';
 
@@ -252,7 +260,17 @@ export async function recordEarningsForOrder(params: {
     stripeFee = bt?.fee ?? 0;
   }
 
-  const lines = splitOrder(items, stripeFee, platformFeePercent());
+  // Company-owned payees keep their share in the company's balance: no earning, no transfer.
+  const house = houseAccountIds();
+  const allLines = splitOrder(items, stripeFee, platformFeePercent());
+  const lines = allLines.filter((l) => !isHouseAccount(l.sellerAccountId, house));
+  if (lines.length < allLines.length) {
+    console.log('[Payouts] house account shares kept', {
+      sessionId: session.id,
+      kept: allLines.length - lines.length,
+    });
+  }
+  if (lines.length === 0) return;
   const titles = new Map(items.map((i) => [i.orderItemId, i.title]));
   const release = releaseAt(new Date(), payoutHoldDays()).toISOString();
 
