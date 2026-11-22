@@ -8,7 +8,7 @@ import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { isNativePlatform } from '~/lib/capacitor/is-native';
-import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
+import { openExternalCheckout, reloadAfterCheckout } from '~/lib/capacitor/open-external-checkout';
 
 /** Straight to Stripe checkout (Apple Pay, Google Pay, card) with just this work. */
 export function BuyNowButton({
@@ -30,11 +30,11 @@ export function BuyNowButton({
       const res = await fetch('/api/stripe/create-cart-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: [{ artworkId, exhibitionId }] }),
+        body: JSON.stringify({ items: [{ artworkId, exhibitionId }], app: isNativePlatform() }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string; signIn?: boolean };
       if (data.url) {
-        await openExternalCheckout(data.url);
+        await openExternalCheckout(data.url, { onClose: reloadAfterCheckout });
         if (!isNativePlatform()) return; // navigating to checkout
       } else {
         toast.error(data.error ?? 'Could not start checkout. Please try again.');

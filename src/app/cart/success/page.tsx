@@ -13,9 +13,10 @@ export const metadata = { title: 'Thank you | Provenance' };
 export default async function CartSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; app?: string }>;
 }) {
-  const { session_id: sessionId } = await searchParams;
+  const { session_id: sessionId, app } = await searchParams;
+  const fromApp = app === '1';
   const admin = asUntyped(getSupabaseServerAdminClient());
 
   // The session id is an unguessable Stripe id: it's what lets this page show the order.
@@ -59,9 +60,15 @@ export default async function CartSuccessPage({
         ) : (
           <p className="mt-3 font-serif text-ink/70">Your payment was received. You’ll get a receipt by email.</p>
         )}
-        <Link href="/artworks" className="mt-10 inline-block font-serif text-sm text-wine hover:underline">
-          Keep browsing
-        </Link>
+        {fromApp ? (
+          <p className="mt-10 rounded-lg bg-parchment/60 px-4 py-3 font-serif text-sm text-ink/70">
+            Tap <strong>Done</strong> at the top to go back to the Provenance app.
+          </p>
+        ) : (
+          <Link href="/artworks" className="mt-10 inline-block font-serif text-sm text-wine hover:underline">
+            Keep browsing
+          </Link>
+        )}
       </div>
     </div>
   );

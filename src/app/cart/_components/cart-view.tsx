@@ -9,7 +9,7 @@ import { Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 
 import { isNativePlatform } from '~/lib/capacitor/is-native';
-import { openExternalCheckout } from '~/lib/capacitor/open-external-checkout';
+import { openExternalCheckout, reloadAfterCheckout } from '~/lib/capacitor/open-external-checkout';
 import { useCart } from '~/lib/cart/cart-store';
 import { formatPrice, UNAVAILABLE_LABEL } from '~/lib/cart/format';
 
@@ -36,21 +36,6 @@ export function CartView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart.ready, linesKey]);
 
-  // iOS: checkout runs in an in-app Safari sheet; re-read the cart when it closes.
-  useEffect(() => {
-    if (!isNativePlatform()) return;
-    let remove: (() => void) | undefined;
-    void import('@capacitor/browser').then(async ({ Browser }) => {
-      const handle = await Browser.addListener('browserFinished', () => {
-        setCheckingOut(false);
-        void cart.refresh();
-      });
-      remove = () => void handle.remove();
-    });
-    return () => remove?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const available = useMemo(() => (items ?? []).filter((i) => i.available), [items]);
   const unavailable = useMemo(() => (items ?? []).filter((i) => !i.available), [items]);
   const currency = available[0]?.currency ?? 'usd';
@@ -64,6 +49,7 @@ export function CartView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: available.map((i) => ({ artworkId: i.artworkId, exhibitionId: i.exhibitionId })),
+          app: isNativePlatform(),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -78,7 +64,8 @@ export function CartView() {
         return;
       }
       if (data.url) {
-        await openExternalCheckout(data.url);
+        // iOS: the sheet's Done brings them back; reload so bought works leave the cart.
+        await openExternalCheckout(data.url, { onClose: reloadAfterCheckout });
         if (!isNativePlatform()) return; // page is navigating away
       } else {
         toast.error(data.error ?? 'Could not start checkout. Please try again.');

@@ -16,6 +16,8 @@ const BodySchema = z.object({
     .array(z.object({ artworkId: z.string().uuid(), exhibitionId: z.string().uuid().nullable() }))
     .min(1)
     .max(25),
+  /** Bought from the iOS app: the thank-you page tells them to tap Done. */
+  app: z.boolean().optional(),
 });
 
 /**
@@ -151,7 +153,7 @@ export async function POST(req: NextRequest) {
         transfer_group: `order:${orderId}`,
         metadata: { order_id: orderId },
       },
-      success_url: `${siteUrl}/cart/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${siteUrl}/cart/success?session_id={CHECKOUT_SESSION_ID}${parsed.data.app ? '&app=1' : ''}`,
       cancel_url: `${siteUrl}/cart`,
       metadata: { type: 'cart_purchase', order_id: orderId, buyer_account_id: user?.id ?? '' },
     };
