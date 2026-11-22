@@ -29,6 +29,8 @@ export type ResolvedCartItem = {
   galleryAccountId: string | null;
   commissionPercent: number;
   relatedArtworkIds: string[];
+  /** A collector's resale: the buyer must be signed in to receive the CoO. */
+  requiresAccount: boolean;
 };
 
 /**
@@ -75,6 +77,7 @@ export async function resolveCartItems(
         galleryAccountId: data?.exhibition.gallery_id ?? '',
         commissionPercent: 0,
         relatedArtworkIds: [],
+        requiresAccount: false,
       });
       continue;
     }
@@ -99,6 +102,7 @@ export async function resolveCartItems(
       galleryAccountId: data.exhibition.gallery_id,
       commissionPercent: commissionPercentOf(data.exhibition),
       relatedArtworkIds: listing.relatedArtworkIds,
+      requiresAccount: false,
     });
   }
   return out;
@@ -127,6 +131,7 @@ async function resolveDirect(
       galleryAccountId: null,
       commissionPercent: 0,
       relatedArtworkIds: [],
+      requiresAccount: false,
     };
   }
   const held = !!d.reservedUntil && new Date(d.reservedUntil).getTime() > now.getTime();
@@ -145,5 +150,6 @@ async function resolveDirect(
     galleryAccountId: null,
     commissionPercent: 0,
     relatedArtworkIds: [artworkId],
+    requiresAccount: d.isResale,
   };
 }

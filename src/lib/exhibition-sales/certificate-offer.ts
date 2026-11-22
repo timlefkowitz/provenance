@@ -2,6 +2,7 @@ import 'server-only';
 
 import { isSellingEnabled } from '~/lib/stripe-connect';
 import { asUntyped, type UntypedSupabaseClient } from '~/lib/supabase-untyped';
+import { CERTIFICATE_TYPES } from '~/lib/user-roles';
 
 import { exhibitionSalesOpen, isHeldByAnotherCheckout, isPurchasable } from './listings';
 import { loadExhibitionListings } from './load-listings';
@@ -14,6 +15,8 @@ export type CertificateOffer = {
   priceCents: number;
   currency: string;
   held: boolean;
+  /** A collector's resale: buying needs a signed-in account. */
+  requiresAccount: boolean;
 };
 
 /**
@@ -50,6 +53,7 @@ export async function findCertificateOffer(
           priceCents: listing.priceCents,
           currency: listing.currency,
           held: isHeldByAnotherCheckout(listing, now),
+          requiresAccount: false,
         };
       }
     }
@@ -66,6 +70,7 @@ export async function findCertificateOffer(
     priceCents: direct.priceCents,
     currency: direct.currency,
     held: !!direct.reservedUntil && new Date(direct.reservedUntil).getTime() > now.getTime(),
+    requiresAccount: direct.isResale,
   };
 }
 
@@ -79,6 +84,8 @@ export type DirectListing = {
   currency: string;
   isSold: boolean;
   reservedUntil: string | null;
+  /** Sold from a collector's Certificate of Ownership: the buyer must be signed in. */
+  isResale: boolean;
 };
 
 /** A work its holder listed for sale on its own certificate (their shop). */
@@ -89,7 +96,7 @@ export async function loadDirectListing(
   const { data: a } = await asUntyped(admin)
     .from('artworks')
     .select(
-      'id, title, artist_name, image_url, account_id, for_sale, sale_price, sale_currency, is_sold, sold_at, checkout_reserved_until, status, is_public',
+      'id, title, artist_name, image_url, account_id, for_sale, sale_price, sale_currency, is_sold, sold_at, checkout_reserved_until, status, is_public, certificate_type',
     )
     .eq('id', artworkId)
     .maybeSingle();
@@ -108,5 +115,6 @@ export async function loadDirectListing(
     currency: ((a.sale_currency as string | null) || 'usd').toLowerCase(),
     isSold: false,
     reservedUntil: (a.checkout_reserved_until as string | null) ?? null,
+    isResale: a.certificate_type === CERTIFICATE_TYPES.OWNERSHIP,
   };
 }

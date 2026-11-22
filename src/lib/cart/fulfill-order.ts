@@ -7,6 +7,7 @@ import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import { sendNotificationEmail } from '~/lib/email';
 import { loadExhibitionListings } from '~/lib/exhibition-sales/load-listings';
 import { recordEarningsForOrder } from '~/lib/payouts/seller-payouts';
+import { transferOwnershipAcrossChain } from '~/lib/provenance/chain';
 import { recordSale } from '~/lib/sales/record-sale';
 import type { UntypedSupabaseClient } from '~/lib/supabase-untyped';
 
@@ -72,7 +73,14 @@ export async function fulfillCartOrder(
   if (order.status === 'paid') return { ok: true, duplicate: true };
 
   const buyerEmail = session.customer_details?.email ?? null;
-  const buyerName = session.customer_details?.name ?? null;
+  // The name provenance records as the new owner: the buyer's account name when
+  // they bought signed in, else the name given at checkout.
+  let accountName: string | null = null;
+  if (order.buyer_account_id) {
+    const { data: acct } = await admin.from('accounts').select('name').eq('id', order.buyer_account_id).maybeSingle();
+    accountName = ((acct?.name as string | null) ?? '').trim() || null;
+  }
+  const buyerName = accountName ?? (session.customer_details?.name?.trim() || null);
 
   // 1. Earnings (idempotent per session/work/payee). Throws → webhook 500 → retry.
   await recordEarningsForOrder({
@@ -111,6 +119,17 @@ export async function fulfillCartOrder(
         },
       });
       if (!sale.success) console.error('[Cart] recordSale failed', { orderId, saleArtworkId, error: sale.error });
+
+      // recordSale moves "Owned by" along the chain only when it has a name.
+      if (sale.success && !buyerName) {
+        await transferOwnershipAcrossChain(admin, {
+          originArtworkId: saleArtworkId,
+          newOwnerName: 'Private collector',
+          method: 'sale',
+          actorAccountId: null,
+          notify: false,
+        });
+      }
 
       // The buyer's Certificate of Ownership: straight into their collection
       // when they bought signed in, otherwise a claim email.

@@ -50,6 +50,16 @@ export async function POST(req: NextRequest) {
     );
   }
   const items = resolved.filter((r) => r.available);
+  // A collector's resale passes their Certificate of Ownership to the buyer's account.
+  if (!user && items.some((i) => i.requiresAccount)) {
+    return NextResponse.json(
+      {
+        error: 'Sign in to buy this work: its Certificate of Ownership is transferred to your account.',
+        signIn: true,
+      },
+      { status: 401 },
+    );
+  }
   const currencies = new Set(items.map((i) => i.currency));
   if (currencies.size > 1) {
     return NextResponse.json(

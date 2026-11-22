@@ -18,7 +18,10 @@ export type DeliverOwnershipResult =
  *
  * Signed-in buyer: the certificate is created straight in their collection
  * (the same certificate a claim would create). Guest: they get the usual
- * claim email, and accept it once they sign in. Safe to run twice.
+ * claim email, and accept it once they sign in. A resale from a collector's
+ * CoO issues the new CoO from theirs and needs a signed-in buyer. Recording
+ * the sale (before this) already moved ownership along the chain. Safe to
+ * run twice.
  */
 export async function deliverOwnershipFromSale(
   admin: UntypedSupabaseClient,
@@ -34,16 +37,24 @@ export async function deliverOwnershipFromSale(
   const db = asUntyped(admin);
   const { data: source } = await db.from('artworks').select('*').eq('id', params.saleArtworkId).maybeSingle();
   if (!source) return { kind: 'skipped', reason: 'certificate not found' };
+  // A collector reselling: the new owner's CoO is issued from the seller's
+  // CoO, so the chain runs artist → collector → collector. That needs the
+  // buyer's account (checkout asks them to sign in for resales).
+  const isResale = source.certificate_type === CERTIFICATE_TYPES.OWNERSHIP;
   if (
+    !isResale &&
     source.certificate_type !== CERTIFICATE_TYPES.AUTHENTICITY &&
     source.certificate_type !== CERTIFICATE_TYPES.SHOW
   ) {
-    // e.g. a collector reselling from their own CoO: no linked CoO can be issued from it.
     console.log('[Ownership] sale certificate cannot issue a CoO', {
       artworkId: params.saleArtworkId,
       type: source.certificate_type,
     });
-    return { kind: 'skipped', reason: 'not a CoA or CoS' };
+    return { kind: 'skipped', reason: 'certificate type cannot issue a CoO' };
+  }
+  if (isResale && !params.buyerAccountId) {
+    console.error('[Ownership] resale without a buyer account; no CoO issued', { artworkId: params.saleArtworkId });
+    return { kind: 'skipped', reason: 'resale needs a signed-in buyer' };
   }
 
   if (params.buyerAccountId) {

@@ -7,6 +7,7 @@ import { fulfillDomainPurchase } from '~/lib/domain-purchase-fulfillment';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import { expireCartOrder, fulfillCartOrder } from '~/lib/cart/fulfill-order';
 import { deliverOwnershipFromSale } from '~/lib/certificate-claims/deliver-ownership-from-sale';
+import { transferOwnershipAcrossChain } from '~/lib/provenance/chain';
 import {
   handleChargeReversal,
   payDueEarnings,
@@ -349,6 +350,15 @@ export async function POST(request: NextRequest) {
             if (!saleResult.success) {
               console.error('[ArtworkSale] Webhook: failed to record sale', saleResult.error);
             } else {
+              if (!buyerName) {
+                await transferOwnershipAcrossChain(admin, {
+                  originArtworkId: artworkId,
+                  newOwnerName: 'Private collector',
+                  method: 'sale',
+                  actorAccountId: null,
+                  notify: false,
+                });
+              }
               // Shop buyers check out as guests: send their Certificate of Ownership to claim.
               await deliverOwnershipFromSale(admin, {
                 saleArtworkId: artworkId,

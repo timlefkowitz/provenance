@@ -576,6 +576,11 @@ export default async function CertificatePage({
           priceCents={offer.priceCents}
           currency={offer.currency}
           held={offer.held}
+          signInHref={
+            offer.requiresAccount && !user
+              ? `/auth/sign-in?next=${encodeURIComponent(`/artworks/${artwork.id}/certificate`)}`
+              : null
+          }
         />
       )}
       <CertificateOfAuthenticity 

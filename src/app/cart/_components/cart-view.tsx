@@ -70,7 +70,13 @@ export function CartView() {
         url?: string;
         error?: string;
         unavailable?: Array<{ artworkId: string; reason: string }>;
+        signIn?: boolean;
       };
+      if (data.signIn) {
+        toast.error(data.error ?? 'Sign in to finish this purchase.');
+        window.location.href = `/auth/sign-in?next=${encodeURIComponent('/cart')}`;
+        return;
+      }
       if (data.url) {
         await openExternalCheckout(data.url);
         if (!isNativePlatform()) return; // page is navigating away
