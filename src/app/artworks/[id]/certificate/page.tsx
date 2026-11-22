@@ -1,4 +1,6 @@
 import { asUntyped } from '~/lib/supabase-untyped';
+import { CertificateBuyBox } from '~/app/cart/_components/certificate-buy-box';
+import { findCertificateOffer } from '~/lib/exhibition-sales/certificate-offer';
 import { computeScanStats, stripScanDetails } from '~/lib/scan-stats';
 import { loadOneCertificateViewStats } from '~/lib/load-view-stats';
 import { redirect } from 'next/navigation';
@@ -531,6 +533,17 @@ export default async function CertificatePage({
     isPartOf: { '@type': 'WebSite', name: 'Provenance', url: appConfig.url },
   };
 
+  // Buy / Add to cart when the work can be bought online, through a show or its holder's shop.
+  const offer =
+    !isOwner && !canSell && artwork.status === 'verified'
+      ? await chainIds
+          .then((ids) => findCertificateOffer(asUntyped(chainAdmin), artwork.id, ids))
+          .catch((err) => {
+            console.error('[Certificate] offer lookup failed', { artworkId: artwork.id, err });
+            return null;
+          })
+      : null;
+
   const viewStats = await loadOneCertificateViewStats(artwork.id).catch((err) => {
     console.error('[Certificate] view stats failed', { artworkId: artwork.id, err });
     return undefined;
@@ -555,6 +568,16 @@ export default async function CertificatePage({
         </div>
       )}
       <CertificateViewRecorder artworkId={artwork.id} />
+      {offer && (
+        <CertificateBuyBox
+          artworkId={offer.artworkId}
+          exhibitionId={offer.exhibitionId}
+          exhibitionTitle={offer.exhibitionTitle}
+          priceCents={offer.priceCents}
+          currency={offer.currency}
+          held={offer.held}
+        />
+      )}
       <CertificateOfAuthenticity 
         // Scan dates and places are for the owner and admins; everyone gets the counts.
         artwork={isOwner || userIsAdmin ? artwork : { ...artwork, metadata: stripScanDetails(artwork.metadata) }}

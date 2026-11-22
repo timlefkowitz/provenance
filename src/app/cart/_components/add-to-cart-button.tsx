@@ -16,7 +16,8 @@ export function AddToCartButton({
   held,
 }: {
   artworkId: string;
-  exhibitionId: string;
+  /** The show it's bought through; null when its holder sells it directly. */
+  exhibitionId: string | null;
   /** Another buyer is in checkout with this work right now. */
   held?: boolean;
 }) {

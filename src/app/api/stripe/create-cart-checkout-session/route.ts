@@ -13,7 +13,7 @@ const CHECKOUT_HOLD_MINUTES = 30;
 
 const BodySchema = z.object({
   items: z
-    .array(z.object({ artworkId: z.string().uuid(), exhibitionId: z.string().uuid() }))
+    .array(z.object({ artworkId: z.string().uuid(), exhibitionId: z.string().uuid().nullable() }))
     .min(1)
     .max(25),
 });

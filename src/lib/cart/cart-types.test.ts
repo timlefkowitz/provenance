@@ -22,4 +22,8 @@ describe('mergeCartLines', () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ artworkId: `a${i}`, exhibitionId: 'e' }));
     expect(mergeCartLines([null as never, { artworkId: '', exhibitionId: 'e' }], many)).toHaveLength(MAX_CART_ITEMS);
   });
+
+  it('keeps works sold directly (no exhibition)', () => {
+    expect(mergeCartLines([{ artworkId: 'a', exhibitionId: null }], [])).toEqual([{ artworkId: 'a', exhibitionId: null }]);
+  });
 });

@@ -6,6 +6,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { fulfillDomainPurchase } from '~/lib/domain-purchase-fulfillment';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import { expireCartOrder, fulfillCartOrder } from '~/lib/cart/fulfill-order';
+import { deliverOwnershipFromSale } from '~/lib/certificate-claims/deliver-ownership-from-sale';
 import {
   handleChargeReversal,
   payDueEarnings,
@@ -347,6 +348,15 @@ export async function POST(request: NextRequest) {
 
             if (!saleResult.success) {
               console.error('[ArtworkSale] Webhook: failed to record sale', saleResult.error);
+            } else {
+              // Shop buyers check out as guests: send their Certificate of Ownership to claim.
+              await deliverOwnershipFromSale(admin, {
+                saleArtworkId: artworkId,
+                buyerAccountId: null,
+                buyerEmail,
+                buyerName,
+                reference: `checkout:${session.id}`,
+              }).catch((e: unknown) => console.error('[ArtworkSale] CoO delivery failed', e));
             }
 
 

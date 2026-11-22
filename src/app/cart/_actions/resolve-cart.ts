@@ -10,7 +10,7 @@ import { asUntyped } from '~/lib/supabase-untyped';
 
 export type CartDisplayItem = {
   artworkId: string;
-  exhibitionId: string;
+  exhibitionId: string | null;
   available: boolean;
   reason: UnavailableReason | null;
   title: string;
@@ -22,7 +22,7 @@ export type CartDisplayItem = {
 };
 
 const Lines = z
-  .array(z.object({ artworkId: z.string().uuid(), exhibitionId: z.string().uuid() }))
+  .array(z.object({ artworkId: z.string().uuid(), exhibitionId: z.string().uuid().nullable() }))
   .max(MAX_CART_ITEMS);
 
 /** Current price and availability for each work in a cart (guest or signed in). */

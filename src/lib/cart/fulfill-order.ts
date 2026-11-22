@@ -2,6 +2,7 @@ import 'server-only';
 
 import Stripe from 'stripe';
 
+import { deliverOwnershipFromSale } from '~/lib/certificate-claims/deliver-ownership-from-sale';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import { sendNotificationEmail } from '~/lib/email';
 import { loadExhibitionListings } from '~/lib/exhibition-sales/load-listings';
@@ -110,6 +111,22 @@ export async function fulfillCartOrder(
         },
       });
       if (!sale.success) console.error('[Cart] recordSale failed', { orderId, saleArtworkId, error: sale.error });
+
+      // The buyer's Certificate of Ownership: straight into their collection
+      // when they bought signed in, otherwise a claim email.
+      if (sale.success) {
+        const coo = await deliverOwnershipFromSale(admin, {
+          saleArtworkId,
+          buyerAccountId: order.buyer_account_id ?? null,
+          buyerEmail,
+          buyerName,
+          reference: `order:${orderId}`,
+        }).catch((e: unknown) => {
+          console.error('[Cart] CoO delivery failed', { orderId, saleArtworkId, e });
+          return null;
+        });
+        console.log('[Cart] CoO delivery', { orderId, saleArtworkId, result: coo?.kind ?? 'failed' });
+      }
 
       await admin.from('artworks').update({ checkout_reserved_until: null }).in('id', holdIds);
 

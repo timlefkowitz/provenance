@@ -75,7 +75,7 @@ async function load(client: Client, userId: string | null) {
   const rows = (data ?? []) as Array<{ artwork_id: string; exhibition_id: string | null }>;
   set({
     lines: mergeCartLines(
-      rows.filter((r) => r.exhibition_id).map((r) => ({ artworkId: r.artwork_id, exhibitionId: r.exhibition_id! })),
+      rows.map((r) => ({ artworkId: r.artwork_id, exhibitionId: r.exhibition_id })),
       [],
     ),
     userId,
