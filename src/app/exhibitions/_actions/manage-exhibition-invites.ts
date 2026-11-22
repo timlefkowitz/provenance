@@ -7,7 +7,6 @@ import { revalidatePath } from 'next/cache';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
 import {
-  generateClaimToken,
   hashClaimToken,
   normalizeInviteEmail,
 } from '~/lib/certificate-claims/tokens';
@@ -27,6 +26,9 @@ import {
   type ShowType,
 } from '../_helpers/show-collaboration';
 import { findInviteByKey } from '~/lib/exhibitions/invite-key';
+import { deriveInviteToken, newInviteTokenNonce } from '~/lib/exhibitions/invite-link-token';
+import { getExhibitionSubmitUrl } from '~/lib/certificate-claims/site-url';
+import { randomUUID } from 'crypto';
 
 export type ExhibitionArtistInviteInput = {
   email: string;
@@ -39,7 +41,8 @@ export type ExhibitionArtistInviteInput = {
 export type ExhibitionArtistInviteRow = {
   id: string;
   exhibition_id: string;
-  invitee_email: string;
+  /** Null for a link-only invite no artist has opened yet. */
+  invitee_email: string | null;
   invitee_name: string | null;
   artist_account_id: string | null;
   status: string;
@@ -58,6 +61,21 @@ export type ExhibitionArtistInviteRow = {
 };
 
 const OPEN_STATUSES: string[] = [...OPEN_INVITE_STATUSES];
+
+/**
+ * A fresh invite id, nonce and token. The token is derived (see
+ * invite-link-token) so the organiser can copy the same link again later.
+ */
+function newInviteCredentials(inviteId: string = randomUUID()): {
+  id: string;
+  nonce: string;
+  token: string;
+  tokenHash: string;
+} {
+  const nonce = newInviteTokenNonce();
+  const token = deriveInviteToken(inviteId, nonce);
+  return { id: inviteId, nonce, token, tokenHash: hashClaimToken(token) };
+}
 
 async function assertCanManageExhibition(
   userId: string,
@@ -261,19 +279,21 @@ export async function createExhibitionArtistInvites(
         continue;
       }
 
-      const token = generateClaimToken();
-      const tokenHash = hashClaimToken(token);
+      const creds = newInviteCredentials();
+      const token = creds.token;
       const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
 
       const { error: insertError } = await asUntyped(adminClient)
         .from('exhibition_artist_invites')
         .insert({
+          id: creds.id,
+          token_nonce: creds.nonce,
           exhibition_id: exhibitionId,
           invitee_email: email,
           invitee_name: name,
           artist_account_id: raw.artistAccountId ?? null,
           max_artworks: maxArtworks,
-          token_hash: tokenHash,
+          token_hash: creds.tokenHash,
           status: 'sent',
           expires_at: expiresAt,
           created_by: user.id,
@@ -398,12 +418,14 @@ export async function resendExhibitionInvite(
   if (invite.status === 'consumed' || invite.status === 'cancelled') {
     return { success: false, error: 'This invite can no longer be resent' };
   }
+  if (!invite.invitee_email) {
+    return { success: false, error: 'This is a link invite; copy the link and send it to the artist' };
+  }
 
   try {
     const { details } = await assertCanManageExhibition(user.id, invite.exhibition_id);
 
-    const token = generateClaimToken();
-    const tokenHash = hashClaimToken(token);
+    const { nonce, token, tokenHash } = newInviteCredentials(invite.id);
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
     const senderName = await getSenderName(user.id);
 
@@ -411,6 +433,7 @@ export async function resendExhibitionInvite(
       .from('exhibition_artist_invites')
       .update({
         token_hash: tokenHash,
+        token_nonce: nonce,
         // An accepted invite stays accepted; the fresh link just gets them back in.
         status: invite.status === 'accepted' ? 'accepted' : 'sent',
         expires_at: expiresAt,
@@ -516,7 +539,8 @@ export type ExhibitionInviteContext = {
   exhibitionTitle: string;
   galleryName: string | null;
   issuesCertificateOfShow: boolean;
-  inviteeEmail: string;
+  /** Null for a link-only invite: any artist who signs in can claim it. */
+  inviteeEmail: string | null;
   inviteeName: string | null;
   status: string;
   maxArtworks: number | null;
@@ -543,7 +567,7 @@ export async function getExhibitionInviteContext(
   const adminClient = getSupabaseServerAdminClient();
   const { invite, byId, error } = await findInviteByKey<{
     id: string;
-    invitee_email: string;
+    invitee_email: string | null;
     invitee_name: string | null;
     status: string;
     max_artworks: number | null;
@@ -680,9 +704,9 @@ async function findUninvitedCreditedArtists(
 
   const invitedIds = new Set<string>();
   const invitedEmails = new Set<string>();
-  for (const inv of (invites ?? []) as Array<{ artist_account_id: string | null; invitee_email: string }>) {
+  for (const inv of (invites ?? []) as Array<{ artist_account_id: string | null; invitee_email: string | null }>) {
     if (inv.artist_account_id) invitedIds.add(inv.artist_account_id);
-    invitedEmails.add(normalizeInviteEmail(inv.invitee_email));
+    if (inv.invitee_email) invitedEmails.add(normalizeInviteEmail(inv.invitee_email));
   }
 
   return ((accounts ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
@@ -787,4 +811,133 @@ export async function updateExhibitionInviteLimit(
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Update failed' };
   }
+}
+
+/**
+ * A link-only invite: no email. The organiser copies the link and sends it
+ * however they like; the first artist who opens it and signs in claims it.
+ * Only for solo and group shows (the artist lands on their show page).
+ */
+export async function createExhibitionInviteLink(
+  exhibitionId: string,
+  input: { name?: string | null; maxArtworks?: number | null } = {},
+): Promise<{ success: true; url: string; inviteId: string } | { success: false; error: string }> {
+  const client = asUntyped(getSupabaseServerClient());
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { showType, defaultMaxArtworks } = await assertCanManageExhibition(user.id, exhibitionId);
+    if (showType !== 'solo' && showType !== 'group') {
+      return {
+        success: false,
+        error: 'Invite links are for solo and group shows. Set the kind of show above first.',
+      };
+    }
+
+    const adminClient = asUntyped(getSupabaseServerAdminClient());
+    if (showType === 'solo') {
+      const { count } = await adminClient
+        .from('exhibition_artist_invites')
+        .select('id', { count: 'exact', head: true })
+        .eq('exhibition_id', exhibitionId)
+        .eq('source', 'invite')
+        .in('status', OPEN_STATUSES);
+      if ((count ?? 0) > 0) {
+        return {
+          success: false,
+          error: 'This solo show already has an invite. Copy that one’s link, or cancel it first.',
+        };
+      }
+    }
+
+    const creds = newInviteCredentials();
+    const maxArtworks =
+      input.maxArtworks === undefined ? defaultMaxArtworks : parseMaxArtworksPerArtist(input.maxArtworks);
+    const { error } = await adminClient.from('exhibition_artist_invites').insert({
+      id: creds.id,
+      token_nonce: creds.nonce,
+      token_hash: creds.tokenHash,
+      exhibition_id: exhibitionId,
+      invitee_email: null,
+      invitee_name: input.name?.trim() || null,
+      max_artworks: maxArtworks,
+      status: 'sent',
+      expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(),
+      created_by: user.id,
+      can_edit_show: showType === 'solo',
+    });
+    if (error) {
+      console.error('[Exhibitions] createExhibitionInviteLink insert failed', error);
+      return { success: false, error: 'Could not create the invite link' };
+    }
+
+    revalidatePath(`/exhibitions/${exhibitionId}/edit`);
+    console.log('[Exhibitions] createExhibitionInviteLink created', { exhibitionId, inviteId: creds.id });
+    return { success: true, url: getExhibitionSubmitUrl(creds.token), inviteId: creds.id };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Could not create the link' };
+  }
+}
+
+/**
+ * The invite's link, to copy and send. Invites made before links existed get
+ * a new token here (their emailed link stops working). Unopened invites past
+ * their expiry get a fresh expiry, since the organiser is sending it now.
+ */
+export async function getExhibitionInviteLink(
+  inviteId: string,
+): Promise<{ success: true; url: string; rotated: boolean } | { success: false; error: string }> {
+  const client = asUntyped(getSupabaseServerClient());
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  const adminClient = asUntyped(getSupabaseServerAdminClient());
+  const { data: invite } = await adminClient
+    .from('exhibition_artist_invites')
+    .select('id, exhibition_id, status, token_nonce, expires_at')
+    .eq('id', inviteId)
+    .maybeSingle();
+  if (!invite) return { success: false, error: 'Invite not found' };
+
+  try {
+    await assertCanManageExhibition(user.id, invite.exhibition_id);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Access denied' };
+  }
+
+  if (!['pending', 'sent', 'accepted', 'expired'].includes(invite.status)) {
+    return { success: false, error: 'This invite is closed' };
+  }
+
+  let nonce = invite.token_nonce as string | null;
+  const update: Record<string, unknown> = {};
+  if (!nonce) {
+    const creds = newInviteCredentials(invite.id);
+    nonce = creds.nonce;
+    update.token_nonce = creds.nonce;
+    update.token_hash = creds.tokenHash;
+  }
+  if (invite.status === 'expired' || (invite.status !== 'accepted' && new Date(invite.expires_at) < new Date())) {
+    update.status = 'sent';
+    update.expires_at = new Date(Date.now() + INVITE_TTL_MS).toISOString();
+  }
+  if (Object.keys(update).length > 0) {
+    const { error } = await adminClient.from('exhibition_artist_invites').update(update).eq('id', invite.id);
+    if (error) {
+      console.error('[Exhibitions] getExhibitionInviteLink update failed', error);
+      return { success: false, error: 'Could not prepare the link' };
+    }
+    revalidatePath(`/exhibitions/${invite.exhibition_id}/edit`);
+  }
+
+  return {
+    success: true,
+    url: getExhibitionSubmitUrl(deriveInviteToken(invite.id, nonce)),
+    rotated: Boolean(update.token_hash),
+  };
 }

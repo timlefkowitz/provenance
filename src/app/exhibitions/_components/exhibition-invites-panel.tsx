@@ -3,11 +3,14 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
+import { Copy, Link2, Mail, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
 import { Button } from '@kit/ui/button';
+import { Input } from '@kit/ui/input';
 import { toast } from '@kit/ui/sonner';
 import {
   cancelExhibitionInvite,
+  createExhibitionInviteLink,
+  getExhibitionInviteLink,
   inviteCreditedArtists,
   resendExhibitionInvite,
   updateExhibitionInviteLimit,
@@ -59,17 +62,71 @@ type ExhibitionInvitesPanelProps = {
   uninvitedArtists: CreditedArtistInviteStatus[];
   /** Gallery/institution shows: the team can upload works with a Certificate of Show. */
   canUploadForArtists: boolean;
+  /** solo | group | open_call | null; link invites are for solo and group shows. */
+  showType?: string | null;
 };
+
+/** Copies text; returns false where the clipboard isn't available (the link is shown to copy by hand). */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function ExhibitionInvitesPanel({
   exhibitionId,
   initialInvites,
   uninvitedArtists,
   canUploadForArtists,
+  showType = null,
 }: ExhibitionInvitesPanelProps) {
   const router = useRouter();
   const [invites, setInvites] = useState(initialInvites);
   const [pending, startTransition] = useTransition();
+  const [shownLink, setShownLink] = useState<{ inviteId: string; url: string } | null>(null);
+  const [linkName, setLinkName] = useState('');
+  const linkInvites = showType === 'solo' || showType === 'group';
+  const soloHasInvite =
+    showType === 'solo' &&
+    invites.some((i) => i.source === 'invite' && ['pending', 'sent', 'accepted'].includes(i.status));
+
+  const showAndCopy = async (inviteId: string, url: string, note?: string) => {
+    setShownLink({ inviteId, url });
+    const copied = await copyText(url);
+    toast.success(copied ? `Invite link copied${note ? `. ${note}` : ''}` : 'Copy the link below');
+  };
+
+  const handleCreateLink = () => {
+    startTransition(async () => {
+      const result = await createExhibitionInviteLink(exhibitionId, { name: linkName });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setLinkName('');
+      await showAndCopy(result.inviteId, result.url);
+      router.refresh();
+    });
+  };
+
+  const handleCopyLink = (inviteId: string) => {
+    startTransition(async () => {
+      const result = await getExhibitionInviteLink(inviteId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      await showAndCopy(
+        inviteId,
+        result.url,
+        result.rotated ? 'The link in the earlier email no longer works.' : undefined,
+      );
+      if (result.rotated) router.refresh();
+    });
+  };
 
   // Pick up invites created by "Send upload invites" after router.refresh().
   const [syncedInvites, setSyncedInvites] = useState(initialInvites);
@@ -147,20 +204,21 @@ export function ExhibitionInvitesPanel({
     });
   };
 
-  if (invites.length === 0 && uninvitedArtists.length === 0 && !canUploadForArtists) {
+  if (invites.length === 0 && uninvitedArtists.length === 0 && !canUploadForArtists && !linkInvites) {
     return null;
   }
 
   return (
-    <section className="mt-12 pt-10 border-t border-editorial-border/20">
+    <section id="invites" className="mt-12 pt-10 border-t border-editorial-border/20 scroll-mt-8">
       <div className="mb-6">
         <Eyebrow className="mb-3">Artist invites</Eyebrow>
         <h2 className="font-fraunces text-2xl italic tracking-tight text-editorial-ink">
           Upload invitations
         </h2>
         <p className="text-editorial-ink/55 font-serif text-sm mt-2 max-w-2xl">
-          Track artists invited to upload work. Their submissions wait for your review
-          below; nothing joins the exhibition until you select it.
+          {linkInvites
+            ? 'Invited artists fill in their part of the show and add works, which go straight in. Send the invite by email or copy the link and send it yourself.'
+            : 'Track artists invited to upload work. Their submissions wait for your review below; nothing joins the exhibition until you select it.'}
           {canUploadForArtists &&
             ' Preparing the show yourself? Upload works for an artist and they get a Certificate of Show right away.'}
         </p>
@@ -181,6 +239,38 @@ export function ExhibitionInvitesPanel({
           />
         )}
       </div>
+
+      {linkInvites && !soloHasInvite && (
+        <div className="mb-6 border border-editorial-border/25 bg-cream/40 px-4 py-4 font-serif">
+          <p className="text-sm text-editorial-ink">
+            No email? Create an invite link and send it by text or DM.
+          </p>
+          <p className="text-xs text-editorial-ink/55 mt-1">
+            The first artist who opens it and signs in becomes{' '}
+            {showType === 'solo' ? 'the artist of this show' : 'an artist in this show'}; after that it
+            only works for them.
+          </p>
+          <div className="mt-3 flex flex-col sm:flex-row gap-2">
+            <Input
+              value={linkName}
+              onChange={(e) => setLinkName(e.target.value)}
+              placeholder="Artist’s name (optional, for your list)"
+              className="h-8 text-sm sm:w-72"
+              maxLength={200}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending}
+              onClick={handleCreateLink}
+              className="gap-1.5 rounded-none bg-editorial-ink text-bone hover:bg-vermillion font-jetbrains text-[10px] uppercase tracking-[0.16em] h-8"
+            >
+              <Link2 className="h-3 w-3" />
+              Create invite link
+            </Button>
+          </div>
+        </div>
+      )}
 
       {uninvitedArtists.length > 0 && (
         <div className="mb-6 border border-amber-200 bg-amber-50/60 px-4 py-4 font-serif">
@@ -223,16 +313,20 @@ export function ExhibitionInvitesPanel({
             return (
               <li
                 key={invite.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-cream/40"
+                className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 px-4 py-3 bg-cream/40"
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <Mail className="h-4 w-4 text-vermillion/80 mt-0.5 shrink-0" />
+                  {invite.invitee_email ? (
+                    <Mail className="h-4 w-4 text-vermillion/80 mt-0.5 shrink-0" />
+                  ) : (
+                    <Link2 className="h-4 w-4 text-vermillion/80 mt-0.5 shrink-0" />
+                  )}
                   <div className="min-w-0">
                     <p className="font-serif text-sm text-editorial-ink truncate">
-                      {invite.invitee_name || invite.invitee_email}
+                      {invite.invitee_name || invite.invitee_email || 'Invite link'}
                     </p>
                     <p className="font-serif text-xs text-editorial-ink/50 truncate">
-                      {invite.invitee_email}
+                      {invite.invitee_email ?? 'Not opened yet'}
                       {invite.source === 'open_call' && (
                         <span className="ml-2 border border-editorial-border/30 px-1.5 py-px text-[10px] uppercase tracking-wide text-vermillion/80">
                           Open call
@@ -313,7 +407,7 @@ export function ExhibitionInvitesPanel({
                     <UploadForArtistDialog
                       exhibitionId={exhibitionId}
                       inviteId={invite.id}
-                      artistLabel={invite.invitee_name || invite.invitee_email}
+                      artistLabel={invite.invitee_name || invite.invitee_email || "the invited artist"}
                       trigger={
                         <Button
                           type="button"
@@ -329,19 +423,35 @@ export function ExhibitionInvitesPanel({
                     />
                   )}
 
+                  {(isOpen || invite.status === 'expired') && invite.source === 'invite' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => handleCopyLink(invite.id)}
+                      className="font-serif text-xs h-8 gap-1"
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy link
+                    </Button>
+                  )}
+
                   {isOpen && (
                     <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => handleResend(invite.id)}
-                        className="font-serif text-xs h-8 gap-1"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Resend
-                      </Button>
+                      {invite.invitee_email && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => handleResend(invite.id)}
+                          className="font-serif text-xs h-8 gap-1"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Resend
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -356,6 +466,15 @@ export function ExhibitionInvitesPanel({
                     </>
                   )}
                 </div>
+                {shownLink?.inviteId === invite.id && (
+                  <Input
+                    readOnly
+                    value={shownLink.url}
+                    onFocus={(e) => e.currentTarget.select()}
+                    aria-label="Invite link"
+                    className="h-8 text-xs font-mono sm:basis-full"
+                  />
+                )}
               </li>
             );
           })}

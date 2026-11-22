@@ -158,8 +158,8 @@ export function ExhibitionForm({
       setError(soloCreate ? 'An opening date is required' : 'Title and start date are required');
       return;
     }
-    if (soloCreate && selectedInvites.length + selectedArtists.length !== 1) {
-      setError('Invite the one artist this solo show is for');
+    if (soloCreate && selectedInvites.length + selectedArtists.length > 1) {
+      setError('A solo show is for one artist');
       return;
     }
 
@@ -231,7 +231,13 @@ export function ExhibitionForm({
           } else {
             toast.success('Exhibition created. Add artworks below.');
           }
-          if (result?.exhibitionId) {
+          const needsInviteLink =
+            (showType === 'solo' || showType === 'group') &&
+            selectedInvites.length + selectedArtists.length === 0;
+          if (result?.exhibitionId && needsInviteLink) {
+            toast.success('Now create an invite link to send the artist.');
+            router.push(`/exhibitions/${result.exhibitionId}/edit#invites`);
+          } else if (result?.exhibitionId) {
             router.push(`/exhibitions/${result.exhibitionId}/edit#artworks`);
           } else {
             router.push(ownerRole ? `/exhibitions?as=${ownerRole}` : '/exhibitions');
@@ -446,7 +452,8 @@ export function ExhibitionForm({
 
         {soloCreate && (
           <p className={FIELD_HINT}>
-            Invite the artist this show is for. They&apos;ll get an email to fill in the show.
+            Invite the artist this show is for by email. No email? Leave this empty; after
+            creating the show you&apos;ll get an invite link to send them by text or DM.
           </p>
         )}
         <ParticipantSelector

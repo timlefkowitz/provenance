@@ -43,7 +43,8 @@ export type SubmitExhibitionArtworkResult =
 type InviteRow = {
   id: string;
   exhibition_id: string;
-  invitee_email: string;
+  /** Null for a link-only invite until an artist claims it on accept. */
+  invitee_email: string | null;
   invitee_name: string | null;
   artist_account_id: string | null;
   status: string;
@@ -339,6 +340,9 @@ async function loadSubmissionContext(
     return { error: validated.error };
   }
   const { invite, byId } = validated;
+  if (!invite.invitee_email) {
+    return { error: 'Open the invitation link and sign in to accept it first' };
+  }
 
   const inviteeEmail = normalizeInviteEmail(invite.invitee_email);
   if (!emailsMatch(user.email, inviteeEmail)) {
@@ -933,6 +937,9 @@ export async function validateExhibitionSubmitAccess(
     return { ok: false, error: validated.error };
   }
 
+  if (!validated.invite.invitee_email) {
+    return { ok: false, error: 'Open the invitation link and sign in to accept it first' };
+  }
   if (!emailsMatch(user.email, validated.invite.invitee_email)) {
     return {
       ok: false,

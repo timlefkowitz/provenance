@@ -27,7 +27,8 @@ type Result<T = object> = ({ success: true } & T) | { success: false; error: str
 type AcceptedInvite = {
   id: string;
   exhibition_id: string;
-  invitee_email: string;
+  /** Null only for a link-only invite nobody has claimed yet. */
+  invitee_email: string | null;
   invitee_name: string | null;
   status: string;
   source: string;
@@ -81,13 +82,13 @@ async function currentUser(): Promise<{ id: string; email: string | null } | nul
 async function artistDisplayName(
   admin: UntypedSupabaseClient,
   userId: string,
-  invite: { invitee_name: string | null; invitee_email: string },
+  invite: { invitee_name: string | null; invitee_email: string | null },
 ): Promise<string> {
   const { data } = await admin.from('accounts').select('name').eq('id', userId).maybeSingle();
   return (
     (data?.name as string | null)?.trim() ||
     invite.invitee_name?.trim() ||
-    invite.invitee_email.split('@')[0] ||
+    invite.invitee_email?.split('@')[0] ||
     'The artist'
   );
 }
@@ -155,7 +156,9 @@ export async function acceptExhibitionInvite(
   if (!invite) return { success: false, error: 'Invalid or expired invitation link' };
 
   const row = invite as AcceptedInvite;
-  if (!emailsMatch(user.email, row.invitee_email)) {
+  // A link-only invite has no email: whoever opens it first and signs in claims it.
+  const claimingLink = !row.invitee_email;
+  if (row.invitee_email && !emailsMatch(user.email, row.invitee_email)) {
     return {
       success: false,
       error: `Sign in with the email this invite was sent to (${normalizeInviteEmail(row.invitee_email)}).`,
@@ -187,18 +190,44 @@ export async function acceptExhibitionInvite(
     return { success: false, error: 'This invitation is for submitting work only' };
   }
 
-  const { error: updateError } = await admin
+  // Claiming a link writes the artist's email and account onto the invite, so
+  // everything after (submissions, reminders) treats it like an email invite.
+  const claimFields = claimingLink
+    ? { invitee_email: normalizeInviteEmail(user.email), artist_account_id: user.id }
+    : {};
+  let acceptQuery = admin
     .from('exhibition_artist_invites')
     .update({
       status: 'accepted',
       accepted_at: new Date().toISOString(),
       accepted_by: user.id,
+      ...claimFields,
     })
     .eq('id', row.id)
     .in('status', ['sent', 'pending']);
+  if (claimingLink) acceptQuery = acceptQuery.is('invitee_email', null);
+  const { data: acceptedRows, error: updateError } = await acceptQuery.select('id');
+  if (updateError?.code === '23505') {
+    // They already have an invitation to this show under their email.
+    const { data: own } = await admin
+      .from('exhibition_artist_invites')
+      .select('id, status')
+      .eq('exhibition_id', row.exhibition_id)
+      .eq('accepted_by', user.id)
+      .eq('status', 'accepted')
+      .maybeSingle();
+    if (own) return { success: true, exhibitionId: row.exhibition_id, path };
+    return {
+      success: false,
+      error: 'You already have an invitation to this show; open the one sent to your email',
+    };
+  }
   if (updateError) {
     console.error('[ExhibitionWorkspace] accept failed', updateError);
     return { success: false, error: 'Could not accept the invitation; try again' };
+  }
+  if (!acceptedRows?.length) {
+    return { success: false, error: 'Someone else already accepted this invitation' };
   }
 
   const { error: creditError } = await admin.from('exhibition_artists').insert({

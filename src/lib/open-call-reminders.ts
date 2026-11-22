@@ -106,14 +106,14 @@ export async function getOpenCallArtistsAwaitingSubmission(
     console.error('[OpenCallReminders] invites load failed', { exhibitionId: params.exhibitionId, error });
     return null;
   }
-  const rows = (invites ?? []) as Array<{ artist_account_id: string | null; invitee_email: string }>;
+  const rows = (invites ?? []) as Array<{ artist_account_id: string | null; invitee_email: string | null }>;
 
   // Direct invites may predate the artist's account; match those by email.
   const recipients = new Set(
     rows.map((r) => r.artist_account_id).filter((id): id is string => Boolean(id)),
   );
   const emails = rows
-    .filter((r) => !r.artist_account_id)
+    .filter((r): r is { artist_account_id: null; invitee_email: string } => !r.artist_account_id && !!r.invitee_email)
     .map((r) => normalizeInviteEmail(r.invitee_email));
   if (emails.length) {
     const { data: accounts } = await adminClient.from('accounts').select('id').in('email', emails);

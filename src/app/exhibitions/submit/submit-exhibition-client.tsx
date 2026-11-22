@@ -31,7 +31,8 @@ type InviteContext = {
   exhibitionTitle: string;
   galleryName: string | null;
   issuesCertificateOfShow: boolean;
-  inviteeEmail: string;
+  /** Null for a link-only invite: any artist who signs in can accept it. */
+  inviteeEmail: string | null;
   inviteeName: string | null;
   /** Most artworks this invite may submit; null = no limit. */
   maxArtworks: number | null;
@@ -571,7 +572,7 @@ export function SubmitExhibitionClient({
       }
 
       if (
-        inviteContext &&
+        inviteContext?.inviteeEmail &&
         session.user.email &&
         session.user.email.toLowerCase() !== inviteContext.inviteeEmail.toLowerCase()
       ) {
@@ -910,15 +911,27 @@ export function SubmitExhibitionClient({
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center font-serif">
         <Heading level={4} className="text-wine mb-2">
-          Submit artwork
+          {inviteContext.showType === 'solo'
+            ? 'You’re invited to a solo show'
+            : inviteContext.straightIn
+              ? 'You’re invited to exhibit'
+              : 'Submit artwork'}
         </Heading>
         <p className="text-ink/80 mb-2">
-          You&apos;ve been invited to submit work for{' '}
+          {inviteContext.straightIn
+            ? 'You’ve been invited to show your work in '
+            : 'You’ve been invited to submit work for '}
           <strong>{inviteContext.exhibitionTitle}</strong>
           {inviteContext.galleryName ? ` at ${inviteContext.galleryName}` : ''}.
         </p>
         <p className="text-ink/50 text-sm mb-6">
-          Sign in with <strong>{inviteContext.inviteeEmail}</strong> to continue.
+          {inviteContext.inviteeEmail ? (
+            <>
+              Sign in with <strong>{inviteContext.inviteeEmail}</strong> to continue.
+            </>
+          ) : (
+            'Sign in, or create a free artist account, to accept.'
+          )}
         </p>
         <Button asChild className="bg-wine text-parchment hover:bg-wine/90 font-serif">
           <Link href={signInHref}>Continue to sign in</Link>
