@@ -58,7 +58,39 @@ export type WallLabelOptions = {
   layout: 'compact' | 'institutional';
   /** Where the QR codes sit on each label. */
   qrPosition: 'top' | 'bottom';
+  /** Typeface for the label text (see LABEL_FONTS). */
+  font: LabelFontKey;
+  /** Scales every line of label text (see LABEL_TEXT_SIZES). */
+  textSize: LabelTextSizeKey;
 };
+
+/**
+ * Typefaces for wall labels. Print windows can't wait for web fonts, so these
+ * are fonts already on Macs and iPhones, each falling back to a close match on
+ * Windows. `stroke` thickens faces that have no medium weight.
+ */
+export const LABEL_FONTS = {
+  georgia: { name: 'Georgia', stack: "Georgia, 'Times New Roman', serif", stroke: true },
+  baskerville: { name: 'Baskerville', stack: "Baskerville, 'Baskerville Old Face', 'Libre Baskerville', Georgia, serif", stroke: false },
+  palatino: { name: 'Palatino', stack: "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif", stroke: false },
+  didot: { name: 'Didot', stack: "Didot, 'Bodoni 72', 'Bodoni MT', Georgia, serif", stroke: false },
+  helvetica: { name: 'Helvetica', stack: "'Helvetica Neue', Helvetica, Arial, sans-serif", stroke: false },
+  avenir: { name: 'Avenir', stack: "'Avenir Next', Avenir, 'Segoe UI', 'Century Gothic', sans-serif", stroke: false },
+  futura: { name: 'Futura', stack: "Futura, 'Century Gothic', 'Trebuchet MS', sans-serif", stroke: false },
+  gill: { name: 'Gill Sans', stack: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", stroke: false },
+} as const;
+
+export type LabelFontKey = keyof typeof LABEL_FONTS;
+
+/** Text size steps, as a multiple of the label size's normal text. */
+export const LABEL_TEXT_SIZES = {
+  small: { name: 'Small', scale: 0.85 },
+  medium: { name: 'Medium', scale: 1 },
+  large: { name: 'Large', scale: 1.15 },
+  xlarge: { name: 'Extra large', scale: 1.3 },
+} as const;
+
+export type LabelTextSizeKey = keyof typeof LABEL_TEXT_SIZES;
 
 /** Label sizes on US Letter. Widths are chosen so two labels fill a row. */
 export const LABEL_GEOMETRY = {
@@ -83,7 +115,17 @@ export const DEFAULT_LABEL_OPTIONS: WallLabelOptions = {
   size: 'standard',
   layout: 'institutional',
   qrPosition: 'top',
+  font: 'georgia',
+  textSize: 'medium',
 };
+
+/** Keeps a font or text size read from storage to one that exists. */
+export function sanitizeLabelStyle<T extends Partial<WallLabelOptions>>(options: T): T {
+  const out = { ...options };
+  if (typeof out.font !== 'string' || !(out.font in LABEL_FONTS)) delete out.font;
+  if (typeof out.textSize !== 'string' || !(out.textSize in LABEL_TEXT_SIZES)) delete out.textSize;
+  return out;
+}
 
 // ── HTML builders ─────────────────────────────────────────────────────────────
 
@@ -205,6 +247,8 @@ export function buildWallLabelsHtml(
   const g = LABEL_GEOMETRY[options.size] ?? LABEL_GEOMETRY.standard;
   const institutional = options.layout !== 'compact';
   const qrBase = large ? 0.8 : 0.65;
+  const font = LABEL_FONTS[options.font] ?? LABEL_FONTS.georgia;
+  const textScale = (LABEL_TEXT_SIZES[options.textSize] ?? LABEL_TEXT_SIZES.medium).scale;
 
   const label = (a: WallLabelItem) => {
     const year = options.year ? getYear(a.creation_date) : '';
@@ -264,7 +308,7 @@ export function buildWallLabelsHtml(
     ? `<script>function fitLabels(){document.querySelectorAll('.label').forEach(function(el){var b=el.querySelector('.body');var k=1;while(b&&b.scrollHeight>b.clientHeight+1&&k>0.66){k-=0.04;el.style.setProperty('--k',k.toFixed(2));}});}</script>`
     : '<script>function fitLabels(){}</script>';
 
-  const pt = (n: number) => `calc(var(--k, 1) * ${n}pt)`;
+  const pt = (n: number) => `calc(var(--k, 1) * ${+(n * textScale).toFixed(2)}pt)`;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" />
@@ -272,9 +316,8 @@ export function buildWallLabelsHtml(
 <style>
   @page { size: letter ${g.orientation}; margin: ${LABEL_PAGE_MARGIN_IN}in; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Georgia, 'Times New Roman', serif; background: #fff; color: #111; }
-  /* Georgia has no medium weight: a hairline stroke thickens the text a touch. */
-  .body { -webkit-text-stroke: 0.018em currentColor; }
+  body { font-family: ${font.stack}; background: #fff; color: #111; }
+  ${font.stroke ? '/* No medium weight: a hairline stroke thickens the text a touch. */\n  .body { -webkit-text-stroke: 0.018em currentColor; }' : ''}
   .sheet {
     display: grid;
     grid-template-columns: repeat(${g.cols}, ${g.widthIn}in);

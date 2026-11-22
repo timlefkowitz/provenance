@@ -19,6 +19,7 @@ import {
   buildArtworkQrSheetHtml,
   buildWallLabelsHtml as buildLabelsHtml,
   DEFAULT_LABEL_OPTIONS,
+  sanitizeLabelStyle,
   type WallLabelItem,
   type LabelQr,
   type WallLabelOptions,
@@ -149,9 +150,21 @@ export function buildWallLabelsHtml(
   return buildLabelsHtml(
     'Provenance',
     artworks.map((a) => collectionLabelItem(a, artworkData[a.id])),
-    { ...DEFAULT_LABEL_OPTIONS, price: true, priceSymbol, qrCode: false },
+    { ...DEFAULT_LABEL_OPTIONS, ...savedLabelStyle(), price: true, priceSymbol, qrCode: false },
     new Map(),
   );
+}
+
+/** The font and text size last chosen in the collection's wall label dialog. */
+function savedLabelStyle(): Partial<WallLabelOptions> {
+  try {
+    const raw = window.localStorage.getItem(LABEL_OPTIONS_KEY);
+    if (!raw) return {};
+    const { font, textSize } = JSON.parse(raw) as Partial<WallLabelOptions>;
+    return sanitizeLabelStyle({ font, textSize });
+  } catch {
+    return {};
+  }
 }
 
 // ── Catalog ───────────────────────────────────────────────────────────────────

@@ -13,8 +13,13 @@ import { loadPriceSymbolPref, savePriceSymbolPref } from '~/lib/print-price';
 import type { ArtistBio } from '../_helpers/artist-bios';
 import {
   DEFAULT_LABEL_OPTIONS,
+  LABEL_FONTS,
   LABEL_GEOMETRY,
+  LABEL_TEXT_SIZES,
+  sanitizeLabelStyle,
+  type LabelFontKey,
   type LabelQr,
+  type LabelTextSizeKey,
   type WallLabelOptions,
 } from '../_helpers/exhibition-print-html';
 import { composeStyledQr, DEFAULT_QR_STYLE, readQrStyle, type QrStyleSettings } from '../_helpers/qr-style';
@@ -24,7 +29,10 @@ import { getCollectionLinks } from '~/app/artworks/my/_actions/collection-links'
 import { getArtworkLinks } from '~/app/artworks/_actions/artwork-links';
 import type { CollectionLink } from '~/lib/collection-links';
 
-export type WallLabelToggleKey = Exclude<keyof WallLabelOptions, 'size' | 'qrPosition' | 'layout'>;
+export type WallLabelToggleKey = Exclude<
+  keyof WallLabelOptions,
+  'size' | 'qrPosition' | 'layout' | 'font' | 'textSize'
+>;
 
 const FIELD_TOGGLES: Array<{
   key: WallLabelToggleKey;
@@ -51,7 +59,8 @@ function loadLabelOptions(storageKey: string): WallLabelOptions {
   try {
     const raw = window.localStorage.getItem(storageKey);
     if (raw) {
-      return { ...DEFAULT_LABEL_OPTIONS, ...(JSON.parse(raw) as Partial<WallLabelOptions>), priceSymbol };
+      const saved = sanitizeLabelStyle(JSON.parse(raw) as Partial<WallLabelOptions>);
+      return { ...DEFAULT_LABEL_OPTIONS, ...saved, priceSymbol };
     }
   } catch {
     // storage unavailable — use defaults
@@ -613,6 +622,51 @@ export function WallLabelsDialog({
           )}
         </div>
 
+        <div className="pt-2">
+          <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Font</p>
+          <div className="grid grid-cols-4 gap-2">
+            {(Object.keys(LABEL_FONTS) as LabelFontKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setOptions((o) => ({ ...o, font: key }))}
+                aria-pressed={options.font === key}
+                style={{ fontFamily: LABEL_FONTS[key].stack }}
+                className={`rounded-md border px-2 py-2 text-sm leading-tight transition-colors ${
+                  options.font === key
+                    ? 'border-wine bg-wine/10 text-wine'
+                    : 'border-wine/20 text-ink/70 hover:border-wine/40'
+                }`}
+              >
+                {LABEL_FONTS[key].name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <p className="text-[10px] uppercase tracking-widest text-ink/40 font-serif mb-2">Text size</p>
+          <div className="flex gap-2">
+            {(Object.keys(LABEL_TEXT_SIZES) as LabelTextSizeKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setOptions((o) => ({ ...o, textSize: key }))}
+                aria-pressed={options.textSize === key}
+                className={`flex-1 rounded-md border px-2 py-2 text-xs font-serif transition-colors ${
+                  options.textSize === key
+                    ? 'border-wine bg-wine/10 text-wine'
+                    : 'border-wine/20 text-ink/60 hover:border-wine/40'
+                }`}
+              >
+                {LABEL_TEXT_SIZES[key].name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <LabelSample options={options} />
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -624,5 +678,26 @@ export function WallLabelsDialog({
         </DialogFooter>
       </EditorialDialogContent>
     </Dialog>
+  );
+}
+
+/** A sample label in the chosen font and text size, at roughly print scale. */
+function LabelSample({ options }: { options: WallLabelOptions }) {
+  const font = LABEL_FONTS[options.font] ?? LABEL_FONTS.georgia;
+  const k = (LABEL_TEXT_SIZES[options.textSize] ?? LABEL_TEXT_SIZES.medium).scale;
+  const base = options.size === 'large' ? 1.2 : 1;
+  // 1pt on paper ≈ 1.33px; the preview shows the label at its printed size.
+  const px = (pt: number) => `${(pt * base * k * 1.33).toFixed(1)}px`;
+  return (
+    <div
+      aria-label="Label preview"
+      className="mt-1 rounded-sm border border-[#d0cdc8] bg-white px-4 py-3 text-[#111]"
+      style={{ fontFamily: font.stack, WebkitTextStroke: font.stroke ? '0.018em currentColor' : undefined }}
+    >
+      <div style={{ fontSize: px(10), fontWeight: 800, lineHeight: 1.25, marginBottom: 5 }}>Artist Name</div>
+      <div style={{ fontSize: px(9.5), fontStyle: 'italic', lineHeight: 1.3 }}>Untitled (Blue), 2024</div>
+      <div style={{ fontSize: px(9), lineHeight: 1.4 }}>Oil on canvas</div>
+      <div style={{ fontSize: px(9), lineHeight: 1.4 }}>24 × 36 in</div>
+    </div>
   );
 }
