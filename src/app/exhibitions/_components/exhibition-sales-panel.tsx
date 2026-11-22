@@ -17,6 +17,8 @@ import {
   FIELD_LABEL,
 } from '~/components/editorial-form';
 import { SoldDot } from '~/components/sold-dot';
+import { formatPrice } from '~/lib/cart/format';
+import { exhibitionSalesTotals } from '~/lib/exhibition-sales/sales-totals';
 
 import {
   type ExhibitionSalesSummary,
@@ -70,6 +72,10 @@ export function ExhibitionSalesPanel({
   }
 
   const forSaleCount = summary.works.filter((w) => w.forSale && !w.isSold).length;
+  const typedPct = Number(commission);
+  const pctForTotals = Number.isFinite(typedPct) && typedPct >= 0 && typedPct <= 100 ? typedPct : summary.commissionPercent;
+  const totals = exhibitionSalesTotals(summary.works, pctForTotals);
+  const pctLabel = `${Number(pctForTotals.toFixed(2))}%`;
 
   return (
     <section id="online-sales" className="mt-16 border-t border-editorial-border/30 pt-10 scroll-mt-8">
@@ -117,6 +123,42 @@ export function ExhibitionSalesPanel({
             : 'Off: switching it on offers every work below that has a price, except ones marked NFS. Prices start from the value each artist recorded.'}
         </p>
 
+        {totals.sellableCount > 0 && (
+          <div>
+            <dl className="grid grid-cols-1 gap-px border border-editorial-border/20 bg-editorial-border/20 sm:grid-cols-3">
+              <div className="bg-bone p-4">
+                <dt className={FIELD_LABEL}>Value of works that can sell</dt>
+                <dd className="font-fraunces text-2xl text-editorial-ink">{formatPrice(totals.sellableCents)}</dd>
+                <dd className={FIELD_HINT}>
+                  {totals.sellableCount} {totals.sellableCount === 1 ? 'work' : 'works'}
+                  {enabled ? ` · ${totals.forSaleCount} for sale now (${formatPrice(totals.forSaleCents)})` : ''}
+                </dd>
+              </div>
+              <div className="bg-bone p-4">
+                <dt className={FIELD_LABEL}>Gallery commission if all sell</dt>
+                <dd className="font-fraunces text-2xl text-editorial-ink">{formatPrice(totals.commissionCents)}</dd>
+                <dd className={FIELD_HINT}>at {pctLabel}</dd>
+              </div>
+              <div className="bg-bone p-4">
+                <dt className={FIELD_LABEL}>Artists receive if all sell</dt>
+                <dd className="font-fraunces text-2xl text-editorial-ink">{formatPrice(totals.artistsCents)}</dd>
+                <dd className={FIELD_HINT}>the other {Number((100 - pctForTotals).toFixed(2))}%</dd>
+              </div>
+            </dl>
+            <p className={`${FIELD_HINT} mt-2`}>
+              At current prices, before card processing and Provenance’s fee, which come out of each share in proportion.
+              {[
+                totals.soldCount ? `${totals.soldCount} sold` : '',
+                totals.nfsCount ? `${totals.nfsCount} NFS` : '',
+                totals.noPriceCount ? `${totals.noPriceCount} without a price` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')
+                .replace(/^(.+)$/, ' Not counted: $1.')}
+            </p>
+          </div>
+        )}
+
         {summary.works.length === 0 ? (
           <p className={FIELD_HINT}>Add works to the show to price them.</p>
         ) : (
@@ -142,6 +184,7 @@ function WorkPriceRow({
   exhibitionId: string;
   work: ExhibitionSalesSummary['works'][number];
 }) {
+  const router = useRouter();
   const [price, setPrice] = useState(toDollars(work.priceCents));
   const [forSale, setForSale] = useState(work.forSale);
   const [pending, startTransition] = useTransition();
@@ -166,6 +209,7 @@ function WorkPriceRow({
       }
       setForSale(nextForSale && !!cents);
       toast.success('Saved');
+      router.refresh();
     });
   }
 
