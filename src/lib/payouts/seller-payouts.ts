@@ -68,8 +68,8 @@ function formatMoney(cents: number, currency: string): string {
 
 /**
  * Make sure the seller has a connected account we can transfer to. Created
- * silently: no Stripe dashboard, Provenance pays Stripe's fees and carries
- * losses. Payout details are collected later in our own settings page via the
+ * silently: no Stripe dashboard, Provenance pays Stripe's fees and Stripe
+ * carries negative-balance losses. Payout details are collected later in our own settings page via the
  * embedded onboarding component. Legacy Express accounts are reused as-is.
  */
 export async function ensurePayoutAccount(
@@ -98,14 +98,16 @@ export async function ensurePayoutAccount(
       controller: {
         stripe_dashboard: { type: 'none' },
         fees: { payer: 'application' },
-        losses: { payments: 'application' },
+        // Stripe must carry losses when it collects requirements on an account
+        // with no dashboard; 'application' is rejected for this combination.
+        losses: { payments: 'stripe' },
         requirement_collection: 'stripe',
       },
       capabilities: { transfers: { requested: true } },
       settings: { payouts: { schedule: { interval: 'daily' } } },
       metadata: { user_id: userId },
     },
-    { idempotencyKey: `payout-account-${userId}` },
+    { idempotencyKey: `payout-account-v2-${userId}` },
   );
 
   const { error } = await admin.from('stripe_connect_accounts').insert({
