@@ -89,7 +89,7 @@ export async function startCheckout(
         status: 'pending',
         amount_total_cents: total,
         currency,
-        invoice_id: params.invoiceId ?? null,
+        sale_invoice_id: params.invoiceId ?? null,
       })
       .select('id')
       .single();

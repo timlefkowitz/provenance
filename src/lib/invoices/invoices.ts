@@ -42,10 +42,10 @@ export async function loadInvoiceByToken(
 ): Promise<{ invoice: InvoiceRow; items: InvoiceItemRow[] } | null> {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
   const db = asUntyped(admin);
-  const { data: invoice } = await db.from('invoices').select('*').eq('token', token).maybeSingle();
+  const { data: invoice } = await db.from('sale_invoices').select('*').eq('token', token).maybeSingle();
   if (!invoice) return null;
   const { data: items } = await db
-    .from('invoice_items')
+    .from('sale_invoice_items')
     .select('artwork_id, title, price_cents')
     .eq('invoice_id', invoice.id)
     .order('created_at', { ascending: true });

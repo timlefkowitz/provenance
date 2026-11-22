@@ -81,7 +81,7 @@ export async function createExhibitionInvoice(
 
     const token = newInvoiceToken();
     const { data: invoice, error } = await admin
-      .from('invoices')
+      .from('sale_invoices')
       .insert({
         token,
         exhibition_id: exhibitionId,
@@ -98,7 +98,7 @@ export async function createExhibitionInvoice(
       console.error('[Invoices] create failed', { exhibitionId, error });
       return { success: false, error: 'Could not create the invoice' };
     }
-    const { error: itemsErr } = await admin.from('invoice_items').insert(
+    const { error: itemsErr } = await admin.from('sale_invoice_items').insert(
       items.map((i, idx) => ({
         invoice_id: invoice.id,
         artwork_id: i.artworkId,
@@ -108,7 +108,7 @@ export async function createExhibitionInvoice(
     );
     if (itemsErr) {
       console.error('[Invoices] items insert failed', { invoiceId: invoice.id, itemsErr });
-      await admin.from('invoices').update({ status: 'cancelled' }).eq('id', invoice.id);
+      await admin.from('sale_invoices').update({ status: 'cancelled' }).eq('id', invoice.id);
       return { success: false, error: 'Could not create the invoice' };
     }
 
@@ -144,7 +144,7 @@ export async function listExhibitionInvoices(exhibitionId: string): Promise<Exhi
   if ('error' in ctx) return [];
   const { admin } = ctx;
   const { data: invoices } = await admin
-    .from('invoices')
+    .from('sale_invoices')
     .select('id, token, buyer_name, buyer_email, status, created_at')
     .eq('exhibition_id', exhibitionId)
     .order('created_at', { ascending: false })
@@ -152,7 +152,7 @@ export async function listExhibitionInvoices(exhibitionId: string): Promise<Exhi
   const rows = invoices ?? [];
   if (rows.length === 0) return [];
   const { data: items } = await admin
-    .from('invoice_items')
+    .from('sale_invoice_items')
     .select('invoice_id, title, price_cents')
     .in(
       'invoice_id',
@@ -181,7 +181,7 @@ export async function cancelExhibitionInvoice(
   const ctx = await requireManager(exhibitionId);
   if ('error' in ctx) return { success: false, error: ctx.error };
   const { error } = await ctx.admin
-    .from('invoices')
+    .from('sale_invoices')
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
     .eq('id', invoiceId)
     .eq('exhibition_id', exhibitionId)
