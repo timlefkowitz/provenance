@@ -17,6 +17,7 @@ import { getExhibitionSubmissions } from '../../_actions/review-exhibition-submi
 import { ExhibitionSubmissionsPanel } from '../../_components/exhibition-submissions-panel';
 import { ExhibitionSalesPanel } from '../../_components/exhibition-sales-panel';
 import { getExhibitionSalesSummary } from '../../_actions/exhibition-sales';
+import { listExhibitionInvoices } from '../../_actions/exhibition-invoices';
 import { ownerReceivesCertificateOfShow } from '../../_helpers/exhibition-owner-roles';
 import { getExhibitionChangeRequests } from '../../_actions/exhibition-change-requests';
 import { ExhibitionChangeRequestsPanel } from '../../_components/exhibition-change-requests-panel';
@@ -59,7 +60,7 @@ export default async function EditExhibitionPage({
     redirect('/exhibitions');
   }
 
-  const [invites, uninvitedArtists, openCall, submissions, venues, salesSummary, changeRequests] =
+  const [invites, uninvitedArtists, openCall, submissions, venues, salesSummary, changeRequests, invoices] =
     await Promise.all([
       getExhibitionInvites(id),
       getUninvitedCreditedArtists(id),
@@ -68,6 +69,7 @@ export default async function EditExhibitionPage({
       listVenueGalleriesForUser(client, user.id),
       getExhibitionSalesSummary(id),
       getExhibitionChangeRequests(id),
+      listExhibitionInvoices(id),
     ]);
 
   return (
@@ -108,7 +110,7 @@ export default async function EditExhibitionPage({
         issuesCertificateOfShow={ownerReceivesCertificateOfShow(exhibition.owner_role)}
       />
 
-      {salesSummary && <ExhibitionSalesPanel exhibitionId={id} summary={salesSummary} />}
+      {salesSummary && <ExhibitionSalesPanel exhibitionId={id} summary={salesSummary} invoices={invoices} />}
 
       <section id="artworks" className="mt-16 pt-10 border-t border-editorial-border/30 scroll-mt-8">
         <div className="mb-8">

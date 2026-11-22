@@ -82,10 +82,11 @@ export async function resolveCartItems(
       continue;
     }
     let reason: UnavailableReason | null = null;
-    if (!exhibitionSalesOpen(data.exhibition, now)) reason = 'sales_closed';
-    else if (listing.isSold) reason = 'sold';
-    else if (!isPurchasable(listing)) reason = 'not_for_sale';
+    // Sold and held first: an invoice can override the others, never these.
+    if (listing.isSold) reason = 'sold';
     else if (isHeldByAnotherCheckout(listing, now)) reason = 'held';
+    else if (!exhibitionSalesOpen(data.exhibition, now)) reason = 'sales_closed';
+    else if (!isPurchasable(listing)) reason = 'not_for_sale';
 
     out.push({
       artworkId: line.artworkId,

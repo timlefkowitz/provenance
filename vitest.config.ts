@@ -33,6 +33,7 @@ export default defineConfig({
       'src/lib/payouts/**/*.test.ts',
       'src/lib/exhibition-sales/**/*.test.ts',
       'src/lib/cart/**/*.test.ts',
+      'src/lib/invoices/**/*.test.ts',
       'src/lib/auctions/**/*.test.ts',
       'src/lib/operations/reports/**/*.test.ts',
       'src/lib/artists/**/*.test.ts',

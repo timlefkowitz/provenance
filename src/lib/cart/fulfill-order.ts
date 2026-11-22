@@ -25,7 +25,7 @@ type OrderItemRow = {
 async function loadOrder(admin: UntypedSupabaseClient, orderId: string) {
   const { data: order } = await admin
     .from('orders')
-    .select('id, status, buyer_account_id, checkout_session_id')
+    .select('id, status, buyer_account_id, checkout_session_id, invoice_id')
     .eq('id', orderId)
     .maybeSingle();
   if (!order) return null;
@@ -192,6 +192,12 @@ export async function fulfillCartOrder(
       updated_at: new Date().toISOString(),
     })
     .eq('id', orderId);
+  if (order.invoice_id) {
+    await admin
+      .from('invoices')
+      .update({ status: 'paid', order_id: orderId, paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', order.invoice_id);
+  }
   if (order.buyer_account_id) {
     await admin
       .from('cart_items')

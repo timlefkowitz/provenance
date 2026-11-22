@@ -25,6 +25,8 @@ import {
   setExhibitionWorkPrice,
   updateExhibitionSalesSettings,
 } from '../_actions/exhibition-sales';
+import type { ExhibitionInvoiceSummary } from '../_actions/exhibition-invoices';
+import { ExhibitionInvoiceForm, ExhibitionInvoiceList } from './exhibition-invoice-form';
 
 function toCents(value: string): number | null {
   const n = Number(value.replace(/[$,\s]/g, ''));
@@ -38,14 +40,21 @@ function toDollars(cents: number | null): string {
 export function ExhibitionSalesPanel({
   exhibitionId,
   summary,
+  invoices = [],
 }: {
   exhibitionId: string;
   summary: ExhibitionSalesSummary;
+  invoices?: ExhibitionInvoiceSummary[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [enabled, setEnabled] = useState(summary.enabled);
   const [commission, setCommission] = useState(String(summary.commissionPercent));
+  // Works picked for an invoice.
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggleSelected = (id: string) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const selectedWorks = summary.works.filter((w) => selected.includes(w.artworkId) && !w.isSold);
 
   function saveSettings(nextEnabled = enabled) {
     const pct = Number(commission);
@@ -159,6 +168,22 @@ export function ExhibitionSalesPanel({
           </div>
         )}
 
+        {selectedWorks.length > 0 ? (
+          <ExhibitionInvoiceForm
+            key={selectedWorks.map((w) => w.artworkId).join(',')}
+            exhibitionId={exhibitionId}
+            works={selectedWorks}
+            onDone={() => setSelected([])}
+            onClear={() => setSelected([])}
+          />
+        ) : (
+          summary.works.some((w) => !w.isSold) && (
+            <p className={FIELD_HINT}>
+              Tick works below to invoice them to a buyer: they get a private link to pay for all of them at once.
+            </p>
+          )
+        )}
+
         {summary.works.length === 0 ? (
           <p className={FIELD_HINT}>Add works to the show to price them.</p>
         ) : (
@@ -168,10 +193,14 @@ export function ExhibitionSalesPanel({
                 key={`${w.artworkId}:${w.forSale}:${w.priceCents ?? ''}`}
                 exhibitionId={exhibitionId}
                 work={w}
+                selected={selected.includes(w.artworkId)}
+                onToggleSelected={() => toggleSelected(w.artworkId)}
               />
             ))}
           </ul>
         )}
+
+        <ExhibitionInvoiceList exhibitionId={exhibitionId} invoices={invoices} />
       </div>
     </section>
   );
@@ -180,9 +209,13 @@ export function ExhibitionSalesPanel({
 function WorkPriceRow({
   exhibitionId,
   work,
+  selected,
+  onToggleSelected,
 }: {
   exhibitionId: string;
   work: ExhibitionSalesSummary['works'][number];
+  selected: boolean;
+  onToggleSelected: () => void;
 }) {
   const router = useRouter();
   const [price, setPrice] = useState(toDollars(work.priceCents));
@@ -215,6 +248,14 @@ function WorkPriceRow({
 
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
+      <input
+        type="checkbox"
+        checked={selected}
+        disabled={work.isSold}
+        onChange={onToggleSelected}
+        aria-label={`Select ${work.title} for an invoice`}
+        className="h-4 w-4 shrink-0 accent-[var(--color-wine,#7a1f2b)] disabled:opacity-30"
+      />
       {work.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={work.imageUrl} alt="" className="h-12 w-12 shrink-0 object-cover" />
