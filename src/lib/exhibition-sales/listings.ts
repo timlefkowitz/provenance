@@ -45,6 +45,9 @@ export type SalesArtworkRow = {
   is_sold: boolean | null;
   sold_at: string | null;
   checkout_reserved_until: string | null;
+  /** The value the artist recorded (free text: "$3,500", "500", "NFS"). */
+  value?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type ExhibitionListing = {
@@ -58,12 +61,46 @@ export type ExhibitionListing = {
   artistName: string | null;
   imageUrl: string | null;
   forSale: boolean;
+  /** The show's price when the gallery set one, else the artist's recorded value. */
   priceCents: number | null;
+  priceSource: 'show' | 'artist' | null;
+  /** The artist marked the work not for sale (NFS). */
+  nfs: boolean;
   currency: string;
   artistAccountId: string;
   isSold: boolean;
   reservedUntil: string | null;
 };
+
+const NFS_PATTERN = /(^|[^a-z])n\.?\s?f\.?\s?s(?![a-z])|not\s+for\s+sale/i;
+
+/**
+ * Read a recorded value like "$3,500", "500", "5000.00", "80$" or "USD 1,200"
+ * into cents. "NFS" / "not for sale" → { nfs: true }. Anything unclear
+ * (ranges, words, several numbers) gives no price rather than a wrong one.
+ */
+export function parseRecordedPrice(raw: unknown): { cents: number | null; nfs: boolean } {
+  if (typeof raw !== 'string' || !raw.trim()) return { cents: null, nfs: false };
+  const text = raw.trim();
+  if (NFS_PATTERN.test(text)) return { cents: null, nfs: true };
+  const cleaned = text.replace(/usd|us\$|\$|,|\s/gi, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return { cents: null, nfs: false };
+  const cents = Math.round(Number(cleaned) * 100);
+  return { cents: cents > 0 ? cents : null, nfs: false };
+}
+
+/** The artist's recorded value wins; a gallery checklist price is the fallback. */
+function artistPrice(rows: SalesArtworkRow[]): { cents: number | null; nfs: boolean } {
+  for (const r of rows) {
+    const p = parseRecordedPrice(r.value);
+    if (p.nfs || p.cents) return p;
+  }
+  for (const r of rows) {
+    const p = parseRecordedPrice(r.metadata?.exhibition_list_price);
+    if (p.nfs || p.cents) return p;
+  }
+  return { cents: null, nfs: false };
+}
 
 export function exhibitionSalesOpen(ex: SalesExhibitionRow, now: Date = new Date()): boolean {
   if (!ex.sales_enabled || !ex.published_at) return false;
@@ -117,6 +154,10 @@ export function buildExhibitionListings(
         .sort()
         .pop() ?? null;
 
+    // The shown certificate (the artist's) first, then the others behind it.
+    const recorded = artistPrice([row, ...relatedRows.filter((r) => r.id !== row.id)]);
+    const showPrice = (priced.sale_price_cents ?? 0) > 0 ? priced.sale_price_cents! : null;
+
     result.set(row.id, {
       artworkId: row.id,
       relatedArtworkIds: [...related],
@@ -125,7 +166,9 @@ export function buildExhibitionListings(
       artistName: row.artist_name?.trim() || null,
       imageUrl: row.image_url,
       forSale: !!priced.for_sale && (priced.sale_price_cents ?? 0) > 0,
-      priceCents: priced.sale_price_cents ?? null,
+      priceCents: showPrice ?? recorded.cents,
+      priceSource: showPrice ? 'show' : recorded.cents ? 'artist' : null,
+      nfs: recorded.nfs,
       currency: (priced.sale_currency || 'usd').toLowerCase(),
       artistAccountId: row.artist_account_id || row.account_id,
       isSold,

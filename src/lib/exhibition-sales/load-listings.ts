@@ -11,7 +11,7 @@ import {
 } from './listings';
 
 const ARTWORK_COLUMNS =
-  'id, title, artist_name, image_url, account_id, artist_account_id, certificate_type, source_artwork_id, status, is_public, is_sold, sold_at, checkout_reserved_until';
+  'id, title, artist_name, image_url, account_id, artist_account_id, certificate_type, source_artwork_id, status, is_public, is_sold, sold_at, checkout_reserved_until, value, metadata';
 
 /** Load an exhibition's sale settings and its listings. Pass an admin client. */
 export async function loadExhibitionListings(

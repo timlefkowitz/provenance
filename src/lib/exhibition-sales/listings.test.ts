@@ -6,6 +6,7 @@ import {
   exhibitionSalesOpen,
   isHeldByAnotherCheckout,
   isPurchasable,
+  parseRecordedPrice,
   type SalesArtworkRow,
 } from './listings';
 
@@ -106,5 +107,54 @@ describe('exhibitionSalesOpen', () => {
   it('parses commission', () => {
     expect(commissionPercentOf(ex)).toBe(40);
     expect(commissionPercentOf({ ...ex, commission_percent: null })).toBe(0);
+  });
+});
+
+describe('parseRecordedPrice', () => {
+  it.each([
+    ['$3,500', 350000],
+    ['500', 50000],
+    ['5000.00', 500000],
+    ['80$', 8000],
+    ['USD 1,200', 120000],
+    ['$1600', 160000],
+    ['1.00', 100],
+  ])('%s → %i cents', (raw, cents) => {
+    expect(parseRecordedPrice(raw)).toEqual({ cents, nfs: false });
+  });
+
+  it.each(['NFS', 'nfs', 'N.F.S.', 'Not for sale', 'NFS (private collection)'])('%s is not for sale', (raw) => {
+    expect(parseRecordedPrice(raw)).toEqual({ cents: null, nfs: true });
+  });
+
+  it.each(['$1,200 - $1,500', 'inquire', 'Price on request', '', null, '0', 'Infinite'])('%s gives no price', (raw) => {
+    expect(parseRecordedPrice(raw)).toEqual({ cents: null, nfs: false });
+  });
+});
+
+describe('artist value as the price', () => {
+  it('uses the artist value before a gallery checklist price, and a show price before both', () => {
+    const links = [{ artwork_id: 'a', status: 'selected' }];
+    const m = buildExhibitionListings(links, [art('a', { value: '500', metadata: { exhibition_list_price: '$400' } })]);
+    expect(m.get('a')).toMatchObject({ priceCents: 50000, priceSource: 'artist', forSale: false, nfs: false });
+    expect(isPurchasable(m.get('a')!)).toBe(false);
+
+    const shown = buildExhibitionListings(
+      [{ ...links[0]!, for_sale: true, sale_price_cents: 45000 }],
+      [art('a', { value: '500' })],
+    );
+    expect(shown.get('a')).toMatchObject({ priceCents: 45000, priceSource: 'show', forSale: true });
+  });
+
+  it('falls back to the checklist price, and reads NFS off the COA behind a COS', () => {
+    expect(
+      buildExhibitionListings([{ artwork_id: 'a', status: 'selected' }], [art('a', { metadata: { exhibition_list_price: '880' } })]).get('a'),
+    ).toMatchObject({ priceCents: 88000, priceSource: 'artist' });
+
+    const m = buildExhibitionListings(
+      [{ artwork_id: 'coa', cos_artwork_id: 'cos', status: 'selected' }],
+      [art('coa', { value: 'NFS' }), art('cos', { certificate_type: 'show', value: '$900' })],
+    );
+    expect(m.get('coa')).toMatchObject({ nfs: true, priceCents: null });
   });
 });

@@ -10,10 +10,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { canManageExhibition } from '~/app/profiles/_actions/gallery-members';
 import { commissionPercentOf } from '~/lib/exhibition-sales/listings';
 import { loadExhibitionListings } from '~/lib/exhibition-sales/load-listings';
-import { ensurePayoutAccount } from '~/lib/payouts/seller-payouts';
 import { asUntyped } from '~/lib/supabase-untyped';
 
 type Result = { success: true } | { success: false; error: string };
+type SettingsResult = { success: true; listedCount: number } | { success: false; error: string };
 
 export type ExhibitionSalesSummary = {
   enabled: boolean;
@@ -25,6 +25,9 @@ export type ExhibitionSalesSummary = {
     imageUrl: string | null;
     forSale: boolean;
     priceCents: number | null;
+    /** 'artist' = taken from the value the artist recorded, not yet saved for the show. */
+    priceSource: 'show' | 'artist' | null;
+    nfs: boolean;
     isSold: boolean;
   }>;
 };
@@ -58,6 +61,8 @@ export async function getExhibitionSalesSummary(exhibitionId: string): Promise<E
       imageUrl: l.imageUrl,
       forSale: l.forSale,
       priceCents: l.priceCents,
+      priceSource: l.priceSource,
+      nfs: l.nfs,
       isSold: l.isSold,
     })),
   };
@@ -69,47 +74,67 @@ const SettingsSchema = z.object({
   commissionPercent: z.number().min(0).max(100),
 });
 
-/** Switch online selling on or off for a show and set the gallery's commission. */
-export async function updateExhibitionSalesSettings(input: z.infer<typeof SettingsSchema>): Promise<Result> {
-  const parsed = SettingsSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: 'Commission must be between 0 and 100%' };
-  const { exhibitionId, enabled, commissionPercent } = parsed.data;
+/**
+ * Switch online selling on or off for a show and set the gallery's commission.
+ * Switching it on offers every unsold work with a price for sale, at the
+ * artist's recorded value, except works the artist marked NFS.
+ */
+export async function updateExhibitionSalesSettings(
+  input: z.infer<typeof SettingsSchema>,
+): Promise<SettingsResult> {
+  try {
+    const parsed = SettingsSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: 'Commission must be between 0 and 100%' };
+    const { exhibitionId, enabled, commissionPercent } = parsed.data;
 
-  const ctx = await requireManager(exhibitionId);
-  if ('error' in ctx) return { success: false, error: ctx.error! };
-  const { admin, loaded } = ctx;
+    const ctx = await requireManager(exhibitionId);
+    if ('error' in ctx) return { success: false, error: ctx.error! };
+    const { admin, loaded } = ctx;
+    // Switching on (or on with nothing listed yet, e.g. shows switched on
+    // before works were listed automatically) offers every priced work.
+    const turningOn =
+      enabled &&
+      (!loaded.exhibition.sales_enabled || ![...loaded.listings.values()].some((l) => l.forSale));
 
-  // The gallery is paid its commission, so it needs a payout account (created
-  // silently; payout details are added later in Settings → Shop).
-  if (enabled && commissionPercent > 0) {
-    const { data: galleryAccount } = await admin
-      .from('accounts')
-      .select('email')
-      .eq('id', loaded.exhibition.gallery_id)
-      .maybeSingle();
-    const payout = await ensurePayoutAccount(
-      loaded.exhibition.gallery_id,
-      (galleryAccount?.email as string | null) ?? null,
-    );
-    if (!payout.ok) return { success: false, error: payout.error };
-  }
+    // No payout account is needed up front: the gallery's commission is
+    // booked on each sale and paid once it adds payout details in Settings.
+    const { error } = await admin
+      .from('exhibitions')
+      .update({
+        sales_enabled: enabled,
+        commission_percent: Math.round(commissionPercent * 100) / 100,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', exhibitionId);
+    if (error) {
+      console.error('[ExhibitionSales] settings update failed', { exhibitionId, error });
+      return { success: false, error: 'Could not save online sales settings' };
+    }
 
-  const { error } = await admin
-    .from('exhibitions')
-    .update({
-      sales_enabled: enabled,
-      commission_percent: Math.round(commissionPercent * 100) / 100,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', exhibitionId);
-  if (error) {
-    console.error('[ExhibitionSales] settings update failed', { exhibitionId, error });
+    let listedCount = 0;
+    if (turningOn) {
+      const toList = [...loaded.listings.values()].filter(
+        (l) => !l.isSold && !l.nfs && !l.forSale && (l.priceCents ?? 0) > 0,
+      );
+      for (const l of toList) {
+        const { error: listErr } = await admin
+          .from('exhibition_artworks')
+          .update({ for_sale: true, sale_price_cents: l.priceCents, sale_currency: 'usd' })
+          .eq('exhibition_id', exhibitionId)
+          .eq('artwork_id', l.saleArtworkId);
+        if (listErr) console.error('[ExhibitionSales] listing work failed', { exhibitionId, artworkId: l.artworkId, listErr });
+        else listedCount++;
+      }
+    }
+
+    console.log('[ExhibitionSales] settings saved', { exhibitionId, enabled, commissionPercent, listedCount });
+    revalidatePath(`/exhibitions/${exhibitionId}`);
+    revalidatePath(`/exhibitions/${exhibitionId}/edit`);
+    return { success: true, listedCount };
+  } catch (err) {
+    console.error('[ExhibitionSales] settings update threw', { input, err });
     return { success: false, error: 'Could not save online sales settings' };
   }
-  console.log('[ExhibitionSales] settings saved', { exhibitionId, enabled, commissionPercent });
-  revalidatePath(`/exhibitions/${exhibitionId}`);
-  revalidatePath(`/exhibitions/${exhibitionId}/edit`);
-  return { success: true };
 }
 
 const PriceSchema = z.object({

@@ -58,7 +58,13 @@ export function ExhibitionSalesPanel({
         setEnabled(summary.enabled);
         return;
       }
-      toast.success(nextEnabled ? 'Online sales are on' : 'Online sales are off');
+      toast.success(
+        nextEnabled
+          ? res.listedCount > 0
+            ? `Online sales are on: ${res.listedCount} ${res.listedCount === 1 ? 'work is' : 'works are'} now for sale`
+            : 'Online sales are on'
+          : 'Online sales are off',
+      );
       router.refresh();
     });
   }
@@ -108,7 +114,7 @@ export function ExhibitionSalesPanel({
         <p className={FIELD_HINT}>
           {enabled
             ? `${forSaleCount} of ${summary.works.length} works can be bought right now.`
-            : 'Off: prices you set below are saved but nothing can be bought.'}
+            : 'Off: switching it on offers every work below that has a price, except ones marked NFS. Prices start from the value each artist recorded.'}
         </p>
 
         {summary.works.length === 0 ? (
@@ -116,7 +122,11 @@ export function ExhibitionSalesPanel({
         ) : (
           <ul className="divide-y divide-editorial-border/20 border-y border-editorial-border/20">
             {summary.works.map((w) => (
-              <WorkPriceRow key={w.artworkId} exhibitionId={exhibitionId} work={w} />
+              <WorkPriceRow
+                key={`${w.artworkId}:${w.forSale}:${w.priceCents ?? ''}`}
+                exhibitionId={exhibitionId}
+                work={w}
+              />
             ))}
           </ul>
         )}
@@ -172,6 +182,15 @@ function WorkPriceRow({
       <div className="min-w-0 flex-1">
         <p className="truncate font-serif text-sm text-editorial-ink">{work.title}</p>
         {work.artistName && <p className="truncate font-serif text-xs text-editorial-ink/55">{work.artistName}</p>}
+        {!work.isSold && (work.nfs || work.priceSource === 'artist' || !work.priceCents) && (
+          <p className="font-serif text-[11px] text-editorial-ink/45">
+            {work.nfs
+              ? 'Artist marked NFS (not for sale)'
+              : work.priceSource === 'artist'
+                ? 'Price from the artist’s recorded value'
+                : 'No value recorded: add a price to sell it'}
+          </p>
+        )}
       </div>
       {work.isSold ? (
         <span className="inline-flex items-center gap-1.5 font-serif text-xs text-ink/55">
