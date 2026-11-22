@@ -23,6 +23,8 @@ function statusLabel(status: string): string {
   switch (status) {
     case 'consumed':
       return 'Submitted';
+    case 'accepted':
+      return 'Accepted';
     case 'sent':
     case 'pending':
       return 'Invite sent';
@@ -38,6 +40,7 @@ function statusLabel(status: string): string {
 function statusClass(status: string): string {
   switch (status) {
     case 'consumed':
+    case 'accepted':
       return 'bg-emerald-50 text-emerald-800 border-emerald-200';
     case 'sent':
     case 'pending':
@@ -214,7 +217,7 @@ export function ExhibitionInvitesPanel({
         <ul className="divide-y divide-editorial-border/15">
           {invites.map((invite) => {
             const isOpen =
-              invite.status === 'sent' || invite.status === 'pending';
+              invite.status === 'sent' || invite.status === 'pending' || invite.status === 'accepted';
             const isSubmitted = invite.status === 'consumed';
 
             return (
@@ -235,12 +238,28 @@ export function ExhibitionInvitesPanel({
                           Open call
                         </span>
                       )}
+                      {invite.can_edit_show && (
+                        <span className="ml-2 border border-editorial-border/30 px-1.5 py-px text-[10px] uppercase tracking-wide text-vermillion/80">
+                          Co-writes show
+                        </span>
+                      )}
                       {invite.submitted_count > 0 && (
                         <span className="ml-2 text-editorial-ink/45">
-                          {invite.submitted_count} submitted
+                          {invite.submitted_count} {invite.status === 'accepted' ? 'added' : 'submitted'}
+                        </span>
+                      )}
+                      {invite.planned_piece_count !== null && (
+                        <span className="ml-2 text-editorial-ink/45">
+                          plans {invite.planned_piece_count}{' '}
+                          {invite.planned_piece_count === 1 ? 'piece' : 'pieces'}
                         </span>
                       )}
                     </p>
+                    {invite.artist_notes && (
+                      <p className="mt-1 font-serif text-xs text-editorial-ink/70 whitespace-pre-line">
+                        “{invite.artist_notes}”
+                      </p>
+                    )}
                   </div>
                 </div>
 

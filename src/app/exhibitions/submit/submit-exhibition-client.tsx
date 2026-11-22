@@ -23,6 +23,7 @@ import {
   submitExistingArtworksToExhibition,
   type ExistingArtworkOption,
 } from '../_actions/submit-exhibition-artwork';
+import { acceptExhibitionInvite } from '../_actions/exhibition-artist-workspace';
 
 const MAX_BATCH_BYTES = 4 * 1024 * 1024;
 
@@ -36,9 +37,15 @@ type InviteContext = {
   maxArtworks: number | null;
   /** Where the artist follows their submission's review (the open call page). */
   statusPath: string | null;
+  /** Invited solo/group artist: work goes straight in; they get their own show page. */
+  straightIn: boolean;
+  showType: 'solo' | 'group' | 'open_call' | null;
+  workspacePath: string | null;
 };
 
 type SubmitExhibitionClientProps = {
+  /** Emailed token, or `invite:<id>` for an accepted invite. */
+  inviteKey: string;
   inviteContext: InviteContext | null;
   contextError: string | null;
 };
@@ -502,13 +509,15 @@ function ArtworkEntryCard({
 }
 
 export function SubmitExhibitionClient({
+  inviteKey,
   inviteContext,
   contextError,
 }: SubmitExhibitionClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const supabase = useSupabase();
-  const token = searchParams.get('token')?.trim() ?? '';
+  const token = inviteKey;
+  const emailedToken = searchParams.get('token')?.trim() ?? '';
 
   const [authState, setAuthState] = useState<
     'loading' | 'needs_sign_in' | 'ready' | 'done' | 'error'
@@ -573,6 +582,20 @@ export function SubmitExhibitionClient({
         return;
       }
 
+      // Solo/group invites open the artist's own show page the first time
+      // they arrive from the email; from there they come back here to add work.
+      if (inviteContext?.straightIn && emailedToken && inviteContext.workspacePath) {
+        const accepted = await acceptExhibitionInvite(emailedToken);
+        if (cancelled) return;
+        if (!accepted.success) {
+          setError(accepted.error);
+          setAuthState('error');
+          return;
+        }
+        router.replace(accepted.path);
+        return;
+      }
+
       setAuthState('ready');
     }
 
@@ -581,9 +604,11 @@ export function SubmitExhibitionClient({
     return () => {
       cancelled = true;
     };
-  }, [token, supabase, inviteContext, contextError]);
+  }, [token, emailedToken, supabase, inviteContext, contextError, router]);
 
-  const nextPath = `/exhibitions/submit?token=${encodeURIComponent(token)}`;
+  const nextPath = emailedToken
+    ? `/exhibitions/submit?token=${encodeURIComponent(emailedToken)}`
+    : `/exhibitions/submit?${searchParams.toString()}`;
   const signInHref = `${pathsConfig.auth.signIn}?next=${encodeURIComponent(nextPath)}`;
 
   const updateEntry = (id: string, patch: Partial<ArtworkEntry>) => {
@@ -709,7 +734,9 @@ export function SubmitExhibitionClient({
         count === 1 ? 'Artwork submitted successfully' : `${count} artworks submitted successfully`,
       );
       setTimeout(() => {
-        if (inviteContext?.statusPath) {
+        if (inviteContext?.workspacePath) {
+          router.replace(`${inviteContext.workspacePath}?added=${count}`);
+        } else if (inviteContext?.statusPath) {
           router.replace(`${inviteContext.statusPath}?submitted=1`);
         } else if (count === 1 && firstArtworkId) {
           router.replace(`/artworks/${firstArtworkId}/certificate`);
@@ -952,18 +979,36 @@ export function SubmitExhibitionClient({
         )}
         <p className="text-ink/55 text-sm mt-4 max-w-md mx-auto">
           Upload your artworks to receive Certificates of Authenticity.
-          {' '}The organiser reviews submissions and selects the works for the exhibition
-          {inviteContext.issuesCertificateOfShow
-            ? '; selected works receive a linked Certificate of Show.'
-            : '.'}
+          {inviteContext.straightIn ? (
+            <>
+              {' '}They go straight into the exhibition
+              {inviteContext.issuesCertificateOfShow
+                ? ' and the gallery receives a linked Certificate of Show.'
+                : '.'}
+            </>
+          ) : (
+            <>
+              {' '}The organiser reviews submissions and selects the works for the exhibition
+              {inviteContext.issuesCertificateOfShow
+                ? '; selected works receive a linked Certificate of Show.'
+                : '.'}
+            </>
+          )}
         </p>
+        {inviteContext.workspacePath && (
+          <p className="text-sm mt-3">
+            <Link href={inviteContext.workspacePath} className="text-wine underline underline-offset-2">
+              Back to your show
+            </Link>
+          </p>
+        )}
         {inviteContext.maxArtworks && (
           <p className="text-ink/70 text-sm mt-3">
             You can submit up to{' '}
             <span className="font-semibold text-wine">
               {inviteContext.maxArtworks} {inviteContext.maxArtworks === 1 ? 'artwork' : 'artworks'}
-            </span>{' '}
-            for consideration.
+            </span>
+            {inviteContext.straightIn ? '.' : ' for consideration.'}
           </p>
         )}
       </div>

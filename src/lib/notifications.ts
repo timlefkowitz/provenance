@@ -82,7 +82,11 @@ export type NotificationType =
   | 'artist_profile_claim_rejected'
   | 'artist_profile_update_request'
   | 'artist_profile_update_request_fulfilled'
-  | 'artist_profile_update_request_dismissed';
+  | 'artist_profile_update_request_dismissed'
+  | 'exhibition_invite_accepted'
+  | 'exhibition_details_updated'
+  | 'exhibition_change_requested'
+  | 'exhibition_change_resolved';
 
 export interface CreateNotificationParams {
   userId: string;

@@ -20,6 +20,13 @@ import { createNotification } from '~/lib/notifications';
 import { INVITE_TTL_MS } from '~/lib/certificate-claims/create-invite-batch';
 import { ownerReceivesCertificateOfShow } from '../_helpers/exhibition-owner-roles';
 import { parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
+import {
+  invitedWorkGoesStraightIn,
+  OPEN_INVITE_STATUSES,
+  parseShowType,
+  type ShowType,
+} from '../_helpers/show-collaboration';
+import { findInviteByKey } from '~/lib/exhibitions/invite-key';
 
 export type ExhibitionArtistInviteInput = {
   email: string;
@@ -44,9 +51,13 @@ export type ExhibitionArtistInviteRow = {
   result_artwork_id: string | null;
   result_cos_artwork_id: string | null;
   created_at: string;
+  accepted_at: string | null;
+  planned_piece_count: number | null;
+  artist_notes: string | null;
+  can_edit_show: boolean;
 };
 
-const OPEN_STATUSES = ['pending', 'sent'];
+const OPEN_STATUSES: string[] = [...OPEN_INVITE_STATUSES];
 
 async function assertCanManageExhibition(
   userId: string,
@@ -56,11 +67,12 @@ async function assertCanManageExhibition(
   title: string;
   details: ExhibitionInviteDetails;
   defaultMaxArtworks: number | null;
+  showType: ShowType | null;
 }> {
   const client = asUntyped(getSupabaseServerClient());
   const { data: exhibition, error } = await asUntyped(client)
     .from('exhibitions')
-    .select('id, gallery_id, title, description, location, start_date, end_date, owner_role, metadata')
+    .select('id, gallery_id, title, description, location, start_date, end_date, owner_role, metadata, show_type')
     .eq('id', exhibitionId)
     .single();
 
@@ -84,10 +96,12 @@ async function assertCanManageExhibition(
       endDate: exhibition.end_date ?? null,
       confirmedArtists: await getConfirmedArtistNames(exhibitionId),
       issuesCertificateOfShow: ownerReceivesCertificateOfShow(exhibition.owner_role),
+      showType: parseShowType(exhibition.show_type),
     },
     defaultMaxArtworks: parseMaxArtworksPerArtist(
       (exhibition.metadata as Record<string, unknown> | null)?.max_artworks_per_artist,
     ),
+    showType: parseShowType(exhibition.show_type),
   };
 }
 
@@ -148,15 +162,22 @@ async function notifyInvitedArtist(params: {
 
   const when = formatExhibitionDateRange(details.startDate, details.endDate);
   const where = details.location?.trim() ? ` at ${details.location.trim()}` : '';
-  const upload = maxArtworks
-    ? `Upload up to ${maxArtworks} ${maxArtworks === 1 ? 'artwork' : 'artworks'} for consideration.`
-    : "Upload the work you'll be showing.";
+  const upload =
+    details.showType === 'solo'
+      ? 'Fill in the show details, how many pieces you plan to show, and add your work.'
+      : maxArtworks
+        ? `Upload up to ${maxArtworks} ${maxArtworks === 1 ? 'artwork' : 'artworks'}${details.showType === 'group' ? '' : ' for consideration'}.`
+        : "Upload the work you'll be showing.";
+  const title =
+    details.showType === 'solo'
+      ? `You're invited to a solo show: "${details.title}"`
+      : `You're invited to show in "${details.title}"`;
 
   try {
     await createNotification({
       userId: recipientId,
       type: 'exhibition_invite',
-      title: `You're invited to show in "${details.title}"`,
+      title,
       message: `${senderName ?? 'An organiser'} invited you to exhibit${where}, ${when}. ${upload}`,
       relatedUserId: senderId,
       metadata: {
@@ -197,7 +218,7 @@ export async function createExhibitionArtistInvites(
     throw new Error('Unauthorized');
   }
 
-  const { title: exhibitionTitle, details, defaultMaxArtworks } = await assertCanManageExhibition(
+  const { title: exhibitionTitle, details, defaultMaxArtworks, showType } = await assertCanManageExhibition(
     user.id,
     exhibitionId,
   );
@@ -256,6 +277,7 @@ export async function createExhibitionArtistInvites(
           status: 'sent',
           expires_at: expiresAt,
           created_by: user.id,
+          can_edit_show: showType === 'solo',
         });
 
       if (insertError) {
@@ -335,7 +357,7 @@ export async function getExhibitionInvites(
   const { data, error } = await asUntyped(adminClient)
     .from('exhibition_artist_invites')
     .select(
-      'id, exhibition_id, invitee_email, invitee_name, artist_account_id, status, max_artworks, submitted_count, source, expires_at, consumed_at, result_artwork_id, result_cos_artwork_id, created_at',
+      'id, exhibition_id, invitee_email, invitee_name, artist_account_id, status, max_artworks, submitted_count, source, expires_at, consumed_at, result_artwork_id, result_cos_artwork_id, created_at, accepted_at, planned_piece_count, artist_notes, can_edit_show',
     )
     .eq('exhibition_id', exhibitionId)
     .order('created_at', { ascending: false });
@@ -389,7 +411,8 @@ export async function resendExhibitionInvite(
       .from('exhibition_artist_invites')
       .update({
         token_hash: tokenHash,
-        status: 'sent',
+        // An accepted invite stays accepted; the fresh link just gets them back in.
+        status: invite.status === 'accepted' ? 'accepted' : 'sent',
         expires_at: expiresAt,
       })
       .eq('id', inviteId);
@@ -486,39 +509,66 @@ export async function cancelExhibitionInvite(
   }
 }
 
-export async function getExhibitionInviteContext(token: string): Promise<
-  | {
-      valid: true;
-      exhibitionTitle: string;
-      galleryName: string | null;
-      issuesCertificateOfShow: boolean;
-      inviteeEmail: string;
-      inviteeName: string | null;
-      status: string;
-      maxArtworks: number | null;
-      /** Open call page where the artist can follow their submission's review. */
-      statusPath: string | null;
-    }
-  | { valid: false; error: string }
-> {
-  const trimmed = token?.trim();
-  if (!trimmed) {
+export type ExhibitionInviteContext = {
+  valid: true;
+  inviteId: string;
+  exhibitionId: string;
+  exhibitionTitle: string;
+  galleryName: string | null;
+  issuesCertificateOfShow: boolean;
+  inviteeEmail: string;
+  inviteeName: string | null;
+  status: string;
+  maxArtworks: number | null;
+  /** Open call page where the artist can follow their submission's review. */
+  statusPath: string | null;
+  showType: ShowType | null;
+  /** Invited solo/group artist: work goes straight in, invite stays open. */
+  straightIn: boolean;
+  /** The artist's own page for this show (solo/group invites). */
+  workspacePath: string | null;
+};
+
+/**
+ * Context for the submit page. `key` is the emailed token or `invite:<id>`
+ * (see ~/lib/exhibitions/invite-key).
+ */
+export async function getExhibitionInviteContext(
+  key: string,
+): Promise<ExhibitionInviteContext | { valid: false; error: string }> {
+  if (!key?.trim()) {
     return { valid: false, error: 'Missing invite token' };
   }
 
   const adminClient = getSupabaseServerAdminClient();
-  const tokenHash = hashClaimToken(trimmed);
-
-  const { data: invite, error } = await asUntyped(adminClient)
-    .from('exhibition_artist_invites')
-    .select(
-      'id, invitee_email, invitee_name, status, max_artworks, expires_at, exhibition_id',
-    )
-    .eq('token_hash', tokenHash)
-    .maybeSingle();
+  const { invite, byId, error } = await findInviteByKey<{
+    id: string;
+    invitee_email: string;
+    invitee_name: string | null;
+    status: string;
+    max_artworks: number | null;
+    expires_at: string;
+    exhibition_id: string;
+    source: string;
+    accepted_by: string | null;
+  }>(
+    asUntyped(adminClient),
+    key,
+    'id, invitee_email, invitee_name, status, max_artworks, expires_at, exhibition_id, source, accepted_by',
+  );
 
   if (error || !invite) {
     return { valid: false, error: 'Invalid or expired invite link' };
+  }
+
+  // Invite-id links only work for the artist who accepted the invite.
+  if (byId) {
+    const {
+      data: { user },
+    } = await getSupabaseServerClient().auth.getUser();
+    if (!user || user.id !== invite.accepted_by) {
+      return { valid: false, error: 'Sign in with the account that accepted this invitation' };
+    }
   }
 
   if (invite.status === 'cancelled') {
@@ -530,7 +580,10 @@ export async function getExhibitionInviteContext(token: string): Promise<
   }
 
   const expiresAt = new Date(invite.expires_at);
-  if (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
+  if (
+    invite.status !== 'accepted' &&
+    (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date())
+  ) {
     await asUntyped(adminClient)
       .from('exhibition_artist_invites')
       .update({ status: 'expired' })
@@ -540,7 +593,7 @@ export async function getExhibitionInviteContext(token: string): Promise<
 
   const { data: exhibition } = await asUntyped(adminClient)
     .from('exhibitions')
-    .select('title, gallery_id, owner_role')
+    .select('title, gallery_id, owner_role, show_type')
     .eq('id', invite.exhibition_id)
     .single();
 
@@ -563,8 +616,13 @@ export async function getExhibitionInviteContext(token: string): Promise<
     galleryName = galleryAccount?.name ?? null;
   }
 
+  const showType = parseShowType(exhibition?.show_type);
+  const straightIn = invitedWorkGoesStraightIn(showType, invite.source);
+
   return {
     valid: true,
+    inviteId: invite.id,
+    exhibitionId: invite.exhibition_id,
     exhibitionTitle: exhibition?.title ?? 'Exhibition',
     galleryName,
     issuesCertificateOfShow: ownerReceivesCertificateOfShow(exhibition?.owner_role),
@@ -573,6 +631,9 @@ export async function getExhibitionInviteContext(token: string): Promise<
     status: invite.status,
     maxArtworks: invite.max_artworks ?? null,
     statusPath: openCall?.slug ? `/open-calls/${openCall.slug}` : null,
+    showType,
+    straightIn,
+    workspacePath: straightIn ? `/exhibitions/${invite.exhibition_id}/artist` : null,
   };
 }
 

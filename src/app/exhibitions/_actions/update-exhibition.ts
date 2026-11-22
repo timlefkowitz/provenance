@@ -14,6 +14,11 @@ import {
 import { exhibitionHasEnded, parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
 import { normalizePhoneInput } from '~/lib/phone';
 import { canUseVenueGallery } from '~/lib/exhibitions/exhibition-venue';
+import {
+  parseFieldSources,
+  parseShowType,
+  sourcesAfterOrganiserEdit,
+} from '../_helpers/show-collaboration';
 
 export async function updateExhibition(exhibitionId: string, formData: FormData) {
   const client = asUntyped(getSupabaseServerClient());
@@ -77,6 +82,9 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   const galleryProfileField = formData.get('galleryProfileId') as string | null;
   const galleryProfileId =
     galleryProfileField === null ? undefined : galleryProfileField.trim() || null;
+  // Only present when the form offered the show-type picker.
+  const showTypeField = formData.get('showType') as string | null;
+  const showType = showTypeField === null ? undefined : parseShowType(showTypeField);
 
   if (galleryProfileId && !(await canUseVenueGallery(client, user.id, galleryProfileId))) {
     throw new Error('You can only hold a show at a gallery you run or are on the team of');
@@ -92,7 +100,7 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
   // Get existing metadata
   const { data: existingExhibition } = await asUntyped(client)
     .from('exhibitions')
-    .select('metadata')
+    .select('metadata, title, description, start_date, end_date, location, field_sources')
     .eq('id', exhibitionId)
     .single();
 
@@ -132,6 +140,19 @@ export async function updateExhibition(exhibitionId: string, formData: FormData)
       location: location?.trim() || null,
       metadata: Object.keys(metadata).length > 0 ? metadata : null,
       ...(galleryProfileId !== undefined ? { gallery_profile_id: galleryProfileId } : {}),
+      ...(showType !== undefined ? { show_type: showType } : {}),
+      // Fields the organiser changes become theirs (locked for invited artists).
+      field_sources: sourcesAfterOrganiserEdit(
+        parseFieldSources(existingExhibition?.field_sources),
+        {
+          title: existingExhibition?.title ?? null,
+          description: existingExhibition?.description ?? null,
+          start_date: existingExhibition?.start_date ?? null,
+          end_date: existingExhibition?.end_date ?? null,
+          location: existingExhibition?.location ?? null,
+        },
+        { title, description, start_date: startDate, end_date: endDate, location },
+      ),
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })

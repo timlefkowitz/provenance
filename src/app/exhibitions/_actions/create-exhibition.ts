@@ -19,6 +19,7 @@ import {
 import { exhibitionHasEnded, parseMaxArtworksPerArtist } from '../_helpers/exhibition-invite-limits';
 import { normalizePhoneInput } from '~/lib/phone';
 import { canUseVenueGallery } from '~/lib/exhibitions/exhibition-venue';
+import { parseShowType, sourcesForOrganiserValues } from '../_helpers/show-collaboration';
 
 export async function createExhibition(formData: FormData) {
   console.log('[Exhibitions] createExhibition started');
@@ -51,7 +52,8 @@ export async function createExhibition(formData: FormData) {
     throw new Error('You must have an active role to create an exhibition');
   }
 
-  const title = formData.get('title') as string;
+  const showType = parseShowType(formData.get('showType'));
+  const titleInput = ((formData.get('title') as string | null) ?? '').trim();
   const description = formData.get('description') as string;
   const startDate = formData.get('startDate') as string;
   const endDate = formData.get('endDate') as string | null;
@@ -78,10 +80,19 @@ export async function createExhibition(formData: FormData) {
   }
   const ownerRole = ownerRoleInput as ExhibitionOwnerRole;
 
-  if (!title || !startDate) {
-    throw new Error('Title and start date are required');
+  let parsedInvites: ExhibitionArtistInviteInput[] = [];
+  if (artistInvitesJson) {
+    try {
+      parsedInvites = JSON.parse(artistInvitesJson) as ExhibitionArtistInviteInput[];
+    } catch (e) {
+      console.error('[Exhibitions] createExhibition artist invites parse failed', e);
+    }
   }
-  if (containsObjectionableText(title, description, location, curator, theme)) {
+
+  if (!startDate || (!titleInput && showType !== 'solo')) {
+    throw new Error(showType === 'solo' ? 'An opening date is required' : 'Title and start date are required');
+  }
+  if (containsObjectionableText(titleInput, description, location, curator, theme)) {
     throw new Error(OBJECTIONABLE_TEXT_MESSAGE);
   }
 
@@ -98,6 +109,22 @@ export async function createExhibition(formData: FormData) {
     } catch (e) {
       console.error('Error parsing artist IDs:', e);
     }
+  }
+
+  // A solo show can start with just a date and an artist; until the artist
+  // names it, it's called after them.
+  let title = titleInput;
+  if (!title) {
+    let soloArtistName = parsedInvites[0]?.name?.trim() || null;
+    if (!soloArtistName && artistIds[0]) {
+      const { data: soloArtist } = await client
+        .from('accounts')
+        .select('name')
+        .eq('id', artistIds[0])
+        .maybeSingle();
+      soloArtistName = (soloArtist?.name as string | null)?.trim() || null;
+    }
+    title = soloArtistName ? `${soloArtistName}: solo show` : 'Untitled solo show';
   }
 
   // Build metadata object
@@ -127,6 +154,16 @@ export async function createExhibition(formData: FormData) {
       end_date: endDate || null,
       location: location?.trim() || null,
       metadata: Object.keys(metadata).length > 0 ? metadata : null,
+      show_type: showType,
+      // Fields the organiser filled are locked for invited artists; a
+      // placeholder solo title is left for the artist.
+      field_sources: sourcesForOrganiserValues({
+        title: titleInput,
+        description,
+        start_date: startDate,
+        end_date: endDate,
+        location,
+      }),
       created_by: user.id,
       updated_by: user.id,
     })
@@ -179,12 +216,9 @@ export async function createExhibition(formData: FormData) {
     exhibitionTitle: title,
   });
 
-  if (artistInvitesJson) {
+  if (parsedInvites.length > 0) {
     try {
-      const invites = JSON.parse(artistInvitesJson) as ExhibitionArtistInviteInput[];
-      if (invites.length > 0) {
-        await createExhibitionArtistInvites(exhibition.id, invites);
-      }
+      await createExhibitionArtistInvites(exhibition.id, parsedInvites);
     } catch (e) {
       console.error('[Exhibitions] createExhibition artist invites failed', e);
     }

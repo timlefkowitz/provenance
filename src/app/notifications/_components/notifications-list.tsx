@@ -153,6 +153,10 @@ export function NotificationsList({
         return <Users className="h-5 w-5" />;
       case 'exhibition_invite':
       case 'open_call_submission_reminder':
+      case 'exhibition_invite_accepted':
+      case 'exhibition_details_updated':
+      case 'exhibition_change_requested':
+      case 'exhibition_change_resolved':
       case 'exhibition_artwork_submitted':
       case 'exhibition_artwork_selected':
       case 'exhibition_artwork_sold':
@@ -230,6 +234,7 @@ export function NotificationsList({
       case 'gallery_team_invite':
       case 'exhibition_invite':
       case 'open_call_submission_reminder':
+      case 'exhibition_change_requested':
         return 'text-wine';
       default:
         return 'text-ink';
@@ -491,6 +496,25 @@ export function NotificationsList({
                           className="font-serif bg-wine text-parchment hover:bg-wine/90"
                         >
                           Submit your work
+                        </Button>
+                      </Link>
+                    )}
+
+                    {(notification.type === 'exhibition_invite_accepted' ||
+                      notification.type === 'exhibition_details_updated' ||
+                      notification.type === 'exhibition_change_requested' ||
+                      notification.type === 'exhibition_change_resolved') &&
+                      typeof notification.metadata?.action_path === 'string' &&
+                      notification.metadata.action_path.startsWith('/exhibitions/') && (
+                      <Link href={notification.metadata.action_path}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-serif border-wine/30 hover:bg-wine/10"
+                        >
+                          {typeof notification.metadata?.action_label === 'string'
+                            ? notification.metadata.action_label
+                            : 'Open exhibition'}
                         </Button>
                       </Link>
                     )}

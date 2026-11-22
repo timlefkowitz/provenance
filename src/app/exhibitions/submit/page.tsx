@@ -1,16 +1,18 @@
 import { Suspense } from 'react';
 import { getExhibitionInviteContext } from '../_actions/manage-exhibition-invites';
 import { SubmitExhibitionClient } from './submit-exhibition-client';
+import { inviteKeyForId } from '~/lib/exhibitions/invite-key';
 
 export const maxDuration = 60;
 
 type PageProps = {
-  searchParams: Promise<{ token?: string }>;
+  /** token: from the invite email. invite: an accepted invite, from the artist's show page. */
+  searchParams: Promise<{ token?: string; invite?: string }>;
 };
 
 export default async function ExhibitionSubmitPage({ searchParams }: PageProps) {
-  const { token } = await searchParams;
-  const trimmed = token?.trim() ?? '';
+  const { token, invite } = await searchParams;
+  const trimmed = token?.trim() || (invite?.trim() ? inviteKeyForId(invite.trim()) : '');
 
   let inviteContext = null;
   let contextError: string | null = null;
@@ -26,6 +28,9 @@ export default async function ExhibitionSubmitPage({ searchParams }: PageProps) 
         inviteeName: result.inviteeName,
         maxArtworks: result.maxArtworks,
         statusPath: result.statusPath,
+        straightIn: result.straightIn,
+        showType: result.showType,
+        workspacePath: result.workspacePath,
       };
     } else {
       contextError = result.error;
@@ -43,6 +48,7 @@ export default async function ExhibitionSubmitPage({ searchParams }: PageProps) 
       }
     >
       <SubmitExhibitionClient
+        inviteKey={trimmed}
         inviteContext={inviteContext}
         contextError={contextError}
       />

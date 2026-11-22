@@ -18,6 +18,8 @@ import { ExhibitionSubmissionsPanel } from '../../_components/exhibition-submiss
 import { ExhibitionSalesPanel } from '../../_components/exhibition-sales-panel';
 import { getExhibitionSalesSummary } from '../../_actions/exhibition-sales';
 import { ownerReceivesCertificateOfShow } from '../../_helpers/exhibition-owner-roles';
+import { getExhibitionChangeRequests } from '../../_actions/exhibition-change-requests';
+import { ExhibitionChangeRequestsPanel } from '../../_components/exhibition-change-requests-panel';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { listVenueGalleriesForUser } from '~/lib/exhibitions/exhibition-venue';
@@ -57,18 +59,22 @@ export default async function EditExhibitionPage({
     redirect('/exhibitions');
   }
 
-  const [invites, uninvitedArtists, openCall, submissions, venues, salesSummary] = await Promise.all([
-    getExhibitionInvites(id),
-    getUninvitedCreditedArtists(id),
-    getExhibitionOpenCall(id),
-    getExhibitionSubmissions(id),
-    listVenueGalleriesForUser(client, user.id),
-    getExhibitionSalesSummary(id),
-  ]);
+  const [invites, uninvitedArtists, openCall, submissions, venues, salesSummary, changeRequests] =
+    await Promise.all([
+      getExhibitionInvites(id),
+      getUninvitedCreditedArtists(id),
+      getExhibitionOpenCall(id),
+      getExhibitionSubmissions(id),
+      listVenueGalleriesForUser(client, user.id),
+      getExhibitionSalesSummary(id),
+      getExhibitionChangeRequests(id),
+    ]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <EditorialPageHeader eyebrow="Exhibitions" title="Edit exhibition" description="Update exhibition details" />
+
+      <ExhibitionChangeRequestsPanel exhibitionId={id} requests={changeRequests} />
 
       <ExhibitionForm
         exhibition={exhibition}

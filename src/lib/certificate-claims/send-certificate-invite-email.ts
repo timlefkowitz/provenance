@@ -190,6 +190,8 @@ export type ExhibitionInviteDetails = {
   confirmedArtists: string[];
   /** False for artist-run shows, where no gallery Certificate of Show is issued. */
   issuesCertificateOfShow: boolean;
+  /** solo | group | open_call; null for shows made before show types. */
+  showType?: 'solo' | 'group' | 'open_call' | null;
 };
 
 const MAX_EMAIL_DESCRIPTION_CHARS = 800;
@@ -249,9 +251,13 @@ export async function sendExhibitionArtistInviteEmail(params: {
       `**Confirmed artists:** ${exhibition.confirmedArtists.map(escapeMarkdown).join(', ')}`,
     );
   }
+  const isSolo = exhibition.showType === 'solo';
+  const straightIn = isSolo || exhibition.showType === 'group';
   if (maxArtworks) {
     detailLines.push(
-      `**Submissions:** up to ${maxArtworks} ${maxArtworks === 1 ? 'artwork' : 'artworks'}, from which the final selection will be made`,
+      straightIn
+        ? `**Artworks:** up to ${maxArtworks}`
+        : `**Submissions:** up to ${maxArtworks} ${maxArtworks === 1 ? 'artwork' : 'artworks'}, from which the final selection will be made`,
     );
   }
 
@@ -270,22 +276,37 @@ export async function sendExhibitionArtistInviteEmail(params: {
       : ' and add the work to the exhibition'
   }.`;
 
+  const intro = isSolo
+    ? `You have been invited${fromLine} to a solo show, "${escapeMarkdown(exhibition.title)}".`
+    : `You have been invited${fromLine} to show in "${escapeMarkdown(exhibition.title)}".`;
+  const nextSteps = isSolo
+    ? `Sign in with this email address to fill in the show: the title and description if they're still open, how many pieces you plan to show, and your artworks. Anything the gallery has already set, you can ask them to change. We will issue a Certificate of Authenticity for each work${
+        exhibition.issuesCertificateOfShow ? ' and the gallery will receive a linked Certificate of Show' : ''
+      }.`
+    : straightIn
+      ? `Sign in with this email address to tell the gallery how many pieces you plan to show and add your artworks; they go straight into the show. You can also ask the gallery to change any of the show details. We will issue a Certificate of Authenticity for each work${
+          exhibition.issuesCertificateOfShow ? ' and the gallery will receive a linked Certificate of Show' : ''
+        }.`
+      : certificateLine;
+
   const body = [
-    `You have been invited${fromLine} to show in "${escapeMarkdown(exhibition.title)}".`,
+    intro,
     ...detailLines,
     ...(descriptionBlock ? [descriptionBlock] : []),
-    certificateLine,
+    nextSteps,
   ].join('\n');
 
   await sendNotificationEmail(
     to,
     recipientName,
-    `You're invited to show in "${exhibition.title}"`,
+    isSolo
+      ? `You're invited to a solo show: "${exhibition.title}"`
+      : `You're invited to show in "${exhibition.title}"`,
     {
-      title: 'You are invited to exhibit',
+      title: isSolo ? 'You are invited to a solo show' : 'You are invited to exhibit',
       body,
       ctaUrl: submitUrl,
-      ctaLabel: 'Submit your work',
+      ctaLabel: straightIn ? 'Open your invitation' : 'Submit your work',
     },
   );
 }

@@ -26,6 +26,14 @@ import {
   FIELD_LABEL,
 } from '~/components/editorial-form';
 import { MarkdownTextarea } from '~/components/markdown-textarea';
+import {
+  parseFieldSources,
+  parseShowType,
+  SHOW_TYPE_LABELS,
+  SHOW_TYPES,
+  type ShowField,
+  type ShowType,
+} from '../_helpers/show-collaboration';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 type Artist = {
@@ -42,13 +50,31 @@ const OWNER_ROLE_HINTS: Partial<Record<ExhibitionOwnerRole, string>> = {
 
 export type ExhibitionVenueOption = { id: string; name: string };
 
+const SHOW_TYPE_HINTS: Record<ShowType, string> = {
+  solo: 'One artist. Set the date; leave the title, description or anything else blank for the artist to fill in. They can ask you to change anything you set, and their works go straight into the show.',
+  group: 'Artists you invite. Each tells you how many pieces they plan to show and adds their works, which go straight into the show. They can ask you to change the show details.',
+  open_call: 'Any artist can submit through your open call (set it up after creating the show). You review every submission and select what goes in.',
+};
+
+function ArtistFilledBadge({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span className="ml-2 border border-editorial-border/30 px-1.5 py-px font-jetbrains text-[9px] uppercase tracking-[0.14em] text-vermillion/80 align-middle">
+      Added by artist
+    </span>
+  );
+}
+
 export function ExhibitionForm({
   exhibition,
   ownerRoleOptions = [],
   defaultOwnerRole,
   venueOptions = [],
+  defaultShowType,
 }: {
   exhibition?: any;
+  /** Show type preselected for a new exhibition (e.g. from ?type=solo). */
+  defaultShowType?: ShowType | null;
   /** Modes the new exhibition can be created under; ignored when editing. */
   ownerRoleOptions?: ExhibitionOwnerRole[];
   defaultOwnerRole?: ExhibitionOwnerRole;
@@ -66,6 +92,16 @@ export function ExhibitionForm({
   const [selectedInvites, setSelectedInvites] = useState<ExhibitionArtistInvite[]>([]);
   const [checklistRows, setChecklistRows] = useState<ChecklistRow[]>([]);
   const [ownerRole, setOwnerRole] = useState<ExhibitionOwnerRole | undefined>(defaultOwnerRole);
+  // Null on an existing show made before show types, until the organiser picks one.
+  const [showType, setShowType] = useState<ShowType | null>(
+    exhibition ? parseShowType(exhibition.show_type) : (defaultShowType ?? 'group'),
+  );
+  const [showTypeTouched, setShowTypeTouched] = useState(false);
+  const fieldSources = parseFieldSources(exhibition?.field_sources);
+  const artistFilled = (field: ShowField) => fieldSources[field] === 'artist';
+  const ownerRoleForShow = exhibition?.owner_role ?? ownerRole;
+  const offerShowType = ownerRoleForShow !== 'collector';
+  const soloCreate = !exhibition && showType === 'solo';
   // '' = not at one of the user's galleries. A new gallery-mode show starts at
   // the user's first gallery; a curator picks where their show is.
   const [venueId, setVenueId] = useState<string>(
@@ -118,8 +154,12 @@ export function ExhibitionForm({
     e.preventDefault();
     setError(null);
 
-    if (!formData.title || !formData.startDate) {
-      setError('Title and start date are required');
+    if (!formData.startDate || (!formData.title.trim() && !soloCreate)) {
+      setError(soloCreate ? 'An opening date is required' : 'Title and start date are required');
+      return;
+    }
+    if (soloCreate && selectedInvites.length + selectedArtists.length !== 1) {
+      setError('Invite the one artist this solo show is for');
       return;
     }
 
@@ -137,6 +177,9 @@ export function ExhibitionForm({
         formDataObj.append('maxArtworksPerArtist', formData.maxArtworksPerArtist);
         if (!exhibition && ownerRole) {
           formDataObj.append('ownerRole', ownerRole);
+        }
+        if (offerShowType && showType && (!exhibition || showTypeTouched)) {
+          formDataObj.append('showType', showType);
         }
         // On edit only send the venue when it changed, so a team member saving
         // other fields can't trip the "gallery you run" check.
@@ -245,6 +288,36 @@ export function ExhibitionForm({
         </fieldset>
       )}
 
+      {offerShowType && (
+        <fieldset className="space-y-2">
+          <legend className={FIELD_LABEL}>Kind of show</legend>
+          <div className="inline-flex flex-wrap border border-editorial-border/30 p-1 font-jetbrains text-[11px] uppercase tracking-[0.16em]">
+            {SHOW_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={type === showType}
+                onClick={() => {
+                  setShowType(type);
+                  setShowTypeTouched(true);
+                }}
+                className={cn(
+                  'rounded-none px-4 py-1.5 transition-colors',
+                  type === showType ? 'bg-editorial-ink text-bone' : 'text-editorial-ink/60 hover:text-editorial-ink',
+                )}
+              >
+                {SHOW_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
+          <p className={FIELD_HINT}>
+            {showType
+              ? SHOW_TYPE_HINTS[showType]
+              : 'Pick one so invited artists know what they can fill in. Until then, invited work waits for your review.'}
+          </p>
+        </fieldset>
+      )}
+
       {venueChoices.length > 0 && ownerRole !== 'collector' && (
         <div className="space-y-2">
           <Label htmlFor="venue" className={FIELD_LABEL}>Which gallery is this show at?</Label>
@@ -286,21 +359,27 @@ export function ExhibitionForm({
 
       <div className="space-y-7">
         <div className="space-y-2">
-          <Label htmlFor="title" className={FIELD_LABEL}>Exhibition Title *</Label>
+          <Label htmlFor="title" className={FIELD_LABEL}>
+            {soloCreate ? 'Exhibition Title' : 'Exhibition Title *'}
+            <ArtistFilledBadge show={artistFilled('title')} />
+          </Label>
           <Input
             id="title"
             value={formData.title}
             onChange={(e) =>
               setFormData({ ...formData, title: e.target.value })
             }
-            placeholder="e.g., Spring Collection 2024"
+            placeholder={soloCreate ? 'Leave blank for the artist to name the show' : 'e.g., Spring Collection 2024'}
             className={FIELD_INPUT}
-            required
+            required={!soloCreate}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description" className={FIELD_LABEL}>Description</Label>
+          <Label htmlFor="description" className={FIELD_LABEL}>
+            Description
+            <ArtistFilledBadge show={artistFilled('description')} />
+          </Label>
           <MarkdownTextarea
             id="description"
             value={formData.description}
@@ -312,7 +391,10 @@ export function ExhibitionForm({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
           <div className="space-y-2">
-            <Label htmlFor="startDate" className={FIELD_LABEL}>Start Date *</Label>
+            <Label htmlFor="startDate" className={FIELD_LABEL}>
+              Start Date *
+              <ArtistFilledBadge show={artistFilled('start_date')} />
+            </Label>
             <Input
               id="startDate"
               type="date"
@@ -326,7 +408,10 @@ export function ExhibitionForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="endDate" className={FIELD_LABEL}>End Date</Label>
+            <Label htmlFor="endDate" className={FIELD_LABEL}>
+              End Date
+              <ArtistFilledBadge show={artistFilled('end_date')} />
+            </Label>
             <Input
               id="endDate"
               type="date"
@@ -344,7 +429,10 @@ export function ExhibitionForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="location" className={FIELD_LABEL}>Location</Label>
+          <Label htmlFor="location" className={FIELD_LABEL}>
+            Location
+            <ArtistFilledBadge show={artistFilled('location')} />
+          </Label>
           <Input
             id="location"
             value={formData.location}
@@ -356,6 +444,11 @@ export function ExhibitionForm({
           />
         </div>
 
+        {soloCreate && (
+          <p className={FIELD_HINT}>
+            Invite the artist this show is for. They&apos;ll get an email to fill in the show.
+          </p>
+        )}
         <ParticipantSelector
           selectedArtists={selectedArtists}
           onArtistsChange={setSelectedArtists}
@@ -388,8 +481,9 @@ export function ExhibitionForm({
               ))}
           </select>
           <p className={FIELD_HINT}>
-            Applies to new invites and your open call. Artists submit up to this many works
-            for you to select from; you can change it per artist once invites are sent.
+            {showType === 'solo' || showType === 'group'
+              ? 'Applies to new invites. Invited artists can add up to this many works; you can change it per artist once invites are sent.'
+              : 'Applies to new invites and your open call. Artists submit up to this many works for you to select from; you can change it per artist once invites are sent.'}
           </p>
         </div>
 

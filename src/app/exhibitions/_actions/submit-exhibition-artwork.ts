@@ -10,10 +10,19 @@ import { CERTIFICATE_TYPES, USER_ROLES } from '~/lib/user-roles';
 import { getInstitutionLockError } from '~/lib/institution-account-guard';
 import {
   emailsMatch,
-  hashClaimToken,
   normalizeInviteEmail,
 } from '~/lib/certificate-claims/tokens';
 import { generateCertificateNumber } from '~/lib/certificate-claims/insert-linked-certificate';
+import { findInviteByKey } from '~/lib/exhibitions/invite-key';
+import {
+  issueExhibitionCos,
+} from '~/lib/certificate-claims/issue-exhibition-cos';
+import { notifyOwnersOfExhibition } from '~/lib/collectors/notify-owners-of-exhibition';
+import { ownerReceivesCertificateOfShow } from '../_helpers/exhibition-owner-roles';
+import {
+  invitedWorkGoesStraightIn,
+  inviteStaysOpenAfterSubmission,
+} from '../_helpers/show-collaboration';
 import {
   ARTWORKS_BUCKET,
   artworkImageUploader,
@@ -42,6 +51,7 @@ type InviteRow = {
   submitted_count: number;
   source: string;
   expires_at: string;
+  accepted_by: string | null;
 };
 
 type ParsedArtworkInput = {
@@ -209,23 +219,23 @@ async function uploadExtraAttachment(
   }
 }
 
+/**
+ * `token` is the emailed invite token, or `invite:<id>` from the artist's show
+ * page once they've accepted (see ~/lib/exhibitions/invite-key).
+ */
 async function validateInvite(
   adminClient: UntypedSupabaseClient,
   token: string,
-): Promise<{ invite: InviteRow } | { error: string }> {
-  const trimmed = token?.trim();
-  if (!trimmed) {
+): Promise<{ invite: InviteRow; byId: boolean } | { error: string }> {
+  if (!token?.trim()) {
     return { error: 'Invalid or missing invite link' };
   }
 
-  const tokenHash = hashClaimToken(trimmed);
-  const { data: invite, error } = await asUntyped(adminClient)
-    .from('exhibition_artist_invites')
-    .select(
-      'id, exhibition_id, invitee_email, invitee_name, artist_account_id, status, max_artworks, submitted_count, source, expires_at',
-    )
-    .eq('token_hash', tokenHash)
-    .maybeSingle();
+  const { invite, byId, error } = await findInviteByKey<InviteRow>(
+    adminClient,
+    token,
+    'id, exhibition_id, invitee_email, invitee_name, artist_account_id, status, max_artworks, submitted_count, source, expires_at, accepted_by',
+  );
 
   if (error || !invite) {
     console.error('[Exhibitions] submitExhibitionArtwork invite lookup failed', error);
@@ -240,8 +250,12 @@ async function validateInvite(
     return { error: 'This invitation has already been used' };
   }
 
+  // Accepted invites stay open for the life of the show; only unopened ones expire.
   const expiresAt = new Date(invite.expires_at);
-  if (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
+  if (
+    invite.status !== 'accepted' &&
+    (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date())
+  ) {
     await asUntyped(adminClient)
       .from('exhibition_artist_invites')
       .update({ status: 'expired' })
@@ -249,7 +263,7 @@ async function validateInvite(
     return { error: 'This invitation has expired' };
   }
 
-  return { invite: invite as InviteRow };
+  return { invite, byId };
 }
 
 async function verifyExistingCoa(
@@ -285,8 +299,17 @@ type SubmissionContext = {
   adminClient: UntypedSupabaseClient;
   user: { id: string; email: string };
   invite: InviteRow;
-  exhibition: { id: string; gallery_id: string; title: string; owner_role: string };
+  exhibition: {
+    id: string;
+    gallery_id: string;
+    title: string;
+    owner_role: string;
+    show_type: string | null;
+    gallery_profile_id: string | null;
+  };
   artistName: string;
+  /** Invited solo/group artist: work goes straight into the show. */
+  straightIn: boolean;
 };
 
 /** Signed-in invitee + valid invite + exhibition, shared by every submit path. */
@@ -315,16 +338,19 @@ async function loadSubmissionContext(
   if ('error' in validated) {
     return { error: validated.error };
   }
-  const { invite } = validated;
+  const { invite, byId } = validated;
 
   const inviteeEmail = normalizeInviteEmail(invite.invitee_email);
   if (!emailsMatch(user.email, inviteeEmail)) {
     return { error: `Sign in with the email this invite was sent to (${inviteeEmail}).` };
   }
+  if (byId && invite.accepted_by !== user.id) {
+    return { error: 'This invitation belongs to another account' };
+  }
 
   const { data: exhibition, error: exhibitionError } = await adminClient
     .from('exhibitions')
-    .select('id, gallery_id, title, owner_role')
+    .select('id, gallery_id, title, owner_role, show_type, gallery_profile_id')
     .eq('id', invite.exhibition_id)
     .single();
 
@@ -349,6 +375,7 @@ async function loadSubmissionContext(
     invite,
     exhibition,
     artistName,
+    straightIn: invitedWorkGoesStraightIn(exhibition.show_type, invite.source),
   };
 }
 
@@ -390,26 +417,45 @@ async function finalizeInviteSubmission(
     sessionFirstCosId: string;
   },
 ): Promise<void> {
-  const { adminClient, user, invite, exhibition, artistName } = ctx;
+  const { adminClient, user, invite, exhibition, artistName, straightIn } = ctx;
   const { totalCount, firstTitle, sessionFirstCoaId, sessionFirstCosId } = params;
 
-  await adminClient
-    .from('exhibition_artist_invites')
-    .update({
-      status: 'consumed',
-      consumed_at: new Date().toISOString(),
-      consumed_by: user.id,
-      result_artwork_id: sessionFirstCoaId || null,
-      result_cos_artwork_id: sessionFirstCosId || null,
-    })
-    .eq('id', invite.id);
+  if (inviteStaysOpenAfterSubmission(exhibition.show_type, invite.source)) {
+    // Solo/group invites stay open so the artist can keep adding work; only
+    // record the first result.
+    await adminClient
+      .from('exhibition_artist_invites')
+      .update({
+        result_artwork_id: sessionFirstCoaId || null,
+        result_cos_artwork_id: sessionFirstCosId || null,
+      })
+      .eq('id', invite.id)
+      .is('result_artwork_id', null);
+  } else {
+    await adminClient
+      .from('exhibition_artist_invites')
+      .update({
+        status: 'consumed',
+        consumed_at: new Date().toISOString(),
+        consumed_by: user.id,
+        result_artwork_id: sessionFirstCoaId || null,
+        result_cos_artwork_id: sessionFirstCosId || null,
+      })
+      .eq('id', invite.id);
+  }
 
   const viaOpenCall = invite.source === 'open_call' ? ' via your open call' : '';
-  const notificationTitle =
-    totalCount === 1
+  const works = totalCount === 1 ? 'an artwork' : `${totalCount} artworks`;
+  const notificationTitle = straightIn
+    ? totalCount === 1
+      ? `${artistName} added ${firstTitle}`
+      : `${artistName} added ${totalCount} artworks`
+    : totalCount === 1
       ? `Artwork submitted: ${firstTitle}`
       : `${totalCount} artworks submitted by ${artistName}`;
-  const notificationMessage = `${artistName} submitted ${totalCount === 1 ? 'an artwork' : `${totalCount} artworks`} for "${exhibition.title}"${viaOpenCall}. Select the works you want to show from the exhibition's edit page; nothing is public until you do.`;
+  const notificationMessage = straightIn
+    ? `${artistName} added ${works} to "${exhibition.title}". You can remove a work from the exhibition's edit page.`
+    : `${artistName} submitted ${works} for "${exhibition.title}"${viaOpenCall}. Select the works you want to show from the exhibition's edit page; nothing is public until you do.`;
 
   try {
     await createNotification({
@@ -432,21 +478,67 @@ async function finalizeInviteSubmission(
 }
 
 /**
- * Links a submitted CoA to the exhibition as 'submitted': only the organiser
- * sees it until they select it (which also issues any Certificate of Show).
+ * Links a submitted CoA to the exhibition. Open calls (and shows made before
+ * show types) link it as 'submitted': only the organiser sees it until they
+ * select it. Invited artists in solo and group shows go straight in as
+ * 'selected', with the Certificate of Show the organiser would have issued on
+ * selection.
  */
 async function insertSubmittedArtwork(ctx: SubmissionContext, coaId: string): Promise<boolean> {
   const { error } = await ctx.adminClient.from('exhibition_artworks').insert({
     exhibition_id: ctx.invite.exhibition_id,
     artwork_id: coaId,
-    status: 'submitted',
+    status: ctx.straightIn ? 'selected' : 'submitted',
     submission_invite_id: ctx.invite.id,
+    ...(ctx.straightIn ? { reviewed_at: new Date().toISOString() } : {}),
   });
   if (error) {
     console.error('[Exhibitions] submitted artwork link failed', { coaId, error });
     return false;
   }
+  if (ctx.straightIn) await addStraightIntoShow(ctx, coaId);
   return true;
+}
+
+/**
+ * What selecting a work would have done, for work that skips review: issue
+ * the Certificate of Show, credit the artist, tell owners. Failures are
+ * logged; the work is already in the show and the organiser can retry from
+ * the edit page.
+ */
+async function addStraightIntoShow(ctx: SubmissionContext, coaId: string): Promise<void> {
+  const { adminClient, exhibition, user } = ctx;
+  let cosArtworkId: string | null = null;
+
+  if (ownerReceivesCertificateOfShow(exhibition.owner_role)) {
+    const { data: coa } = await adminClient.from('artworks').select('*').eq('id', coaId).maybeSingle();
+    if (coa) {
+      try {
+        ({ cosArtworkId } = await issueExhibitionCos(adminClient, {
+          exhibition,
+          coa,
+          actorUserId: user.id,
+          createdByUserId: user.id,
+        }));
+      } catch (err) {
+        console.error('[Exhibitions] straight-in COS failed', { coaId, err });
+      }
+    }
+  }
+
+  const { error: creditError } = await adminClient.from('exhibition_artists').insert({
+    exhibition_id: exhibition.id,
+    artist_account_id: user.id,
+  });
+  if (creditError && creditError.code !== '23505') {
+    console.error('[Exhibitions] straight-in artist credit failed', creditError);
+  }
+
+  await notifyOwnersOfExhibition({
+    exhibitionId: exhibition.id,
+    artworkIds: [coaId, ...(cosArtworkId ? [cosArtworkId] : [])],
+    actorUserId: user.id,
+  }).catch((err: unknown) => console.error('[Exhibitions] straight-in owner notify failed', err));
 }
 
 export type ExistingArtworkOption = {
@@ -846,6 +938,9 @@ export async function validateExhibitionSubmitAccess(
       ok: false,
       error: `Sign in with ${normalizeInviteEmail(validated.invite.invitee_email)}`,
     };
+  }
+  if (validated.byId && validated.invite.accepted_by !== user.id) {
+    return { ok: false, error: 'This invitation belongs to another account' };
   }
 
   return { ok: true };

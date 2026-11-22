@@ -8,6 +8,7 @@ import {
 } from '../_helpers/exhibition-owner-roles';
 import { isInstitutionAccount } from '~/lib/institution-account';
 import { listVenueGalleriesForUser } from '~/lib/exhibitions/exhibition-venue';
+import { parseShowType } from '../_helpers/show-collaboration';
 
 import { asUntyped } from '~/lib/supabase-untyped';
 import { EditorialPageHeader } from '~/components/editorial-form';
@@ -18,9 +19,9 @@ export const metadata = {
 export default async function NewExhibitionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string }>;
+  searchParams: Promise<{ as?: string; type?: string }>;
 }) {
-  const { as: requestedOwnerRole } = await searchParams;
+  const { as: requestedOwnerRole, type: requestedShowType } = await searchParams;
   const client = asUntyped(getSupabaseServerClient());
   const { data: { user } } = await client.auth.getUser();
 
@@ -47,13 +48,14 @@ export default async function NewExhibitionPage({
       <EditorialPageHeader
         eyebrow="Exhibitions"
         title="New exhibition"
-        description="Create an exhibition and invite artists to upload the work they will show"
+        description="Set a date and invite artists: one for a solo show, several for a group show, or open it to everyone"
       />
 
       <ExhibitionForm
         ownerRoleOptions={getExhibitionOwnerRoleOptions(userRole, institutionLocked)}
         defaultOwnerRole={defaultExhibitionOwnerRole(userRole, requestedOwnerRole, institutionLocked)}
         venueOptions={venues.map(({ id, name }) => ({ id, name }))}
+        defaultShowType={parseShowType(requestedShowType)}
       />
     </div>
   );
