@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { Check, Copy, X } from 'lucide-react';
@@ -164,7 +165,7 @@ export function ExhibitionInvoiceForm({
   );
 }
 
-function CopyLink({ url }: { url: string }) {
+export function CopyLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-center gap-2">
@@ -195,18 +196,21 @@ const STATUS: Record<ExhibitionInvoiceSummary['status'], string> = {
 };
 
 export function ExhibitionInvoiceList({
-  exhibitionId,
   invoices,
+  showExhibition = false,
+  title = 'Invoices',
 }: {
-  exhibitionId: string;
   invoices: ExhibitionInvoiceSummary[];
+  /** List across shows (Operations): name each invoice's show. */
+  showExhibition?: boolean;
+  title?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   if (invoices.length === 0) return null;
   return (
     <div>
-      <p className={FIELD_LABEL}>Invoices</p>
+      <p className={FIELD_LABEL}>{title}</p>
       <ul className="divide-y divide-editorial-border/20 border-y border-editorial-border/20">
         {invoices.map((inv) => (
           <li key={inv.id} className="space-y-2 py-3">
@@ -227,7 +231,15 @@ export function ExhibitionInvoiceList({
                 {STATUS[inv.status]} · {new Date(inv.createdAt).toLocaleDateString()}
               </span>
             </div>
-            <p className="truncate font-serif text-xs text-editorial-ink/55">{inv.titles.join(', ')}</p>
+            <p className="truncate font-serif text-xs text-editorial-ink/55">
+              {showExhibition && inv.exhibitionTitle ? (
+                <Link href={`/exhibitions/${inv.exhibitionId}`} className="hover:text-wine hover:underline">
+                  {inv.exhibitionTitle}
+                </Link>
+              ) : null}
+              {showExhibition && inv.exhibitionTitle ? ' · ' : ''}
+              {inv.titles.join(', ')}
+            </p>
             {inv.status === 'open' && (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="min-w-0 flex-1">
@@ -239,7 +251,7 @@ export function ExhibitionInvoiceList({
                   className="font-serif text-xs text-ink/50 hover:text-wine"
                   onClick={() =>
                     startTransition(async () => {
-                      const res = await cancelExhibitionInvoice(exhibitionId, inv.id);
+                      const res = await cancelExhibitionInvoice(inv.exhibitionId, inv.id);
                       if (!res.success) toast.error(res.error ?? 'Could not cancel');
                       else router.refresh();
                     })

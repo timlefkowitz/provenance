@@ -74,11 +74,15 @@ import {
   updateInvoice,
 } from '../_actions/invoices';
 import { LoanArtworkPicker } from './loan-artwork-picker';
+import { SaleInvoicesSection } from './sale-invoices-section';
+import type { ExhibitionInvoiceSummary } from '~/app/exhibitions/_actions/exhibition-invoices';
 import { Clock } from 'lucide-react';
 
 type Props = {
   initialLoans: LoanAgreementRow[];
   initialInvoices: InvoiceRow[];
+  /** Pay-by-link invoices sent from the user's shows. */
+  saleInvoices?: ExhibitionInvoiceSummary[];
   initialConsignments: ConsignmentRow[];
   initialConditionReports: ConditionReportRow[];
   initialShipments: ShipmentRow[];
@@ -158,6 +162,7 @@ const invoiceStatuses = ['draft', 'sent', 'partial', 'paid', 'overdue'] as const
 export function OperationsPageContent({
   initialLoans,
   initialInvoices,
+  saleInvoices = [],
   initialConsignments,
   initialConditionReports,
   initialShipments,
@@ -687,6 +692,11 @@ export function OperationsPageContent({
         </TabsContent>
 
         <TabsContent value="invoices" className="space-y-4">
+          <SaleInvoicesSection
+            invoices={saleInvoices}
+            exhibitions={userExhibitions.map((ex) => ({ id: ex.id, title: ex.title }))}
+          />
+          <h3 className="pt-2 font-display text-lg text-wine">Bookkeeping invoices</h3>
           <p className="text-ink/70 font-serif text-sm max-w-3xl">
             Create and send professional invoices from your collection. Track payments, generate PDFs, and keep
             financial records alongside your art records (sending by email can follow in a later release).

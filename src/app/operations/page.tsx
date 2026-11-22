@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Operations tables not in generated DB types */
 import { asUntyped } from '~/lib/supabase-untyped';
+import { listMySaleInvoices } from '~/app/exhibitions/_actions/exhibition-invoices';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getActiveSubscription } from '~/lib/subscription';
@@ -745,6 +746,11 @@ export default async function OperationsPage() {
     };
   });
 
+  const saleInvoices = await listMySaleInvoices().catch((err) => {
+    console.error('[Operations] sale invoices failed', err);
+    return [];
+  });
+
   console.log('[Operations] page loaded', {
     loans: loans.length,
     invoices: invoices.length,
@@ -773,6 +779,7 @@ export default async function OperationsPage() {
       <OperationsPageContent
         initialLoans={loans}
         initialInvoices={invoices}
+        saleInvoices={saleInvoices}
         initialConsignments={consignments}
         initialConditionReports={conditionReports}
         initialShipments={shipments}

@@ -200,7 +200,7 @@ export function ExhibitionSalesPanel({
           </ul>
         )}
 
-        <ExhibitionInvoiceList exhibitionId={exhibitionId} invoices={invoices} />
+        <ExhibitionInvoiceList invoices={invoices} />
       </div>
     </section>
   );

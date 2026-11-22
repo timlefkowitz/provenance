@@ -15,6 +15,8 @@ import { asUntyped } from '~/lib/supabase-untyped';
 
 export type ExhibitionInvoiceSummary = {
   id: string;
+  exhibitionId: string;
+  exhibitionTitle: string | null;
   url: string;
   buyerName: string | null;
   buyerEmail: string | null;
@@ -139,29 +141,31 @@ export async function createExhibitionInvoice(
   }
 }
 
-export async function listExhibitionInvoices(exhibitionId: string): Promise<ExhibitionInvoiceSummary[]> {
-  const ctx = await requireManager(exhibitionId);
-  if ('error' in ctx) return [];
-  const { admin } = ctx;
-  const { data: invoices } = await admin
-    .from('sale_invoices')
-    .select('id, token, buyer_name, buyer_email, status, created_at')
-    .eq('exhibition_id', exhibitionId)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  const rows = invoices ?? [];
+async function summarize(
+  admin: ReturnType<typeof asUntyped>,
+  rows: Array<Record<string, unknown>>,
+): Promise<ExhibitionInvoiceSummary[]> {
   if (rows.length === 0) return [];
-  const { data: items } = await admin
-    .from('sale_invoice_items')
-    .select('invoice_id, title, price_cents')
-    .in(
-      'invoice_id',
-      rows.map((r) => r.id),
-    );
+  const [{ data: items }, { data: shows }] = await Promise.all([
+    admin
+      .from('sale_invoice_items')
+      .select('invoice_id, title, price_cents')
+      .in(
+        'invoice_id',
+        rows.map((r) => r.id as string),
+      ),
+    admin
+      .from('exhibitions')
+      .select('id, title')
+      .in('id', [...new Set(rows.map((r) => r.exhibition_id as string))]),
+  ]);
+  const showTitle = new Map((shows ?? []).map((x) => [x.id as string, x.title as string]));
   return rows.map((r) => {
     const mine = (items ?? []).filter((i) => i.invoice_id === r.id);
     return {
       id: r.id as string,
+      exhibitionId: r.exhibition_id as string,
+      exhibitionTitle: showTitle.get(r.exhibition_id as string) ?? null,
       url: invoiceUrl(r.token as string),
       buyerName: (r.buyer_name as string | null) ?? null,
       buyerEmail: (r.buyer_email as string | null) ?? null,
@@ -172,6 +176,41 @@ export async function listExhibitionInvoices(exhibitionId: string): Promise<Exhi
       createdAt: r.created_at as string,
     };
   });
+}
+
+const INVOICE_COLUMNS = 'id, token, exhibition_id, buyer_name, buyer_email, status, created_at';
+
+export async function listExhibitionInvoices(exhibitionId: string): Promise<ExhibitionInvoiceSummary[]> {
+  const ctx = await requireManager(exhibitionId);
+  if ('error' in ctx) return [];
+  const { data } = await ctx.admin
+    .from('sale_invoices')
+    .select(INVOICE_COLUMNS)
+    .eq('exhibition_id', exhibitionId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  return summarize(ctx.admin, data ?? []);
+}
+
+/** Every pay-by-link invoice the signed-in user's galleries sent (for Operations). */
+export async function listMySaleInvoices(): Promise<ExhibitionInvoiceSummary[]> {
+  const client = asUntyped(getSupabaseServerClient());
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return [];
+  const admin = asUntyped(getSupabaseServerAdminClient());
+  const { data, error } = await admin
+    .from('sale_invoices')
+    .select(INVOICE_COLUMNS)
+    .or(`gallery_account_id.eq.${user.id},created_by.eq.${user.id}`)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) {
+    console.error('[Invoices] listMySaleInvoices failed', error);
+    return [];
+  }
+  return summarize(admin, data ?? []);
 }
 
 export async function cancelExhibitionInvoice(
