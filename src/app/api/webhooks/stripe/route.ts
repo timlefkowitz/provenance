@@ -5,6 +5,7 @@ import Stripe from 'stripe';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { fulfillDomainPurchase } from '~/lib/domain-purchase-fulfillment';
 import { captureCrmContacts } from '~/lib/crm/capture-contact';
+import { expireCartOrder, fulfillCartOrder } from '~/lib/cart/fulfill-order';
 import {
   handleChargeReversal,
   payDueEarnings,
@@ -256,8 +257,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
+      case 'checkout.session.async_payment_succeeded':
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        if (session.metadata?.type === 'cart_purchase') {
+          try {
+            const result = await fulfillCartOrder(stripe, admin, session);
+            if (!result.ok) console.error('[Cart] Webhook: fulfill failed', result.error);
+            return NextResponse.json({ received: true, duplicate: result.duplicate });
+          } catch (cartErr) {
+            console.error('[Cart] Webhook: failed to book order earnings', cartErr);
+            return NextResponse.json({ error: 'Failed to fulfill order' }, { status: 500 });
+          }
+        }
+        if (event.type === 'checkout.session.async_payment_succeeded') {
+          return NextResponse.json({ received: true });
+        }
 
         if (session.metadata?.type === 'domain_purchase') {
           console.log('[Sites] Webhook: domain purchase checkout completed', {
@@ -468,6 +484,10 @@ export async function POST(request: NextRequest) {
 
       case 'checkout.session.expired': {
         const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === 'cart_purchase') {
+          await expireCartOrder(admin, session);
+          return NextResponse.json({ received: true });
+        }
         if (session.metadata?.type === 'artwork_purchase' && session.metadata.artwork_id) {
           await admin
             .from('artworks')

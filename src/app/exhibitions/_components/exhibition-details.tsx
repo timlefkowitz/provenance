@@ -29,6 +29,8 @@ import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
 import { FindByPhotoDialog } from '~/app/artworks/_components/find-by-photo-dialog';
 import { ReserveArtworkDialog } from './reserve-artwork-dialog';
 import { SoldDot } from '~/components/sold-dot';
+import { AddToCartButton } from '~/app/cart/_components/add-to-cart-button';
+import { formatPrice } from '~/lib/cart/format';
 
 /** Visitor-side "request to reserve" settings; null when reserving is off. */
 export interface ReserveOptions {
@@ -39,14 +41,22 @@ export interface ReserveOptions {
   defaultEmail?: string;
 }
 
+/** Online selling for this show; null when it is switched off. */
+export interface SalesOptions {
+  open: boolean;
+  listings: Record<string, { priceCents: number | null; currency: string; purchasable: boolean; held: boolean }>;
+}
+
 export function ExhibitionDetails({
   exhibition,
   isOwner,
   reserve,
+  sales,
 }: {
   exhibition: ExhibitionWithDetails;
   isOwner: boolean;
   reserve?: ReserveOptions | null;
+  sales?: SalesOptions | null;
 }) {
   const reservedIds = useMemo(
     () => new Set(reserve?.reservedArtworkIds ?? []),
@@ -240,6 +250,7 @@ export function ExhibitionDetails({
                 artwork.dimensions ||
                 artwork.listPriceDisplay ||
                 reserve ||
+                sales ||
                 isOwner ||
                 artwork.status === 'draft') && (
                 <div className="px-4 pt-3 pb-4 border-t border-wine/10">
@@ -274,12 +285,19 @@ export function ExhibitionDetails({
                     </Link>
                   )}
 
-                  {(artwork.isSold || artwork.listPriceDisplay || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
+                  {(artwork.isSold || artwork.listPriceDisplay || sales?.listings[artwork.id]?.purchasable || artwork.dimensions || (isOwner && artwork.status === 'draft')) && (
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-serif text-ink/45">
                       {artwork.isSold ? (
                         <span className="inline-flex items-center gap-1.5 text-ink/55">
                           <SoldDot className="h-2 w-2" />
                           Sold
+                        </span>
+                      ) : sales?.listings[artwork.id]?.purchasable ? (
+                        <span className="text-ink/70">
+                          {formatPrice(
+                            sales.listings[artwork.id]!.priceCents ?? 0,
+                            sales.listings[artwork.id]!.currency,
+                          )}
                         </span>
                       ) : (
                         artwork.listPriceDisplay && (
@@ -292,6 +310,16 @@ export function ExhibitionDetails({
                           Draft · add a photo, then publish to show publicly
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {sales?.open && !isOwner && !artwork.isSold && sales.listings[artwork.id]?.purchasable && (
+                    <div className="mt-3">
+                      <AddToCartButton
+                        artworkId={artwork.id}
+                        exhibitionId={exhibition.id}
+                        held={sales.listings[artwork.id]!.held}
+                      />
                     </div>
                   )}
 

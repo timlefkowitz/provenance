@@ -11,7 +11,9 @@ import {
   platformFeePercent,
   releaseAt,
   splitEarning,
+  splitOrder,
   statusAfterRefundOrDispute,
+  type OrderItemForSplit,
   type EarningStatus,
 } from './earnings-math';
 
@@ -204,7 +206,7 @@ export async function recordEarningFromCheckout(params: {
       status: 'pending',
       release_at: releaseAt(new Date(), payoutHoldDays()).toISOString(),
     },
-    { onConflict: 'checkout_session_id', ignoreDuplicates: true },
+    { onConflict: 'checkout_session_id,artwork_id,seller_account_id', ignoreDuplicates: true },
   );
   if (error) {
     console.error('[Payouts] failed to record earning', { sessionId: session.id, error });
@@ -217,6 +219,74 @@ export async function recordEarningFromCheckout(params: {
   console.log('[Payouts] earning recorded', { sessionId: session.id, sellerAccountId, net: split.netCents });
 
   await emailSellerAboutSale(admin, sellerAccountId, title, formatMoney(split.netCents, currency));
+}
+
+/**
+ * Turn a paid cart Checkout Session into seller_earnings rows: per work, the
+ * artist's share and, when the show takes a commission, the gallery's share.
+ * Idempotent on (checkout_session_id, artwork_id, seller_account_id).
+ */
+export async function recordEarningsForOrder(params: {
+  stripe: Stripe;
+  admin: UntypedSupabaseClient;
+  session: Stripe.Checkout.Session;
+  items: Array<OrderItemForSplit & { title: string | null }>;
+}): Promise<void> {
+  const { stripe, admin, session, items } = params;
+  if (items.length === 0) return;
+  const currency = (session.currency ?? 'usd').toLowerCase();
+  const paymentIntentId =
+    typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
+
+  let chargeId: string | null = null;
+  let stripeFee = 0;
+  if (paymentIntentId) {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['latest_charge.balance_transaction'],
+    });
+    const charge = pi.latest_charge as Stripe.Charge | null;
+    chargeId = charge?.id ?? null;
+    const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null;
+    stripeFee = bt?.fee ?? 0;
+  }
+
+  const lines = splitOrder(items, stripeFee, platformFeePercent());
+  const titles = new Map(items.map((i) => [i.orderItemId, i.title]));
+  const release = releaseAt(new Date(), payoutHoldDays()).toISOString();
+
+  const { error } = await admin.from('seller_earnings').upsert(
+    lines.map((l) => ({
+      seller_account_id: l.sellerAccountId,
+      artwork_id: l.artworkId,
+      artwork_title: titles.get(l.orderItemId) ?? null,
+      order_item_id: l.orderItemId,
+      role: l.role,
+      checkout_session_id: session.id,
+      payment_intent_id: paymentIntentId,
+      charge_id: chargeId,
+      gross_cents: l.grossCents,
+      platform_fee_cents: l.platformFeeCents,
+      stripe_fee_cents: l.stripeFeeCents,
+      net_cents: l.netCents,
+      currency,
+      status: 'pending',
+      release_at: release,
+    })),
+    { onConflict: 'checkout_session_id,artwork_id,seller_account_id', ignoreDuplicates: true },
+  );
+  if (error) {
+    console.error('[Payouts] failed to record order earnings', { sessionId: session.id, error });
+    throw new Error('Failed to record seller earnings');
+  }
+
+  console.log('[Payouts] order earnings recorded', { sessionId: session.id, lines: lines.length });
+
+  // One email per payee and work.
+  for (const l of lines) {
+    const title = titles.get(l.orderItemId) ?? 'your artwork';
+    const label = l.role === 'gallery_commission' ? `${title} (commission)` : title;
+    await emailSellerAboutSale(admin, l.sellerAccountId, label, formatMoney(l.netCents, currency));
+  }
 }
 
 async function emailSellerAboutSale(
@@ -349,17 +419,35 @@ export async function payDueEarnings(opts: { sellerAccountId?: string; limit?: n
 // Refunds and disputes
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Hold (or claw back) the seller's earning when the buyer's charge is refunded or disputed. */
+/** Hold (or claw back) every earning paid from a charge when it is refunded or disputed. */
 export async function handleChargeReversal(
   stripe: Stripe,
   chargeId: string,
   reason: 'refund' | 'dispute',
 ): Promise<void> {
   const admin = asUntyped(getSupabaseServerAdminClient());
-  const { data } = await admin.from('seller_earnings').select('*').eq('charge_id', chargeId).maybeSingle();
-  const earning = data as SellerEarningRow | null;
-  if (!earning) return;
+  const { data } = await admin.from('seller_earnings').select('*').eq('charge_id', chargeId);
+  const earnings = (data ?? []) as SellerEarningRow[];
+  for (const earning of earnings) {
+    await reverseOneEarning(stripe, admin, earning, chargeId, reason);
+  }
+  if (earnings.length > 0 && reason === 'refund') {
+    const sessionId = earnings[0]!.checkout_session_id;
+    await admin
+      .from('orders')
+      .update({ status: 'refunded', updated_at: new Date().toISOString() })
+      .eq('checkout_session_id', sessionId)
+      .eq('status', 'paid');
+  }
+}
 
+async function reverseOneEarning(
+  stripe: Stripe,
+  admin: UntypedSupabaseClient,
+  earning: SellerEarningRow,
+  chargeId: string,
+  reason: 'refund' | 'dispute',
+): Promise<void> {
   const { next, reverseTransfer } = statusAfterRefundOrDispute(earning.status);
   if (next === earning.status) return;
 

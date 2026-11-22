@@ -82,3 +82,88 @@ export function summarizeEarnings(rows: Array<{ status: EarningStatus; net_cents
   for (const r of rows) totals[r.status] += r.net_cents;
   return totals;
 }
+
+/**
+ * Split `total` into integer parts proportional to `weights`, so the parts
+ * always add up to exactly `total` (largest-remainder rounding).
+ */
+export function allocateProRata(total: number, weights: number[]): number[] {
+  const t = Math.max(0, Math.round(total));
+  const sum = weights.reduce((a, w) => a + Math.max(0, w), 0);
+  if (weights.length === 0) return [];
+  if (sum <= 0) return weights.map((_, i) => (i === 0 ? t : 0));
+  const exact = weights.map((w) => (t * Math.max(0, w)) / sum);
+  const parts = exact.map(Math.floor);
+  let left = t - parts.reduce((a, p) => a + p, 0);
+  const order = exact
+    .map((e, i) => ({ i, frac: e - Math.floor(e) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (const { i } of order) {
+    if (left <= 0) break;
+    parts[i]! += 1;
+    left -= 1;
+  }
+  return parts;
+}
+
+export type OrderItemForSplit = {
+  orderItemId: string;
+  artworkId: string;
+  priceCents: number;
+  artistAccountId: string;
+  galleryAccountId: string | null;
+  commissionPercent: number;
+};
+
+export type OrderEarningLine = EarningSplit & {
+  orderItemId: string;
+  artworkId: string;
+  sellerAccountId: string;
+  role: 'artist' | 'gallery_commission';
+};
+
+/**
+ * Turn a paid cart into earnings lines. Stripe's fee is shared across works by
+ * price. Within a work, the gallery's commission is a share of the sale price,
+ * and both the platform fee and Stripe's fee are shared between artist and
+ * gallery in the same proportion. A gallery selling its own work, or a show
+ * with no commission, gives one artist line for the work.
+ */
+export function splitOrder(
+  items: OrderItemForSplit[],
+  totalStripeFeeCents: number,
+  feePercent: number,
+): OrderEarningLine[] {
+  const itemFees = allocateProRata(
+    totalStripeFeeCents,
+    items.map((i) => i.priceCents),
+  );
+  const lines: OrderEarningLine[] = [];
+  items.forEach((item, idx) => {
+    const price = Math.max(0, Math.round(item.priceCents));
+    const pct = Math.min(100, Math.max(0, item.commissionPercent || 0));
+    const hasGallery =
+      !!item.galleryAccountId && item.galleryAccountId !== item.artistAccountId && pct > 0;
+    const galleryGross = hasGallery ? Math.round((price * pct) / 100) : 0;
+    const artistGross = price - galleryGross;
+    const [artistFee, galleryFee] = allocateProRata(itemFees[idx] ?? 0, [artistGross, galleryGross]);
+
+    lines.push({
+      ...splitEarning(artistGross, artistFee ?? 0, feePercent),
+      orderItemId: item.orderItemId,
+      artworkId: item.artworkId,
+      sellerAccountId: item.artistAccountId,
+      role: 'artist',
+    });
+    if (hasGallery && galleryGross > 0) {
+      lines.push({
+        ...splitEarning(galleryGross, galleryFee ?? 0, feePercent),
+        orderItemId: item.orderItemId,
+        artworkId: item.artworkId,
+        sellerAccountId: item.galleryAccountId!,
+        role: 'gallery_commission',
+      });
+    }
+  });
+  return lines;
+}

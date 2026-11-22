@@ -15,6 +15,8 @@ import { getExhibitionOpenCall } from '../../_actions/exhibition-open-call';
 import { ExhibitionOpenCallPanel } from '../../_components/exhibition-open-call-panel';
 import { getExhibitionSubmissions } from '../../_actions/review-exhibition-submissions';
 import { ExhibitionSubmissionsPanel } from '../../_components/exhibition-submissions-panel';
+import { ExhibitionSalesPanel } from '../../_components/exhibition-sales-panel';
+import { getExhibitionSalesSummary } from '../../_actions/exhibition-sales';
 import { ownerReceivesCertificateOfShow } from '../../_helpers/exhibition-owner-roles';
 
 import { asUntyped } from '~/lib/supabase-untyped';
@@ -55,12 +57,13 @@ export default async function EditExhibitionPage({
     redirect('/exhibitions');
   }
 
-  const [invites, uninvitedArtists, openCall, submissions, venues] = await Promise.all([
+  const [invites, uninvitedArtists, openCall, submissions, venues, salesSummary] = await Promise.all([
     getExhibitionInvites(id),
     getUninvitedCreditedArtists(id),
     getExhibitionOpenCall(id),
     getExhibitionSubmissions(id),
     listVenueGalleriesForUser(client, user.id),
+    getExhibitionSalesSummary(id),
   ]);
 
   return (
@@ -97,6 +100,8 @@ export default async function EditExhibitionPage({
         initialGroups={submissions}
         issuesCertificateOfShow={ownerReceivesCertificateOfShow(exhibition.owner_role)}
       />
+
+      {salesSummary && <ExhibitionSalesPanel exhibitionId={id} summary={salesSummary} />}
 
       <section id="artworks" className="mt-16 pt-10 border-t border-editorial-border/30 scroll-mt-8">
         <div className="mb-8">

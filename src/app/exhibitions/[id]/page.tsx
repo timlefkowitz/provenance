@@ -38,6 +38,13 @@ import { resolveExhibitionHeaderImage } from '../_helpers/header-image';
 import { resolveCuratorLink } from '../_helpers/curator-profile';
 import { stripMarkdown } from '~/lib/strip-markdown';
 import { endOfDateOnly, parseDateOnly } from '~/lib/parse-date-only';
+import { loadExhibitionListings } from '~/lib/exhibition-sales/load-listings';
+import {
+  exhibitionSalesOpen,
+  isHeldByAnotherCheckout,
+  isPurchasable,
+} from '~/lib/exhibition-sales/listings';
+import type { SalesOptions } from '../_components/exhibition-details';
 
 export const dynamic = 'force-dynamic';
 // Wall scans (Print → Label a wall from a photo) run an image model for several seconds.
@@ -247,6 +254,28 @@ export default async function ExhibitionPage({
           reservedArtworkIds,
           defaultEmail: user?.email ?? undefined,
         };
+  // Online selling (Add to cart) when the gallery has switched it on.
+  let sales: SalesOptions | null = null;
+  if ((exhibition as { sales_enabled?: boolean }).sales_enabled) {
+    const loaded = await loadExhibitionListings(asUntyped(getSupabaseServerAdminClient()), id);
+    if (loaded) {
+      const now = new Date();
+      sales = {
+        open: exhibitionSalesOpen(loaded.exhibition, now),
+        listings: Object.fromEntries(
+          [...loaded.listings.values()].map((l) => [
+            l.artworkId,
+            {
+              priceCents: l.priceCents,
+              currency: l.currency,
+              purchasable: isPurchasable(l),
+              held: isHeldByAnotherCheckout(l, now),
+            },
+          ]),
+        ),
+      };
+    }
+  }
   const headerImageUrl = resolveExhibitionHeaderImage(exhibition);
 
   const pageUrl = new URL(`/exhibitions/${id}`, appConfig.url).href;
@@ -517,6 +546,7 @@ export default async function ExhibitionPage({
           canPost={!!user}
           currentUserId={user?.id ?? null}
           reserve={reserve}
+          sales={sales}
           artistDetails={artistDetails}
         />
       </div>

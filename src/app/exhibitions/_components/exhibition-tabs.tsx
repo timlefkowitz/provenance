@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { ImageIcon, Heart, Users } from 'lucide-react';
-import { ExhibitionDetails, type ReserveOptions } from './exhibition-details';
+import { ExhibitionDetails, type ReserveOptions, type SalesOptions } from './exhibition-details';
 import { ExhibitionArtistsMedia } from './exhibition-artists-media';
 import { ExhibitionMemories } from './exhibition-memories';
 import type { ExhibitionWithDetails } from '../_actions/get-exhibitions';
@@ -16,6 +16,7 @@ export function ExhibitionTabs({
   canPost,
   currentUserId,
   reserve,
+  sales,
   artistDetails,
 }: {
   exhibition: ExhibitionWithDetails;
@@ -24,6 +25,7 @@ export function ExhibitionTabs({
   canPost: boolean;
   currentUserId: string | null;
   reserve?: ReserveOptions | null;
+  sales?: SalesOptions | null;
   artistDetails?: PublicExhibitionArtist[];
 }) {
   const workCount = exhibition.artworks.length;
@@ -61,7 +63,7 @@ export function ExhibitionTabs({
             Works in Exhibition · {workCount}
           </p>
         )}
-        <ExhibitionDetails exhibition={exhibition} isOwner={isOwner} reserve={reserve} />
+        <ExhibitionDetails exhibition={exhibition} isOwner={isOwner} reserve={reserve} sales={sales} />
       </TabsContent>
 
       <TabsContent value="artists" className="outline-none">

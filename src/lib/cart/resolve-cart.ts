@@ -1,0 +1,100 @@
+import 'server-only';
+
+import {
+  commissionPercentOf,
+  exhibitionSalesOpen,
+  isHeldByAnotherCheckout,
+  isPurchasable,
+} from '~/lib/exhibition-sales/listings';
+import { loadExhibitionListings } from '~/lib/exhibition-sales/load-listings';
+import type { UntypedSupabaseClient } from '~/lib/supabase-untyped';
+
+import type { CartLine } from './cart-types';
+
+export type UnavailableReason = 'not_found' | 'sales_closed' | 'not_for_sale' | 'sold' | 'held';
+
+export type ResolvedCartItem = {
+  artworkId: string;
+  exhibitionId: string;
+  available: boolean;
+  reason: UnavailableReason | null;
+  title: string;
+  artistName: string | null;
+  imageUrl: string | null;
+  exhibitionTitle: string;
+  priceCents: number;
+  currency: string;
+  artistAccountId: string;
+  galleryAccountId: string;
+  commissionPercent: number;
+  relatedArtworkIds: string[];
+};
+
+/**
+ * Look up each cart line against its exhibition's live listings: price, who
+ * gets paid, and whether it can still be bought. Prices always come from the
+ * database, never from the browser.
+ */
+export async function resolveCartItems(
+  admin: UntypedSupabaseClient,
+  lines: CartLine[],
+): Promise<ResolvedCartItem[]> {
+  const exhibitionIds = [...new Set(lines.map((l) => l.exhibitionId))];
+  const loaded = new Map(
+    await Promise.all(
+      exhibitionIds.map(async (id) => [id, await loadExhibitionListings(admin, id)] as const),
+    ),
+  );
+  const now = new Date();
+  const seen = new Set<string>();
+  const out: ResolvedCartItem[] = [];
+
+  for (const line of lines) {
+    if (seen.has(line.artworkId)) continue;
+    seen.add(line.artworkId);
+    const data = loaded.get(line.exhibitionId);
+    const listing = data?.listings.get(line.artworkId);
+    if (!data || !listing) {
+      out.push({
+        artworkId: line.artworkId,
+        exhibitionId: line.exhibitionId,
+        available: false,
+        reason: 'not_found',
+        title: 'Unavailable work',
+        artistName: null,
+        imageUrl: null,
+        exhibitionTitle: data?.exhibition.title ?? '',
+        priceCents: 0,
+        currency: 'usd',
+        artistAccountId: '',
+        galleryAccountId: data?.exhibition.gallery_id ?? '',
+        commissionPercent: 0,
+        relatedArtworkIds: [],
+      });
+      continue;
+    }
+    let reason: UnavailableReason | null = null;
+    if (!exhibitionSalesOpen(data.exhibition, now)) reason = 'sales_closed';
+    else if (listing.isSold) reason = 'sold';
+    else if (!isPurchasable(listing)) reason = 'not_for_sale';
+    else if (isHeldByAnotherCheckout(listing, now)) reason = 'held';
+
+    out.push({
+      artworkId: line.artworkId,
+      exhibitionId: line.exhibitionId,
+      available: reason === null,
+      reason,
+      title: listing.title,
+      artistName: listing.artistName,
+      imageUrl: listing.imageUrl,
+      exhibitionTitle: data.exhibition.title,
+      priceCents: listing.priceCents ?? 0,
+      currency: listing.currency,
+      artistAccountId: listing.artistAccountId,
+      galleryAccountId: data.exhibition.gallery_id,
+      commissionPercent: commissionPercentOf(data.exhibition),
+      relatedArtworkIds: listing.relatedArtworkIds,
+    });
+  }
+  return out;
+}

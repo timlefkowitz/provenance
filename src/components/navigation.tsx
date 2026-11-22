@@ -22,6 +22,7 @@ import {
 import pathsConfig from '~/config/paths.config';
 import { ProfileAccountDropdownContainer } from './personal-account-dropdown-container';
 import { NotificationBadge } from './notification-badge';
+import { CartNavButton } from '~/app/cart/_components/cart-nav-button';
 import { ProfileSwitcher } from './profile-switcher';
 import { UsingGalleryLabel } from './using-gallery-label';
 
@@ -256,6 +257,7 @@ export function Navigation(props: { initialUser?: JwtPayload | null }) {
           "Add Artwork" CTA and marketing auth buttons collapse on mobile.
         */}
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <CartNavButton />
           {user.data ? (
             <>
               {/* Notifications — always visible */}

@@ -31,6 +31,8 @@ export default defineConfig({
       'src/lib/collectors/**/*.test.ts',
       'src/lib/sales/**/*.test.ts',
       'src/lib/payouts/**/*.test.ts',
+      'src/lib/exhibition-sales/**/*.test.ts',
+      'src/lib/cart/**/*.test.ts',
       'src/lib/auctions/**/*.test.ts',
       'src/lib/operations/reports/**/*.test.ts',
       'src/lib/artists/**/*.test.ts',
