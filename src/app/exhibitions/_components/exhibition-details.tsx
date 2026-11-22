@@ -30,6 +30,7 @@ import { FindByPhotoDialog } from '~/app/artworks/_components/find-by-photo-dial
 import { ReserveArtworkDialog } from './reserve-artwork-dialog';
 import { SoldDot } from '~/components/sold-dot';
 import { AddToCartButton } from '~/app/cart/_components/add-to-cart-button';
+import { BuyNowButton } from '~/app/cart/_components/buy-now-button';
 import { formatPrice } from '~/lib/cart/format';
 
 /** Visitor-side "request to reserve" settings; null when reserving is off. */
@@ -41,10 +42,15 @@ export interface ReserveOptions {
   defaultEmail?: string;
 }
 
-/** Online selling for this show; null when it is switched off. */
+/**
+ * Works that can be bought online, keyed by the id shown: through the show
+ * (exhibitionId set) or through the work's own certificate (exhibitionId null).
+ */
 export interface SalesOptions {
-  open: boolean;
-  listings: Record<string, { priceCents: number | null; currency: string; purchasable: boolean; held: boolean }>;
+  listings: Record<
+    string,
+    { priceCents: number | null; currency: string; purchasable: boolean; held: boolean; exhibitionId: string | null }
+  >;
 }
 
 export function ExhibitionDetails({
@@ -313,15 +319,28 @@ export function ExhibitionDetails({
                     </div>
                   )}
 
-                  {sales?.open && !isOwner && !artwork.isSold && sales.listings[artwork.id]?.purchasable && (
-                    <div className="mt-3">
-                      <AddToCartButton
-                        artworkId={artwork.id}
-                        exhibitionId={exhibition.id}
-                        held={sales.listings[artwork.id]!.held}
-                      />
-                    </div>
-                  )}
+                  {!artwork.isSold && sales?.listings[artwork.id]?.purchasable &&
+                    (isOwner ? (
+                      <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-serif text-wine/70">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        For sale online
+                      </p>
+                    ) : (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <AddToCartButton
+                          artworkId={artwork.id}
+                          exhibitionId={sales.listings[artwork.id]!.exhibitionId}
+                          held={sales.listings[artwork.id]!.held}
+                        />
+                        {!sales.listings[artwork.id]!.held && (
+                          <BuyNowButton
+                            artworkId={artwork.id}
+                            exhibitionId={sales.listings[artwork.id]!.exhibitionId}
+                            size="sm"
+                          />
+                        )}
+                      </div>
+                    ))}
 
                   {reservedIds.has(artwork.id) ? (
                     <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-serif text-wine">

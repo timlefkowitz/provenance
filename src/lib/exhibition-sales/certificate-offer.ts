@@ -118,3 +118,42 @@ export async function loadDirectListing(
     isResale: a.certificate_type === CERTIFICATE_TYPES.OWNERSHIP,
   };
 }
+
+/** loadDirectListing for many works at once (e.g. every work in a show). */
+export async function loadDirectListings(
+  admin: UntypedSupabaseClient,
+  artworkIds: string[],
+): Promise<Map<string, DirectListing>> {
+  const out = new Map<string, DirectListing>();
+  if (artworkIds.length === 0) return out;
+  const { data: rows } = await asUntyped(admin)
+    .from('artworks')
+    .select(
+      'id, title, artist_name, image_url, account_id, for_sale, sale_price, sale_currency, is_sold, sold_at, checkout_reserved_until, status, is_public, certificate_type',
+    )
+    .in('id', artworkIds)
+    .eq('for_sale', true)
+    .eq('status', 'verified')
+    .eq('is_public', true);
+  const shopOpen = new Map<string, boolean>();
+  for (const a of rows ?? []) {
+    const priceCents = Math.round(Number(a.sale_price ?? 0) * 100);
+    if (!(priceCents > 0) || a.is_sold || a.sold_at) continue;
+    const seller = a.account_id as string;
+    if (!shopOpen.has(seller)) shopOpen.set(seller, await isSellingEnabled(seller));
+    if (!shopOpen.get(seller)) continue;
+    out.set(a.id as string, {
+      artworkId: a.id as string,
+      title: (a.title as string) || 'Untitled',
+      artistName: (a.artist_name as string | null)?.trim() || null,
+      imageUrl: (a.image_url as string | null) ?? null,
+      sellerAccountId: seller,
+      priceCents,
+      currency: ((a.sale_currency as string | null) || 'usd').toLowerCase(),
+      isSold: false,
+      reservedUntil: (a.checkout_reserved_until as string | null) ?? null,
+      isResale: a.certificate_type === CERTIFICATE_TYPES.OWNERSHIP,
+    });
+  }
+  return out;
+}

@@ -535,7 +535,7 @@ export default async function CertificatePage({
 
   // Buy / Add to cart when the work can be bought online, through a show or its holder's shop.
   const offer =
-    !isOwner && !canSell && artwork.status === 'verified'
+    artwork.status === 'verified'
       ? await chainIds
           .then((ids) => findCertificateOffer(asUntyped(chainAdmin), artwork.id, ids))
           .catch((err) => {
@@ -576,6 +576,7 @@ export default async function CertificatePage({
           priceCents={offer.priceCents}
           currency={offer.currency}
           held={offer.held}
+          preview={isOwner || canSell}
           signInHref={
             offer.requiresAccount && !user
               ? `/auth/sign-in?next=${encodeURIComponent(`/artworks/${artwork.id}/certificate`)}`

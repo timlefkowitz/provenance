@@ -39,6 +39,7 @@ import { resolveCuratorLink } from '../_helpers/curator-profile';
 import { stripMarkdown } from '~/lib/strip-markdown';
 import { endOfDateOnly, parseDateOnly } from '~/lib/parse-date-only';
 import { loadExhibitionListings } from '~/lib/exhibition-sales/load-listings';
+import { loadDirectListings } from '~/lib/exhibition-sales/certificate-offer';
 import {
   exhibitionSalesOpen,
   isHeldByAnotherCheckout,
@@ -254,28 +255,41 @@ export default async function ExhibitionPage({
           reservedArtworkIds,
           defaultEmail: user?.email ?? undefined,
         };
-  // Online selling (Add to cart) when the gallery has switched it on.
-  let sales: SalesOptions | null = null;
+  // Buy now / Add to cart: through the show when the gallery sells online,
+  // else through a work's own certificate when its holder listed it.
+  const salesAdmin = asUntyped(getSupabaseServerAdminClient());
+  const salesNow = new Date();
+  const salesListings: SalesOptions['listings'] = {};
   if ((exhibition as { sales_enabled?: boolean }).sales_enabled) {
-    const loaded = await loadExhibitionListings(asUntyped(getSupabaseServerAdminClient()), id);
-    if (loaded) {
-      const now = new Date();
-      sales = {
-        open: exhibitionSalesOpen(loaded.exhibition, now),
-        listings: Object.fromEntries(
-          [...loaded.listings.values()].map((l) => [
-            l.artworkId,
-            {
-              priceCents: l.priceCents,
-              currency: l.currency,
-              purchasable: isPurchasable(l),
-              held: isHeldByAnotherCheckout(l, now),
-            },
-          ]),
-        ),
-      };
+    const loaded = await loadExhibitionListings(salesAdmin, id);
+    if (loaded && exhibitionSalesOpen(loaded.exhibition, salesNow)) {
+      for (const l of loaded.listings.values()) {
+        if (!isPurchasable(l)) continue;
+        salesListings[l.artworkId] = {
+          priceCents: l.priceCents,
+          currency: l.currency,
+          purchasable: true,
+          held: isHeldByAnotherCheckout(l, salesNow),
+          exhibitionId: id,
+        };
+      }
     }
   }
+  const notThroughShow = exhibition.artworks.map((a) => a.id).filter((aid) => !salesListings[aid]);
+  const direct = await loadDirectListings(salesAdmin, notThroughShow).catch((err) => {
+    console.error('[Exhibitions] direct listings failed', { id, err });
+    return new Map();
+  });
+  for (const d of direct.values()) {
+    salesListings[d.artworkId] = {
+      priceCents: d.priceCents,
+      currency: d.currency,
+      purchasable: true,
+      held: !!d.reservedUntil && new Date(d.reservedUntil).getTime() > salesNow.getTime(),
+      exhibitionId: null,
+    };
+  }
+  const sales: SalesOptions | null = Object.keys(salesListings).length > 0 ? { listings: salesListings } : null;
   const headerImageUrl = resolveExhibitionHeaderImage(exhibition);
 
   const pageUrl = new URL(`/exhibitions/${id}`, appConfig.url).href;
